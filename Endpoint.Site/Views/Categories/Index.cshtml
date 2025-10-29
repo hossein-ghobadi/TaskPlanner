@@ -1,0 +1,25 @@
+﻿@model IEnumerable<TaskCategory>
+@{
+    // ViewData["Title"] = "خانه";
+    Layout = "/Views/Shared/_Layout.cshtml";
+
+}
+<h2>لیست دسته‌بندی‌ها</h2>
+<a class="btn btn-primary mb-2" href="/TaskPlanner/Categories/Create">افزودن دسته‌بندی جدید</a>
+
+<table class="table table-bordered">
+    <tr>
+        <th>نام دسته‌بندی</th>
+        <th>عملیات</th>
+    </tr>
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>@item.Name</td>
+            <td>
+                <a class="btn btn-warning btn-sm" href="/TaskPlanner/Categories/Edit/@item.Id">ویرایش</a>
+                <a class="btn btn-danger btn-sm" href="/TaskPlanner/Categories/Delete/@item.Id">حذف</a>
+            </td>
+        </tr>
+    }
+</table>

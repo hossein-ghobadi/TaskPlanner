@@ -1,0 +1,112 @@
+﻿@model Endpoint.Site.Areas.TaskPlanner.Models.TaskEditVm
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<h2>ویرایش کار</h2>
+
+<form asp-action="Edit" method="post">
+    @Html.HiddenFor(m => m.Id)
+
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <!-- عنوان -->
+    <div class="mb-3">
+        <label asp-for="Title" class="form-label"></label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+
+    <!-- توضیحات -->
+    <div class="mb-3">
+        <label asp-for="Description" class="form-label"></label>
+        <textarea asp-for="Description" class="form-control"></textarea>
+    </div>
+
+    <!-- تاریخ شروع -->
+    <div class="mb-3">
+        <label class="form-label">تاریخ شروع</label>
+        <input type="text" id="StartDateDisplay" class="form-control" autocomplete="off"
+               value="@Model.StartDateSh" />
+        <input type="hidden" asp-for="StartDateSh" id="StartDate" value="@Model.StartDateSh" />
+        <span asp-validation-for="StartDateSh" class="text-danger"></span>
+    </div>
+
+    <!-- تاریخ پایان -->
+    <div class="mb-3">
+        <label class="form-label">تاریخ پایان</label>
+        <input type="text" id="DueDateDisplay" class="form-control" autocomplete="off"
+               value="@Model.DueDateSh" />
+        <input type="hidden" asp-for="DueDateSh" id="DueDate" value="@Model.DueDateSh" />
+        <span asp-validation-for="DueDateSh" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">پروژه</label>
+        <select asp-for="ProjectId" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Projects, "Id", "Name", Model.ProjectId))">
+        </select>
+        <span asp-validation-for="ProjectId" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="AssignedUserId" class="form-label">مسئول تسک</label>
+        <select asp-for="AssignedUserId" class="form-control"
+                asp-items="@(new SelectList(ViewBag.AssignedUsers, "Id", "Name", Model.AssignedUserId))">
+            <option value="">-- انتخاب کاربر --</option>
+        </select>
+        <span asp-validation-for="AssignedUserId" class="text-danger"></span>
+    </div>
+
+    <!-- دسته‌بندی -->
+    <div class="mb-3">
+        <label asp-for="CategoryId" class="form-label">دسته‌بندی (Component) - اختیاری</label>
+        <select asp-for="CategoryId" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Categories, "Id", "Name"))">
+            <option value="">-- بدون دسته‌بندی --</option>
+        </select>
+        <small class="form-text text-muted">مثل Component در Jira - می‌توانید خالی بگذارید</small>
+    </div>
+
+    <!-- تسک والد -->
+    <div class="mb-3">
+        <label asp-for="ParentId" class="form-label">زیرمجموعه‌ی کدام کار باشد؟</label>
+        <select asp-for="ParentId" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Tasks, "Id", "Title"))">
+            <option value="">-- مستقل --</option>
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-warning">ذخیره تغییرات</button>
+</form>
+@section Scripts {
+    <script>
+        // اطمینان از مقداردهی درست ورودی‌ها و مقدارهای پنهان بعد از لود کامل DOM
+        $(function () {
+            // هم‌سنگ کردن مقدارهای اولیه ورودی‌های پنهان با نمایشگر
+            $("#StartDate").val($("#StartDateDisplay").val() || "");
+            $("#DueDate").val($("#DueDateDisplay").val() || "");
+
+            // مقداردهی دیت‌پیکرها پس از لود کامل DOM
+            $("#StartDateDisplay").persianDatepicker({
+                format: 'YYYY/MM/DD',
+                initialValue: true,
+                initialValueType: 'persian',
+                autoClose: true,
+                altField: '#StartDate',
+                altFormat: 'YYYY/MM/DD'
+            });
+
+            $("#DueDateDisplay").persianDatepicker({
+                format: 'YYYY/MM/DD',
+                initialValue: true,
+                initialValueType: 'persian',
+                autoClose: true,
+                altField: '#DueDate',
+                altFormat: 'YYYY/MM/DD'
+            });
+
+            // بعد از مقداردهی، دوباره hidden ها را با مقدار نمایشگر همسان‌سازی کن
+            $("#StartDate").val($("#StartDateDisplay").val() || "");
+            $("#DueDate").val($("#DueDateDisplay").val() || "");
+        });
+    </script>
+}

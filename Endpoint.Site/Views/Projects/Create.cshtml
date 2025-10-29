@@ -1,0 +1,68 @@
+﻿@using Endpoint.Site.Areas.TaskPlanner.Models
+@model ProjectCreateVm
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+
+}
+<h2>ایجاد پروژه جدید</h2>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<form asp-action="Create" method="post">
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label">نام پروژه</label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Description" class="form-label">توضیحات</label>
+        <textarea asp-for="Description" class="form-control"></textarea>
+    </div>
+
+    <hr />
+    <h5>👥 اعضای پروژه (کاربران موجود در سیستم)</h5>
+    <div class="mb-3">
+        <select asp-for="SelectedUserIds"
+                asp-items="@(new MultiSelectList(ViewBag.Users, "Id", "DisplayName"))"
+                class="form-control" multiple="multiple">
+        </select>
+        <small class="form-text text-muted">
+            می‌توانید چندین کاربر را انتخاب کنید تا مستقیم به پروژه افزوده شوند.
+        </small>
+    </div>
+
+    <hr />
+    @{
+        var pendingInvites = ViewBag.PendingInvitations as IEnumerable<string> ?? Enumerable.Empty<string>();
+    }
+
+    <h5>📞 دعوت‌های در انتظار شما</h5>
+    @if (pendingInvites.Any())
+    {
+        <ul class="list-group mb-3">
+            @foreach (var phone in pendingInvites)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>@phone</span>
+                    <span class="badge bg-warning text-dark">در انتظار تایید</span>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <small class="text-muted">هیچ دعوتی در انتظار تایید شما وجود ندارد.</small>
+    }
+
+    <button type="submit" class="btn btn-success mt-3">ایجاد پروژه</button>
+</form>

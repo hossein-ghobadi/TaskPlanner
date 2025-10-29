@@ -1,0 +1,53 @@
+@model WorkflowStatus
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<h2>حذف وضعیت</h2>
+
+<div class="alert alert-danger">
+    <h4>آیا مطمئن هستید که می‌خواهید این وضعیت را حذف کنید؟</h4>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">نام وضعیت:</dt>
+            <dd class="col-sm-9">
+                <span class="badge" style="background-color: @Model.Color">@Model.Name</span>
+            </dd>
+
+            @if (!string.IsNullOrEmpty(Model.Description))
+            {
+                <dt class="col-sm-3">توضیحات:</dt>
+                <dd class="col-sm-9">@Model.Description</dd>
+            }
+
+            <dt class="col-sm-3">پروژه:</dt>
+            <dd class="col-sm-9">@Model.Project.Name</dd>
+
+            <dt class="col-sm-3">نوع:</dt>
+            <dd class="col-sm-9">@Model.Type</dd>
+
+            <dt class="col-sm-3">ترتیب:</dt>
+            <dd class="col-sm-9">@Model.Order</dd>
+
+            <dt class="col-sm-3">تعداد تسک‌ها:</dt>
+            <dd class="col-sm-9">@Model.Tasks.Count</dd>
+        </dl>
+
+        @if (Model.Tasks.Any())
+        {
+            <div class="alert alert-warning">
+                <strong>توجه:</strong> این وضعیت دارای @Model.Tasks.Count تسک است. با حذف این وضعیت، تسک‌ها بدون وضعیت می‌شوند.
+            </div>
+        }
+
+        <form method="post" asp-action="Delete" asp-route-id="@Model.Id">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-danger">بله، حذف شود</button>
+            <a class="btn btn-secondary" href="/TaskPlanner/WorkflowStatus/Index?projectId=@Model.ProjectId">انصراف</a>
+        </form>
+    </div>
+</div>
+

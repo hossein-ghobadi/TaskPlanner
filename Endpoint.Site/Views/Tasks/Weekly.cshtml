@@ -1,0 +1,74 @@
+﻿@using DNTPersianUtils.Core
+@model IEnumerable<TaskPlanner.Domain.Entities.TaskPlanner.TaskItem>
+
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var start = ((DateTime)ViewBag.StartOfWeek).ToShortPersianDateString();
+    var end = ((DateTime)ViewBag.EndOfWeek).ToShortPersianDateString();
+    int offset = (int)ViewBag.Offset;
+}
+
+<h2>📅 برنامه هفتگی من</h2>
+
+<p>از تاریخ <b>@start</b> تا <b>@end</b></p>
+
+<div class="mb-3">
+    <a class="btn btn-secondary" asp-action="Weekly" asp-route-offset="@(offset - 1)">هفته قبل</a>
+    <a class="btn btn-secondary" asp-action="Weekly" asp-route-offset="@(offset + 1)">هفته بعد</a>
+    <a class="btn btn-primary" asp-action="Weekly" asp-route-offset="0">این هفته</a>
+</div>
+
+@if (Model.Any())
+{
+    <ul class="list-group">
+        @foreach (var task in Model.Where(t => t.ParentTaskId == null))
+        {
+            <li class="list-group-item">
+                <strong>
+                    <span class="me-2" title="@task.IssueTypeName">@task.IssueTypeIcon</span>
+                    @task.Title
+                    @if (!string.IsNullOrEmpty(task.IssueKey))
+                    {
+                        <small class="text-muted">(@task.IssueKey)</small>
+                    }
+                </strong>
+                <br />
+                <small class="text-muted">
+                    پروژه:
+                    <a asp-area="TaskPlanner"
+                       asp-controller="Projects"
+                       asp-action="Details"
+                       asp-route-id="@task.ProjectId"
+                       class="text-decoration-none text-primary fw-bold">
+                        @task.Project?.Name
+                    </a>: @task.Project?.Name |
+                    تاریخ شروع: @task.StartDate.ToShortPersianDateString() |
+                    مسئول: @(
+                 task.AssignedUserId != null && ViewBag.UserLookup.ContainsKey(task.AssignedUserId)
+                 ? ViewBag.UserLookup[task.AssignedUserId]
+                 : "تعیین نشده"
+                 )
+                </small>
+
+                @if (task.ChildIssues.Any())
+                {
+                    <ul class="mt-2 ms-4">
+                        @foreach (var sub in task.ChildIssues)
+                        {
+                            <li>
+                                <span class="me-1" title="@sub.IssueTypeName">@sub.IssueTypeIcon</span>
+                                @sub.Title
+                                <small class="text-muted">(@sub.StartDate.ToShortPersianDateString())</small>
+                            </li>
+                        }
+                    </ul>
+                }
+            </li>
+        }
+    </ul>
+}
+else
+{
+    <p class="text-muted">برای این هفته هیچ کاری ثبت نشده است.</p>
+}
+

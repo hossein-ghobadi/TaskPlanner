@@ -1,0 +1,10 @@
+﻿@model Project
+
+<h2>حذف پروژه</h2>
+<p>آیا از حذف پروژه <strong>@Model.Name</strong> مطمئن هستید؟</p>
+
+<form asp-action="DeleteConfirmed" method="post">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger">حذف</button>
+    <a href="/TaskPlanner/Projects/Index" class="btn btn-secondary">انصراف</a>
+</form>

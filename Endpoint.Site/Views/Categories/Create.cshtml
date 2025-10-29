@@ -1,0 +1,19 @@
+﻿@model TaskCategory
+@{
+    // ViewData["Title"] = "خانه";
+    Layout = "/Views/Shared/_Layout.cshtml";
+
+}
+<h2>افزودن دسته‌بندی</h2>
+
+<form asp-action="Create" method="post">
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-success">ثبت</button>
+</form>

@@ -1,0 +1,149 @@
+@model Endpoint.Site.Models.RegisterViewModel
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "ثبت نام";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-body p-5">
+                <h2 class="card-title text-center mb-4">ثبت نام</h2>
+
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-circle"></i> @TempData["Error"]
+                    </div>
+                }
+
+                <form asp-action="Register" method="post">
+                    <div asp-validation-summary="All" class="alert alert-danger mb-3" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="FullName" class="form-label">نام کامل</label>
+                        <input asp-for="FullName" class="form-control" placeholder="نام و نام خانوادگی خود را وارد کنید" />
+                        <span asp-validation-for="FullName" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label">ایمیل</label>
+                        <input asp-for="Email" type="email" class="form-control" placeholder="example@email.com" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Phone" class="form-label">شماره تلفن (اختیاری)</label>
+                        <input asp-for="Phone" type="tel" class="form-control" placeholder="09123456789" />
+                        <span asp-validation-for="Phone" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Password" class="form-label">رمز عبور</label>
+                        <input asp-for="Password" class="form-control" placeholder="حداقل 6 کاراکتر" />
+                        <span asp-validation-for="Password" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="ConfirmPassword" class="form-label">تکرار رمز عبور</label>
+                        <input asp-for="ConfirmPassword" class="form-control" placeholder="رمز عبور را مجدد وارد کنید" />
+                        <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mb-3">ثبت نام</button>
+                    
+                    <div class="text-center">
+                        <p class="mb-0">
+                            قبلاً ثبت نام کرده‌اید؟
+                            <a asp-action="Login" class="text-decoration-none">ورود</a>
+                        </p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+
+<style>
+    .card {
+        border-radius: 12px;
+        border: none;
+    }
+    
+    .card-body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        color: white;
+    }
+    
+    .card-title {
+        font-weight: 600;
+        color: white;
+    }
+    
+    .form-label {
+        color: rgba(255, 255, 255, 0.9);
+        font-weight: 500;
+    }
+    
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.95);
+    }
+    
+    .form-control:focus {
+        background: white;
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .btn-primary {
+        background: white;
+        color: #667eea;
+        border: none;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 12px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        background: #f8f9fa;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .text-danger,
+    .alert-danger {
+        background-color: rgba(244, 67, 54, 0.2) !important;
+        border: 1px solid rgba(244, 67, 54, 0.5);
+        color: #ffebee !important;
+        font-weight: 500;
+        padding: 12px;
+        border-radius: 8px;
+    }
+    
+    .alert-danger ul {
+        margin-bottom: 0;
+        padding-right: 20px;
+    }
+    
+    .alert-danger li {
+        margin: 5px 0;
+    }
+    
+    a {
+        color: white;
+        font-weight: 500;
+    }
+    
+    a:hover {
+        color: #f8f9fa;
+        text-decoration: underline !important;
+    }
+</style>

@@ -1,0 +1,36 @@
+﻿@model IEnumerable<Project>
+@{
+    // ViewData["Title"] = "خانه";
+    Layout = "/Views/Shared/_Layout.cshtml";
+
+}
+<h2>لیست پروژه‌ها</h2>
+<a class="btn btn-primary mb-3" href="/TaskPlanner/Projects/Create">افزودن پروژه جدید</a>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>نام پروژه</th>
+            <th>توضیحات</th>
+         
+            <th>تعداد تسک‌ها</th>
+            <th>عملیات</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in Model)
+        {
+            <tr>
+                <td>@p.Name</td>
+                <td>@p.Description</td>
+             
+                <td>@p.Tasks?.Count</td>
+                <td>
+                    <a class="btn btn-sm btn-info" asp-action="Details" asp-route-id="@p.Id">جزئیات</a>
+                    <a class="btn btn-sm btn-warning" asp-action="Edit" asp-route-id="@p.Id">ویرایش</a>
+                    <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@p.Id">حذف</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

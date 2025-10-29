@@ -1,0 +1,191 @@
+﻿@model Endpoint.Site.Areas.TaskPlanner.Models.TaskCreateVm
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<h2>🎯 افزودن Issue جدید (مثل Jira)</h2>
+
+<form asp-action="Create" method="post">
+    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+    <!-- نوع Issue -->
+    <div class="mb-3">
+        <label asp-for="IssueType" class="form-label">
+            <strong>نوع Issue</strong> 
+            <span class="text-danger">*</span>
+        </label>
+        <select asp-for="IssueType" class="form-control" id="issueTypeSelect">
+            <option value="@((int)IssueType.Epic)">📦 Epic - اپیک (بالاترین سطح)</option>
+            <option value="@((int)IssueType.Story)">📝 Story - استوری (User Story)</option>
+            <option value="@((int)IssueType.Task)" selected>✅ Task - تسک (کار عادی)</option>
+            <option value="@((int)IssueType.Bug)">🐛 Bug - باگ (مشکل یا خطا)</option>
+        </select>
+        <small class="form-text text-muted">
+            <strong>راهنما:</strong> Epic بزرگترین واحد، Story برای User Story، Task برای کارهای عادی
+        </small>
+        <span asp-validation-for="IssueType" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Title" class="form-label">
+            <strong>عنوان</strong>
+            <span class="text-danger">*</span>
+        </label>
+        <input asp-for="Title" class="form-control" placeholder="مثلاً: پیاده‌سازی سیستم لاگین" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Description" class="form-label">توضیحات</label>
+        <textarea asp-for="Description" class="form-control" rows="4" 
+                  placeholder="توضیحات کامل درباره این Issue..."></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label>تاریخ شروع</label>
+        <input type="text" id="StartDateDisplay" class="form-control" autocomplete="off" />
+        <input type="hidden" asp-for="StartDateSh" id="StartDate" />
+        <span asp-validation-for="StartDateSh" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label>تاریخ پایان</label>
+        <input type="text" id="DueDateDisplay" class="form-control" autocomplete="off" />
+        <input type="hidden" asp-for="DueDateSh" id="DueDate" />
+        <span asp-validation-for="DueDateSh" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">پروژه</label>
+        <select asp-for="ProjectId" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Projects, "Id", "Name", Model?.ProjectId))">
+            <option value="">-- انتخاب پروژه --</option>
+        </select>
+        <span asp-validation-for="ProjectId" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="CategoryId" class="form-label">دسته‌بندی (Component) - اختیاری</label>
+        <select asp-for="CategoryId" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Categories, "Id", "Name"))">
+            <option value="">-- بدون دسته‌بندی --</option>
+        </select>
+        <small class="form-text text-muted">مثل Component در Jira - می‌توانید خالی بگذارید</small>
+    </div>
+    <div class="mb-3">
+        <label asp-for="AssignedUserId" class="form-label">مسئول تسک</label>
+        <select asp-for="AssignedUserId" class="form-control"
+                asp-items="@(new SelectList(ViewBag.AssignedUsers, "Id", "Name", Model?.AssignedUserId))">
+            <option value="">-- انتخاب کاربر --</option>
+        </select>
+        <span asp-validation-for="AssignedUserId" class="text-danger"></span>
+    </div>
+    <!-- Parent Issue (فقط برای Subtask الزامی است) -->
+    <div class="mb-3" id="parentIssueDiv">
+        <label asp-for="ParentId" class="form-label">
+            <strong>Parent Issue</strong>
+            <span id="parentRequired" class="text-danger" style="display:none">*</span>
+        </label>
+        <select asp-for="ParentId" class="form-control" id="parentIssueSelect"
+                asp-items="@(new SelectList(ViewBag.Tasks, "Id", "Title"))">
+            <option value="">-- بدون Parent (مستقل) --</option>
+        </select>
+        <small class="form-text text-muted" id="parentHelp">
+            Story می‌تونه زیر Epic باشه، Subtask باید زیر Task/Story/Bug باشه
+        </small>
+        <span asp-validation-for="ParentId" class="text-danger"></span>
+    </div>
+
+    <!-- Story Points (فقط برای Story و Task) -->
+    <div class="mb-3" id="storyPointsDiv" style="display:none">
+        <label asp-for="StoryPoints" class="form-label">
+            <strong>Story Points</strong>
+        </label>
+        <input asp-for="StoryPoints" type="number" min="0" max="100" class="form-control" 
+               placeholder="مثلاً: 5" />
+        <small class="form-text text-muted">
+            برای تخمین پیچیدگی و حجم کار (معمولاً اعداد Fibonacci: 1, 2, 3, 5, 8, 13...)
+        </small>
+        <span asp-validation-for="StoryPoints" class="text-danger"></span>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-circle"></i> ثبت Issue
+        </button>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-x-circle"></i> انصراف
+        </a>
+    </div>
+</form>
+@section Scripts {
+    <script>
+        // تاریخ شروع
+        $("#StartDateDisplay").persianDatepicker({
+            format: 'YYYY/MM/DD',
+            autoClose: true,
+            altField: '#StartDate',       // 👈 خودش hidden رو پر میکنه
+            altFormat: 'YYYY-MM-DD'
+        });
+
+        // تاریخ پایان
+        $("#DueDateDisplay").persianDatepicker({
+            format: 'YYYY/MM/DD',
+            autoClose: true,
+            altField: '#DueDate',         // 👈 اینجا هم همین
+            altFormat: 'YYYY-MM-DD'
+        });
+
+        // 🎯 مدیریت نمایش فیلدها بر اساس IssueType
+        const IssueTypes = {
+            Epic: 1,
+            Story: 2,
+            Task: 3,
+            Subtask: 4,
+            Bug: 5
+        };
+
+        function updateFieldsBasedOnIssueType() {
+            const selectedType = parseInt($('#issueTypeSelect').val());
+            
+            // Story Points: فقط برای Story و Task نمایش داده شود
+            if (selectedType === IssueTypes.Story || selectedType === IssueTypes.Task) {
+                $('#storyPointsDiv').show();
+            } else {
+                $('#storyPointsDiv').hide();
+                $('#StoryPoints').val(''); // پاک کردن مقدار
+            }
+
+            // Parent Issue: 
+            // - برای Subtask الزامی است
+            // - برای Story اختیاری (می‌تونه زیر Epic باشه)
+            // - برای Epic، Task، Bug غیرفعال (نمی‌تونن parent داشته باشن)
+            if (selectedType === IssueTypes.Subtask) {
+                $('#parentIssueDiv').show();
+                $('#parentRequired').show();
+                $('#parentHelp').text('Subtask باید حتماً Parent داشته باشد (Task, Story یا Bug)');
+                $('#parentIssueSelect').prop('required', true);
+            } 
+            else if (selectedType === IssueTypes.Story) {
+                $('#parentIssueDiv').show();
+                $('#parentRequired').hide();
+                $('#parentHelp').text('Story می‌تواند زیر Epic قرار بگیرد (اختیاری)');
+                $('#parentIssueSelect').prop('required', false);
+            }
+            else {
+                // Epic, Task, Bug نمی‌تونن parent داشته باشن
+                $('#parentIssueDiv').hide();
+                $('#parentIssueSelect').val(''); // پاک کردن انتخاب
+                $('#parentIssueSelect').prop('required', false);
+            }
+        }
+
+        // اجرای اولیه
+        updateFieldsBasedOnIssueType();
+
+        // تغییر IssueType
+        $('#issueTypeSelect').on('change', function() {
+            updateFieldsBasedOnIssueType();
+        });
+    </script>
+}

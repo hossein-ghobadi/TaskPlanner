@@ -1,0 +1,300 @@
+@model Endpoint.Site.Areas.TaskPlanner.Models.SprintBoardVm
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .kanban-board {
+        display: flex;
+        gap: 1rem;
+        overflow-x: auto;
+        padding: 1rem 0;
+    }
+    .kanban-column {
+        min-width: 280px;
+        max-width: 280px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+    }
+    .kanban-column-header {
+        padding: 12px;
+        font-weight: bold;
+        color: white;
+        border-radius: 8px 8px 0 0;
+        text-align: center;
+        margin-bottom: 8px;
+    }
+    .kanban-column-body {
+        padding: 8px;
+        min-height: 400px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    .kanban-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 8px;
+        cursor: grab;
+        transition: all 0.2s;
+    }
+    .kanban-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    .kanban-card:active {
+        cursor: grabbing;
+    }
+    .kanban-card.dragging {
+        opacity: 0.5;
+    }
+    .issue-key {
+        font-weight: bold;
+        font-size: 0.85rem;
+        color: #495057;
+    }
+    .issue-title {
+        font-size: 0.9rem;
+        margin: 6px 0;
+        color: #212529;
+    }
+    .issue-meta {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 6px;
+    }
+    .issue-type-icon {
+        font-size: 1.2rem;
+    }
+    .drop-zone {
+        min-height: 400px;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1">📋 تخته کانبان</h2>
+        <p class="text-muted mb-0">
+            <strong>اسپرینت:</strong> @Model.SprintName | 
+            <strong>پروژه:</strong> <a href="/TaskPlanner/Projects/Details/@Model.ProjectId">@Model.ProjectName</a>
+        </p>
+    </div>
+    <div>
+        <a class="btn btn-secondary" href="/TaskPlanner/Sprints/Details/@Model.SprintId">
+            <i class="bi bi-arrow-right"></i> جزئیات اسپرینت
+        </a>
+    </div>
+</div>
+
+<div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
+    @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
+    {
+        <div class="kanban-column">
+            <div class="kanban-column-header" style="background-color: @(status.Color ?? "#6c757d");">
+                @status.Name
+                <span class="badge bg-light text-dark ms-1">
+                    @{
+                        var count = Model.SprintIssues.Count(t => 
+                            (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id);
+                    }
+                    @count
+                </span>
+            </div>
+            <div class="kanban-column-body drop-zone" 
+                 ondragover="event.preventDefault();"
+                 ondragenter="onDragEnter(event)"
+                 ondragleave="onDragLeave(event)"
+                 ondrop="onDropIssue(event, @status.Id)"
+                 data-status-id="@status.Id">
+                @{
+                    var cards = Model.SprintIssues
+                        .Where(t => (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id)
+                        .OrderBy(t => t.Priority)
+                        .ToList();
+                }
+                @if (cards.Any())
+                {
+                    foreach (var issue in cards)
+                    {
+                        <div class="kanban-card" 
+                             draggable="true"
+                             ondragstart="onDragIssue(event, @issue.Id)"
+                             data-issue-id="@issue.Id">
+                            
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="issue-key">@issue.IssueKey</span>
+                                <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
+                            </div>
+                            
+                            <div class="issue-title">@issue.Title</div>
+                            
+                            <div class="issue-meta">
+                                <div>👤 @issue.AssignedUserName</div>
+                                @if (issue.DueDatePersian != "تعیین نشده")
+                                {
+                                    <div>🗓️ @issue.DueDatePersian</div>
+                                }
+                                @if (issue.StoryPoints.HasValue && issue.StoryPoints > 0)
+                                {
+                                    <div>⚡ @issue.StoryPoints SP</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="empty-message text-muted text-center small p-4">
+                        <i class="bi bi-inbox"></i><br>
+                        هیچ آیتمی وجود ندارد
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        let draggedIssueId = null;
+        let draggedCard = null;
+
+        function onDragIssue(e, issueId) {
+            draggedIssueId = issueId;
+            draggedCard = e.currentTarget;
+            draggedCard.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', issueId);
+        }
+
+        function onDragEnter(e) {
+            e.preventDefault();
+            e.currentTarget.style.backgroundColor = '#e3f2fd';
+            e.currentTarget.style.borderColor = '#2196f3';
+        }
+
+        function onDragLeave(e) {
+            e.currentTarget.style.backgroundColor = '';
+            e.currentTarget.style.borderColor = '';
+        }
+
+        async function onDropIssue(e, toStatusId) {
+            e.preventDefault();
+            // Capture the drop target BEFORE any await to avoid losing event references
+            const dropZone = e.currentTarget;
+            onDragLeave(e); // Reset style
+            
+            const issueId = draggedIssueId || parseInt(e.dataTransfer.getData('text/plain'));
+            if (!issueId) return;
+
+            // Show loading
+            if (draggedCard) {
+                draggedCard.style.opacity = '0.5';
+            }
+
+            try {
+                const res = await fetch('/TaskPlanner/Tasks/MoveIssue', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: JSON.stringify({ 
+                        taskId: issueId, 
+                        toStatusId: toStatusId,
+                        reason: 'تماس از تخته کانبان'
+                    })
+                });
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    alert('خطا: ' + errorText || 'خطا در انتقال وضعیت');
+                    if (draggedCard) {
+                        draggedCard.style.opacity = '1';
+                    }
+                    return;
+                }
+
+                // ✅ موفق - کارت رو به ستون جدید منتقل کن
+                const result = await res.json();
+                console.log('Success:', result);
+
+                if (draggedCard) {
+                    draggedCard.classList.remove('dragging');
+                    draggedCard.style.opacity = '1';
+                    
+                    // پیدا کردن ستون مبدا قبل از appendChild
+                    const sourceColumn = draggedCard.closest('.kanban-column-body');
+                    
+                    // Append card to the captured drop zone
+                    if (dropZone) {
+                        // مخفی کردن پیام "هیچ آیتمی وجود ندارد" در ستون مقصد
+                        const emptyMessage = dropZone.querySelector('.empty-message');
+                        if (emptyMessage) {
+                            emptyMessage.style.display = 'none';
+                        }
+                        
+                        // اضافه کردن کارت به ستون
+                        dropZone.appendChild(draggedCard);
+                    }
+                    
+                    // بررسی ستون مبدا - اگر خالی شد، پیام خالی را نمایش بده
+                    if (sourceColumn && sourceColumn !== dropZone) {
+                        const sourceCards = sourceColumn.querySelectorAll('.kanban-card');
+                        if (sourceCards.length === 0) {
+                            const sourceEmptyMessage = sourceColumn.querySelector('.empty-message');
+                            if (sourceEmptyMessage) {
+                                sourceEmptyMessage.style.display = 'block';
+                            } else {
+                                // اگر پیام خالی وجود نداشت، ایجاد کن
+                                const emptyMsg = document.createElement('div');
+                                emptyMsg.className = 'empty-message text-muted text-center small p-4';
+                                emptyMsg.innerHTML = '<i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد';
+                                sourceColumn.appendChild(emptyMsg);
+                            }
+                        }
+                    }
+                    
+                    // Update issue count in header
+                    updateIssueCounts();
+                } else {
+                    // اگر کارت پیدا نشد، صفحه رو refresh کن
+                    location.reload();
+                }
+
+            } catch (err) {
+                console.error('Error:', err);
+                alert('خطای شبکه: ' + err.message);
+                if (draggedCard) {
+                    draggedCard.style.opacity = '1';
+                }
+            } finally {
+                draggedIssueId = null;
+                draggedCard = null;
+            }
+        }
+
+        function updateIssueCounts() {
+            document.querySelectorAll('.kanban-column').forEach(column => {
+                const body = column.querySelector('.kanban-column-body');
+                const count = body ? body.querySelectorAll('.kanban-card').length : 0;
+                const badge = column.querySelector('.kanban-column-header .badge');
+                if (badge) {
+                    badge.textContent = count;
+                }
+            });
+        }
+
+        // Add visual feedback when dragging
+        document.addEventListener('dragend', function(e) {
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.style.backgroundColor = '';
+                zone.style.borderColor = '';
+            });
+        });
+    </script>
+}
+

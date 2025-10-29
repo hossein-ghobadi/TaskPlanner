@@ -1,0 +1,59 @@
+@model IEnumerable<PersonalNote>
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<h2>یادداشت‌های شخصی من</h2>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<a class="btn btn-primary mb-3" asp-action="Create">افزودن یادداشت جدید</a>
+
+@if (Model.Any())
+{
+    <div class="row">
+        @foreach (var note in Model)
+        {
+            var cardColor = !string.IsNullOrEmpty(note.Color) ? note.Color : "#ffffff";
+            <div class="col-md-4 mb-3">
+                <div class="card" style="border-left: 4px solid @cardColor;">
+                    <div class="card-body">
+                        @if (note.IsPinned)
+                        {
+                            <span class="badge bg-warning text-dark float-end">📌 پین شده</span>
+                        }
+                        <h5 class="card-title">@note.Title</h5>
+                        <p class="card-text">@(note.Content?.Length > 100 ? note.Content.Substring(0, 100) + "..." : note.Content)</p>
+                        <small class="text-muted">@note.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</small>
+                        <hr />
+                        <div class="btn-group" role="group">
+                            <a class="btn btn-sm btn-info" asp-action="Details" asp-route-id="@note.Id">جزئیات</a>
+                            <a class="btn btn-sm btn-warning" asp-action="Edit" asp-route-id="@note.Id">ویرایش</a>
+                            <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@note.Id">حذف</a>
+                        </div>
+                        <form asp-action="TogglePin" asp-route-id="@note.Id" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary mt-2">
+                                @(note.IsPinned ? "حذف پین" : "پین کردن")
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        هیچ یادداشت شخصی وجود ندارد.
+    </div>
+}
+
+

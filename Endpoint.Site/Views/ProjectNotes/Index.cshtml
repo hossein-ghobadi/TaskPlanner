@@ -1,0 +1,59 @@
+@model IEnumerable<ProjectNote>
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<div class="mb-3">
+    <h2>یادداشت‌های پروژه: @ViewBag.ProjectName</h2>
+    <a class="btn btn-secondary" href="/TaskPlanner/Projects/Details/@ViewBag.ProjectId">بازگشت به پروژه</a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<a class="btn btn-primary mb-3" href="/TaskPlanner/ProjectNotes/Create?projectId=@ViewBag.ProjectId">افزودن یادداشت جدید</a>
+
+@if (Model.Any())
+{
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>عنوان</th>
+                <th>محتوا</th>
+                <th>تاریخ ایجاد</th>
+                <th>آخرین ویرایش</th>
+                <th>عملیات</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var note in Model)
+            {
+                <tr>
+                    <td>@note.Title</td>
+                    <td>@(note.Content?.Length > 50 ? note.Content.Substring(0, 50) + "..." : note.Content)</td>
+                    <td>@note.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
+                    <td>@(note.UpdatedAt.HasValue ? note.UpdatedAt.Value.ToLocalTime().ToString("yyyy/MM/dd HH:mm") : "-")</td>
+                    <td>
+                        <a class="btn btn-sm btn-info" asp-action="Details" asp-route-id="@note.Id">جزئیات</a>
+                        <a class="btn btn-sm btn-warning" asp-action="Edit" asp-route-id="@note.Id">ویرایش</a>
+                        <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@note.Id">حذف</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <div class="alert alert-info">
+        هیچ یادداشتی برای این پروژه وجود ندارد.
+    </div>
+}
+
+

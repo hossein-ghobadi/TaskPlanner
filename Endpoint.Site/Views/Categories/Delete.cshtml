@@ -1,0 +1,16 @@
+﻿@model TaskCategory
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<h2>حذف دسته‌بندی</h2>
+
+<p>آیا مطمئنی می‌خواهی این دسته‌بندی را حذف کنی؟</p>
+
+<p><b>@Model.Name</b></p>
+
+<form asp-action="Delete" method="post">
+    @Html.HiddenFor(m => m.Id)
+    <button type="submit" class="btn btn-danger">بله، حذف شود</button>
+    <a href="/TaskPlanner/Categories/Index" class="btn btn-secondary">انصراف</a>
+</form>

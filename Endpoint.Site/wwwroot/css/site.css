@@ -1,0 +1,164 @@
+﻿/* ===== پایه‌ها ===== */
+html {
+    font-size: 14px;
+    position: relative;
+    min-height: 100%;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+body {
+    margin-bottom: 60px;
+}
+
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+/* ===== جدول ===== */
+.table-nowrap td,
+.table-nowrap th {
+    white-space: nowrap;
+}
+
+/* دسکتاپ بزرگ: بدون اسکرول افقی */
+.table-responsive {
+    overflow-x: visible;
+}
+
+/* تبلت و نمایشگر میانی: اسکرول افقی فعال */
+@media (max-width: 1199.98px) {
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    .table.table-nowrap {
+        min-width: 1100px;
+    }
+
+    .table-sm td, .table-sm th {
+        padding: .45rem .6rem;
+    }
+
+    .badge {
+        font-size: .8rem;
+        padding: .35em .55em;
+    }
+}
+
+/* تبلت کوچک و موبایل بزرگ */
+@media (max-width: 991.98px) {
+    .table.table-nowrap {
+        min-width: 950px;
+    }
+
+    .badge {
+        font-size: .75rem;
+        padding: .3em .5em;
+    }
+}
+
+/* موبایل کوچک */
+@media (max-width: 575.98px) {
+    .table.table-nowrap {
+        min-width: 900px;
+    }
+}
+
+/* ستون‌های متنی اجازه شکست خط */
+.cell-wrap {
+    white-space: normal !important;
+    max-width: 220px;
+}
+
+@media (max-width: 1199.98px) {
+    .cell-wrap {
+        max-width: 180px;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .cell-wrap {
+        max-width: 160px;
+    }
+}
+
+/* ===== رنگ‌بندی بج‌ها (وضعیت تراکنش) ===== */
+.table .badge.badge-state-pending {
+    background-color: #f57c00 !important;
+    color: #fff !important;
+    font-weight: 600;
+    opacity: 1 !important;
+}
+
+.table .badge.badge-state-paid {
+    background-color: #28a745 !important;
+    color: #fff !important;
+    font-weight: 600;
+    opacity: 1 !important;
+}
+
+.table .badge.badge-state-settled {
+    background-color: #1976d2 !important;
+    color: #fff !important;
+    font-weight: 600;
+    opacity: 1 !important;
+}
+
+.table .badge.badge-state-canceled {
+    background-color: #d32f2f !important;
+    color: #fff !important;
+    font-weight: 600;
+    opacity: 1 !important;
+}
+
+/* نوع پرداخت */
+.table .badge.badge-payment {
+    background-color: #673ab7 !important;
+    color: #fff !important;
+    font-weight: 600;
+    opacity: 1 !important;
+}
+
+/* بولین حذف‌شده */
+.table .badge.bg-success {
+    background-color: #198754 !important;
+    color: #fff !important;
+    font-weight: 600;
+    opacity: 1 !important;
+}
+
+.table .badge.bg-danger {
+    background-color: #dc3545 !important;
+    color: #fff !important;
+    font-weight: 600;
+    opacity: 1 !important;
+}
+
+/* جلوگیری از تاثیر گرادیان/فیلترهای Bootstrap روی بج‌ها */
+.table .badge {
+    background-image: none !important;
+    filter: none !important;
+}
+
+/* ===== استایل‌های عمومی ===== */
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rounded-3 {
+    border-radius: .75rem !important;
+}
+
+.shadow-sm {
+    box-shadow: 0 .125rem .25rem rgba(0,0,0,.075) !important;
+}

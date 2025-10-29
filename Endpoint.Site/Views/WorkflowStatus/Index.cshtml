@@ -1,0 +1,125 @@
+@model IEnumerable<WorkflowStatus>
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var projectId = ViewBag.ProjectId as int?;
+    var projectName = ViewBag.ProjectName as string;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2>وضعیت‌های چرخه کاری (Workflow)</h2>
+        @if (!string.IsNullOrEmpty(projectName))
+        {
+            <p class="text-muted">پروژه: <strong>@projectName</strong></p>
+        }
+    </div>
+    <div>
+        <a class="btn btn-primary" href="/TaskPlanner/WorkflowStatus/Create?projectId=@projectId">ایجاد وضعیت جدید</a>
+        <form method="post" action="/TaskPlanner/WorkflowStatus/CreateDefaultStatuses" class="d-inline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="projectId" value="@projectId" />
+            <button type="submit" class="btn btn-success">ایجاد وضعیت‌های پیش‌فرض</button>
+        </form>
+        <a class="btn btn-secondary" href="/TaskPlanner/Projects/Details/@projectId">بازگشت به پروژه</a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["Warning"] != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        @TempData["Warning"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        <p>هیچ وضعیتی برای این پروژه تعریف نشده است.</p>
+        <p>می‌توانید از دکمه "ایجاد وضعیت‌های پیش‌فرض" برای ایجاد سریع وضعیت‌های استاندارد استفاده کنید.</p>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ترتیب</th>
+                        <th>نام وضعیت</th>
+                        <th>نوع</th>
+                        <th>رنگ</th>
+                        <th>توضیحات</th>
+                        <th>تعداد تسک‌ها</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var status in Model)
+                    {
+                        <tr>
+                            <td>@status.Order</td>
+                            <td>
+                                <span class="badge" style="background-color: @status.Color">@status.Name</span>
+                            </td>
+                            <td>
+                                @switch (status.Type)
+                                {
+                                    case "Todo":
+                                        <span class="badge bg-secondary">باید انجام شود</span>
+                                        break;
+                                    case "InProgress":
+                                        <span class="badge bg-info">در حال انجام</span>
+                                        break;
+                                    case "Done":
+                                        <span class="badge bg-success">انجام شده</span>
+                                        break;
+                                    case "Blocked":
+                                        <span class="badge bg-danger">مسدود شده</span>
+                                        break;
+                                    default:
+                                        <span class="badge bg-light text-dark">@status.Type</span>
+                                        break;
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(status.Color))
+                                {
+                                    <div style="width: 30px; height: 30px; background-color: @status.Color; border: 1px solid #ccc; border-radius: 4px;"></div>
+                                }
+                            </td>
+                            <td>@status.Description</td>
+                            <td>
+                                <span class="badge bg-primary rounded-pill">@status.Tasks.Count</span>
+                            </td>
+                            <td>
+                                <a class="btn btn-sm btn-warning" href="/TaskPlanner/WorkflowStatus/Edit/@status.Id">ویرایش</a>
+                                <a class="btn btn-sm btn-danger" href="/TaskPlanner/WorkflowStatus/Delete/@status.Id">حذف</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<div class="mt-4">
+    <h4>راهنما</h4>
+    <ul>
+        <li><strong>باید انجام شود (Todo):</strong> تسک‌هایی که هنوز شروع نشده‌اند</li>
+        <li><strong>در حال انجام (InProgress):</strong> تسک‌هایی که در حال انجام هستند</li>
+        <li><strong>انجام شده (Done):</strong> تسک‌های تکمیل شده</li>
+        <li><strong>مسدود شده (Blocked):</strong> تسک‌هایی که به دلیلی مسدود شده‌اند</li>
+    </ul>
+</div>
+

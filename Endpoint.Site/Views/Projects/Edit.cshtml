@@ -1,0 +1,41 @@
+﻿@using Endpoint.Site.Areas.TaskPlanner.Models
+
+
+@model ProjectEditVm
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+<h2>ویرایش پروژه</h2>
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Description" class="form-label"></label>
+        <textarea asp-for="Description" class="form-control"></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">اعضای پروژه و کاربران دعوت‌شده</label>
+        <select asp-for="SelectedUserIds"
+                asp-items="@(new MultiSelectList(ViewBag.Users, "Id", "DisplayName", Model.SelectedUserIds))"
+                class="form-control" multiple="multiple">
+        </select>
+        <small class="form-text text-muted">
+            فقط اعضای فعلی و دعوت‌شده‌های این پروژه در لیست بالا نمایش داده می‌شوند.
+        </small>
+    </div>
+
+
+
+
+    <button type="submit" class="btn btn-warning">ذخیره تغییرات</button>
+</form>

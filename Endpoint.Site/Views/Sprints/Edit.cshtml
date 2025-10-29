@@ -1,0 +1,100 @@
+@model Endpoint.Site.Areas.TaskPlanner.Models.SprintEditVm
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@using DNTPersianUtils.Core
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<h2>ویرایش اسپرینت</h2>
+
+<form method="post" asp-action="Edit" asp-route-id="@Model.Id">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <input type="hidden" asp-for="Id" />
+
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Description" class="form-label"></label>
+        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="StartDate" class="form-label">تاریخ شروع</label>
+        <input type="text" id="StartDateDisplay" class="form-control" placeholder="تاریخ شروع را انتخاب کنید" value="@Model.StartDate.ToShortPersianDateString()" />
+        <input type="hidden" asp-for="StartDate" name="StartDate" id="StartDateHidden" />
+        <span asp-validation-for="StartDate" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="EndDate" class="form-label">تاریخ پایان</label>
+        <input type="text" id="EndDateDisplay" class="form-control" placeholder="تاریخ پایان را انتخاب کنید" value="@Model.EndDate.ToShortPersianDateString()" />
+        <input type="hidden" asp-for="EndDate" name="EndDate" id="EndDateHidden" />
+        <span asp-validation-for="EndDate" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Goal" class="form-label"></label>
+        <textarea asp-for="Goal" class="form-control" rows="2"></textarea>
+        <span asp-validation-for="Goal" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Status" class="form-label"></label>
+        <select asp-for="Status" class="form-control">
+            <option value="@SprintStatus.Planning">در حال برنامه‌ریزی</option>
+            <option value="@SprintStatus.Active">فعال</option>
+            <option value="@SprintStatus.Completed">خاتمه یافته</option>
+        </select>
+        <span asp-validation-for="Status" class="text-danger"></span>
+        <small class="form-text text-muted">توجه: فقط یک اسپرینت در هر پروژه می‌تواند فعال باشد</small>
+    </div>
+
+    <div class="mb-3">
+        <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
+        <a class="btn btn-secondary" href="/TaskPlanner/Sprints/Details/@Model.Id">انصراف</a>
+    </div>
+</form>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        $(document).ready(function() {
+            // تقویم فارسی برای تاریخ شروع
+            $('#StartDateDisplay').persianDatepicker({
+                format: 'YYYY/MM/DD',
+                altField: '#StartDateHidden',
+                altFormat: 'YYYY-MM-DD',
+                observer: true,
+                timePicker: {
+                    enabled: false
+                },
+                autoClose: true,
+                initialValue: false,
+                initialValueType: 'persian'
+            });
+
+            // تقویم فارسی برای تاریخ پایان
+            $('#EndDateDisplay').persianDatepicker({
+                format: 'YYYY/MM/DD',
+                altField: '#EndDateHidden',
+                altFormat: 'YYYY-MM-DD',
+                observer: true,
+                timePicker: {
+                    enabled: false
+                },
+                autoClose: true,
+                initialValue: false,
+                initialValueType: 'persian'
+            });
+        });
+    </script>
+}
+

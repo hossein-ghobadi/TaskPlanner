@@ -1,0 +1,19 @@
+﻿@model TaskCategory
+@{
+    // ViewData["Title"] = "خانه";
+    Layout = "/Views/Shared/_Layout.cshtml";
+
+}
+<h2>ویرایش دسته‌بندی</h2>
+
+<form asp-action="Edit" method="post">
+    @Html.HiddenFor(m => m.Id)
+
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-warning">ذخیره تغییرات</button>
+</form>

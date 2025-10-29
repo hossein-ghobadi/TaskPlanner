@@ -1,0 +1,15 @@
+﻿@model TaskItem
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+
+}
+<h2>حذف کار</h2>
+<p>آیا مطمئنی می‌خوای این کار رو حذف کنی؟</p>
+<p><b>@Model.Title</b></p>
+<form asp-action="Delete" method="post">
+    <div asp-validation-summary="All" class="text-danger"></div>
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.Id)
+    <button type="submit" class="btn btn-danger">بله حذف شود</button>
+    <a href="/TaskPlanner/Tasks/Index" class="btn btn-secondary">انصراف</a>
+</form>

@@ -1,0 +1,27 @@
+﻿@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "ارسال دعوت";
+}
+
+<h2>📨 ارسال دعوت کاربر جدید</h2>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+@if (TempData["Warning"] != null)
+{
+    <div class="alert alert-warning">@TempData["Warning"]</div>
+}
+
+<form asp-area="TaskPlanner" asp-controller="Invitations" asp-action="InviteUser" method="post" class="mt-3">
+    <div class="mb-3">
+        <label class="form-label">شماره موبایل کاربر</label>
+        <input name="phone" class="form-control" placeholder="مثلاً 09121234567" />
+    </div>
+    <button type="submit" class="btn btn-primary">ارسال دعوت</button>
+</form>

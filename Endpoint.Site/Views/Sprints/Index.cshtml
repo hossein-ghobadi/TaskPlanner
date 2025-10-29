@@ -1,0 +1,146 @@
+@model IEnumerable<Endpoint.Site.Areas.TaskPlanner.Models.SprintVm>
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@using DNTPersianUtils.Core
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var projectId = ViewBag.ProjectId as int?;
+    var projectName = ViewBag.ProjectName as string;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2>لیست اسپرینت‌ها</h2>
+        @if (!string.IsNullOrEmpty(projectName))
+        {
+            <p class="text-muted">پروژه: <strong>@projectName</strong></p>
+        }
+    </div>
+    <div>
+        @if (projectId.HasValue)
+        {
+            <a class="btn btn-primary" href="/TaskPlanner/Sprints/Create?projectId=@projectId">ایجاد اسپرینت جدید</a>
+            <a class="btn btn-secondary" href="/TaskPlanner/Projects/Details/@projectId">بازگشت به پروژه</a>
+        }
+        else
+        {
+            <a class="btn btn-primary" href="/TaskPlanner/Sprints/Create">ایجاد اسپرینت جدید</a>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i> @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        هیچ اسپرینتی یافت نشد.
+    </div>
+}
+else
+{
+    <div class="row">
+        @foreach (var sprint in Model)
+        {
+            var statusBadgeClass = sprint.Status switch
+            {
+                SprintStatus.Active => "bg-success",
+                SprintStatus.Completed => "bg-secondary",
+                _ => "bg-warning"
+            };
+
+            var statusText = sprint.Status switch
+            {
+                SprintStatus.Active => "فعال",
+                SprintStatus.Completed => "خاتمه یافته",
+                _ => "در حال برنامه‌ریزی"
+            };
+
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">@sprint.Name</h5>
+                        <span class="badge @statusBadgeClass">@statusText</span>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(sprint.Description))
+                        {
+                            <p class="card-text">@sprint.Description</p>
+                        }
+                        
+                        <div class="mb-2">
+                            <strong>پروژه:</strong> @sprint.Project.Name
+                        </div>
+                        
+                        <div class="mb-2">
+                            <strong>تاریخ شروع:</strong> @sprint.StartDate.ToShortPersianDateString()
+                        </div>
+                        
+                        <div class="mb-2">
+                            <strong>تاریخ پایان:</strong> @sprint.EndDate.ToShortPersianDateString()
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(sprint.Goal))
+                        {
+                            <div class="mb-2">
+                                <strong>هدف:</strong> @sprint.Goal
+                            </div>
+                        }
+                        
+                        <div class="mb-2">
+                            <strong>تعداد تسک‌ها:</strong> @sprint.Tasks.Count
+                        </div>
+                        
+                        <div class="mt-3">
+@*                             <a class="btn btn-sm btn-info" href="/TaskPlanner/Sprints/Details/@sprint.Id">جزئیات</a>
+ *@                            
+                            
+                            @if (sprint.Status == SprintStatus.Planning)
+                            {
+                                <a class="btn btn-sm btn-info" href="/TaskPlanner/Sprints/Details/@sprint.Id">جزئیات</a>
+                                <a class="btn btn-sm btn-warning" href="/TaskPlanner/Sprints/Edit/@sprint.Id">ویرایش</a>
+                                <a class="btn btn-sm btn-danger" href="/TaskPlanner/Sprints/Delete/@sprint.Id">حذف</a>
+                                
+                            }
+                            
+                            @if (sprint.Status == SprintStatus.Planning)
+                            {
+                                <form method="post" action="/TaskPlanner/Sprints/ChangeStatus" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@sprint.Id" />
+                                    <input type="hidden" name="status" value="@SprintStatus.Active" />
+                                    <button type="submit" class="btn btn-sm btn-success">شروع اسپرینت</button>
+                                </form>
+                            }
+                            else if (sprint.Status == SprintStatus.Active)
+                            {
+                                <a class="btn btn-sm btn-info" href="/TaskPlanner/Sprints/Details/@sprint.Id">جزئیات</a>
+                                <a class="btn btn-sm btn-warning" href="/TaskPlanner/Sprints/Edit/@sprint.Id">ویرایش</a>
+                                <form method="post" action="/TaskPlanner/Sprints/ChangeStatus" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@sprint.Id" />
+                                    <input type="hidden" name="status" value="@SprintStatus.Completed" />
+                                    <button type="submit" class="btn btn-sm btn-secondary">تکمیل اسپرینت</button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+

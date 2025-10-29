@@ -1,0 +1,209 @@
+﻿@using DNTPersianUtils.Core
+@model IEnumerable<TaskPlanner.Domain.Entities.TaskPlanner.TaskItem>
+
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<h2 class="mb-4">🗂️ ساختار کارها (سبک Jira)</h2>
+
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <a class="btn btn-primary" href="/TaskPlanner/Tasks/Create">
+        ➕ افزودن کار جدید
+    </a>
+    <a class="btn btn-outline-secondary" asp-area="TaskPlanner" asp-controller="Tasks" asp-action="Weekly">
+        🗓️ مشاهده برنامه هفتگی
+    </a>
+</div>
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-info">هیچ کاری ثبت نشده است.</div>
+}
+else
+{
+    <div id="taskTree">
+        @foreach (var parent in Model.Where(t => t.ParentTaskId == null))
+        {
+            @Html.Partial("_TaskBranch", parent)
+        }
+    </div>
+}
+<!-- 🔔 اعلان پیام‌ها -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
+    <div id="liveToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body fw-semibold" id="toastMessage">عملیات با موفقیت انجام شد ✅</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script>
+        let selectedParentId = null;
+
+        // نمایش Toast پیام
+        function showToast(message, isError = false) {
+            const toastEl = document.getElementById('liveToast');
+            const toastBody = document.getElementById('toastMessage');
+            toastBody.textContent = message;
+            toastEl.classList.remove('bg-success', 'bg-danger');
+            toastEl.classList.add(isError ? 'bg-danger' : 'bg-success');
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        }
+
+        // بازکردن modal هوشمند برای افزودن Child Issue
+        function openChildIssueModal(parentId, parentIssueType) {
+            selectedParentId = parentId;
+            
+            // Reset form
+            document.getElementById('subTaskTitle').value = '';
+            document.getElementById('subTaskCategory').value = '';
+            document.getElementById('storyPoints').value = '';
+            
+            const issueTypeField = document.getElementById('issueTypeField');
+            const storyPointsField = document.getElementById('storyPointsField');
+            const modalTitle = document.getElementById('subTaskModalLabel');
+            const childIssueTypeSelect = document.getElementById('childIssueType');
+            
+            // اگه Parent = Epic → نمایش IssueType selector
+            if (parentIssueType === 'Epic') {
+                issueTypeField.style.display = 'block';
+                modalTitle.textContent = '➕ افزودن Issue به Epic';
+                
+                // Listen برای تغییر IssueType → نمایش StoryPoints
+                childIssueTypeSelect.onchange = function() {
+                    const selectedType = parseInt(this.value);
+                    // Story(2) یا Task(3) → نمایش StoryPoints
+                    storyPointsField.style.display = (selectedType === 2 || selectedType === 3) ? 'block' : 'none';
+                };
+                
+                // Default: Task selected → show StoryPoints
+                storyPointsField.style.display = 'block';
+            } 
+            // اگه Parent = Story/Task/Bug → مخفی کردن IssueType (خودکار Subtask)
+            else {
+                issueTypeField.style.display = 'none';
+                storyPointsField.style.display = 'none';
+                modalTitle.textContent = '➕ افزودن Subtask';
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('subTaskModal'));
+            modal.show();
+        }
+
+        // ارسال Child Issue (Smart)
+        async function submitChildIssueForm() {
+            const title = document.getElementById('subTaskTitle').value.trim();
+            const categoryId = document.getElementById('subTaskCategory').value || '0';
+            const issueTypeField = document.getElementById('issueTypeField');
+            const storyPoints = document.getElementById('storyPoints').value;
+            
+            if (!title) {
+                showToast("عنوان الزامی است ❗", true);
+                return;
+            }
+
+            let payload = {
+                parentId: selectedParentId,
+                title: title,
+                categoryId: parseInt(categoryId)
+            };
+            
+            // اگه IssueType field نمایش داده شده → یعنی Parent = Epic
+            if (issueTypeField.style.display !== 'none') {
+                payload.issueType = parseInt(document.getElementById('childIssueType').value);
+                if (storyPoints) {
+                    payload.storyPoints = parseInt(storyPoints);
+                }
+            }
+
+            const response = await fetch("/TaskPlanner/Tasks/AddChildIssue", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                showToast(result.message || "Issue با موفقیت افزوده شد ✅");
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                const error = await response.text();
+                showToast(error || "خطا در افزودن Issue ❌", true);
+            }
+        }
+
+        // حذف تسک
+        async function deleteTask(taskId) {
+            if (!confirm("آیا از حذف این تسک و زیر‌تسک‌هایش مطمئن هستید؟")) return;
+
+            const response = await fetch("/TaskPlanner/Tasks/DeleteTask", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ taskId })
+            });
+
+            if (response.ok) {
+                showToast("تسک با موفقیت حذف شد 🗑️");
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast("خطا در حذف تسک ❌", true);
+            }
+        }
+    </script>
+}
+
+
+<!-- 🔹 Modal افزودن Child Issue (Smart) -->
+<div class="modal fade" id="subTaskModal" tabindex="-1" aria-labelledby="subTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="subTaskModalLabel">➕ افزودن Issue جدید</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- فیلد IssueType (فقط برای Epic نمایش داده میشه) -->
+                <div class="mb-3" id="issueTypeField" style="display:none;">
+                    <label for="childIssueType" class="form-label">نوع Issue</label>
+                    <select class="form-select" id="childIssueType">
+                        <option value="2">📝 Story</option>
+                        <option value="3" selected>✅ Task</option>
+                        <option value="5">🐛 Bug</option>
+                    </select>
+                    <small class="text-muted">Epic فقط می‌تواند Story، Task یا Bug داشته باشد</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="subTaskTitle" class="form-label">عنوان</label>
+                    <input type="text" class="form-control" id="subTaskTitle" placeholder="مثلاً بررسی فاکتور خرید">
+                </div>
+
+                <!-- فیلد Story Points (فقط برای Story/Task نمایش داده میشه) -->
+                <div class="mb-3" id="storyPointsField" style="display:none;">
+                    <label for="storyPoints" class="form-label">Story Points (اختیاری)</label>
+                    <input type="number" class="form-control" id="storyPoints" placeholder="1, 2, 3, 5, 8, 13..." min="0">
+                    <small class="text-muted">برآورد تلاش مورد نیاز (فیبوناچی)</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="subTaskCategory" class="form-label">دسته‌بندی (اختیاری)</label>
+                    <select class="form-select" id="subTaskCategory">
+                        <option value="">-- انتخاب دسته‌بندی --</option>
+                        @foreach (var cat in ViewBag.Categories)
+                        {
+                            <option value="@cat.Id">@cat.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-primary" onclick="submitChildIssueForm()">ثبت</button>
+            </div>
+        </div>
+    </div>
+</div>
+

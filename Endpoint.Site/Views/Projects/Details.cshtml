@@ -1,0 +1,244 @@
+﻿@using DNTPersianUtils.Core
+@model Endpoint.Site.Areas.TaskPlanner.Models.ProjectDetailsVm
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<h2 class="mb-4">📘 جزئیات پروژه</h2>
+
+<!-- پیام‌های دعوت -->
+@if (TempData["InviteSuccess"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill"></i> @TempData["InviteSuccess"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["InviteWarning"] != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i> @TempData["InviteWarning"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["InviteError"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-x-circle-fill"></i> @TempData["InviteError"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card mb-4 shadow-sm">
+    <div class="card-body">
+        <h4 class="card-title text-primary">@Model.Name</h4>
+        <p class="card-text">@Model.Description</p>
+        <p><strong>👤 سازنده:</strong> @Model.CreatorUserName</p>
+        
+        <div class="mt-3">
+            @if (Model.ActiveSprintId.HasValue)
+            {
+                <a class="btn btn-primary btn-lg" href="/TaskPlanner/Sprints/Board/@Model.ActiveSprintId">
+                    <i class="bi bi-kanban"></i> تخته کانبان (@Model.ActiveSprintName)
+                </a>
+            }
+            <a class="btn btn-outline-primary" href="/TaskPlanner/Sprints/Backlog?projectId=@Model.Id">
+                🗂️ بک‌لاگ
+            </a>
+            <a class="btn btn-info" href="/TaskPlanner/Sprints/Index?projectId=@Model.Id">
+                <i class="bi bi-calendar-range"></i> اسپرینت‌ها
+            </a>
+            <a class="btn btn-success" href="/TaskPlanner/Tasks/Index?projectId=@Model.Id">
+                <i class="bi bi-list-task"></i> تسک‌ها
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ارسال دعوت جدید -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-light fw-bold">📨 ارسال دعوت جدید به پروژه</div>
+    <div class="card-body">
+        <form asp-area="TaskPlanner" asp-controller="Projects" asp-action="InviteUserToProject" method="post" class="row g-2 align-items-center">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="projectId" value="@Model.Id" />
+            <div class="col-md-8">
+                <input name="phone" class="form-control" placeholder="شماره موبایل کاربر" required />
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">ارسال دعوت</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- اعضای پروژه -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-light fw-bold">👥 اعضای پروژه</div>
+    <div class="card-body">
+        @if (Model.MemberUserNames?.Any() == true)
+        {
+            <ul class="list-group list-group-flush">
+                @foreach (var member in Model.MemberUserNames)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>@member</span>
+                        <span class="badge bg-success">عضو فعال</span>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="text-muted mb-0">هیچ عضوی اضافه نشده است.</p>
+        }
+    </div>
+</div>
+
+<!-- دعوت‌های در انتظار -->
+@if (Model.Invitations?.Any() == true)
+{
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-light fw-bold">🕓 دعوت‌های در انتظار پاسخ</div>
+        <div class="card-body p-0">
+            <table class="table table-bordered table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>شماره کاربر دعوت‌شده</th>
+                        <th>تاریخ ارسال</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var inv in Model.Invitations)
+                    {
+                        <tr>
+                            <td>@inv.InviteePhone</td>
+                            <td>@inv.CreatedAt.ToLocalTime().ToShortPersianDateTimeString()</td>
+
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- دکمه‌های دسترسی سریع -->
+<div class="mb-3">
+    <a class="btn btn-info" href="/TaskPlanner/ProjectNotes/Index?projectId=@Model.Id">
+        📝 یادداشت‌های پروژه
+    </a>
+</div>
+
+<!-- تسک‌ها -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">📝 تسک‌های پروژه</h4>
+    <a class="btn btn-success"
+       asp-area="TaskPlanner"
+       asp-controller="Tasks"
+       asp-action="Create"
+       asp-route-projectId="@Model.Id">
+        افزودن تسک جدید
+    </a>
+</div>
+
+@if (Model.Tasks?.Any() == true)
+{
+    <table class="table table-bordered table-striped">
+        <thead class="table-light">
+            <tr>
+                <th>عنوان</th>
+                <th>تاریخ شروع</th>
+                <th>تاریخ پایان</th>
+                <th>وضعیت</th>
+                <th>عملیات</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var task in Model.Tasks)
+            {
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-start justify-content-between">
+                            <div>
+                                <span class="me-2" title="@task.IssueTypeName">@task.IssueTypeIcon</span>
+                                @task.Title
+                                @if (!string.IsNullOrEmpty(task.IssueKey))
+                                {
+                                    <small class="text-muted">(@task.IssueKey)</small>
+                                }
+                            </div>
+                            @if (task.ChildIssues != null && task.ChildIssues.Any())
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleSubtasks(@task.Id)" aria-expanded="false" aria-controls="subtasks-@task.Id">
+                                    نمایش سابتسک‌ها (@task.ChildIssues.Count)
+                                </button>
+                            }
+                        </div>
+                        @if (task.ChildIssues != null && task.ChildIssues.Any())
+                        {
+                            <div id="subtasks-@task.Id" class="mt-2 ms-3" style="display:none;">
+                                <ul class="mb-0">
+                                    @foreach (var sub in task.ChildIssues.OrderBy(ci => ci.Priority))
+                                    {
+                                        <li>
+                                            <span class="me-1" title="@sub.IssueTypeName">@sub.IssueTypeIcon</span>
+                                            <span>@sub.Title</span>
+                                            <small class="text-muted">— @(sub.AssignedUserName ?? "نامشخص")</small>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </td>
+                    <td>@task.StartDate.ToShortPersianDateString()</td>
+                    <td>@(task.DueDate.HasValue ? task.DueDate.Value.ToShortPersianDateString() : "-")</td>
+
+                    <td>
+                        <span class="badge @(task.IsCompleted ? "bg-success" : "bg-warning text-dark")">
+                            @(task.IsCompleted ? "انجام شد" : "در حال انجام")
+                        </span>
+                    </td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-warning"
+                           asp-area="TaskPlanner"
+                           asp-controller="Tasks"
+                           asp-action="Edit"
+                           asp-route-id="@task.Id">ویرایش</a>
+
+                        <a class="btn btn-sm btn-outline-info"
+                           asp-area="TaskPlanner"
+                           asp-controller="Tasks"
+                           asp-action="Details"
+                           asp-route-id="@task.Id">💬 گفتگو</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p class="text-muted">هیچ تسکی برای این پروژه ثبت نشده است.</p>
+}
+
+<a asp-action="Index" class="btn btn-secondary mt-3">بازگشت به لیست پروژه‌ها</a>
+
+@section Scripts {
+    <script>
+        function toggleSubtasks(taskId) {
+            const container = document.getElementById(`subtasks-${taskId}`);
+            if (!container) return;
+            const isHidden = container.style.display === 'none' || container.style.display === '';
+            container.style.display = isHidden ? 'block' : 'none';
+
+            const btn = event?.currentTarget;
+            if (btn) {
+                const expanded = isHidden ? 'true' : 'false';
+                btn.setAttribute('aria-expanded', expanded);
+                const count = container.querySelectorAll('li').length;
+                btn.textContent = (isHidden ? 'عدم نمایش سابتسک‌ها' : 'نمایش سابتسک‌ها') + ` (${count})`;
+            }
+        }
+    </script>
+}

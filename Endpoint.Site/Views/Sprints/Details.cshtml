@@ -1,0 +1,440 @@
+@model Endpoint.Site.Areas.TaskPlanner.Models.SprintDetailsVm
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@using DNTPersianUtils.Core
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    
+    var statusBadgeClass = Model.Status switch
+    {
+        SprintStatus.Active => "bg-success",
+        SprintStatus.Completed => "bg-secondary",
+        _ => "bg-warning"
+    };
+
+    var statusText = Model.Status switch
+    {
+        SprintStatus.Active => "فعال",
+        SprintStatus.Completed => "خاتمه یافته",
+        _ => "در حال برنامه‌ریزی"
+    };
+
+    var completionPercentage = Model.TotalTasks > 0 ? (Model.CompletedTasks * 100 / Model.TotalTasks) : 0;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2>@Model.Name <span class="badge @statusBadgeClass">@statusText</span></h2>
+        <p class="text-muted">پروژه: <a href="/TaskPlanner/Projects/Details/@Model.ProjectId">@Model.ProjectName</a></p>
+    </div>
+    <div>
+        @if (Model.Status != SprintStatus.Completed)
+        {
+            <a class="btn btn-primary" href="/TaskPlanner/Sprints/Planning/@Model.Id">📅 برنامه‌ریزی</a>
+        }
+        @if (Model.Status == SprintStatus.Active)
+        {
+            <a class="btn btn-success" href="/TaskPlanner/Sprints/Board/@Model.Id">تخته کانبان</a>
+        }
+        <a class="btn btn-warning" href="/TaskPlanner/Sprints/Edit/@Model.Id">ویرایش</a>
+        <a class="btn btn-secondary" href="/TaskPlanner/Sprints/Index?projectId=@Model.ProjectId">بازگشت به لیست</a>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">اطلاعات اسپرینت</h5>
+                
+                @if (!string.IsNullOrEmpty(Model.Description))
+                {
+                    <p><strong>توضیحات:</strong> @Model.Description</p>
+                }
+                
+                @if (!string.IsNullOrEmpty(Model.Goal))
+                {
+                    <p><strong>هدف:</strong> @Model.Goal</p>
+                }
+                
+                <p><strong>تاریخ شروع:</strong> @Model.StartDatePersian</p>
+                <p><strong>تاریخ پایان:</strong> @Model.EndDatePersian</p>
+                
+                @if (Model.CompletedAt.HasValue)
+                {
+                    <p><strong>تاریخ تکمیل:</strong> @Model.CompletedAt.Value.ToShortPersianDateString()</p>
+                }
+                
+                <div class="mt-3">
+                    @if (Model.Status == SprintStatus.Planning)
+                    {
+                        <form method="post" action="/TaskPlanner/Sprints/ChangeStatus" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="status" value="@SprintStatus.Active" />
+                            <button type="submit" class="btn btn-success">شروع اسپرینت</button>
+                        </form>
+                    }
+                    else if (Model.Status == SprintStatus.Active)
+                    {
+                        <form method="post" action="/TaskPlanner/Sprints/ChangeStatus" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="status" value="@SprintStatus.Completed" />
+                            <button type="submit" class="btn btn-secondary">خاتمه اسپرینت</button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">آمار</h5>
+                
+                <div class="mb-3">
+                    <h6>پیشرفت کلی</h6>
+                    <div class="progress">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: @completionPercentage%" aria-valuenow="@completionPercentage" aria-valuemin="0" aria-valuemax="100">
+                            @completionPercentage%
+                        </div>
+                    </div>
+                </div>
+                
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        کل تسک‌ها
+                        <span class="badge bg-primary rounded-pill">@Model.TotalTasks</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        باید انجام شود
+                        <span class="badge bg-secondary rounded-pill">@Model.PendingTasks</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        در حال انجام
+                        <span class="badge bg-info rounded-pill">@Model.InProgressTasks</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        تکمیل شده
+                        <span class="badge bg-success rounded-pill">@Model.CompletedTasks</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">تسک‌های اسپرینت</h5>
+            </div>
+            <div class="card-body">
+                @if (!Model.Tasks.Any())
+                {
+                    <p class="text-muted">هیچ تسکی به این اسپرینت اضافه نشده است.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>عنوان</th>
+                                    <th>وضعیت</th>
+                                    <th>مسئول</th>
+                                    <th>سررسید</th>
+                                    <th>عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sprintTasksTable">
+                                @foreach (var task in Model.Tasks)
+                                {
+                                    <tr data-task-id="@task.Id">
+                                        <td>
+                                            <a href="/TaskPlanner/Tasks/Details/@task.Id">
+                                                <span class="me-2" title="@task.IssueTypeName">@task.IssueTypeIcon</span>
+                                                @task.Title
+                                                @if (!string.IsNullOrEmpty(task.IssueKey))
+                                                {
+                                                    <small class="text-muted">(@task.IssueKey)</small>
+                                                }
+                                            </a>
+                                        </td>
+                                        <td>
+                                            @{
+                                                // Find the SprintTask for this task
+                                                var sprintTask = Model.SprintTasks.FirstOrDefault(st => st.TaskId == task.Id);
+                                                var currentStatus = sprintTask?.Status ?? SprintTaskStatus.Pending;
+                                            }
+                                            <select class="form-select form-select-sm task-status" data-task-id="@task.Id">
+                                                @if (currentStatus == SprintTaskStatus.Pending)
+                                                {
+                                                    <option value="Pending" selected>در انتظار</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="Pending">در انتظار</option>
+                                                }
+                                                
+                                                @if (currentStatus == SprintTaskStatus.InProgress)
+                                                {
+                                                    <option value="InProgress" selected>در حال انجام</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="InProgress">در حال انجام</option>
+                                                }
+                                                
+                                                @if (currentStatus == SprintTaskStatus.Completed)
+                                                {
+                                                    <option value="Completed" selected>تکمیل شده</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="Completed">تکمیل شده</option>
+                                                }
+                                                
+                                                @if (currentStatus == SprintTaskStatus.Blocked)
+                                                {
+                                                    <option value="Blocked" selected>مسدود شده</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="Blocked">مسدود شده</option>
+                                                }
+                                                
+                                                @if (currentStatus == SprintTaskStatus.Cancelled)
+                                                {
+                                                    <option value="Cancelled" selected>لغو شده</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="Cancelled">لغو شده</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td>@(task.AssignedUserName ?? "نامشخص")</td>
+                                        <td>@(task.DueDatePersian ?? "-")</td>
+                                        <td>
+                                            @if (Model.Status == SprintStatus.Active)
+                                            {
+                                                <button class="btn btn-sm btn-outline-danger" onclick="removeTaskFromSprint(@task.Id)">
+                                                    <i class="fas fa-trash"></i> حذف
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    
+    @if (Model.Status == SprintStatus.Active)
+    {
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">تسک‌های موجود</h5>
+                    <button class="btn btn-primary btn-sm" onclick="loadAvailableTasks()">
+                        <i class="fas fa-refresh"></i> بارگذاری
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="availableTasksContainer">
+                        <p class="text-muted">برای مشاهده تسک‌های موجود، روی "بارگذاری" کلیک کنید.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        const sprintId = @Model.Id;
+        const projectId = @Model.ProjectId;
+
+        // نمایش پیام‌های موفقیت/خطا
+        function showNotification(message, type = 'success') {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const alertHtml = `
+                <div class="alert ${alertClass} alert-dismissible fade show position-fixed top-0 end-0 m-3" role="alert" style="z-index: 9999; min-width: 300px;">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            $('body').append(alertHtml);
+            
+            // حذف خودکار پیام پس از 3 ثانیه
+            setTimeout(() => {
+                $('.alert').fadeOut(300, function() {
+                    $(this).remove();
+                });
+            }, 3000);
+        }
+
+        // بارگذاری تسک‌های موجود
+        function loadAvailableTasks() {
+            console.log('Loading tasks for projectId:', projectId, 'sprintId:', sprintId);
+            
+            $.ajax({
+                url: '@Url.Action("GetProjectTasks", "Sprints")',
+                type: 'GET',
+                data: { projectId: projectId, sprintId: sprintId },
+                success: function(response) {
+                    console.log('Response received:', response);
+                    if (response.success) {
+                        displayAvailableTasks(response.tasks);
+                    } else {
+                        alert('خطا در بارگذاری تسک‌ها: ' + response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', xhr.responseText);
+                    alert('خطا در ارتباط با سرور: ' + error);
+                }
+            });
+        }
+
+        // نمایش تسک‌های موجود
+        function displayAvailableTasks(tasks) {
+            const container = $('#availableTasksContainer');
+            
+            if (tasks.length === 0) {
+                container.html('<p class="text-muted">همه تسک‌ها در اسپرینت هستند.</p>');
+                return;
+            }
+
+            let html = '<div class="list-group">';
+            tasks.forEach(task => {
+                html += `
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">${task.title}</h6>
+                            <small class="text-muted">${task.categoryName} - ${task.assignedUserName}</small>
+                        </div>
+                        <button class="btn btn-sm btn-success" onclick="addTaskToSprint(${task.id})">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            container.html(html);
+        }
+
+        // اضافه کردن تسک به اسپرینت
+        function addTaskToSprint(taskId) {
+            $.ajax({
+                url: '@Url.Action("AddTaskToSprint", "Sprints")',
+                type: 'POST',
+                data: { sprintId: sprintId, taskId: taskId },
+                success: function(response) {
+                    if (response.success) {
+                        // نمایش پیام موفقیت
+                        showNotification('تسک با موفقیت به اسپرینت اضافه شد', 'success');
+                        // بارگذاری مجدد تسک‌های موجود
+                        loadAvailableTasks();
+                        // بارگذاری مجدد صفحه برای نمایش تسک جدید
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showNotification('خطا: ' + response.message, 'error');
+                    }
+                },
+                error: function() {
+                    showNotification('خطا در ارتباط با سرور', 'error');
+                }
+            });
+        }
+
+        // حذف تسک از اسپرینت
+        function removeTaskFromSprint(taskId) {
+            console.log('removeTaskFromSprint called with taskId:', taskId, 'sprintId:', sprintId);
+            
+            if (!confirm('آیا مطمئن هستید که می‌خواهید این تسک را از اسپرینت حذف کنید؟')) {
+                console.log('User cancelled deletion');
+                return;
+            }
+
+            console.log('Proceeding with deletion...');
+
+            $.ajax({
+                url: '@Url.Action("RemoveTaskFromSprint", "Sprints")',
+                type: 'POST',
+                data: { sprintId: sprintId, taskId: taskId },
+                success: function(response) {
+                    console.log('Remove response:', response);
+                    if (response.success) {
+                        // نمایش پیام موفقیت
+                        showNotification('تسک با موفقیت از اسپرینت حذف شد', 'success');
+                        // حذف ردیف تسک از جدول
+                        $('tr[data-task-id="' + taskId + '"]').fadeOut(300, function() {
+                            $(this).remove();
+                        });
+                        // بارگذاری مجدد تسک‌های موجود
+                        loadAvailableTasks();
+                    } else {
+                        showNotification('خطا: ' + response.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Remove AJAX Error:', xhr.responseText);
+                    showNotification('خطا در ارتباط با سرور: ' + error, 'error');
+                }
+            });
+        }
+
+        // تغییر وضعیت تسک
+        $(document).on('change', '.task-status', function() {
+            const taskId = $(this).data('task-id');
+            const status = $(this).val();
+
+            $.ajax({
+                url: '@Url.Action("UpdateTaskStatus", "Sprints")',
+                type: 'POST',
+                data: { sprintId: sprintId, taskId: taskId, status: status },
+                success: function(response) {
+                    if (response.success) {
+                        // موفقیت - می‌توانید پیام نمایش دهید یا صفحه را بارگذاری مجدد کنید
+                        console.log('وضعیت تسک تغییر کرد');
+                    } else {
+                        alert('خطا: ' + response.message);
+                        // در صورت خطا، وضعیت قبلی را برگردانید
+                        location.reload();
+                    }
+                },
+                error: function() {
+                    alert('خطا در ارتباط با سرور');
+                    location.reload();
+                }
+            });
+        });
+
+        // بارگذاری خودکار تسک‌های موجود وقتی صفحه لود می‌شود (فقط برای اسپرینت فعال)
+        $(document).ready(function() {
+            @if (Model.Status == SprintStatus.Active)
+            {
+                <text>
+                loadAvailableTasks();
+                </text>
+            }
+        });
+    </script>
+}
+

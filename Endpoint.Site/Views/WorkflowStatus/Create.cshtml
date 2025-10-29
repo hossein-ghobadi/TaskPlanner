@@ -1,0 +1,67 @@
+@model Endpoint.Site.Areas.TaskPlanner.Models.WorkflowStatusCreateVm
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var projectName = ViewBag.ProjectName as string;
+}
+
+<h2>ایجاد وضعیت جدید</h2>
+
+@if (!string.IsNullOrEmpty(projectName))
+{
+    <p class="text-muted">پروژه: <strong>@projectName</strong></p>
+}
+
+<form method="post" asp-action="Create">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <input type="hidden" asp-for="ProjectId" />
+
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Description" class="form-label"></label>
+        <textarea asp-for="Description" class="form-control" rows="2"></textarea>
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Type" class="form-label"></label>
+        <select asp-for="Type" class="form-control">
+            <option value="@WorkflowType.Todo">باید انجام شود</option>
+            <option value="@WorkflowType.InProgress">در حال انجام</option>
+            <option value="@WorkflowType.Done">انجام شده</option>
+            <option value="@WorkflowType.Blocked">مسدود شده</option>
+        </select>
+        <span asp-validation-for="Type" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Color" class="form-label"></label>
+        <input asp-for="Color" type="color" class="form-control form-control-color" value="#6c757d" />
+        <span asp-validation-for="Color" class="text-danger"></span>
+        <small class="form-text text-muted">رنگ نمایش وضعیت را انتخاب کنید</small>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Order" class="form-label"></label>
+        <input asp-for="Order" type="number" class="form-control" />
+        <span asp-validation-for="Order" class="text-danger"></span>
+        <small class="form-text text-muted">ترتیب نمایش وضعیت در لیست</small>
+    </div>
+
+    <div class="mb-3">
+        <button type="submit" class="btn btn-primary">ایجاد وضعیت</button>
+        <a class="btn btn-secondary" href="/TaskPlanner/WorkflowStatus/Index?projectId=@Model.ProjectId">انصراف</a>
+    </div>
+</form>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

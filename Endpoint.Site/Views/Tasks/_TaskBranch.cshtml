@@ -1,0 +1,95 @@
+﻿@using DNTPersianUtils.Core
+@model TaskPlanner.Domain.Entities.TaskPlanner.TaskItem
+@{
+    var userLookup = ViewBag.UserLookup as Dictionary<string, string>;
+    var hasSubs = Model.ChildIssues?.Any() ?? false;
+    var collapseId = $"collapse_{Model.Id}";
+}
+
+<div class="card mb-2 border-start border-3 @(Model.IsCompleted ? "border-success" : "border-warning")">
+    <div class="card-header bg-light d-flex justify-content-between align-items-start">
+        <div>
+            <h5 class="fw-bold mb-1">
+                <span class="me-2" title="@Model.IssueTypeName">@Model.IssueTypeIcon</span>
+                @Model.Title
+                @if (!string.IsNullOrEmpty(Model.IssueKey))
+                {
+                    <small class="text-muted">(@Model.IssueKey)</small>
+                }
+            </h5>
+            <small class="text-muted">
+                📁 پروژه: @Model.Project?.Name |
+                🏷️ دسته: @Model.Category?.Name |
+                🗓️ شروع: @Model.StartDate.ToShortPersianDateString()
+                @if (Model.DueDate != null)
+                {
+                    <span> → پایان: @Model.DueDate.Value.ToShortPersianDateString()</span>
+                }
+                |
+                👤 مسئول:
+                @(
+                    Model.AssignedUserId != null && userLookup.ContainsKey(Model.AssignedUserId)
+                    ? userLookup[Model.AssignedUserId]
+                    : "تعیین نشده"
+                    )
+                @if (Model.Sprint != null)
+                {
+                    <span> | 🏃 اسپرینت: @Model.Sprint.Name</span>
+                }
+                @if (Model.WorkflowStatus != null)
+                {
+                    <span> | 🔄 وضعیت: <span class="badge" style="background-color: @Model.WorkflowStatus.Color">@Model.WorkflowStatus.Name</span></span>
+                }
+            </small>
+        </div>
+
+        <div>
+            <a class="btn btn-sm btn-outline-info me-1"
+               asp-area="TaskPlanner"
+               asp-controller="Tasks"
+               asp-action="Details"
+               asp-route-id="@Model.Id">
+                💬 گفتگو
+            </a>
+
+            @* دکمه افزودن Child Issue (Smart based on parent type) *@
+            @if (Model.CanHaveChildren)
+            {
+                <button class="btn btn-sm btn-outline-primary me-1"
+                        onclick="openChildIssueModal(@Model.Id, '@Model.IssueType')"
+                        title="افزودن @(Model.IssueType == IssueType.Epic ? "Story/Task/Bug" : "Subtask")">
+                    ➕
+                </button>
+            }
+
+            <button class="btn btn-sm btn-outline-danger me-1"
+                    onclick="deleteTask(@Model.Id)">
+                🗑️ حذف
+            </button>
+
+            @if (hasSubs)
+            {
+                <button class="btn btn-sm btn-outline-secondary"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#@collapseId"
+                        aria-expanded="false"
+                        aria-controls="@collapseId">
+                    🔽 زیر‌تسک‌ها
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (hasSubs)
+    {
+        <div id="@collapseId" class="collapse ms-4">
+            <div class="card-body ps-3">
+                @foreach (var sub in Model.ChildIssues)
+                {
+                    @Html.Partial("_TaskBranch", sub)
+                }
+            </div>
+        </div>
+    }
+</div>

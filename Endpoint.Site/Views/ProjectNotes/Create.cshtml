@@ -1,0 +1,198 @@
+@using Endpoint.Site.Areas.TaskPlanner.Models
+@model ProjectNoteCreateVm
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<h2>ایجاد یادداشت جدید برای پروژه: @ViewBag.ProjectName</h2>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<form asp-action="Create" method="post" enctype="multipart/form-data">
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <input type="hidden" asp-for="ProjectId" />
+
+    <div class="mb-3">
+        <label asp-for="Title" class="form-label">عنوان یادداشت</label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Content" class="form-label">محتوا</label>
+        <textarea asp-for="Content" class="form-control" rows="6"></textarea>
+        <span asp-validation-for="Content" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">📎 فایل‌های پیوست</label>
+        <input type="file" name="Attachments" class="form-control" id="fileInput" multiple accept="image/*,audio/*,.pdf,.doc,.docx,.txt,.zip,.rar" />
+        <small class="text-muted">
+            فرمت‌های مجاز: تصویر (jpg, png, gif), صوت (mp3, wav, ogg), سند (pdf, doc, docx)
+            <br>
+            حداکثر حجم هر فایل: 10 مگابایت
+        </small>
+    </div>
+
+    <!-- 🎤 ضبط ویس آنلاین -->
+    <div class="mb-3">
+        <label class="form-label">🎤 ضبط ویس آنلاین</label>
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex gap-2 align-items-center mb-2">
+                    <button type="button" class="btn btn-danger" id="recordBtn" onclick="toggleRecording()">
+                        <span id="recordIcon">●</span> <span id="recordText">شروع ضبط</span>
+                    </button>
+                    <span id="recordTimer" class="text-muted">00:00</span>
+                </div>
+                <div id="audioPreview"></div>
+                <small class="text-muted">با کلیک روی دکمه، ضبط صدا شروع می‌شود. مجدداً کلیک کنید تا ضبط متوقف شود.</small>
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-success">ذخیره یادداشت</button>
+    <a class="btn btn-secondary" href="/TaskPlanner/ProjectNotes/Index?projectId=@Model.ProjectId">بازگشت به لیست یادداشت‌ها</a>
+    <a class="btn btn-outline-secondary" href="/TaskPlanner/Projects/Details/@Model.ProjectId">بازگشت به پروژه</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordingStartTime;
+        let timerInterval;
+        let recordedBlobs = [];
+
+        async function toggleRecording() {
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                await startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data && event.data.size > 0) {
+                        audioChunks.push(event.data);
+                        console.log('Audio chunk captured:', event.data.size, 'bytes');
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    console.log('Recording stopped. Total chunks:', audioChunks.length);
+                    
+                    if (audioChunks.length === 0) {
+                        alert('هیچ داده صوتی ضبط نشد. لطفاً دوباره تلاش کنید.');
+                        stream.getTracks().forEach(track => track.stop());
+                        return;
+                    }
+                    
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    console.log('Audio blob size:', audioBlob.size, 'bytes');
+                    
+                    if (audioBlob.size === 0) {
+                        alert('فایل صوتی خالی است. لطفاً دوباره تلاش کنید.');
+                        stream.getTracks().forEach(track => track.stop());
+                        return;
+                    }
+                    
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    
+                    // نمایش پیش‌نمایش
+                    const preview = document.getElementById('audioPreview');
+                    const audioElement = document.createElement('audio');
+                    audioElement.controls = true;
+                    audioElement.src = audioUrl;
+                    audioElement.className = 'w-100 mt-2';
+                    preview.innerHTML = '';
+                    preview.appendChild(audioElement);
+
+                    // افزودن به فایل‌های آپلود
+                    const fileName = `voice_${new Date().getTime()}.webm`;
+                    const file = new File([audioBlob], fileName, { type: 'audio/webm' });
+                    addFileToInput(file);
+
+                    // متوقف کردن stream
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                // شروع ضبط با timeslice برای جمع‌آوری بهتر داده‌ها
+                mediaRecorder.start(100);
+                recordingStartTime = Date.now();
+                console.log('Voice recording started...');
+                
+                // به‌روزرسانی UI
+                document.getElementById('recordBtn').classList.remove('btn-danger');
+                document.getElementById('recordBtn').classList.add('btn-success');
+                document.getElementById('recordIcon').textContent = '■';
+                document.getElementById('recordText').textContent = 'توقف ضبط';
+
+                // شروع تایمر
+                timerInterval = setInterval(updateTimer, 1000);
+            } catch (error) {
+                alert('خطا در دسترسی به میکروفن: ' + error.message);
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                clearInterval(timerInterval);
+
+                // به‌روزرسانی UI
+                document.getElementById('recordBtn').classList.remove('btn-success');
+                document.getElementById('recordBtn').classList.add('btn-danger');
+                document.getElementById('recordIcon').textContent = '●';
+                document.getElementById('recordText').textContent = 'شروع ضبط';
+                document.getElementById('recordTimer').textContent = '00:00';
+            }
+        }
+
+        function updateTimer() {
+            const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            document.getElementById('recordTimer').textContent = `${minutes}:${seconds}`;
+        }
+
+        function addFileToInput(file) {
+            console.log('📎 addFileToInput called with:', file.name, file.size, 'bytes');
+            
+            const fileInput = document.getElementById('fileInput');
+            console.log('📎 Current files in input:', fileInput.files.length);
+            
+            const dataTransfer = new DataTransfer();
+            
+            // حفظ فایل‌های قبلی
+            for (let i = 0; i < fileInput.files.length; i++) {
+                dataTransfer.items.add(fileInput.files[i]);
+                console.log('📎 Keeping existing file:', fileInput.files[i].name);
+            }
+            
+            // افزودن فایل جدید
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+            
+            console.log('📎 Total files in input after adding:', fileInput.files.length);
+            console.log('📎 Files:', Array.from(fileInput.files).map(f => f.name));
+        }
+    </script>
+}
+
+

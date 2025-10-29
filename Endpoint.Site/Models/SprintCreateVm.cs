@@ -1,0 +1,29 @@
+using System.ComponentModel.DataAnnotations;
+using DNTPersianUtils.Core;
+
+namespace Endpoint.Site.Areas.TaskPlanner.Models
+{
+    public class SprintCreateVm
+    {
+        [Required(ErrorMessage = "نام اسپرینت الزامی است")]
+        [StringLength(200, ErrorMessage = "نام اسپرینت نمی‌تواند بیش از 200 کاراکتر باشد")]
+        public string Name { get; set; } = null!;
+
+        [StringLength(1000, ErrorMessage = "توضیحات نمی‌تواند بیش از 1000 کاراکتر باشد")]
+        public string? Description { get; set; }
+
+        [StringLength(500, ErrorMessage = "هدف اسپرینت نمی‌تواند بیش از 500 کاراکتر باشد")]
+        public string? Goal { get; set; }
+
+        [Required(ErrorMessage = "تاریخ شروع الزامی است")]
+        [DataType(DataType.Date)]
+        public DateTime StartDate { get; set; } = DateTime.Today;
+
+        [Required(ErrorMessage = "تاریخ پایان الزامی است")]
+        [DataType(DataType.Date)]
+        public DateTime EndDate { get; set; } = DateTime.Today.AddDays(14);
+
+        [Required]
+        public int ProjectId { get; set; }
+    }
+}

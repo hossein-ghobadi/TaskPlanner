@@ -1,0 +1,16 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Endpoint.Site.Areas.TaskPlanner.Models
+{
+    public class ProjectCreateVm
+    {
+        [Required(ErrorMessage = "نام پروژه الزامی است")]
+        public string Name { get; set; } = null!;
+
+        public string? Description { get; set; }
+
+        // اعضای انتخاب‌شده
+        public List<string> SelectedUserIds { get; set; } = new List<string>();
+    }
+
+}

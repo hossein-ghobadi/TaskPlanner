@@ -1,0 +1,55 @@
+@model Sprint
+@using DNTPersianUtils.Core
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<h2>حذف اسپرینت</h2>
+
+<div class="alert alert-danger">
+    <h4>آیا مطمئن هستید که می‌خواهید این اسپرینت را حذف کنید؟</h4>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">نام اسپرینت:</dt>
+            <dd class="col-sm-9">@Model.Name</dd>
+
+            @if (!string.IsNullOrEmpty(Model.Description))
+            {
+                <dt class="col-sm-3">توضیحات:</dt>
+                <dd class="col-sm-9">@Model.Description</dd>
+            }
+
+            <dt class="col-sm-3">پروژه:</dt>
+            <dd class="col-sm-9">@Model.Project.Name</dd>
+
+            <dt class="col-sm-3">تاریخ شروع:</dt>
+            <dd class="col-sm-9">@Model.StartDate.ToShortPersianDateString()</dd>
+
+            <dt class="col-sm-3">تاریخ پایان:</dt>
+            <dd class="col-sm-9">@Model.EndDate.ToShortPersianDateString()</dd>
+
+            <dt class="col-sm-3">وضعیت:</dt>
+            <dd class="col-sm-9">@Model.Status</dd>
+
+            <dt class="col-sm-3">تعداد تسک‌ها:</dt>
+            <dd class="col-sm-9">@Model.Tasks.Count</dd>
+        </dl>
+
+        @if (Model.Tasks.Any())
+        {
+            <div class="alert alert-warning">
+                <strong>توجه:</strong> این اسپرینت دارای @Model.Tasks.Count تسک است. با حذف اسپرینت، تسک‌ها از اسپرینت خارج می‌شوند اما حذف نمی‌گردند.
+            </div>
+        }
+
+        <form method="post" asp-action="Delete" asp-route-id="@Model.Id">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-danger">بله، حذف شود</button>
+            <a class="btn btn-secondary" href="/TaskPlanner/Sprints/Details/@Model.Id">انصراف</a>
+        </form>
+    </div>
+</div>
+
