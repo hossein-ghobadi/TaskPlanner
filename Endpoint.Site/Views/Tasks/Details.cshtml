@@ -111,7 +111,7 @@
     // بارگذاری کامنت‌ها
     async function loadComments() {
         try {
-            const response = await fetch(`/TaskPlanner/Tasks/GetComments?taskId=${taskId}`);
+            const response = await fetch(`/Tasks/GetComments?taskId=${taskId}`);
             const comments = await response.json();
             
             const chatBox = document.getElementById('chatBox');
@@ -332,7 +332,7 @@
                 formData.append('Attachments', fileInput.files[i]);
             }
             
-            const response = await fetch('/TaskPlanner/Tasks/PostComment', {
+            const response = await fetch('/Tasks/PostComment', {
                 method: 'POST',
                 body: formData
             });
@@ -376,7 +376,7 @@
             formData.append('commentId', commentId);
             formData.append('__RequestVerificationToken', token);
             
-            const response = await fetch('/TaskPlanner/Tasks/DeleteComment', {
+            const response = await fetch('/Tasks/DeleteComment', {
                 method: 'POST',
                 body: formData
             });

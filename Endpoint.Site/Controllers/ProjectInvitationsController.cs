@@ -9,12 +9,11 @@ using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Persistence.Contexts;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
-namespace Endpoint.Site.Areas.TaskPlanner.Controllers
+namespace Endpoint.Site.Controllers
 {
 
     [Authorize]
-    [Area("TaskPlanner")]
-    [Route("TaskPlanner/[controller]/[action]")]
+    [Route("[controller]/[action]")]
     public class ProjectInvitationsController : Controller
     {
         private readonly MVPTestDatabaseContext _context;

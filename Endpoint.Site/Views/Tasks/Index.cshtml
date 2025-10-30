@@ -8,10 +8,10 @@
 <h2 class="mb-4">🗂️ ساختار کارها (سبک Jira)</h2>
 
 <div class="mb-3 d-flex justify-content-between align-items-center">
-    <a class="btn btn-primary" href="/TaskPlanner/Tasks/Create">
+    <a class="btn btn-primary" href="/Tasks/Create">
         ➕ افزودن کار جدید
     </a>
-    <a class="btn btn-outline-secondary" asp-area="TaskPlanner" asp-controller="Tasks" asp-action="Weekly">
+    <a class="btn btn-outline-secondary" asp-controller="Tasks" asp-action="Weekly">
         🗓️ مشاهده برنامه هفتگی
     </a>
 </div>
@@ -119,7 +119,7 @@ else
                 }
             }
 
-            const response = await fetch("/TaskPlanner/Tasks/AddChildIssue", {
+            const response = await fetch("/Tasks/AddChildIssue", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
@@ -139,7 +139,7 @@ else
         async function deleteTask(taskId) {
             if (!confirm("آیا از حذف این تسک و زیر‌تسک‌هایش مطمئن هستید؟")) return;
 
-            const response = await fetch("/TaskPlanner/Tasks/DeleteTask", {
+            const response = await fetch("/Tasks/DeleteTask", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ taskId })

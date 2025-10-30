@@ -48,7 +48,7 @@
         <form method="post" asp-action="Delete" asp-route-id="@Model.Id">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-danger">بله، حذف شود</button>
-            <a class="btn btn-secondary" href="/TaskPlanner/Sprints/Details/@Model.Id">انصراف</a>
+            <a class="btn btn-secondary" href="/Sprints/Details/@Model.Id">انصراف</a>
         </form>
     </div>
 </div>

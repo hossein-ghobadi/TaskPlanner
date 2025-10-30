@@ -1,12 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace Endpoint.Site.Areas.TaskPlanner.Controllers
+namespace Endpoint.Site.Controllers
 {
-
-    [Area("TaskPlanner")]
-    [Route("TaskPlanner/[controller]/[action]")]
+    [Route("[controller]/[action]")]
     public class HomeController : Controller
     {
+        [HttpGet]
+        [Route("/")]
         public IActionResult Index()
         {
             return View();

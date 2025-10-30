@@ -1,4 +1,4 @@
-@using Endpoint.Site.Areas.TaskPlanner.Models
+@using Endpoint.Site.Models
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @model ProjectNoteEditVm
@@ -105,8 +105,8 @@
     </div>
 
     <button type="submit" class="btn btn-warning">ذخیره تغییرات</button>
-    <a class="btn btn-secondary" href="/TaskPlanner/ProjectNotes/Index?projectId=@Model.ProjectId">بازگشت به لیست یادداشت‌ها</a>
-    <a class="btn btn-outline-secondary" href="/TaskPlanner/Projects/Details/@Model.ProjectId">بازگشت به پروژه</a>
+    <a class="btn btn-secondary" href="/ProjectNotes/Index?projectId=@Model.ProjectId">بازگشت به لیست یادداشت‌ها</a>
+    <a class="btn btn-outline-secondary" href="/Projects/Details/@Model.ProjectId">بازگشت به پروژه</a>
 </form>
 
 @section Scripts {

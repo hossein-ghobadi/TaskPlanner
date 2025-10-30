@@ -1,4 +1,4 @@
-﻿namespace Endpoint.Site.Areas.TaskPlanner.Models
+﻿namespace Endpoint.Site.Models
 {
     public class TaskEditVm : TaskCreateVm
     {

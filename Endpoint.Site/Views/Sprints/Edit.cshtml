@@ -1,4 +1,4 @@
-@model Endpoint.Site.Areas.TaskPlanner.Models.SprintEditVm
+@model Endpoint.Site.Models.SprintEditVm
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @using DNTPersianUtils.Core
 @{
@@ -58,7 +58,7 @@
 
     <div class="mb-3">
         <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
-        <a class="btn btn-secondary" href="/TaskPlanner/Sprints/Details/@Model.Id">انصراف</a>
+        <a class="btn btn-secondary" href="/Sprints/Details/@Model.Id">انصراف</a>
     </div>
 </form>
 

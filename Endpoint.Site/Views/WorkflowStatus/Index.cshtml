@@ -14,13 +14,13 @@
         }
     </div>
     <div>
-        <a class="btn btn-primary" href="/TaskPlanner/WorkflowStatus/Create?projectId=@projectId">ایجاد وضعیت جدید</a>
-        <form method="post" action="/TaskPlanner/WorkflowStatus/CreateDefaultStatuses" class="d-inline">
+        <a class="btn btn-primary" href="/WorkflowStatus/Create?projectId=@projectId">ایجاد وضعیت جدید</a>
+        <form method="post" action="/WorkflowStatus/CreateDefaultStatuses" class="d-inline">
             @Html.AntiForgeryToken()
             <input type="hidden" name="projectId" value="@projectId" />
             <button type="submit" class="btn btn-success">ایجاد وضعیت‌های پیش‌فرض</button>
         </form>
-        <a class="btn btn-secondary" href="/TaskPlanner/Projects/Details/@projectId">بازگشت به پروژه</a>
+        <a class="btn btn-secondary" href="/Projects/Details/@projectId">بازگشت به پروژه</a>
     </div>
 </div>
 
@@ -102,8 +102,8 @@ else
                                 <span class="badge bg-primary rounded-pill">@status.Tasks.Count</span>
                             </td>
                             <td>
-                                <a class="btn btn-sm btn-warning" href="/TaskPlanner/WorkflowStatus/Edit/@status.Id">ویرایش</a>
-                                <a class="btn btn-sm btn-danger" href="/TaskPlanner/WorkflowStatus/Delete/@status.Id">حذف</a>
+                                <a class="btn btn-sm btn-warning" href="/WorkflowStatus/Edit/@status.Id">ویرایش</a>
+                                <a class="btn btn-sm btn-danger" href="/WorkflowStatus/Delete/@status.Id">حذف</a>
                             </td>
                         </tr>
                     }

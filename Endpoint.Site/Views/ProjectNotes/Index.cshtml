@@ -5,7 +5,7 @@
 
 <div class="mb-3">
     <h2>یادداشت‌های پروژه: @ViewBag.ProjectName</h2>
-    <a class="btn btn-secondary" href="/TaskPlanner/Projects/Details/@ViewBag.ProjectId">بازگشت به پروژه</a>
+    <a class="btn btn-secondary" href="/Projects/Details/@ViewBag.ProjectId">بازگشت به پروژه</a>
 </div>
 
 @if (TempData["Success"] != null)
@@ -17,7 +17,7 @@
     <div class="alert alert-danger">@TempData["Error"]</div>
 }
 
-<a class="btn btn-primary mb-3" href="/TaskPlanner/ProjectNotes/Create?projectId=@ViewBag.ProjectId">افزودن یادداشت جدید</a>
+<a class="btn btn-primary mb-3" href="/ProjectNotes/Create?projectId=@ViewBag.ProjectId">افزودن یادداشت جدید</a>
 
 @if (Model.Any())
 {

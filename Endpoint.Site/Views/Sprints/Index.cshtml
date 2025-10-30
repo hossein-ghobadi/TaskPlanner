@@ -1,4 +1,4 @@
-@model IEnumerable<Endpoint.Site.Areas.TaskPlanner.Models.SprintVm>
+@model IEnumerable<Endpoint.Site.Models.SprintVm>
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @using DNTPersianUtils.Core
 @{
@@ -18,12 +18,12 @@
     <div>
         @if (projectId.HasValue)
         {
-            <a class="btn btn-primary" href="/TaskPlanner/Sprints/Create?projectId=@projectId">ایجاد اسپرینت جدید</a>
-            <a class="btn btn-secondary" href="/TaskPlanner/Projects/Details/@projectId">بازگشت به پروژه</a>
+            <a class="btn btn-primary" href="/Sprints/Create?projectId=@projectId">ایجاد اسپرینت جدید</a>
+            <a class="btn btn-secondary" href="/Projects/Details/@projectId">بازگشت به پروژه</a>
         }
         else
         {
-            <a class="btn btn-primary" href="/TaskPlanner/Sprints/Create">ایجاد اسپرینت جدید</a>
+            <a class="btn btn-primary" href="/Sprints/Create">ایجاد اسپرینت جدید</a>
         }
     </div>
 </div>
@@ -110,15 +110,15 @@ else
                             
                             @if (sprint.Status == SprintStatus.Planning)
                             {
-                                <a class="btn btn-sm btn-info" href="/TaskPlanner/Sprints/Details/@sprint.Id">جزئیات</a>
-                                <a class="btn btn-sm btn-warning" href="/TaskPlanner/Sprints/Edit/@sprint.Id">ویرایش</a>
-                                <a class="btn btn-sm btn-danger" href="/TaskPlanner/Sprints/Delete/@sprint.Id">حذف</a>
+                                <a class="btn btn-sm btn-info" href="/Sprints/Details/@sprint.Id">جزئیات</a>
+                                <a class="btn btn-sm btn-warning" href="/Sprints/Edit/@sprint.Id">ویرایش</a>
+                                <a class="btn btn-sm btn-danger" href="/Sprints/Delete/@sprint.Id">حذف</a>
                                 
                             }
                             
                             @if (sprint.Status == SprintStatus.Planning)
                             {
-                                <form method="post" action="/TaskPlanner/Sprints/ChangeStatus" class="d-inline">
+                                <form method="post" action="/Sprints/ChangeStatus" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@sprint.Id" />
                                     <input type="hidden" name="status" value="@SprintStatus.Active" />
@@ -127,9 +127,9 @@ else
                             }
                             else if (sprint.Status == SprintStatus.Active)
                             {
-                                <a class="btn btn-sm btn-info" href="/TaskPlanner/Sprints/Details/@sprint.Id">جزئیات</a>
-                                <a class="btn btn-sm btn-warning" href="/TaskPlanner/Sprints/Edit/@sprint.Id">ویرایش</a>
-                                <form method="post" action="/TaskPlanner/Sprints/ChangeStatus" class="d-inline">
+                                <a class="btn btn-sm btn-info" href="/Sprints/Details/@sprint.Id">جزئیات</a>
+                                <a class="btn btn-sm btn-warning" href="/Sprints/Edit/@sprint.Id">ویرایش</a>
+                                <form method="post" action="/Sprints/ChangeStatus" class="d-inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@sprint.Id" />
                                     <input type="hidden" name="status" value="@SprintStatus.Completed" />

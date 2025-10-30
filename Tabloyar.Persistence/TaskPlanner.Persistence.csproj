@@ -29,8 +29,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Tabloyar.Application\TaskPlanner.Application.csproj" />
-    <ProjectReference Include="..\Tabloyar.Domain\TaskPlanner.Domain.csproj" />
+    <ProjectReference Include="..\TaskPlanner.Application\TaskPlanner.Application.csproj" />
+    <ProjectReference Include="..\TaskPlanner.Domain\TaskPlanner.Domain.csproj" />
   </ItemGroup>
 
 </Project>

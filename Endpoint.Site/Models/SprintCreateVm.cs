@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using DNTPersianUtils.Core;
 
-namespace Endpoint.Site.Areas.TaskPlanner.Models
+namespace Endpoint.Site.Models
 {
     public class SprintCreateVm
     {

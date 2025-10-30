@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
-namespace Endpoint.Site.Areas.TaskPlanner.Models
+namespace Endpoint.Site.Models
 {
     public class TaskCommentVm
     {

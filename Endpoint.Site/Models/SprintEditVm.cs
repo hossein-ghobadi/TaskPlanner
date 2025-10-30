@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using DNTPersianUtils.Core;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
-namespace Endpoint.Site.Areas.TaskPlanner.Models
+namespace Endpoint.Site.Models
 {
     public class SprintEditVm
     {

@@ -6,15 +6,14 @@ using System;
 using System.Security.Claims;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Persistence.Contexts;
-using Endpoint.Site.Areas.TaskPlanner.Models;
+using Endpoint.Site.Models;
 using DNTPersianUtils.Core;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
-namespace Endpoint.Site.Areas.TaskPlanner.Controllers
+namespace Endpoint.Site.Controllers
 {
-    [Area("TaskPlanner")]
     [Authorize]
-    [Route("TaskPlanner/[controller]/[action]")]
+    [Route("[controller]/[action]")]
     public class SprintsController : Controller
     {
         private readonly MVPTestDatabaseContext _context;

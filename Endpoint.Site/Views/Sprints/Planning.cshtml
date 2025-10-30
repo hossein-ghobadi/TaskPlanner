@@ -1,4 +1,4 @@
-@model Endpoint.Site.Areas.TaskPlanner.Models.SprintBoardVm
+@model Endpoint.Site.Models.SprintBoardVm
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
@@ -74,7 +74,7 @@
         <h2 class="mb-1">📅 برنامه‌ریزی اسپرینت</h2>
         <p class="text-muted mb-0">
             <strong>اسپرینت:</strong> @Model.SprintName | 
-            <strong>پروژه:</strong> <a href="/TaskPlanner/Projects/Details/@Model.ProjectId">@Model.ProjectName</a>
+            <strong>پروژه:</strong> <a href="/Projects/Details/@Model.ProjectId">@Model.ProjectName</a>
             @if (sprintStatus == SprintStatus.Completed)
             {
                 <span class="badge bg-secondary ms-2">تکمیل شده</span>
@@ -90,10 +90,10 @@
         </p>
     </div>
     <div>
-        <a class="btn btn-secondary" href="/TaskPlanner/Sprints/Details/@Model.SprintId">جزئیات اسپرینت</a>
+        <a class="btn btn-secondary" href="/Sprints/Details/@Model.SprintId">جزئیات اسپرینت</a>
         @if (sprintStatus == SprintStatus.Active)
         {
-            <a class="btn btn-primary" href="/TaskPlanner/Sprints/Board/@Model.SprintId">تخته کانبان</a>
+            <a class="btn btn-primary" href="/Sprints/Board/@Model.SprintId">تخته کانبان</a>
         }
     </div>
 </div>
@@ -288,7 +288,7 @@
             // اگر از Backlog باشد → اضافه کردن به Sprint
             if (draggedSource === 'backlog') {
                 try {
-                    const res = await fetch('/TaskPlanner/Sprints/AddTaskToSprint', {
+                    const res = await fetch('/Sprints/AddTaskToSprint', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: new URLSearchParams({ sprintId: sprintId, taskId: draggedIssueId })
@@ -381,7 +381,7 @@
                     .filter(id => !isNaN(id));
 
                 try {
-                    const res = await fetch(`/TaskPlanner/Sprints/UpdateSprintOrder?sprintId=${sprintId}`, {
+                    const res = await fetch(`/Sprints/UpdateSprintOrder?sprintId=${sprintId}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(newOrder)
@@ -416,7 +416,7 @@
             }
 
             try {
-                const res = await fetch('/TaskPlanner/Sprints/RemoveTaskFromSprint', {
+                const res = await fetch('/Sprints/RemoveTaskFromSprint', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: new URLSearchParams({ sprintId: sprintId, taskId: draggedIssueId })
@@ -442,7 +442,7 @@
             }
 
             try {
-                const res = await fetch('/TaskPlanner/Sprints/RemoveTaskFromSprint', {
+                const res = await fetch('/Sprints/RemoveTaskFromSprint', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: new URLSearchParams({ sprintId: sprintId, taskId: issueId })

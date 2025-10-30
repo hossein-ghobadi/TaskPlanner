@@ -4,11 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using TaskPlanner.Persistence.Contexts;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
-namespace Endpoint.Site.Areas.TaskPlanner.Controllers
+namespace Endpoint.Site.Controllers
 {
     [Authorize]
-    [Area("TaskPlanner")]
-    [Route("TaskPlanner/[controller]/[action]/{id?}")]
+    [Route("[controller]/[action]/{id?}")]
     public class CategoriesController : Controller
     {
         private readonly MVPTestDatabaseContext _context;

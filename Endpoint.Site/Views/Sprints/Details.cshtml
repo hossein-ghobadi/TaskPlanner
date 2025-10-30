@@ -1,4 +1,4 @@
-@model Endpoint.Site.Areas.TaskPlanner.Models.SprintDetailsVm
+@model Endpoint.Site.Models.SprintDetailsVm
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @using DNTPersianUtils.Core
 @{
@@ -24,19 +24,19 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h2>@Model.Name <span class="badge @statusBadgeClass">@statusText</span></h2>
-        <p class="text-muted">پروژه: <a href="/TaskPlanner/Projects/Details/@Model.ProjectId">@Model.ProjectName</a></p>
+        <p class="text-muted">پروژه: <a href="/Projects/Details/@Model.ProjectId">@Model.ProjectName</a></p>
     </div>
     <div>
         @if (Model.Status != SprintStatus.Completed)
         {
-            <a class="btn btn-primary" href="/TaskPlanner/Sprints/Planning/@Model.Id">📅 برنامه‌ریزی</a>
+            <a class="btn btn-primary" href="/Sprints/Planning/@Model.Id">📅 برنامه‌ریزی</a>
         }
         @if (Model.Status == SprintStatus.Active)
         {
-            <a class="btn btn-success" href="/TaskPlanner/Sprints/Board/@Model.Id">تخته کانبان</a>
+            <a class="btn btn-success" href="/Sprints/Board/@Model.Id">تخته کانبان</a>
         }
-        <a class="btn btn-warning" href="/TaskPlanner/Sprints/Edit/@Model.Id">ویرایش</a>
-        <a class="btn btn-secondary" href="/TaskPlanner/Sprints/Index?projectId=@Model.ProjectId">بازگشت به لیست</a>
+        <a class="btn btn-warning" href="/Sprints/Edit/@Model.Id">ویرایش</a>
+        <a class="btn btn-secondary" href="/Sprints/Index?projectId=@Model.ProjectId">بازگشت به لیست</a>
     </div>
 </div>
 
@@ -75,7 +75,7 @@
                 <div class="mt-3">
                     @if (Model.Status == SprintStatus.Planning)
                     {
-                        <form method="post" action="/TaskPlanner/Sprints/ChangeStatus" class="d-inline">
+                        <form method="post" action="/Sprints/ChangeStatus" class="d-inline">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@Model.Id" />
                             <input type="hidden" name="status" value="@SprintStatus.Active" />
@@ -84,7 +84,7 @@
                     }
                     else if (Model.Status == SprintStatus.Active)
                     {
-                        <form method="post" action="/TaskPlanner/Sprints/ChangeStatus" class="d-inline">
+                        <form method="post" action="/Sprints/ChangeStatus" class="d-inline">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@Model.Id" />
                             <input type="hidden" name="status" value="@SprintStatus.Completed" />
@@ -162,7 +162,7 @@
                                 {
                                     <tr data-task-id="@task.Id">
                                         <td>
-                                            <a href="/TaskPlanner/Tasks/Details/@task.Id">
+                                            <a href="/Tasks/Details/@task.Id">
                                                 <span class="me-2" title="@task.IssueTypeName">@task.IssueTypeIcon</span>
                                                 @task.Title
                                                 @if (!string.IsNullOrEmpty(task.IssueKey))

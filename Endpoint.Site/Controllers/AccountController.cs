@@ -75,7 +75,7 @@ namespace Endpoint.Site.Controllers
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User {UserName} logged in successfully", user.UserName);
-                    return RedirectToLocal(returnUrl ?? "/");
+                    return RedirectToLocal(returnUrl ?? Url.Action("Index", "Home")!);
                 }
 
                 if (result.IsLockedOut)

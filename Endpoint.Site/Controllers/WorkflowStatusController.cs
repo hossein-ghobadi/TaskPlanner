@@ -1,4 +1,4 @@
-using Endpoint.Site.Areas.TaskPlanner.Models;
+using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -6,11 +6,10 @@ using System.Security.Claims;
 using TaskPlanner.Persistence.Contexts;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
-namespace Endpoint.Site.Areas.TaskPlanner.Controllers
+namespace Endpoint.Site.Controllers
 {
     [Authorize]
-    [Area("TaskPlanner")]
-    [Route("TaskPlanner/[controller]/[action]")]
+    [Route("[controller]/[action]")]
     public class WorkflowStatusController : Controller
     {
         private readonly MVPTestDatabaseContext _context;

@@ -1,4 +1,4 @@
-﻿@model Endpoint.Site.Areas.TaskPlanner.Models.CombinedInvitationsVm
+﻿@model Endpoint.Site.Models.CombinedInvitationsVm
 @using DNTPersianUtils.Core
 @using TaskPlanner.Domain.Entities.TaskPlanner
 
@@ -71,7 +71,7 @@
                             <td class="text-center">
                                 @if (inv.Status == InvitationStatus.Pending)
                                 {
-                                    <form asp-area="TaskPlanner"
+                                    <form 
                                           asp-controller="ProjectInvitations"
                                           asp-action="RespondToInvite"
                                           method="post"
@@ -139,7 +139,7 @@
                             <td class="text-center">
                                 @if (inv.Status == InvitationStatus.Pending)
                                 {
-                                    <form asp-area="TaskPlanner"
+                                    <form 
                                           asp-controller="Invitations"
                                           asp-action="RespondToSystemInvite"
                                           method="post"
@@ -181,7 +181,7 @@
                 </div>
             }
 
-            <form asp-area="TaskPlanner"
+            <form 
                   asp-controller="Invitations"
                   asp-action="InviteSystemUser"
                   method="post"

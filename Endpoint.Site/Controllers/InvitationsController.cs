@@ -1,4 +1,4 @@
-﻿using Endpoint.Site.Areas.TaskPlanner.Models;
+﻿using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -8,11 +8,10 @@ using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Persistence.Contexts;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
-namespace Endpoint.Site.Areas.TaskPlanner.Controllers
+namespace Endpoint.Site.Controllers
 {
     [Authorize]
-    [Area("TaskPlanner")]
-    [Route("TaskPlanner/[controller]/[action]")]
+    [Route("[controller]/[action]")]
     public class InvitationsController : Controller
     {
         private readonly MVPTestDatabaseContext _context;

@@ -1,4 +1,4 @@
-using Endpoint.Site.Areas.TaskPlanner.Models;
+using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -9,11 +9,10 @@ using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Persistence.Contexts;
 
-namespace Endpoint.Site.Areas.TaskPlanner.Controllers
+namespace Endpoint.Site.Controllers
 {
     [Authorize]
-    [Area("TaskPlanner")]
-    [Route("TaskPlanner/[controller]/[action]")]
+    [Route("[controller]/[action]")]
     public class ProjectNotesController : Controller
     {
         private readonly MVPTestDatabaseContext _context;

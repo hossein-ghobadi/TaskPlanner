@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace Endpoint.Site.Areas.TaskPlanner.Models
+namespace Endpoint.Site.Models
 {
     public class TaskCommentCreateVm
     {

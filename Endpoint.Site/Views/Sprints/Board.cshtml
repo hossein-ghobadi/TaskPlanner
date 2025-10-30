@@ -1,4 +1,4 @@
-@model Endpoint.Site.Areas.TaskPlanner.Models.SprintBoardVm
+@model Endpoint.Site.Models.SprintBoardVm
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
@@ -79,11 +79,11 @@
         <h2 class="mb-1">📋 تخته کانبان</h2>
         <p class="text-muted mb-0">
             <strong>اسپرینت:</strong> @Model.SprintName | 
-            <strong>پروژه:</strong> <a href="/TaskPlanner/Projects/Details/@Model.ProjectId">@Model.ProjectName</a>
+            <strong>پروژه:</strong> <a href="/Projects/Details/@Model.ProjectId">@Model.ProjectName</a>
         </p>
     </div>
     <div>
-        <a class="btn btn-secondary" href="/TaskPlanner/Sprints/Details/@Model.SprintId">
+        <a class="btn btn-secondary" href="/Sprints/Details/@Model.SprintId">
             <i class="bi bi-arrow-right"></i> جزئیات اسپرینت
         </a>
     </div>
@@ -196,7 +196,7 @@
             }
 
             try {
-                const res = await fetch('/TaskPlanner/Tasks/MoveIssue', {
+                const res = await fetch('/Tasks/MoveIssue', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',

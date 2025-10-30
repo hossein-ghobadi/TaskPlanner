@@ -1,6 +1,6 @@
 ﻿using DNTPersianUtils.Core;
 
-using Endpoint.Site.Areas.TaskPlanner.Models;
+using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskPlanner.Persistence.Contexts;
@@ -13,11 +13,10 @@ using System.Text.Json;
 using TaskPlanner.Application.Services.FileUpload;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
-namespace Endpoint.Site.Areas.TaskPlanner.Controllers
+namespace Endpoint.Site.Controllers
 {
     [Authorize]
-    [Area("TaskPlanner")]
-    [Route("TaskPlanner/[controller]/[action]")]
+    [Route("[controller]/[action]")]
     public class TasksController : Controller
     {
         private readonly MVPTestDatabaseContext _context;

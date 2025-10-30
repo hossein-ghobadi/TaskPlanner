@@ -22,8 +22,8 @@
 <form asp-action="Delete" method="post" class="mt-3">
     <input type="hidden" name="id" value="@Model.Id" />
     <button type="submit" class="btn btn-danger">تایید حذف</button>
-    <a class="btn btn-secondary" href="/TaskPlanner/ProjectNotes/Index?projectId=@Model.ProjectId">بازگشت به لیست یادداشت‌ها</a>
-    <a class="btn btn-outline-secondary" href="/TaskPlanner/Projects/Details/@Model.ProjectId">بازگشت به پروژه</a>
+    <a class="btn btn-secondary" href="/ProjectNotes/Index?projectId=@Model.ProjectId">بازگشت به لیست یادداشت‌ها</a>
+    <a class="btn btn-outline-secondary" href="/Projects/Details/@Model.ProjectId">بازگشت به پروژه</a>
 </form>
 
 

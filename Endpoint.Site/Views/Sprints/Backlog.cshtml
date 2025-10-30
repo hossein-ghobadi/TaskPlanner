@@ -1,4 +1,4 @@
-@model Endpoint.Site.Areas.TaskPlanner.Models.SprintBoardVm
+@model Endpoint.Site.Models.SprintBoardVm
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     var backlog = ViewBag.BacklogIssues as IList<TaskItem>;
@@ -9,11 +9,11 @@
     <div>
         <h2 class="mb-1">🗂️ بک‌لاگ پروژه</h2>
         <p class="text-muted mb-0">
-            <strong>پروژه:</strong> <a href="/TaskPlanner/Projects/Details/@Model.ProjectId">@Model.ProjectName</a>
+            <strong>پروژه:</strong> <a href="/Projects/Details/@Model.ProjectId">@Model.ProjectName</a>
             @if (hasActiveSprint)
             {
                 <span class="ms-3">
-                    <strong>اسپرینت فعال:</strong> <a href="/TaskPlanner/Sprints/Board/@Model.SprintId">@Model.SprintName</a>
+                    <strong>اسپرینت فعال:</strong> <a href="/Sprints/Board/@Model.SprintId">@Model.SprintName</a>
                 </span>
             }
             else
@@ -23,10 +23,10 @@
         </p>
     </div>
     <div>
-        <a class="btn btn-secondary" href="/TaskPlanner/Sprints/Index?projectId=@Model.ProjectId">بازگشت به اسپرینت‌ها</a>
+        <a class="btn btn-secondary" href="/Sprints/Index?projectId=@Model.ProjectId">بازگشت به اسپرینت‌ها</a>
         @if (hasActiveSprint)
         {
-            <a class="btn btn-primary" href="/TaskPlanner/Sprints/Board/@Model.SprintId">رفتن به تخته کانبان</a>
+            <a class="btn btn-primary" href="/Sprints/Board/@Model.SprintId">رفتن به تخته کانبان</a>
         }
     </div>
     
@@ -111,7 +111,7 @@
         function addToSprint(taskId) {
             const sprintId = @Model.SprintId;
             if (!sprintId) { alert('اسپرینت فعالی وجود ندارد.'); return; }
-            fetch('/TaskPlanner/Sprints/AddTaskToSprint', {
+            fetch('/Sprints/AddTaskToSprint', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
                 body: new URLSearchParams({ sprintId: sprintId, taskId: taskId })
