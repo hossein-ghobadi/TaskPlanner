@@ -17,6 +17,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using TaskPlanner.Application.Services;
 using TaskPlanner.Application.Services.TaskPlanner;
+using TaskPlanner.Application.Services.ProjectService;
 
 
 namespace TaskPlanner.Infrastructure.DependencyInjections
@@ -36,6 +37,12 @@ namespace TaskPlanner.Infrastructure.DependencyInjections
             services.AddScoped<IImageUploader, ImageUploader>();
             services.AddScoped<IVoiceUploader, VoiceUploader>();
             services.AddScoped<IDocumentUploader, DocumentUploader>();
+
+            // سرویس‌های Query برای پروژه‌ها
+            services.AddScoped<IProjectQueryService, ProjectQueryService>();
+
+            // سرویس‌های Command برای پروژه‌ها
+            services.AddScoped<IProjectCommandService, ProjectCommandService>();
 
             return services;
         }

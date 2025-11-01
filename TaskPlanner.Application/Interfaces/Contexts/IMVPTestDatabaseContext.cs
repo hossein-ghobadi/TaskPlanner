@@ -29,6 +29,8 @@ namespace TaskPlanner.Application.Interfaces.Contexts
         DbSet<Sprint> Sprints { get; set; }
         DbSet<SprintTask> SprintTasks { get; set; }
         DbSet<WorkflowStatus> WorkflowStatuses { get; set; }
+        DbSet<WorkflowTransition> WorkflowTransitions { get; set; }
+        DbSet<IssueStatusHistory> IssueStatusHistories { get; set; }
 
 
         void MarkAsModified<T>(T entity) where T : class;
