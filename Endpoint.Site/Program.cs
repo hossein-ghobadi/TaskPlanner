@@ -53,25 +53,9 @@ builder.Services.AddHttpClient("PriceApi", c =>
     c.Timeout = TimeSpan.FromSeconds(30);
 });
 
-var allowedOrigin1 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN1");
-var allowedOrigin2 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN2");
-var allowedOrigin3 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN3");
-var allowedOrigin4 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN4");
-var allowedOrigin5 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN5");
-var allowedOrigin6 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN6");
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("MyCors", builder =>
-    {
-        builder.WithOrigins(allowedOrigin1, allowedOrigin2, allowedOrigin3, allowedOrigin4, allowedOrigin5, allowedOrigin6)
-               .AllowAnyHeader()
-               .AllowAnyMethod()
-               .AllowCredentials()
-               .SetIsOriginAllowedToAllowWildcardSubdomains(); // Optional: Allow subdomains
 
-    });
-});
+
 
 builder.Services.AddInfrastructureServices(builder.Configuration);
 

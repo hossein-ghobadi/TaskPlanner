@@ -10,7 +10,15 @@
     
     // روزهای هفته
     var weekDays = new[] { "شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنج‌شنبه", "جمعه" };
-    var weekDaysShort = new[] { "ش", "ی", "د", "س", "چ", "پ", "ج" };
+    
+    // نام ماه‌های شمسی
+    var persianMonths = new[] { "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند" };
+    
+    // استخراج ماه و سال از تاریخ شروع هفته
+    var startPersianDate = startOfWeek.ToShortPersianDateString().Split('/');
+    var monthNumber = int.Parse(startPersianDate[1]);
+    var monthName = persianMonths[monthNumber - 1];
+    var year = startPersianDate[0];
     
     // گروه‌بندی کارها بر اساس تاریخ
     var tasksByDate = Model
@@ -24,7 +32,7 @@
         background: #fff;
         border-radius: 16px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        padding: 20px;
+        padding: 24px;
         margin-top: 20px;
     }
     
@@ -32,31 +40,43 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 25px;
-        padding-bottom: 15px;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
         border-bottom: 2px solid #e9ecef;
     }
     
     .calendar-title {
-        font-size: 1.5rem;
+        font-size: 1.75rem;
         font-weight: 700;
         color: #000;
-        margin: 0;
+        margin: 0 0 4px 0;
+        letter-spacing: -0.5px;
+    }
+    
+    .calendar-month {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #333;
+        margin: 0 0 8px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
     
     .calendar-date-range {
         color: #666;
-        font-size: 0.95rem;
+        font-size: 1rem;
+        font-weight: 500;
     }
     
     .calendar-nav {
         display: flex;
-        gap: 10px;
+        gap: 12px;
     }
     
     .btn-nav {
-        padding: 8px 16px;
-        border-radius: 8px;
+        padding: 10px 20px;
+        border-radius: 10px;
         border: 1.5px solid #000;
         background: #fff;
         color: #000;
@@ -64,13 +84,14 @@
         text-decoration: none;
         transition: all 0.3s ease;
         font-size: 0.9rem;
+        letter-spacing: 0.2px;
     }
     
     .btn-nav:hover {
         background: #000;
         color: #fff;
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     }
     
     .btn-nav.active {
@@ -81,49 +102,52 @@
     .calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 15px;
+        gap: 16px;
         margin-top: 20px;
     }
     
     .calendar-day {
         background: #f8f9fa;
         border-radius: 12px;
-        padding: 12px;
-        min-height: 120px;
+        padding: 14px;
+        min-height: 200px;
         border: 1.5px solid #e9ecef;
         transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
     }
     
     .calendar-day:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+        transform: translateY(-3px);
     }
     
     .calendar-day.today {
         background: #fff;
         border-color: #000;
-        border-width: 2px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        border-width: 2.5px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
     }
     
     .day-header {
         display: flex;
         flex-direction: column;
         align-items: center;
-        margin-bottom: 10px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #dee2e6;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #dee2e6;
     }
     
     .day-name {
         font-weight: 700;
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         color: #000;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
+        letter-spacing: 0.3px;
     }
     
     .day-number {
-        font-size: 1.5rem;
+        font-size: 1.8rem;
         font-weight: 700;
         color: #000;
         line-height: 1;
@@ -132,79 +156,120 @@
     .day-number.today-badge {
         background: #000;
         color: #fff;
-        width: 32px;
-        height: 32px;
+        width: 38px;
+        height: 38px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.1rem;
+        font-size: 1.2rem;
     }
     
     .day-tasks {
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
+        flex: 1;
+        overflow-y: auto;
+    }
+    
+    .day-tasks::-webkit-scrollbar {
+        width: 4px;
+    }
+    
+    .day-tasks::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    .day-tasks::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+    
+    .day-tasks::-webkit-scrollbar-thumb:hover {
+        background: #555;
     }
     
     .task-card {
         background: #fff;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        padding: 8px;
-        font-size: 0.8rem;
+        border: 1.5px solid #dee2e6;
+        border-radius: 10px;
+        padding: 10px;
+        font-size: 0.85rem;
         cursor: pointer;
         transition: all 0.2s ease;
-        border-right: 3px solid #000;
+        border-right: 4px solid #000;
     }
     
     .task-card:hover {
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        transform: translateX(-2px);
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+        transform: translateX(-3px);
+        border-right-color: #333;
     }
     
     .task-title {
         font-weight: 600;
         color: #000;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        font-size: 0.9rem;
     }
     
     .task-key {
         font-size: 0.7rem;
         color: #666;
         font-family: monospace;
+        margin-bottom: 4px;
+        font-weight: 500;
     }
     
     .task-meta {
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         color: #666;
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 3px;
+        margin-top: 6px;
     }
     
     .task-project {
-        font-weight: 500;
+        font-weight: 600;
         color: #333;
+    }
+    
+    .task-assignee {
+        display: flex;
+        align-items: center;
+        gap: 4px;
     }
     
     .empty-day {
         color: #adb5bd;
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         text-align: center;
-        padding: 10px 0;
+        padding: 20px 0;
         font-style: italic;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
-    @@media (max-width: 1200px) {
+    @@media (max-width: 1400px) {
         .calendar-grid {
             grid-template-columns: repeat(4, 1fr);
+        }
+    }
+    
+    @@media (max-width: 992px) {
+        .calendar-grid {
+            grid-template-columns: repeat(3, 1fr);
         }
     }
     
@@ -215,14 +280,34 @@
         
         .calendar-header {
             flex-direction: column;
-            gap: 15px;
+            gap: 20px;
             align-items: flex-start;
+        }
+        
+        .calendar-nav {
+            width: 100%;
+            justify-content: space-between;
+        }
+        
+        .btn-nav {
+            flex: 1;
+            text-align: center;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+        }
+        
+        .calendar-day {
+            min-height: 150px;
         }
     }
     
     @@media (max-width: 576px) {
         .calendar-grid {
             grid-template-columns: 1fr;
+        }
+        
+        .calendar-title {
+            font-size: 1.4rem;
         }
     }
 </style>
@@ -231,6 +316,9 @@
     <div class="calendar-header">
         <div>
             <h2 class="calendar-title">📅 برنامه هفتگی من</h2>
+            <div class="calendar-month">
+                <span>@monthName @year</span>
+            </div>
             <div class="calendar-date-range">
                 از @startOfWeek.ToShortPersianDateString() تا @endOfWeek.ToShortPersianDateString()
             </div>
@@ -248,12 +336,13 @@
             var currentDate = startOfWeek.AddDays(i);
             var isToday = currentDate.Date == DateTime.Today.Date;
             var dayTasks = tasksByDate.ContainsKey(currentDate.Date) ? tasksByDate[currentDate.Date] : new List<TaskItem>();
+            var dayNumber = currentDate.ToShortPersianDateString().Split('/')[2];
             
             <div class="calendar-day @(isToday ? "today" : "")">
                 <div class="day-header">
                     <div class="day-name">@weekDays[i]</div>
                     <div class="day-number @(isToday ? "today-badge" : "")">
-                        @currentDate.ToShortPersianDateString().Split('/')[2]
+                        @dayNumber
                     </div>
                 </div>
                 
@@ -274,11 +363,13 @@
                                 <div class="task-meta">
                                     @if (task.Project != null)
                                     {
-                                        <span class="task-project">@task.Project.Name</span>
+                                        <span class="task-project">📁 @task.Project.Name</span>
                                     }
                                     @if (task.AssignedUserId != null && ViewBag.UserLookup != null && ((Dictionary<string, string>)ViewBag.UserLookup).ContainsKey(task.AssignedUserId))
                                     {
-                                        <span>👤 @(((Dictionary<string, string>)ViewBag.UserLookup)[task.AssignedUserId])</span>
+                                        <span class="task-assignee">
+                                            👤 @(((Dictionary<string, string>)ViewBag.UserLookup)[task.AssignedUserId])
+                                        </span>
                                     }
                                 </div>
                             </div>
