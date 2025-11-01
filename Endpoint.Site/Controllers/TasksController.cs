@@ -744,15 +744,37 @@ namespace Endpoint.Site.Controllers
             }
 
             // 🔄 Retry mechanism برای جلوگیری از race condition در IssueKey
-            int maxRetries = 5;
+            int maxRetries = 10;
             TaskItem newTask = null;
+            string generatedIssueKey = null;
+            
             for (int retry = 0; retry < maxRetries; retry++)
             {
                 try
                 {
-                    // حذف project از change tracker و دریافت مجدد از دیتابیس
-                    _context.Entry(projectForIssueKey).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
-                    projectForIssueKey = await _context.Projects.FindAsync(vm.ProjectId);
+                    // پاک کردن ChangeTracker برای project و newTask
+                    if (projectForIssueKey != null)
+                    {
+                        var entry = _context.Entry(projectForIssueKey);
+                        if (entry.State != Microsoft.EntityFrameworkCore.EntityState.Detached)
+                        {
+                            entry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                        }
+                    }
+                    
+                    if (newTask != null)
+                    {
+                        var taskEntry = _context.Entry(newTask);
+                        if (taskEntry.State != Microsoft.EntityFrameworkCore.EntityState.Detached)
+                        {
+                            taskEntry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                        }
+                    }
+                    
+                    // دریافت مجدد project از دیتابیس برای اطمینان از آخرین LastIssueNumber
+                    projectForIssueKey = await _context.Projects
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(p => p.Id == vm.ProjectId);
                     
                     if (projectForIssueKey == null)
                     {
@@ -761,18 +783,35 @@ namespace Endpoint.Site.Controllers
                         return View(vm);
                     }
                     
-                    // بررسی اینکه آیا IssueKey تولید شده تکراری است یا نه
-                    string generatedIssueKey = projectForIssueKey.GenerateNextIssueKey();
-                    bool keyExists = await _context.TaskItems
-                        .AnyAsync(t => t.IssueKey == generatedIssueKey);
-                    
-                    if (keyExists)
+                    // تولید IssueKey و بررسی تکراری بودن - تا زمانی که IssueKey منحصر به فرد باشد
+                    int keyGenerationAttempts = 0;
+                    do
                     {
-                        // اگر key تکراری بود، LastIssueNumber را افزایش می‌دهیم و دوباره تلاش می‌کنیم
-                        projectForIssueKey.LastIssueNumber++;
                         generatedIssueKey = projectForIssueKey.GenerateNextIssueKey();
-                    }
+                        bool keyExists = await _context.TaskItems
+                            .AnyAsync(t => t.IssueKey == generatedIssueKey);
+                        
+                        if (keyExists)
+                        {
+                            // اگر key تکراری بود، LastIssueNumber را افزایش می‌دهیم
+                            projectForIssueKey.LastIssueNumber++;
+                            keyGenerationAttempts++;
+                            
+                            // جلوگیری از حلقه بی‌نهایت
+                            if (keyGenerationAttempts > 100)
+                            {
+                                ModelState.AddModelError(string.Empty, "خطا در تولید IssueKey منحصر به فرد. لطفاً دوباره تلاش کنید.");
+                                await FillListsForCreate(vm.ProjectId);
+                                return View(vm);
+                            }
+                        }
+                        else
+                        {
+                            break; // IssueKey منحصر به فرد است
+                        }
+                    } while (true);
                     
+                    // ساخت Task جدید با IssueKey منحصر به فرد
                     newTask = new TaskItem
                     {
                         Title = vm.Title,
@@ -792,8 +831,17 @@ namespace Endpoint.Site.Controllers
                         UpdatedAt = DateTime.UtcNow
                     };
 
+                    // اضافه کردن به context
                     _context.TaskItems.Add(newTask);
-                    _context.Projects.Update(projectForIssueKey); // به‌روزرسانی LastIssueNumber
+                    
+                    // به‌روزرسانی LastIssueNumber در project
+                    var projectToUpdate = await _context.Projects.FindAsync(vm.ProjectId);
+                    if (projectToUpdate != null)
+                    {
+                        projectToUpdate.LastIssueNumber = projectForIssueKey.LastIssueNumber;
+                        _context.Projects.Update(projectToUpdate);
+                    }
+                    
                     await _context.SaveChangesAsync();
                     break; // موفقیت‌آمیز بود، خارج شو
                 }
@@ -804,10 +852,34 @@ namespace Endpoint.Site.Controllers
                     // اگر IssueKey تکراری بود، دوباره تلاش کن
                     if (newTask != null)
                     {
-                        _context.Entry(newTask).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                        var taskEntry = _context.Entry(newTask);
+                        if (taskEntry.State != Microsoft.EntityFrameworkCore.EntityState.Detached)
+                        {
+                            taskEntry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                        }
+                        newTask = null; // reset برای retry
                     }
-                    _context.Entry(projectForIssueKey).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
-                    await Task.Delay(50 * (retry + 1)); // delay افزایشی برای retry بعدی
+                    
+                    if (projectForIssueKey != null)
+                    {
+                        var projectEntry = _context.Entry(projectForIssueKey);
+                        if (projectEntry.State != Microsoft.EntityFrameworkCore.EntityState.Detached)
+                        {
+                            projectEntry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                        }
+                    }
+                    
+                    // پاک کردن ChangeTracker برای اطمینان از clean state
+                    var trackedEntries = _context.ChangeTracker.Entries()
+                        .Where(e => (newTask != null && e.Entity == newTask) || (e.Entity is Project p && p.Id == vm.ProjectId))
+                        .ToList();
+                    foreach (var trackedEntry in trackedEntries)
+                    {
+                        trackedEntry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                    }
+                    
+                    // delay افزایشی برای retry بعدی
+                    await Task.Delay(100 * (retry + 1));
                     continue; // دوباره تلاش کن
                 }
             }
