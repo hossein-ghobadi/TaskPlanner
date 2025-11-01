@@ -53,7 +53,7 @@ namespace Endpoint.Site.Controllers
             }
 
             // بررسی وجود کاربر در سیستم
-            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phone);
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Phone == phone);
 
             // ✅ ثبت دعوت (حتی اگر کاربر هنوز در سیستم نباشد)
             var invite = new ProjectInvitation
@@ -125,7 +125,7 @@ namespace Endpoint.Site.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var user = await _userManager.FindByIdAsync(userId);
-            var phone = user?.PhoneNumber;
+            var phone = user?.Phone;
 
             var projectInvitations = await _context.ProjectInvitations
                 .Include(i => i.Project)

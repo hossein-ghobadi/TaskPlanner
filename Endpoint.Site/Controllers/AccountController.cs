@@ -53,7 +53,7 @@ namespace Endpoint.Site.Controllers
                 // جستجوی کاربر با نام کاربری، ایمیل یا شماره تلفن
                 var user = await _userManager.FindByNameAsync(model.UserName) 
                          ?? await _userManager.FindByEmailAsync(model.UserName)
-                         ?? await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == model.UserName || u.Phone == model.UserName);
+                         ?? await _userManager.Users.FirstOrDefaultAsync(u => u.Phone == model.UserName);
 
                 if (user == null)
                 {

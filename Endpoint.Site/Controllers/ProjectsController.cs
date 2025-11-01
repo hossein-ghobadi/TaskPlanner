@@ -108,7 +108,7 @@ namespace Endpoint.Site.Controllers
             {
                 var userInfo = await _userManager.FindByIdAsync(member.UserId);
                 if (userInfo != null)
-                    memberUsernames.Add($"{userInfo.FullName ?? "بدون نام"} ({userInfo.PhoneNumber})");
+                    memberUsernames.Add($"{userInfo.FullName ?? "بدون نام"} ({userInfo.Phone})");
             }
             vm.MemberUserNames = memberUsernames;
 
@@ -361,11 +361,11 @@ namespace Endpoint.Site.Controllers
 
             // 📋 کاربران سیستم
             var allUsers = await _userManager.Users
-                .Where(u => invitedPhones.Contains(u.PhoneNumber) || projectMembers.Contains(u.Id))
+                .Where(u => invitedPhones.Contains(u.Phone) || projectMembers.Contains(u.Id))
                 .Select(u => new
                 {
                     u.Id,
-                    u.PhoneNumber,
+                    u.Phone,
                     DisplayName = !string.IsNullOrEmpty(u.FullName) ? u.FullName : u.UserName
                 })
                 .ToListAsync();
@@ -387,7 +387,7 @@ namespace Endpoint.Site.Controllers
             // 📨 دعوت‌شده‌های همین پروژه
             foreach (var invite in projectInvites)
             {
-                var user = allUsers.FirstOrDefault(u => u.PhoneNumber == invite.InviteePhone);
+                var user = allUsers.FirstOrDefault(u => u.Phone == invite.InviteePhone);
                 string statusText = invite.Status switch
                 {
                     InvitationStatus.Pending => "🕓 در انتظار پذیرش",
@@ -412,7 +412,7 @@ namespace Endpoint.Site.Controllers
             // ➕ کاربرانی که قبلاً توسط من دعوت‌شده‌اند ولی هنوز در این پروژه دعوت نشده‌اند
             foreach (var invite in globalInvites)
             {
-                var user = allUsers.FirstOrDefault(u => u.PhoneNumber == invite.InviteePhone);
+                var user = allUsers.FirstOrDefault(u => u.Phone == invite.InviteePhone);
                 if (user == null || addedKeys.Contains(user.Id)) continue;
 
                 selectableUsers.Add(new
@@ -452,7 +452,7 @@ namespace Endpoint.Site.Controllers
                     .ToListAsync();
 
                 var allowedUsers = _userManager.Users
-                    .Where(u => acceptedInvitePhones.Contains(u.PhoneNumber))
+                    .Where(u => acceptedInvitePhones.Contains(u.Phone))
                     .Select(u => new
                     {
                         Id = u.Id,
@@ -608,9 +608,10 @@ namespace Endpoint.Site.Controllers
                 TempData["InviteWarning"] = "برای این شماره قبلاً دعوت در انتظار ارسال شده است.";
                 return RedirectToAction("Details", new { id = projectId });
             }
+            Console.WriteLine($">>>>>>>>>>>>>>> phone {phone}");
 
             // پیدا کردن کاربر
-            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phone);
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Phone == phone);
             if (user == null)
             {
                 TempData["InviteError"] = "کاربری با این شماره پیدا نشد.";

@@ -64,7 +64,7 @@ namespace Endpoint.Site.Controllers
                 .Where(u => assignedUserIds.Contains(u.Id))
                 .ToDictionaryAsync(
                     u => u.Id,
-                    u => $"{u.FullName ?? u.UserName} ({u.PhoneNumber})"
+                    u => $"{u.FullName ?? u.UserName} ({u.Phone})"
                 );
 
             ViewBag.UserLookup = userLookup;
@@ -460,7 +460,7 @@ namespace Endpoint.Site.Controllers
                 .Where(u => assignedUserIds.Contains(u.Id))
                 .ToDictionaryAsync(
                     u => u.Id,
-                    u => $"{u.FullName ?? u.UserName} ({u.PhoneNumber})"
+                    u => $"{u.FullName ?? u.UserName} ({u.Phone})"
                 );
 
             ViewBag.UserLookup = userLookup;
@@ -512,7 +512,7 @@ namespace Endpoint.Site.Controllers
                         assignedUsers.Add(new
                         {
                             Id = memberId,
-                            Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.PhoneNumber})"
+                            Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.Phone})"
                         });
                     }
                 }
@@ -539,7 +539,7 @@ namespace Endpoint.Site.Controllers
                     assignedUsers.Add(new
                     {
                         Id = relatedUserId,
-                        Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.PhoneNumber})"
+                        Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.Phone})"
                     });
                 }
             }
@@ -551,7 +551,7 @@ namespace Endpoint.Site.Controllers
                 assignedUsers.Add(new
                 {
                     Id = userId,
-                    Name = $"{currentUser.FullName ?? currentUser.UserName} ({currentUser.PhoneNumber})"
+                    Name = $"{currentUser.FullName ?? currentUser.UserName} ({currentUser.Phone})"
                 });
             }
 
@@ -674,7 +674,7 @@ namespace Endpoint.Site.Controllers
             {
                 var userInfo = await _userManager.FindByIdAsync(userId);
                 if (userInfo != null)
-                    users.Add(new { Id = userId, Name = $"{userInfo.FullName} ({userInfo.PhoneNumber})" });
+                    users.Add(new { Id = userId, Name = $"{userInfo.FullName} ({userInfo.Phone})" });
             }
             ViewBag.AssignedUsers = users;
 
