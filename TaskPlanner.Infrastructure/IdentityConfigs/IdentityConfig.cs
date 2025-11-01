@@ -48,6 +48,8 @@ namespace TaskPlanner.Infrastructure.IdentityConfigs
             // Configure application cookie settings with dynamic Domain
             services.ConfigureApplicationCookie(options =>
             {
+                options.LoginPath = "/login";
+                options.AccessDeniedPath = "/account/accessdenied";
                 options.Cookie.Name = ".AspNetCore.Cookies";
                 options.Cookie.HttpOnly = true;
                 options.Cookie.SameSite = SameSiteMode.None; // Required for cross-origin

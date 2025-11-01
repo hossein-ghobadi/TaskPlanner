@@ -30,14 +30,21 @@ builder.Services.AddControllers();
 builder.Services.AddControllersWithViews();
 var configuration = builder.Configuration;
 
+var connection3 = Environment.GetEnvironmentVariable("CONNECTION_MVPTest");
+
+// Register merged context (used by both Identity and business logic) - MUST be before AddIdentityService
+builder.Services.AddDbContext<MVPTestDatabaseContext>(options =>
+{
+    options.UseSqlServer(connection3);//, b => b.MigrationsAssembly("EndPoint.Site")
+});
+
 builder.Services.AddScoped<IMVPTestDatabaseContext, MVPTestDatabaseContext>();
 
 // سرویس آپلود فایل
 builder.Services.AddScoped<TaskPlanner.Application.Services.FileUpload.IFileUploadService, TaskPlanner.Application.Services.FileUpload.FileUploadService>();
 
+// Add Identity services - MUST be after AddDbContext
 builder.Services.AddIdentityService(builder.Configuration);
-
-
 
 builder.Services.AddHttpClient("PriceApi", c =>
 {
@@ -46,17 +53,12 @@ builder.Services.AddHttpClient("PriceApi", c =>
     c.Timeout = TimeSpan.FromSeconds(30);
 });
 
-
-
-
 var allowedOrigin1 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN1");
 var allowedOrigin2 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN2");
 var allowedOrigin3 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN3");
 var allowedOrigin4 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN4");
 var allowedOrigin5 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN5");
 var allowedOrigin6 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN6");
-
-var connection3 = Environment.GetEnvironmentVariable("CONNECTION_MVPTest");
 
 builder.Services.AddCors(options =>
 {
@@ -72,19 +74,6 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddInfrastructureServices(builder.Configuration);
-
-
-// Register merged context (used by both Identity and business logic)
-builder.Services.AddDbContext<MVPTestDatabaseContext>(options =>
-{
-    options.UseSqlServer(connection3);//, b => b.MigrationsAssembly("EndPoint.Site")
-});
-builder.Services.ConfigureApplicationCookie(options =>
-{
-    options.LoginPath = "/login";
-    options.AccessDeniedPath = "/account/accessdenied";
-    options.SlidingExpiration = true;
-});
 
 builder.Services.AddHttpClient();  // برای IHttpClientFactory
 
