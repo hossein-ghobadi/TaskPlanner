@@ -16,12 +16,13 @@ namespace TaskPlanner.Infrastructure.IdentityConfigs
     {
         public static IServiceCollection AddIdentityService(this IServiceCollection services, IConfiguration configuration)
         {
-            var connection1 = Environment.GetEnvironmentVariable("CONNECTION_TABLOYAR");
-
-            services.AddDbContext<IdentityDataBaseContext>(options => options.UseSqlServer(connection1));
+            // Use merged context - connection string is already registered in Program.cs
+            // If you need a separate connection for Identity, uncomment below and update Program.cs
+            // var connection1 = Environment.GetEnvironmentVariable("CONNECTION_TABLOYAR");
+            // services.AddDbContext<MVPTestDatabaseContext>(options => options.UseSqlServer(connection1));
 
             services.AddIdentity<User, IdentityRole>()
-                .AddEntityFrameworkStores<IdentityDataBaseContext>()
+                .AddEntityFrameworkStores<MVPTestDatabaseContext>()
                 .AddDefaultTokenProviders()
                 .AddRoles<IdentityRole>()
                 .AddErrorDescriber<PersianIdentityError>();

@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,12 +9,13 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 using TaskPlanner.Domain.Entities.TaskPlanner;
+using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Application.Interfaces.Contexts;
 
 
 namespace TaskPlanner.Persistence.Contexts
 {
-    public class MVPTestDatabaseContext : DbContext, IMVPTestDatabaseContext
+    public class MVPTestDatabaseContext : IdentityDbContext<User>, IMVPTestDatabaseContext
     {
         public MVPTestDatabaseContext(DbContextOptions<MVPTestDatabaseContext> options) : base(options)
         {
@@ -40,12 +43,14 @@ namespace TaskPlanner.Persistence.Contexts
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-
-
             base.OnModelCreating(modelBuilder);
-           
-       
 
+            // Identity configurations
+            modelBuilder.Entity<IdentityUserLogin<string>>().HasKey(l => new { l.LoginProvider, l.ProviderKey });
+            modelBuilder.Entity<IdentityUserRole<string>>().HasKey(r => new { r.UserId, r.RoleId });
+            modelBuilder.Entity<IdentityUserToken<string>>().HasKey(t => new { t.UserId, t.LoginProvider, t.Name });
+
+            // TaskPlanner configurations
             modelBuilder.Entity<ProjectInvitation>()
                .HasOne(i => i.Project)
                .WithMany()

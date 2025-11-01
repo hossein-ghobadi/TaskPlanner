@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TaskPlanner.Domain.Entities.Users;
 using Endpoint.Site.Models;
 using System.Security.Claims;
@@ -49,13 +50,15 @@ namespace Endpoint.Site.Controllers
                     return View(model);
                 }
 
+                // جستجوی کاربر با نام کاربری، ایمیل یا شماره تلفن
                 var user = await _userManager.FindByNameAsync(model.UserName) 
-                         ?? await _userManager.FindByEmailAsync(model.UserName);
+                         ?? await _userManager.FindByEmailAsync(model.UserName)
+                         ?? await _userManager.Users.FirstOrDefaultAsync(u => u.PhoneNumber == model.UserName || u.Phone == model.UserName);
 
                 if (user == null)
                 {
                     _logger.LogWarning("Login attempt failed - user not found: {UserName}", model.UserName);
-                    ModelState.AddModelError(string.Empty, "نام کاربری یا ایمیل یافت نشد");
+                    ModelState.AddModelError(string.Empty, "نام کاربری، ایمیل یا شماره تلفن یافت نشد");
                     return View(model);
                 }
 

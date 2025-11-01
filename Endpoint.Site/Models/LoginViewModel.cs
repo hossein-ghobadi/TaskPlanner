@@ -4,8 +4,8 @@ namespace Endpoint.Site.Models
 {
     public class LoginViewModel
     {
-        [Required(ErrorMessage = "ایمیل یا نام کاربری الزامی است")]
-        [Display(Name = "ایمیل یا نام کاربری")]
+        [Required(ErrorMessage = "ایمیل، نام کاربری یا شماره تلفن الزامی است")]
+        [Display(Name = "ایمیل، نام کاربری یا شماره تلفن")]
         public string UserName { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "رمز عبور الزامی است")]

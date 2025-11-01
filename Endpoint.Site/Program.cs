@@ -55,8 +55,7 @@ var allowedOrigin3 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN3");
 var allowedOrigin4 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN4");
 var allowedOrigin5 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN5");
 var allowedOrigin6 = Environment.GetEnvironmentVariable("ALLOWED_ORIGIN6");
-var connection1 = Environment.GetEnvironmentVariable("CONNECTION_TABLOYAR");
-var connection2 = Environment.GetEnvironmentVariable("CONNECTION_TABLOYARPRICE");
+
 var connection3 = Environment.GetEnvironmentVariable("CONNECTION_MVPTest");
 
 builder.Services.AddCors(options =>
@@ -75,6 +74,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 
+// Register merged context (used by both Identity and business logic)
 builder.Services.AddDbContext<MVPTestDatabaseContext>(options =>
 {
     options.UseSqlServer(connection3);//, b => b.MigrationsAssembly("EndPoint.Site")

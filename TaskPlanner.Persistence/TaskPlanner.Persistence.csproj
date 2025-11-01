@@ -7,12 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Migrations\MVPTestDatabase\20251027125012_MakeAssignedUserIdNullable.cs" />
-    <Compile Remove="Migrations\MVPTestDatabase\20251027125012_MakeAssignedUserIdNullable.Designer.cs" />
-    <Compile Remove="Migrations\MVPTestDatabase\20251028000000_AddJiraLikeIssueModel.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.1" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.4" />
