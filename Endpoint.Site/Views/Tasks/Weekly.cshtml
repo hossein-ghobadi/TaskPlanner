@@ -1,74 +1,295 @@
 ﻿@using DNTPersianUtils.Core
+@using TaskPlanner.Domain.Entities.TaskPlanner
 @model IEnumerable<TaskPlanner.Domain.Entities.TaskPlanner.TaskItem>
 
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
-    var start = ((DateTime)ViewBag.StartOfWeek).ToShortPersianDateString();
-    var end = ((DateTime)ViewBag.EndOfWeek).ToShortPersianDateString();
+    var startOfWeek = (DateTime)ViewBag.StartOfWeek;
+    var endOfWeek = (DateTime)ViewBag.EndOfWeek;
     int offset = (int)ViewBag.Offset;
+    
+    // روزهای هفته
+    var weekDays = new[] { "شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنج‌شنبه", "جمعه" };
+    var weekDaysShort = new[] { "ش", "ی", "د", "س", "چ", "پ", "ج" };
+    
+    // گروه‌بندی کارها بر اساس تاریخ
+    var tasksByDate = Model
+        .Where(t => t.StartDate >= startOfWeek && t.StartDate <= endOfWeek)
+        .GroupBy(t => t.StartDate.Date)
+        .ToDictionary(g => g.Key, g => g.ToList());
 }
 
-<h2>📅 برنامه هفتگی من</h2>
-
-<p>از تاریخ <b>@start</b> تا <b>@end</b></p>
-
-<div class="mb-3">
-    <a class="btn btn-secondary" asp-action="Weekly" asp-route-offset="@(offset - 1)">هفته قبل</a>
-    <a class="btn btn-secondary" asp-action="Weekly" asp-route-offset="@(offset + 1)">هفته بعد</a>
-    <a class="btn btn-primary" asp-action="Weekly" asp-route-offset="0">این هفته</a>
-</div>
-
-@if (Model.Any())
-{
-    <ul class="list-group">
-        @foreach (var task in Model.Where(t => t.ParentTaskId == null))
-        {
-            <li class="list-group-item">
-                <strong>
-                    <span class="me-2" title="@task.IssueTypeName">@task.IssueTypeIcon</span>
-                    @task.Title
-                    @if (!string.IsNullOrEmpty(task.IssueKey))
-                    {
-                        <small class="text-muted">(@task.IssueKey)</small>
-                    }
-                </strong>
-                <br />
-                <small class="text-muted">
-                    پروژه:
-                    <a 
-                       asp-controller="Projects"
-                       asp-action="Details"
-                       asp-route-id="@task.ProjectId"
-                       class="text-decoration-none text-primary fw-bold">
-                        @task.Project?.Name
-                    </a>: @task.Project?.Name |
-                    تاریخ شروع: @task.StartDate.ToShortPersianDateString() |
-                    مسئول: @(
-                 task.AssignedUserId != null && ViewBag.UserLookup.ContainsKey(task.AssignedUserId)
-                 ? ViewBag.UserLookup[task.AssignedUserId]
-                 : "تعیین نشده"
-                 )
-                </small>
-
-                @if (task.ChildIssues.Any())
-                {
-                    <ul class="mt-2 ms-4">
-                        @foreach (var sub in task.ChildIssues)
-                        {
-                            <li>
-                                <span class="me-1" title="@sub.IssueTypeName">@sub.IssueTypeIcon</span>
-                                @sub.Title
-                                <small class="text-muted">(@sub.StartDate.ToShortPersianDateString())</small>
-                            </li>
-                        }
-                    </ul>
-                }
-            </li>
+<style>
+    .weekly-calendar {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        padding: 20px;
+        margin-top: 20px;
+    }
+    
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .calendar-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #000;
+        margin: 0;
+    }
+    
+    .calendar-date-range {
+        color: #666;
+        font-size: 0.95rem;
+    }
+    
+    .calendar-nav {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn-nav {
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: 1.5px solid #000;
+        background: #fff;
+        color: #000;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+    }
+    
+    .btn-nav:hover {
+        background: #000;
+        color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .btn-nav.active {
+        background: #000;
+        color: #fff;
+    }
+    
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 15px;
+        margin-top: 20px;
+    }
+    
+    .calendar-day {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 12px;
+        min-height: 120px;
+        border: 1.5px solid #e9ecef;
+        transition: all 0.3s ease;
+    }
+    
+    .calendar-day:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+    
+    .calendar-day.today {
+        background: #fff;
+        border-color: #000;
+        border-width: 2px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    }
+    
+    .day-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .day-name {
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: #000;
+        margin-bottom: 4px;
+    }
+    
+    .day-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #000;
+        line-height: 1;
+    }
+    
+    .day-number.today-badge {
+        background: #000;
+        color: #fff;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+    
+    .day-tasks {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .task-card {
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 8px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-right: 3px solid #000;
+    }
+    
+    .task-card:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transform: translateX(-2px);
+    }
+    
+    .task-title {
+        font-weight: 600;
+        color: #000;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .task-key {
+        font-size: 0.7rem;
+        color: #666;
+        font-family: monospace;
+    }
+    
+    .task-meta {
+        font-size: 0.7rem;
+        color: #666;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .task-project {
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .empty-day {
+        color: #adb5bd;
+        font-size: 0.75rem;
+        text-align: center;
+        padding: 10px 0;
+        font-style: italic;
+    }
+    
+    @@media (max-width: 1200px) {
+        .calendar-grid {
+            grid-template-columns: repeat(4, 1fr);
         }
-    </ul>
-}
-else
-{
-    <p class="text-muted">برای این هفته هیچ کاری ثبت نشده است.</p>
-}
+    }
+    
+    @@media (max-width: 768px) {
+        .calendar-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .calendar-header {
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-start;
+        }
+    }
+    
+    @@media (max-width: 576px) {
+        .calendar-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 
+<div class="weekly-calendar">
+    <div class="calendar-header">
+        <div>
+            <h2 class="calendar-title">📅 برنامه هفتگی من</h2>
+            <div class="calendar-date-range">
+                از @startOfWeek.ToShortPersianDateString() تا @endOfWeek.ToShortPersianDateString()
+            </div>
+        </div>
+        <div class="calendar-nav">
+            <a class="btn-nav" asp-action="Weekly" asp-route-offset="@(offset - 1)">← هفته قبل</a>
+            <a class="btn-nav @(offset == 0 ? "active" : "")" asp-action="Weekly" asp-route-offset="0">امروز</a>
+            <a class="btn-nav" asp-action="Weekly" asp-route-offset="@(offset + 1)">هفته بعد →</a>
+        </div>
+    </div>
+    
+    <div class="calendar-grid">
+        @for (int i = 0; i < 7; i++)
+        {
+            var currentDate = startOfWeek.AddDays(i);
+            var isToday = currentDate.Date == DateTime.Today.Date;
+            var dayTasks = tasksByDate.ContainsKey(currentDate.Date) ? tasksByDate[currentDate.Date] : new List<TaskItem>();
+            
+            <div class="calendar-day @(isToday ? "today" : "")">
+                <div class="day-header">
+                    <div class="day-name">@weekDays[i]</div>
+                    <div class="day-number @(isToday ? "today-badge" : "")">
+                        @currentDate.ToShortPersianDateString().Split('/')[2]
+                    </div>
+                </div>
+                
+                <div class="day-tasks">
+                    @if (dayTasks.Any())
+                    {
+                        @foreach (var task in dayTasks.OrderBy(t => t.StartDate))
+                        {
+                            <div class="task-card" onclick="window.location.href='@Url.Action("Details", new { id = task.Id })'">
+                                <div class="task-title">
+                                    <span>@task.IssueTypeIcon</span>
+                                    <span>@task.Title</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(task.IssueKey))
+                                {
+                                    <div class="task-key">@task.IssueKey</div>
+                                }
+                                <div class="task-meta">
+                                    @if (task.Project != null)
+                                    {
+                                        <span class="task-project">@task.Project.Name</span>
+                                    }
+                                    @if (task.AssignedUserId != null && ViewBag.UserLookup != null && ((Dictionary<string, string>)ViewBag.UserLookup).ContainsKey(task.AssignedUserId))
+                                    {
+                                        <span>👤 @(((Dictionary<string, string>)ViewBag.UserLookup)[task.AssignedUserId])</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="empty-day">هیچ کاری نیست</div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
