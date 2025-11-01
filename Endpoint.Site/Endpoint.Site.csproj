@@ -24,9 +24,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Tabloyar.Application\TaskPlanner.Application.csproj" />
-    <ProjectReference Include="..\Tabloyar.Infrastructure\TaskPlanner.Infrastructure.csproj" />
-    <ProjectReference Include="..\Tabloyar.Persistence\TaskPlanner.Persistence.csproj" />
+    <ProjectReference Include="..\TaskPlanner.Application\TaskPlanner.Application.csproj" />
+    <ProjectReference Include="..\TaskPlanner.Infrastructure\TaskPlanner.Infrastructure.csproj" />
+    <ProjectReference Include="..\TaskPlanner.Persistence\TaskPlanner.Persistence.csproj" />
   </ItemGroup>
 
   <ItemGroup>

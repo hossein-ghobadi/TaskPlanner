@@ -17,15 +17,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Presentation", "Presentatio
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{2CA5F729-3FF5-4009-8CEC-8EBD6FD5CA19}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskPlanner.Domain", "Tabloyar.Domain\TaskPlanner.Domain.csproj", "{A7254E3B-2CDA-4712-8C56-F8E2BA7A421E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskPlanner.Domain", "TaskPlanner.Domain\TaskPlanner.Domain.csproj", "{A7254E3B-2CDA-4712-8C56-F8E2BA7A421E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskPlanner.Application", "Tabloyar.Application\TaskPlanner.Application.csproj", "{C5746E0B-C6C4-47A4-995F-4F2F89131C83}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskPlanner.Application", "TaskPlanner.Application\TaskPlanner.Application.csproj", "{C5746E0B-C6C4-47A4-995F-4F2F89131C83}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskPlanner.Infrastructure", "Tabloyar.Infrastructure\TaskPlanner.Infrastructure.csproj", "{72B33710-F366-4857-8983-F6E0337CBA83}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskPlanner.Infrastructure", "TaskPlanner.Infrastructure\TaskPlanner.Infrastructure.csproj", "{72B33710-F366-4857-8983-F6E0337CBA83}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskPlanner.Persistence", "Tabloyar.Persistence\TaskPlanner.Persistence.csproj", "{CB1A5447-CABF-43F0-A1EA-EC6DCCEB8739}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskPlanner.Persistence", "TaskPlanner.Persistence\TaskPlanner.Persistence.csproj", "{CB1A5447-CABF-43F0-A1EA-EC6DCCEB8739}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskPlanner.Common", "Tabloyar.Common\TaskPlanner.Common.csproj", "{1FEABD51-A0E6-448C-BFFD-9793979B7B8F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskPlanner.Common", "TaskPlanner.Common\TaskPlanner.Common.csproj", "{1FEABD51-A0E6-448C-BFFD-9793979B7B8F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Endpoint.Site", "Endpoint.Site\Endpoint.Site.csproj", "{A6217766-032B-4F64-B60F-345686397BDC}"
 EndProject

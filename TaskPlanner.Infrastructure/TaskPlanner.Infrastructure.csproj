@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Tabloyar.Persistence\TaskPlanner.Persistence.csproj" />
+    <ProjectReference Include="..\TaskPlanner.Persistence\TaskPlanner.Persistence.csproj" />
   </ItemGroup>
 
 </Project>
