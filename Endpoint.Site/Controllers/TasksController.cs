@@ -134,28 +134,77 @@ namespace Endpoint.Site.Controllers
                 project = await _context.Projects.FindAsync(parent.ProjectId);
             }
 
-            var subTask = new TaskItem
+            // 🔄 Retry mechanism برای جلوگیری از race condition در IssueKey
+            int maxRetries = 5;
+            TaskItem subTask = null;
+            for (int retry = 0; retry < maxRetries; retry++)
             {
-                Title = title,
-                Description = null,
-                IssueType = IssueType.Subtask, // ✅ به صورت خودکار Subtask
-                IssueKey = project.GenerateNextIssueKey(), // ✅ IssueKey اتوماتیک
-                StartDate = DateTime.Today,
-                DueDate = parent.DueDate, // وراثت DueDate از parent
-                ProjectId = parent.ProjectId,
-                CategoryId = categoryId > 0 ? categoryId : parent.CategoryId, // اگه category نداد، از parent بگیر
-                ParentTaskId = parent.Id,
-                AssignedUserId = parent.AssignedUserId, // وراثت مسئول از parent
-                IsCompleted = false,
-                CreatedByUserId = userId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                try
+                {
+                    // حذف project از change tracker و دریافت مجدد از دیتابیس
+                    _context.Entry(project).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                    project = await _context.Projects.FindAsync(parent.ProjectId);
+                    
+                    if (project == null)
+                    {
+                        return BadRequest("❌ پروژه یافت نشد.");
+                    }
+                    
+                    // بررسی اینکه آیا IssueKey تولید شده تکراری است یا نه
+                    string generatedIssueKey = project.GenerateNextIssueKey();
+                    bool keyExists = await _context.TaskItems
+                        .AnyAsync(t => t.IssueKey == generatedIssueKey);
+                    
+                    if (keyExists)
+                    {
+                        // اگر key تکراری بود، LastIssueNumber را افزایش می‌دهیم و دوباره تلاش می‌کنیم
+                        project.LastIssueNumber++;
+                        generatedIssueKey = project.GenerateNextIssueKey();
+                    }
 
-            _context.TaskItems.Add(subTask);
-            _context.Projects.Update(project); // به‌روزرسانی LastIssueNumber
+                    subTask = new TaskItem
+                    {
+                        Title = title,
+                        Description = null,
+                        IssueType = IssueType.Subtask, // ✅ به صورت خودکار Subtask
+                        IssueKey = generatedIssueKey, // ✅ IssueKey اتوماتیک
+                        StartDate = DateTime.Today,
+                        DueDate = parent.DueDate, // وراثت DueDate از parent
+                        ProjectId = parent.ProjectId,
+                        CategoryId = categoryId > 0 ? categoryId : parent.CategoryId, // اگه category نداد، از parent بگیر
+                        ParentTaskId = parent.Id,
+                        AssignedUserId = parent.AssignedUserId, // وراثت مسئول از parent
+                        IsCompleted = false,
+                        CreatedByUserId = userId,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
 
-            await _context.SaveChangesAsync();
+                    _context.TaskItems.Add(subTask);
+                    _context.Projects.Update(project); // به‌روزرسانی LastIssueNumber
+
+                    await _context.SaveChangesAsync();
+                    break; // موفقیت‌آمیز بود، خارج شو
+                }
+                catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException sqlEx &&
+                                                                               sqlEx.Number == 2601 && // Duplicate key error
+                                                                               retry < maxRetries - 1)
+                {
+                    // اگر IssueKey تکراری بود، دوباره تلاش کن
+                    if (subTask != null)
+                    {
+                        _context.Entry(subTask).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                    }
+                    _context.Entry(project).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                    await Task.Delay(50 * (retry + 1)); // delay افزایشی برای retry بعدی
+                    continue; // دوباره تلاش کن
+                }
+            }
+
+            if (subTask == null)
+            {
+                return BadRequest("❌ خطا در ایجاد Subtask. لطفاً دوباره تلاش کنید.");
+            }
 
             return Ok(new
             {
@@ -262,30 +311,79 @@ namespace Endpoint.Site.Controllers
                 project = await _context.Projects.FindAsync(parent.ProjectId);
             }
 
-            // 🏗️ ساخت Issue جدید
-            var newIssue = new TaskItem
+            // 🔄 Retry mechanism برای جلوگیری از race condition در IssueKey
+            int maxRetries = 5;
+            TaskItem newIssue = null;
+            for (int retry = 0; retry < maxRetries; retry++)
             {
-                Title = title,
-                Description = null,
-                IssueType = finalIssueType,
-                IssueKey = project.GenerateNextIssueKey(),
-                StartDate = DateTime.Today,
-                DueDate = parent.DueDate, // وراثت DueDate از parent
-                ProjectId = parent.ProjectId,
-                CategoryId = categoryId > 0 ? categoryId : parent.CategoryId,
-                ParentTaskId = parent.Id,
-                AssignedUserId = parent.AssignedUserId, // وراثت مسئول از parent
-                StoryPoints = storyPoints, // فقط برای Story/Task
-                IsCompleted = false,
-                CreatedByUserId = userId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                try
+                {
+                    // حذف project از change tracker و دریافت مجدد از دیتابیس
+                    _context.Entry(project).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                    project = await _context.Projects.FindAsync(parent.ProjectId);
+                    
+                    if (project == null)
+                    {
+                        return BadRequest("❌ پروژه یافت نشد.");
+                    }
+                    
+                    // بررسی اینکه آیا IssueKey تولید شده تکراری است یا نه
+                    string generatedIssueKey = project.GenerateNextIssueKey();
+                    bool keyExists = await _context.TaskItems
+                        .AnyAsync(t => t.IssueKey == generatedIssueKey);
+                    
+                    if (keyExists)
+                    {
+                        // اگر key تکراری بود، LastIssueNumber را افزایش می‌دهیم و دوباره تلاش می‌کنیم
+                        project.LastIssueNumber++;
+                        generatedIssueKey = project.GenerateNextIssueKey();
+                    }
 
-            _context.TaskItems.Add(newIssue);
-            _context.Projects.Update(project); // به‌روزرسانی LastIssueNumber
+                    // 🏗️ ساخت Issue جدید
+                    newIssue = new TaskItem
+                    {
+                        Title = title,
+                        Description = null,
+                        IssueType = finalIssueType,
+                        IssueKey = generatedIssueKey,
+                        StartDate = DateTime.Today,
+                        DueDate = parent.DueDate, // وراثت DueDate از parent
+                        ProjectId = parent.ProjectId,
+                        CategoryId = categoryId > 0 ? categoryId : parent.CategoryId,
+                        ParentTaskId = parent.Id,
+                        AssignedUserId = parent.AssignedUserId, // وراثت مسئول از parent
+                        StoryPoints = storyPoints, // فقط برای Story/Task
+                        IsCompleted = false,
+                        CreatedByUserId = userId,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
 
-            await _context.SaveChangesAsync();
+                    _context.TaskItems.Add(newIssue);
+                    _context.Projects.Update(project); // به‌روزرسانی LastIssueNumber
+
+                    await _context.SaveChangesAsync();
+                    break; // موفقیت‌آمیز بود، خارج شو
+                }
+                catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException sqlEx &&
+                                                                               sqlEx.Number == 2601 && // Duplicate key error
+                                                                               retry < maxRetries - 1)
+                {
+                    // اگر IssueKey تکراری بود، دوباره تلاش کن
+                    if (newIssue != null)
+                    {
+                        _context.Entry(newIssue).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                    }
+                    _context.Entry(project).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                    await Task.Delay(50 * (retry + 1)); // delay افزایشی برای retry بعدی
+                    continue; // دوباره تلاش کن
+                }
+            }
+
+            if (newIssue == null)
+            {
+                return BadRequest("❌ خطا در ایجاد Issue. لطفاً دوباره تلاش کنید.");
+            }
 
             return Ok(new
             {
@@ -499,6 +597,22 @@ namespace Endpoint.Site.Controllers
             // 1️⃣ اعضای پذیرفته‌شده پروژه (اگر projectId داده شده باشد)
             if (projectId.HasValue)
             {
+                var project = await _context.Projects.FindAsync(projectId.Value);
+                
+                // اضافه کردن سازنده پروژه
+                if (project != null && !string.IsNullOrEmpty(project.CreatorUserId))
+                {
+                    var creatorInfo = await _userManager.FindByIdAsync(project.CreatorUserId);
+                    if (creatorInfo != null)
+                    {
+                        assignedUsers.Add(new
+                        {
+                            Id = project.CreatorUserId,
+                            Name = $"{creatorInfo.FullName ?? creatorInfo.UserName} ({creatorInfo.Phone}) - سازنده پروژه"
+                        });
+                    }
+                }
+
                 var acceptedProjectMembers = await _context.ProjectInvitations
                     .Where(i => i.ProjectId == projectId.Value && i.Status == InvitationStatus.Accepted)
                     .Select(i => i.InviteeId)
@@ -506,6 +620,9 @@ namespace Endpoint.Site.Controllers
 
                 foreach (var memberId in acceptedProjectMembers)
                 {
+                    // جلوگیری از اضافه کردن مجدد سازنده پروژه
+                    if (project != null && memberId == project.CreatorUserId) continue;
+
                     var userInfo = await _userManager.FindByIdAsync(memberId);
                     if (userInfo != null)
                     {
@@ -587,12 +704,29 @@ namespace Endpoint.Site.Controllers
                 return View(vm);
             }
 
-            // ✅ اگر AssignedUserId ست شده، حتماً عضو پروژه باشد
+            // ✅ اگر AssignedUserId ست شده، حتماً عضو پروژه یا سازنده پروژه باشد
             if (!string.IsNullOrWhiteSpace(vm.AssignedUserId))
             {
+                var project = await _context.Projects.FindAsync(vm.ProjectId);
+                if (project == null)
+                {
+                    ModelState.AddModelError(nameof(vm.ProjectId), "پروژه یافت نشد.");
+                    await FillListsForCreate(vm.ProjectId);
+                    return View(vm);
+                }
+
+                // بررسی اینکه آیا کاربر سازنده پروژه است یا عضو پروژه
+                var isCreator = project.CreatorUserId == vm.AssignedUserId;
                 var isMember = await _context.ProjectMembers
                     .AnyAsync(m => m.ProjectId == vm.ProjectId && m.UserId == vm.AssignedUserId);
-                if (!isMember)
+                
+                // بررسی دعوت‌های پذیرفته‌شده
+                var isAcceptedInvitee = await _context.ProjectInvitations
+                    .AnyAsync(i => i.ProjectId == vm.ProjectId && 
+                                 i.InviteeId == vm.AssignedUserId && 
+                                 i.Status == InvitationStatus.Accepted);
+
+                if (!isCreator && !isMember && !isAcceptedInvitee)
                 {
                     ModelState.AddModelError(nameof(vm.AssignedUserId), "کاربر انتخاب‌شده عضو این پروژه نیست.");
                     await FillListsForCreate(vm.ProjectId);
@@ -600,21 +734,90 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
-            _context.TaskItems.Add(new TaskItem
+            // 📝 دریافت پروژه برای تولید IssueKey
+            var projectForIssueKey = await _context.Projects.FindAsync(vm.ProjectId);
+            if (projectForIssueKey == null)
             {
-                Title = vm.Title,
-                Description = vm.Description,
-                IssueType = vm.IssueType,
-                CategoryId = vm.CategoryId,
-                ParentTaskId = vm.ParentId,
-                ProjectId = vm.ProjectId,
-                StartDate = start.Value,
-                DueDate = due,
-                AssignedUserId = vm.AssignedUserId,
-                StoryPoints = vm.StoryPoints
-            });
+                ModelState.AddModelError(nameof(vm.ProjectId), "پروژه یافت نشد.");
+                await FillListsForCreate(vm.ProjectId);
+                return View(vm);
+            }
 
-            await _context.SaveChangesAsync();
+            // 🔄 Retry mechanism برای جلوگیری از race condition در IssueKey
+            int maxRetries = 5;
+            TaskItem newTask = null;
+            for (int retry = 0; retry < maxRetries; retry++)
+            {
+                try
+                {
+                    // حذف project از change tracker و دریافت مجدد از دیتابیس
+                    _context.Entry(projectForIssueKey).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                    projectForIssueKey = await _context.Projects.FindAsync(vm.ProjectId);
+                    
+                    if (projectForIssueKey == null)
+                    {
+                        ModelState.AddModelError(nameof(vm.ProjectId), "پروژه یافت نشد.");
+                        await FillListsForCreate(vm.ProjectId);
+                        return View(vm);
+                    }
+                    
+                    // بررسی اینکه آیا IssueKey تولید شده تکراری است یا نه
+                    string generatedIssueKey = projectForIssueKey.GenerateNextIssueKey();
+                    bool keyExists = await _context.TaskItems
+                        .AnyAsync(t => t.IssueKey == generatedIssueKey);
+                    
+                    if (keyExists)
+                    {
+                        // اگر key تکراری بود، LastIssueNumber را افزایش می‌دهیم و دوباره تلاش می‌کنیم
+                        projectForIssueKey.LastIssueNumber++;
+                        generatedIssueKey = projectForIssueKey.GenerateNextIssueKey();
+                    }
+                    
+                    newTask = new TaskItem
+                    {
+                        Title = vm.Title,
+                        Description = vm.Description,
+                        IssueType = vm.IssueType,
+                        IssueKey = generatedIssueKey,
+                        CategoryId = vm.CategoryId,
+                        ParentTaskId = vm.ParentId,
+                        ProjectId = vm.ProjectId,
+                        StartDate = start.Value,
+                        DueDate = due,
+                        AssignedUserId = vm.AssignedUserId,
+                        StoryPoints = vm.StoryPoints,
+                        IsCompleted = false,
+                        CreatedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier),
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    _context.TaskItems.Add(newTask);
+                    _context.Projects.Update(projectForIssueKey); // به‌روزرسانی LastIssueNumber
+                    await _context.SaveChangesAsync();
+                    break; // موفقیت‌آمیز بود، خارج شو
+                }
+                catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException sqlEx && 
+                                                   sqlEx.Number == 2601 && // Duplicate key error
+                                                   retry < maxRetries - 1)
+                {
+                    // اگر IssueKey تکراری بود، دوباره تلاش کن
+                    if (newTask != null)
+                    {
+                        _context.Entry(newTask).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                    }
+                    _context.Entry(projectForIssueKey).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                    await Task.Delay(50 * (retry + 1)); // delay افزایشی برای retry بعدی
+                    continue; // دوباره تلاش کن
+                }
+            }
+
+            if (newTask == null)
+            {
+                ModelState.AddModelError(string.Empty, "خطا در ایجاد تسک. لطفاً دوباره تلاش کنید.");
+                await FillListsForCreate(vm.ProjectId);
+                return View(vm);
+            }
             return RedirectToAction(nameof(Index));
         }
 
@@ -664,18 +867,37 @@ namespace Endpoint.Site.Controllers
             ViewBag.Projects = _context.Projects.ToList();
 
             // 🔹 گرفتن کاربران تاییدشده پروژه برای انتخاب "مسئول تسک"
+            var users = new List<dynamic>();
+            
+            // اضافه کردن سازنده پروژه
+            if (task.Project != null && !string.IsNullOrEmpty(task.Project.CreatorUserId))
+            {
+                var creatorInfo = await _userManager.FindByIdAsync(task.Project.CreatorUserId);
+                if (creatorInfo != null)
+                {
+                    users.Add(new 
+                    { 
+                        Id = task.Project.CreatorUserId, 
+                        Name = $"{creatorInfo.FullName ?? creatorInfo.UserName} ({creatorInfo.Phone}) - سازنده پروژه" 
+                    });
+                }
+            }
+
             var acceptedMembers = await _context.ProjectInvitations
                 .Where(i => i.ProjectId == task.ProjectId && i.Status == InvitationStatus.Accepted)
                 .Select(i => i.InviteeId)
                 .ToListAsync();
 
-            var users = new List<dynamic>();
             foreach (var userId in acceptedMembers)
             {
+                // جلوگیری از اضافه کردن مجدد سازنده پروژه
+                if (task.Project != null && userId == task.Project.CreatorUserId) continue;
+
                 var userInfo = await _userManager.FindByIdAsync(userId);
                 if (userInfo != null)
-                    users.Add(new { Id = userId, Name = $"{userInfo.FullName} ({userInfo.Phone})" });
+                    users.Add(new { Id = userId, Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.Phone})" });
             }
+            
             ViewBag.AssignedUsers = users;
 
             return View(vm);
@@ -693,8 +915,44 @@ namespace Endpoint.Site.Controllers
                 return View(vm);
             }
 
-            var task = await _context.TaskItems.FindAsync(vm.Id);
+            var task = await _context.TaskItems
+                .Include(t => t.Project)
+                .FirstOrDefaultAsync(t => t.Id == vm.Id);
             if (task == null) return NotFound();
+
+            // ✅ اگر AssignedUserId ست شده، حتماً عضو پروژه یا سازنده پروژه باشد
+            if (!string.IsNullOrWhiteSpace(vm.AssignedUserId))
+            {
+                var project = task.Project ?? await _context.Projects.FindAsync(vm.ProjectId);
+                if (project == null)
+                {
+                    ModelState.AddModelError(nameof(vm.ProjectId), "پروژه یافت نشد.");
+                    ViewBag.Categories = _context.TaskCategories.ToList();
+                    ViewBag.Tasks = _context.TaskItems.Where(t => t.Id != vm.Id).ToList();
+                    ViewBag.Projects = _context.Projects.ToList();
+                    return View(vm);
+                }
+
+                // بررسی اینکه آیا کاربر سازنده پروژه است یا عضو پروژه
+                var isCreator = project.CreatorUserId == vm.AssignedUserId;
+                var isMember = await _context.ProjectMembers
+                    .AnyAsync(m => m.ProjectId == vm.ProjectId && m.UserId == vm.AssignedUserId);
+                
+                // بررسی دعوت‌های پذیرفته‌شده
+                var isAcceptedInvitee = await _context.ProjectInvitations
+                    .AnyAsync(i => i.ProjectId == vm.ProjectId && 
+                                 i.InviteeId == vm.AssignedUserId && 
+                                 i.Status == InvitationStatus.Accepted);
+
+                if (!isCreator && !isMember && !isAcceptedInvitee)
+                {
+                    ModelState.AddModelError(nameof(vm.AssignedUserId), "کاربر انتخاب‌شده عضو این پروژه نیست.");
+                    ViewBag.Categories = _context.TaskCategories.ToList();
+                    ViewBag.Tasks = _context.TaskItems.Where(t => t.Id != vm.Id).ToList();
+                    ViewBag.Projects = _context.Projects.ToList();
+                    return View(vm);
+                }
+            }
 
             task.Title = vm.Title;
             task.Description = vm.Description;
