@@ -39,18 +39,16 @@
 
     <div class="mb-3">
         <label asp-for="StartDate" class="form-label">تاریخ شروع <span class="text-danger">*</span></label>
-        <input type="text" id="StartDateDisplay" class="form-control" placeholder="تاریخ شروع را انتخاب کنید" required />
-        <input type="hidden" asp-for="StartDate" name="StartDate" id="StartDateHidden" value="@Model.StartDate.ToString("yyyy-MM-dd")" />
+        <input type="text" id="StartDateDisplay" class="form-control" autocomplete="off" />
+        <input type="hidden" asp-for="StartDate" id="StartDate" />
         <span asp-validation-for="StartDate" class="text-danger"></span>
-        <small class="text-muted d-block">لطفاً تاریخ شروع را انتخاب کنید</small>
     </div>
 
     <div class="mb-3">
         <label asp-for="EndDate" class="form-label">تاریخ پایان <span class="text-danger">*</span></label>
-        <input type="text" id="EndDateDisplay" class="form-control" placeholder="تاریخ پایان را انتخاب کنید" required />
-        <input type="hidden" asp-for="EndDate" name="EndDate" id="EndDateHidden" value="@Model.EndDate.ToString("yyyy-MM-dd")" />
+        <input type="text" id="EndDateDisplay" class="form-control" autocomplete="off" />
+        <input type="hidden" asp-for="EndDate" id="EndDate" />
         <span asp-validation-for="EndDate" class="text-danger"></span>
-        <small class="text-muted d-block">لطفاً تاریخ پایان را انتخاب کنید</small>
     </div>
 
     <div class="mb-3">
@@ -66,69 +64,21 @@
 </form>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    
     <script>
-        $(document).ready(function() {
-            // تقویم فارسی برای تاریخ شروع
-            $('#StartDateDisplay').persianDatepicker({
-                format: 'YYYY/MM/DD',
-                altField: '#StartDateHidden',
-                altFormat: 'YYYY-MM-DD',
-                observer: true,
-                timePicker: {
-                    enabled: false
-                },
-                autoClose: true,
-                initialValue: true,
-                initialValueType: 'persian',
-                onSelect: function(unixDate) {
-                    // Ensure hidden field is updated
-                    const selectedDate = $(this).val();
-                    if (selectedDate) {
-                        $('#StartDateHidden').val(selectedDate);
-                    }
-                }
-            });
+        // تاریخ شروع
+        $("#StartDateDisplay").persianDatepicker({
+            format: 'YYYY/MM/DD',
+            autoClose: true,
+            altField: '#StartDate',
+            altFormat: 'YYYY-MM-DD'
+        });
 
-            // تقویم فارسی برای تاریخ پایان
-            $('#EndDateDisplay').persianDatepicker({
-                format: 'YYYY/MM/DD',
-                altField: '#EndDateHidden',
-                altFormat: 'YYYY-MM-DD',
-                observer: true,
-                timePicker: {
-                    enabled: false
-                },
-                autoClose: true,
-                initialValue: true,
-                initialValueType: 'persian',
-                onSelect: function(unixDate) {
-                    // Ensure hidden field is updated
-                    const selectedDate = $(this).val();
-                    if (selectedDate) {
-                        $('#EndDateHidden').val(selectedDate);
-                    }
-                }
-            });
-
-            // Validate before form submission
-            $('form').on('submit', function(e) {
-                const startDate = $('#StartDateHidden').val();
-                const endDate = $('#EndDateHidden').val();
-                
-                if (!startDate || startDate.trim() === '') {
-                    alert('لطفاً تاریخ شروع را انتخاب کنید.');
-                    e.preventDefault();
-                    return false;
-                }
-                
-                if (!endDate || endDate.trim() === '') {
-                    alert('لطفاً تاریخ پایان را انتخاب کنید.');
-                    e.preventDefault();
-                    return false;
-                }
-            });
+        // تاریخ پایان
+        $("#EndDateDisplay").persianDatepicker({
+            format: 'YYYY/MM/DD',
+            autoClose: true,
+            altField: '#EndDate',
+            altFormat: 'YYYY-MM-DD'
         });
     </script>
 }
