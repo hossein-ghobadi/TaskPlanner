@@ -162,41 +162,55 @@ namespace TaskPlanner.Application.Services.ProjectService
 
             // حذف به ترتیب صحیح (از وابسته‌ترین به مستقل‌ترین)
             
-            // 1) حذف IssueStatusHistories (وابسته به TaskItems)
+            // 1) حذف SprintTasks (وابسته به TaskItems) - باید قبل از TaskItems حذف شوند
+            var taskIds = await _context.TaskItems
+                .Where(t => t.ProjectId == projectId)
+                .Select(t => t.Id)
+                .ToListAsync();
+            
+            if (taskIds.Any())
+            {
+                var sprintTasks = await _context.SprintTasks
+                    .Where(st => taskIds.Contains(st.TaskId))
+                    .ToListAsync();
+                _context.SprintTasks.RemoveRange(sprintTasks);
+            }
+
+            // 2) حذف IssueStatusHistories (وابسته به TaskItems)
             var histories = await _context.IssueStatusHistories
                 .Where(h => _context.TaskItems.Any(t => t.Id == h.TaskId && t.ProjectId == projectId))
                 .ToListAsync();
             _context.IssueStatusHistories.RemoveRange(histories);
 
-            // 2) حذف WorkflowTransitions (وابسته به WorkflowStatuses)
+            // 3) حذف WorkflowTransitions (وابسته به WorkflowStatuses)
             var transitions = _context.WorkflowTransitions.Where(t => t.ProjectId == projectId);
             _context.WorkflowTransitions.RemoveRange(transitions);
 
-            // 3) حذف WorkflowStatuses (وابسته به Project)
+            // 4) حذف WorkflowStatuses (وابسته به Project)
             var statuses = _context.WorkflowStatuses.Where(s => s.ProjectId == projectId);
             _context.WorkflowStatuses.RemoveRange(statuses);
 
-            // 4) حذف TaskItems (وابسته به Project)
+            // 5) حذف TaskItems (وابسته به Project)
             var tasks = _context.TaskItems.Where(t => t.ProjectId == projectId);
             _context.TaskItems.RemoveRange(tasks);
 
-            // 5) حذف ProjectMembers (وابسته به Project)
+            // 6) حذف ProjectMembers (وابسته به Project)
             var members = _context.ProjectMembers.Where(m => m.ProjectId == projectId);
             _context.ProjectMembers.RemoveRange(members);
 
-            // 6) حذف ProjectInvitations (وابسته به Project)
+            // 7) حذف ProjectInvitations (وابسته به Project)
             var invitations = _context.ProjectInvitations.Where(i => i.ProjectId == projectId);
             _context.ProjectInvitations.RemoveRange(invitations);
 
-            // 7) حذف ProjectNotes (وابسته به Project)
+            // 8) حذف ProjectNotes (وابسته به Project)
             var notes = _context.ProjectNotes.Where(n => n.ProjectId == projectId);
             _context.ProjectNotes.RemoveRange(notes);
 
-            // 8) حذف Sprints (وابسته به Project)
+            // 9) حذف Sprints (وابسته به Project)
             var sprints = _context.Sprints.Where(s => s.ProjectId == projectId);
             _context.Sprints.RemoveRange(sprints);
 
-            // 9) حذف Project (آخرین)
+            // 10) حذف Project (آخرین)
             _context.Projects.Remove(project);
             
             await _context.SaveChangesAsync();

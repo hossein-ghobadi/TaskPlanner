@@ -9,6 +9,7 @@ using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Persistence.Contexts;
 using TaskPlanner.Application.Services.ProjectService;
+using Microsoft.Data.SqlClient;
 
 namespace Endpoint.Site.Controllers
 {
@@ -295,11 +296,30 @@ namespace Endpoint.Site.Controllers
             try
             {
                 await _projectCommandService.DeleteProjectAsync(id);
+                TempData["Success"] = "پروژه با موفقیت حذف شد.";
                 return RedirectToAction(nameof(Index));
             }
             catch (InvalidOperationException ex)
             {
                 TempData["Error"] = ex.Message;
+                return RedirectToAction(nameof(Index));
+            }
+            catch (DbUpdateException ex)
+            {
+                // بررسی نوع خطای Foreign Key
+                if (ex.InnerException is SqlException sqlEx && sqlEx.Number == 547)
+                {
+                    TempData["Error"] = "نمی‌توان پروژه را حذف کرد زیرا دارای وابستگی‌های مهمی است. لطفاً ابتدا تمام کارهای مرتبط با اسپرینت‌ها را بررسی کنید.";
+                }
+                else
+                {
+                    TempData["Error"] = "خطا در حذف پروژه. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.";
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = "خطای غیرمنتظره‌ای رخ داد. لطفاً دوباره تلاش کنید.";
                 return RedirectToAction(nameof(Index));
             }
         }
@@ -313,11 +333,30 @@ namespace Endpoint.Site.Controllers
             try
             {
                 await _projectCommandService.DeleteProjectAsync(id);
+                TempData["Success"] = "پروژه با موفقیت حذف شد.";
                 return RedirectToAction(nameof(Index));
             }
             catch (InvalidOperationException ex)
             {
                 TempData["Error"] = ex.Message;
+                return RedirectToAction(nameof(Index));
+            }
+            catch (DbUpdateException ex)
+            {
+                // بررسی نوع خطای Foreign Key
+                if (ex.InnerException is SqlException sqlEx && sqlEx.Number == 547)
+                {
+                    TempData["Error"] = "نمی‌توان پروژه را حذف کرد زیرا دارای وابستگی‌های مهمی است. لطفاً ابتدا تمام کارهای مرتبط با اسپرینت‌ها را بررسی کنید.";
+                }
+                else
+                {
+                    TempData["Error"] = "خطا در حذف پروژه. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.";
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = "خطای غیرمنتظره‌ای رخ داد. لطفاً دوباره تلاش کنید.";
                 return RedirectToAction(nameof(Index));
             }
         }
