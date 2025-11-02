@@ -161,11 +161,19 @@
                     <td>
                         <div class="d-flex align-items-start justify-content-between">
                             <div>
-                                <span class="me-2" title="@task.IssueTypeName">@task.IssueTypeIcon</span>
-                                @task.Title
-                                @if (!string.IsNullOrEmpty(task.IssueKey))
+                                <div>
+                                    <span class="me-2" title="@task.IssueTypeName">@task.IssueTypeIcon</span>
+                                    @task.Title
+                                    @if (!string.IsNullOrEmpty(task.IssueKey))
+                                    {
+                                        <small class="text-muted">(@task.IssueKey)</small>
+                                    }
+                                </div>
+                                @if (task.AssignedUser != null)
                                 {
-                                    <small class="text-muted">(@task.IssueKey)</small>
+                                    <div class="mt-1">
+                                        <small class="text-muted">👤 @(string.IsNullOrEmpty(task.AssignedUser.FullName) ? task.AssignedUser.UserName : task.AssignedUser.FullName)</small>
+                                    </div>
                                 }
                             </div>
                             @if (task.ChildIssues != null && task.ChildIssues.Any())
@@ -184,7 +192,14 @@
                                         <li>
                                             <span class="me-1" title="@sub.IssueTypeName">@sub.IssueTypeIcon</span>
                                             <span>@sub.Title</span>
-                                            <small class="text-muted">— @(sub.AssignedUserName ?? "نامشخص")</small>
+                                            @if (sub.AssignedUser != null)
+                                            {
+                                                <small class="text-muted">— @(string.IsNullOrEmpty(sub.AssignedUser.FullName) ? sub.AssignedUser.UserName : sub.AssignedUser.FullName)</small>
+                                            }
+                                            else
+                                            {
+                                                <small class="text-muted">— نامشخص</small>
+                                            }
                                         </li>
                                     }
                                 </ul>
