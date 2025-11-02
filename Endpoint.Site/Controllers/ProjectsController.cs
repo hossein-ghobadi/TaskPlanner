@@ -8,7 +8,6 @@ using System.Security.Claims;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Persistence.Contexts;
-using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Application.Services.ProjectService;
 
 namespace Endpoint.Site.Controllers
@@ -33,16 +32,51 @@ namespace Endpoint.Site.Controllers
             _projectQueryService = projectQueryService;
             _projectCommandService = projectCommandService;
         }
-        
+        // 📌 لیست پروژه‌ها
+        //public async Task<IActionResult> Index()
+        //{
+        //    var projects = await _context.Projects.Where(p=>p.)
+        //        .Include(p => p.Tasks)
+        //        .ToListAsync();
+        //    return View(projects);
+        //}
+
+        //📌 جزئیات پروژه
+        //public async Task<IActionResult> Details(int id)
+        //{
+        //    var project = await _context.Projects
+        //        .Include(p => p.Tasks)
+        //        .Include(p => p.Members)
+        //        .FirstOrDefaultAsync(p => p.Id == id);
+
+        //    if (project == null) return NotFound();
+        //    var creator = await _userManager.FindByIdAsync(project.CreatorUserId);
+        //    var vm = new ProjectDetailsVm
+        //    {
+        //        Id = project.Id,
+        //        Name = project.Name,
+        //        Description = project.Description,
+        //        CreatorUserName = creator != null ? creator.FullName : "", // موقتی
+        //        Tasks = project.Tasks.ToList()
+        //    };
+
+        //    // 👇 اینجا باید اضافه بشه
+        //    var memberUsernames = new List<string>();
+        //    foreach (var member in project.Members)
+        //    {
+        //        var userInfo = await _userManager.FindByIdAsync(member.UserId);
+        //        memberUsernames.Add($"{userInfo?.FullName ?? "ناشناس"} ({userInfo?.PhoneNumber})");
+        //    }
+        //    vm.MemberUserNames = memberUsernames;
+
+        //    return View(vm);
+        //}
 
 
         public async Task<IActionResult> Index()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            // استفاده از سرویس Query
             var projects = await _projectQueryService.GetUserProjectsAsync(userId);
-
             return View(projects);
         }
         [HttpGet("{id}")]
@@ -50,10 +84,8 @@ namespace Endpoint.Site.Controllers
         {
             try
             {
-                // استفاده از سرویس Query - دریافت DTO
                 var dto = await _projectQueryService.GetProjectDetailsDtoAsync(id);
                 
-                // تبدیل DTO به ViewModel
                 var vm = new ProjectDetailsVm
                 {
                     Id = dto.Id,
@@ -92,7 +124,6 @@ namespace Endpoint.Site.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // استفاده از سرویس Query
             var availableUsers = await _projectQueryService.GetAvailableUsersForCreateAsync(userId);
             var pendingInvites = await _projectQueryService.GetPendingInvitationsAsync(userId);
 
@@ -130,7 +161,6 @@ namespace Endpoint.Site.Controllers
                 return View(vm);
             }
 
-            // گرفتن کاربر لاگین‌شده
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser == null)
             {
@@ -140,7 +170,6 @@ namespace Endpoint.Site.Controllers
 
             try
             {
-                // تبدیل ViewModel به DTO
                 var dto = new CreateProjectDto
                 {
                     Name = vm.Name,
@@ -148,10 +177,8 @@ namespace Endpoint.Site.Controllers
                     SelectedUserIds = vm.SelectedUserIds ?? new List<string>()
                 };
 
-                // استفاده از Command Service
                 var projectId = await _projectCommandService.CreateProjectAsync(dto, currentUser.Id);
 
-                // دریافت تعداد دعوت‌های متصل شده
                 var pendingInvitations = await _context.ProjectInvitations
                     .CountAsync(i => i.InviterId == currentUser.Id && i.ProjectId == projectId && i.Status == InvitationStatus.Pending);
 
@@ -180,7 +207,6 @@ namespace Endpoint.Site.Controllers
 
             try
             {
-                // استفاده از Query Service
                 var project = await _projectQueryService.GetProjectWithDetailsAsync(id);
                 if (project == null)
                     return NotFound();
@@ -228,7 +254,6 @@ namespace Endpoint.Site.Controllers
 
             try
             {
-                // تبدیل ViewModel به DTO
                 var dto = new UpdateProjectDto
                 {
                     Id = vm.Id,
@@ -237,7 +262,6 @@ namespace Endpoint.Site.Controllers
                     SelectedUserIds = vm.SelectedUserIds ?? new List<string>()
                 };
 
-                // استفاده از Command Service
                 await _projectCommandService.UpdateProjectAsync(dto);
                 TempData["Success"] = "تغییرات پروژه با موفقیت ذخیره شد ✅";
 
