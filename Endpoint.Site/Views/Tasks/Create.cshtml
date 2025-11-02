@@ -165,7 +165,9 @@
 
             // Parent Issue: 
             // - برای Subtask الزامی است (باید Task, Story یا Bug باشد)
-            // - برای Story, Task, Bug اختیاری (می‌تونن زیر Epic باشن) - فقط Epic قابل انتخاب است
+            // - برای Story اختیاری (فقط می‌تونه زیر Epic باشه)
+            // - برای Task اختیاری (فقط می‌تونه زیر Epic باشه)
+            // - برای Bug اختیاری (فقط می‌تونه زیر Epic باشه)
             // - برای Epic غیرفعال (نمی‌تونه parent داشته باشه)
             if (selectedType === IssueTypes.Subtask) {
                 $('#parentIssueDiv').show();

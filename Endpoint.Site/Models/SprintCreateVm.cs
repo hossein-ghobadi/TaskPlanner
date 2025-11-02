@@ -17,11 +17,11 @@ namespace Endpoint.Site.Models
 
         [Required(ErrorMessage = "تاریخ شروع الزامی است")]
         [DataType(DataType.Date)]
-        public DateTime StartDate { get; set; }
+        public DateTime StartDate { get; set; } = DateTime.Today;
 
         [Required(ErrorMessage = "تاریخ پایان الزامی است")]
         [DataType(DataType.Date)]
-        public DateTime EndDate { get; set; }
+        public DateTime EndDate { get; set; } = DateTime.Today.AddDays(14);
 
         [Required]
         public int ProjectId { get; set; }

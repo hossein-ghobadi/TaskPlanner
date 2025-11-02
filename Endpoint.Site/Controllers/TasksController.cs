@@ -734,54 +734,6 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
-            // 🔍 اعتبارسنجی Parent Issue
-            if (vm.ParentId.HasValue)
-            {
-                var parentTask = await _context.TaskItems
-                    .FirstOrDefaultAsync(t => t.Id == vm.ParentId.Value);
-
-                if (parentTask == null)
-                {
-                    ModelState.AddModelError(nameof(vm.ParentId), "Parent Issue یافت نشد.");
-                    await FillListsForCreate(vm.ProjectId);
-                    return View(vm);
-                }
-
-                // Story, Task, Bug فقط می‌توانند زیر Epic باشند
-                if ((vm.IssueType == IssueType.Story || 
-                     vm.IssueType == IssueType.Task || 
-                     vm.IssueType == IssueType.Bug) && 
-                    parentTask.IssueType != IssueType.Epic)
-                {
-                    var issueTypeName = vm.IssueType == IssueType.Story ? "Story" : 
-                                       vm.IssueType == IssueType.Task ? "Task" : "Bug";
-                    ModelState.AddModelError(nameof(vm.ParentId), $"{issueTypeName} فقط می‌تواند زیر Epic قرار بگیرد. لطفاً یک Epic را به عنوان Parent انتخاب کنید.");
-                    await FillListsForCreate(vm.ProjectId);
-                    return View(vm);
-                }
-
-                // Subtask فقط می‌تواند زیر Task, Story, یا Bug باشد
-                if (vm.IssueType == IssueType.Subtask)
-                {
-                    if (parentTask.IssueType != IssueType.Task &&
-                        parentTask.IssueType != IssueType.Story &&
-                        parentTask.IssueType != IssueType.Bug)
-                    {
-                        ModelState.AddModelError(nameof(vm.ParentId), "Subtask فقط می‌تواند زیر Task، Story یا Bug قرار بگیرد.");
-                        await FillListsForCreate(vm.ProjectId);
-                        return View(vm);
-                    }
-                }
-
-                // Epic نمی‌تواند parent داشته باشد
-                if (vm.IssueType == IssueType.Epic)
-                {
-                    ModelState.AddModelError(nameof(vm.ParentId), "Epic نمی‌تواند Parent داشته باشد.");
-                    await FillListsForCreate(vm.ProjectId);
-                    return View(vm);
-                }
-            }
-
             // 📝 دریافت پروژه برای تولید IssueKey
             var projectForIssueKey = await _context.Projects.FindAsync(vm.ProjectId);
             if (projectForIssueKey == null)
@@ -966,6 +918,9 @@ namespace Endpoint.Site.Controllers
 
             if (task == null) return NotFound();
 
+            var pc = new System.Globalization.PersianCalendar();
+            string ToJalali(DateTime d) => $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
+
             var vm = new TaskEditVm
             {
                 Id = task.Id,
@@ -974,8 +929,8 @@ namespace Endpoint.Site.Controllers
                 CategoryId = task.CategoryId,
                 ParentId = task.ParentTaskId,
                 ProjectId = task.ProjectId,
-                StartDateSh = task.StartDate.ToShortPersianDateString(),
-                DueDateSh = task.DueDate.HasValue ? task.DueDate.Value.ToShortPersianDateString() : null,
+                StartDateSh = ToJalali(task.StartDate),
+                DueDateSh = task.DueDate.HasValue ? ToJalali(task.DueDate.Value) : null,
                 AssignedUserId = task.AssignedUserId,
                 IssueType = task.IssueType
             };
@@ -1037,62 +992,6 @@ namespace Endpoint.Site.Controllers
                 .Include(t => t.Project)
                 .FirstOrDefaultAsync(t => t.Id == vm.Id);
             if (task == null) return NotFound();
-
-            // 🔍 اعتبارسنجی Parent Issue
-            if (vm.ParentId.HasValue)
-            {
-                var parentTask = await _context.TaskItems
-                    .FirstOrDefaultAsync(t => t.Id == vm.ParentId.Value);
-
-                if (parentTask == null)
-                {
-                    ModelState.AddModelError(nameof(vm.ParentId), "Parent Issue یافت نشد.");
-                    ViewBag.Categories = _context.TaskCategories.ToList();
-                    ViewBag.Tasks = _context.TaskItems.Where(t => t.Id != vm.Id).ToList();
-                    ViewBag.Projects = _context.Projects.ToList();
-                    return View(vm);
-                }
-
-                // Story, Task, Bug فقط می‌توانند زیر Epic باشند
-                if ((task.IssueType == IssueType.Story || 
-                     task.IssueType == IssueType.Task || 
-                     task.IssueType == IssueType.Bug) && 
-                    parentTask.IssueType != IssueType.Epic)
-                {
-                    var issueTypeName = task.IssueType == IssueType.Story ? "Story" : 
-                                       task.IssueType == IssueType.Task ? "Task" : "Bug";
-                    ModelState.AddModelError(nameof(vm.ParentId), $"{issueTypeName} فقط می‌تواند زیر Epic قرار بگیرد. لطفاً یک Epic را به عنوان Parent انتخاب کنید.");
-                    ViewBag.Categories = _context.TaskCategories.ToList();
-                    ViewBag.Tasks = _context.TaskItems.Where(t => t.Id != vm.Id).ToList();
-                    ViewBag.Projects = _context.Projects.ToList();
-                    return View(vm);
-                }
-
-                // Subtask فقط می‌تواند زیر Task, Story, یا Bug باشد
-                if (task.IssueType == IssueType.Subtask)
-                {
-                    if (parentTask.IssueType != IssueType.Task &&
-                        parentTask.IssueType != IssueType.Story &&
-                        parentTask.IssueType != IssueType.Bug)
-                    {
-                        ModelState.AddModelError(nameof(vm.ParentId), "Subtask فقط می‌تواند زیر Task، Story یا Bug قرار بگیرد.");
-                        ViewBag.Categories = _context.TaskCategories.ToList();
-                        ViewBag.Tasks = _context.TaskItems.Where(t => t.Id != vm.Id).ToList();
-                        ViewBag.Projects = _context.Projects.ToList();
-                        return View(vm);
-                    }
-                }
-
-                // Epic نمی‌تواند parent داشته باشد
-                if (task.IssueType == IssueType.Epic)
-                {
-                    ModelState.AddModelError(nameof(vm.ParentId), "Epic نمی‌تواند Parent داشته باشد.");
-                    ViewBag.Categories = _context.TaskCategories.ToList();
-                    ViewBag.Tasks = _context.TaskItems.Where(t => t.Id != vm.Id).ToList();
-                    ViewBag.Projects = _context.Projects.ToList();
-                    return View(vm);
-                }
-            }
 
             // ✅ اگر AssignedUserId ست شده، حتماً عضو پروژه یا سازنده پروژه باشد
             if (!string.IsNullOrWhiteSpace(vm.AssignedUserId))

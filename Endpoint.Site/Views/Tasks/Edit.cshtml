@@ -102,13 +102,9 @@
             const parentSelect = $('#parentIssueSelect');
             const currentValue = parentSelect.val();
 
-            if (currentIssueType === IssueTypes.Story || 
-                currentIssueType === IssueTypes.Task || 
-                currentIssueType === IssueTypes.Bug) {
-                // Story, Task, Bug می‌توانند فقط زیر Epic قرار بگیرند
-                const issueTypeName = currentIssueType === IssueTypes.Story ? 'Story' : 
-                                     currentIssueType === IssueTypes.Task ? 'Task' : 'Bug';
-                $('#parentHelp').text(`${issueTypeName} می‌تواند زیر Epic قرار بگیرد (اختیاری) - فقط Epic قابل انتخاب است`);
+            if (currentIssueType === IssueTypes.Story) {
+                // Story می‌تواند فقط زیر Epic قرار بگیرد
+                $('#parentHelp').text('Story می‌تواند زیر Epic قرار بگیرد (اختیاری) - فقط Epic قابل انتخاب است');
                 
                 parentSelect.find('option').each(function() {
                     const $option = $(this);
@@ -122,7 +118,7 @@
                     } else {
                         // سایر انواع (Task, Story, Bug, Subtask) مخفی شوند
                         $option.hide();
-                        // اگر مقدار فعلی یکی از اینها باشد و نوع Issue Story/Task/Bug است، آن را پاک کن
+                        // اگر مقدار فعلی یکی از اینها باشد و نوع Issue Story است، آن را پاک کن
                         if ($option.val() === currentValue && issueType !== IssueTypes.Epic) {
                             parentSelect.val('');
                         }
@@ -154,7 +150,7 @@
                     }
                 });
             } else {
-                // Epic نمی‌تواند parent داشته باشد
+                // Epic, Task, Bug نمی‌توانند parent داشته باشند
                 $('#parentHelp').text('');
                 parentSelect.find('option').each(function() {
                     const $option = $(this);
@@ -179,19 +175,25 @@
             // مقداردهی دیت‌پیکرها پس از لود کامل DOM
             $("#StartDateDisplay").persianDatepicker({
                 format: 'YYYY/MM/DD',
-                initialValue: false,
+                initialValue: true,
+                initialValueType: 'persian',
                 autoClose: true,
                 altField: '#StartDate',
-                altFormat: 'YYYY-MM-DD'
+                altFormat: 'YYYY/MM/DD'
             });
 
             $("#DueDateDisplay").persianDatepicker({
                 format: 'YYYY/MM/DD',
-                initialValue: false,
+                initialValue: true,
+                initialValueType: 'persian',
                 autoClose: true,
                 altField: '#DueDate',
-                altFormat: 'YYYY-MM-DD'
+                altFormat: 'YYYY/MM/DD'
             });
+
+            // بعد از مقداردهی، دوباره hidden ها را با مقدار نمایشگر همسان‌سازی کن
+            $("#StartDate").val($("#StartDateDisplay").val() || "");
+            $("#DueDate").val($("#DueDateDisplay").val() || "");
 
             // فیلتر کردن گزینه‌های Parent بر اساس IssueType
             filterParentOptions();
