@@ -692,9 +692,7 @@ namespace Endpoint.Site.Controllers
 
             var vm = new SprintCreateVm
             {
-                ProjectId = projectId,
-                StartDate = DateTime.Today,
-                EndDate = DateTime.Today.AddDays(14)
+                ProjectId = projectId
             };
 
             return View(vm);

@@ -1,4 +1,5 @@
 ﻿@model Endpoint.Site.Models.TaskEditVm
+@using TaskPlanner.Domain.Entities.TaskPlanner
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
 }
@@ -67,18 +68,108 @@
     </div>
 
     <!-- تسک والد -->
-    <div class="mb-3">
+    <div class="mb-3" id="parentIssueDiv">
         <label asp-for="ParentId" class="form-label">زیرمجموعه‌ی کدام کار باشد؟</label>
-        <select asp-for="ParentId" class="form-control"
-                asp-items="@(new SelectList(ViewBag.Tasks, "Id", "Title"))">
+        <select asp-for="ParentId" class="form-control" id="parentIssueSelect">
             <option value="">-- مستقل --</option>
+            @if (ViewBag.Tasks != null)
+            {
+                @foreach (var task in ViewBag.Tasks)
+                {
+                    <option value="@task.Id" data-issue-type="@((int)task.IssueType)" @@(Model.ParentId == task.Id ? "selected" : "")>@task.Title</option>
+                }
+            }
         </select>
+        <small class="form-text text-muted" id="parentHelp"></small>
     </div>
 
     <button type="submit" class="btn btn-warning">ذخیره تغییرات</button>
 </form>
 @section Scripts {
     <script>
+        // 🎯 مدیریت فیلتر Parent Issue بر اساس IssueType
+        const IssueTypes = {
+            Epic: 1,
+            Story: 2,
+            Task: 3,
+            Subtask: 4,
+            Bug: 5
+        };
+
+        const currentIssueType = @((int)Model.IssueType);
+
+        function filterParentOptions() {
+            const parentSelect = $('#parentIssueSelect');
+            const currentValue = parentSelect.val();
+
+            if (currentIssueType === IssueTypes.Story || 
+                currentIssueType === IssueTypes.Task || 
+                currentIssueType === IssueTypes.Bug) {
+                // Story, Task, Bug می‌توانند فقط زیر Epic قرار بگیرند
+                const issueTypeName = currentIssueType === IssueTypes.Story ? 'Story' : 
+                                     currentIssueType === IssueTypes.Task ? 'Task' : 'Bug';
+                $('#parentHelp').text(`${issueTypeName} می‌تواند زیر Epic قرار بگیرد (اختیاری) - فقط Epic قابل انتخاب است`);
+                
+                parentSelect.find('option').each(function() {
+                    const $option = $(this);
+                    const issueType = parseInt($option.data('issue-type'));
+                    if ($option.val() === '') {
+                        // گزینه "مستقل" همیشه نمایش داده شود
+                        $option.show();
+                    } else if (issueType === IssueTypes.Epic) {
+                        // فقط Epic نمایش داده شود
+                        $option.show();
+                    } else {
+                        // سایر انواع (Task, Story, Bug, Subtask) مخفی شوند
+                        $option.hide();
+                        // اگر مقدار فعلی یکی از اینها باشد و نوع Issue Story/Task/Bug است، آن را پاک کن
+                        if ($option.val() === currentValue && issueType !== IssueTypes.Epic) {
+                            parentSelect.val('');
+                        }
+                    }
+                });
+            } else if (currentIssueType === IssueTypes.Subtask) {
+                // Subtask باید زیر Task, Story, یا Bug باشد
+                $('#parentHelp').text('Subtask باید حتماً Parent داشته باشد (Task, Story یا Bug)');
+                $('#parentIssueSelect').prop('required', true);
+                
+                parentSelect.find('option').each(function() {
+                    const $option = $(this);
+                    const issueType = parseInt($option.data('issue-type'));
+                    if ($option.val() === '') {
+                        // گزینه "مستقل" مخفی شود چون برای Subtask الزامی است
+                        $option.hide();
+                    } else if (issueType === IssueTypes.Task || 
+                               issueType === IssueTypes.Story || 
+                               issueType === IssueTypes.Bug) {
+                        // فقط Task, Story, Bug نمایش داده شوند
+                        $option.show();
+                    } else {
+                        // Epic و Subtask مخفی شوند
+                        $option.hide();
+                        if ($option.val() === currentValue && 
+                            (issueType === IssueTypes.Epic || issueType === IssueTypes.Subtask)) {
+                            parentSelect.val('');
+                        }
+                    }
+                });
+            } else {
+                // Epic نمی‌تواند parent داشته باشد
+                $('#parentHelp').text('');
+                parentSelect.find('option').each(function() {
+                    const $option = $(this);
+                    if ($option.val() === '') {
+                        $option.show();
+                    } else {
+                        $option.hide();
+                    }
+                });
+                if (currentValue) {
+                    parentSelect.val('');
+                }
+            }
+        }
+
         // اطمینان از مقداردهی درست ورودی‌ها و مقدارهای پنهان بعد از لود کامل DOM
         $(function () {
             // هم‌سنگ کردن مقدارهای اولیه ورودی‌های پنهان با نمایشگر
@@ -88,25 +179,22 @@
             // مقداردهی دیت‌پیکرها پس از لود کامل DOM
             $("#StartDateDisplay").persianDatepicker({
                 format: 'YYYY/MM/DD',
-                initialValue: true,
-                initialValueType: 'persian',
+                initialValue: false,
                 autoClose: true,
                 altField: '#StartDate',
-                altFormat: 'YYYY/MM/DD'
+                altFormat: 'YYYY-MM-DD'
             });
 
             $("#DueDateDisplay").persianDatepicker({
                 format: 'YYYY/MM/DD',
-                initialValue: true,
-                initialValueType: 'persian',
+                initialValue: false,
                 autoClose: true,
                 altField: '#DueDate',
-                altFormat: 'YYYY/MM/DD'
+                altFormat: 'YYYY-MM-DD'
             });
 
-            // بعد از مقداردهی، دوباره hidden ها را با مقدار نمایشگر همسان‌سازی کن
-            $("#StartDate").val($("#StartDateDisplay").val() || "");
-            $("#DueDate").val($("#DueDateDisplay").val() || "");
+            // فیلتر کردن گزینه‌های Parent بر اساس IssueType
+            filterParentOptions();
         });
     </script>
 }

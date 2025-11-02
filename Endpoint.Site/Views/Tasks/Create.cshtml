@@ -86,9 +86,15 @@
             <strong>Parent Issue</strong>
             <span id="parentRequired" class="text-danger" style="display:none">*</span>
         </label>
-        <select asp-for="ParentId" class="form-control" id="parentIssueSelect"
-                asp-items="@(new SelectList(ViewBag.Tasks, "Id", "Title"))">
+        <select asp-for="ParentId" class="form-control" id="parentIssueSelect">
             <option value="">-- بدون Parent (مستقل) --</option>
+            @if (ViewBag.Tasks != null)
+            {
+                @foreach (var task in ViewBag.Tasks)
+                {
+                    <option value="@task.Id" data-issue-type="@((int)task.IssueType)">@task.Title</option>
+                }
+            }
         </select>
         <small class="form-text text-muted" id="parentHelp">
             Story می‌تونه زیر Epic باشه، Subtask باید زیر Task/Story/Bug باشه
@@ -147,6 +153,7 @@
 
         function updateFieldsBasedOnIssueType() {
             const selectedType = parseInt($('#issueTypeSelect').val());
+            const parentSelect = $('#parentIssueSelect');
             
             // Story Points: فقط برای Story و Task نمایش داده شود
             if (selectedType === IssueTypes.Story || selectedType === IssueTypes.Task) {
@@ -157,26 +164,78 @@
             }
 
             // Parent Issue: 
-            // - برای Subtask الزامی است
-            // - برای Story اختیاری (می‌تونه زیر Epic باشه)
-            // - برای Epic، Task، Bug غیرفعال (نمی‌تونن parent داشته باشن)
+            // - برای Subtask الزامی است (باید Task, Story یا Bug باشد)
+            // - برای Story, Task, Bug اختیاری (می‌تونن زیر Epic باشن) - فقط Epic قابل انتخاب است
+            // - برای Epic غیرفعال (نمی‌تونه parent داشته باشه)
             if (selectedType === IssueTypes.Subtask) {
                 $('#parentIssueDiv').show();
                 $('#parentRequired').show();
                 $('#parentHelp').text('Subtask باید حتماً Parent داشته باشد (Task, Story یا Bug)');
-                $('#parentIssueSelect').prop('required', true);
+                parentSelect.prop('required', true);
+                
+                // ذخیره مقدار فعلی
+                const currentValue = parentSelect.val();
+                
+                // نمایش فقط Task, Story, Bug
+                parentSelect.find('option').each(function() {
+                    const $option = $(this);
+                    const issueType = parseInt($option.data('issue-type'));
+                    if ($option.val() === '') {
+                        // گزینه "بدون Parent" مخفی شود چون برای Subtask الزامی است
+                        $option.hide();
+                    } else if (issueType === IssueTypes.Task || 
+                               issueType === IssueTypes.Story || 
+                               issueType === IssueTypes.Bug) {
+                        // فقط Task, Story, Bug نمایش داده شوند
+                        $option.show();
+                    } else {
+                        // Epic و Subtask مخفی شوند
+                        $option.hide();
+                        // اگر مقدار فعلی یکی از اینها باشد، آن را پاک کن
+                        if ($option.val() === currentValue) {
+                            parentSelect.val('');
+                        }
+                    }
+                });
             } 
-            else if (selectedType === IssueTypes.Story) {
+            else if (selectedType === IssueTypes.Story || 
+                     selectedType === IssueTypes.Task || 
+                     selectedType === IssueTypes.Bug) {
                 $('#parentIssueDiv').show();
                 $('#parentRequired').hide();
-                $('#parentHelp').text('Story می‌تواند زیر Epic قرار بگیرد (اختیاری)');
-                $('#parentIssueSelect').prop('required', false);
+                const issueTypeName = selectedType === IssueTypes.Story ? 'Story' : 
+                                     selectedType === IssueTypes.Task ? 'Task' : 'Bug';
+                $('#parentHelp').text(`${issueTypeName} می‌تواند زیر Epic قرار بگیرد (اختیاری) - فقط Epic قابل انتخاب است`);
+                parentSelect.prop('required', false);
+                
+                // ذخیره مقدار فعلی (اگر Epic انتخاب شده باشد)
+                const currentValue = parentSelect.val();
+                
+                // مخفی کردن همه گزینه‌ها به جز Epic
+                parentSelect.find('option').each(function() {
+                    const $option = $(this);
+                    const issueType = parseInt($option.data('issue-type'));
+                    if ($option.val() === '') {
+                        // گزینه "بدون Parent" همیشه نمایش داده شود
+                        $option.show();
+                    } else if (issueType === IssueTypes.Epic) {
+                        // فقط Epic نمایش داده شود
+                        $option.show();
+                    } else {
+                        // سایر انواع (Task, Story, Bug, Subtask) مخفی شوند
+                        $option.hide();
+                        // اگر مقدار فعلی یکی از اینها باشد، آن را پاک کن
+                        if ($option.val() === currentValue) {
+                            parentSelect.val('');
+                        }
+                    }
+                });
             }
             else {
-                // Epic, Task, Bug نمی‌تونن parent داشته باشن
+                // Epic نمی‌تونه parent داشته باشه
                 $('#parentIssueDiv').hide();
-                $('#parentIssueSelect').val(''); // پاک کردن انتخاب
-                $('#parentIssueSelect').prop('required', false);
+                parentSelect.val(''); // پاک کردن انتخاب
+                parentSelect.prop('required', false);
             }
         }
 
