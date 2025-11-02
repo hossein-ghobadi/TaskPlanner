@@ -127,21 +127,25 @@
 @section Scripts {
     <script>
         // تاریخ شروع
+                // تاریخ شروع
         $("#StartDateDisplay").persianDatepicker({
             format: 'YYYY/MM/DD',
             autoClose: true,
-            altField: '#StartDate',       // 👈 خودش hidden رو پر میکنه
-            altFormat: 'YYYY-MM-DD'
+            altField: '#StartDate',
+            altFormat: 'YYYY/MM/DD',   // 👈 خروجی Hidden هم شمسی
+            calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' }},
+            timePicker: { enabled: false }
         });
 
         // تاریخ پایان
         $("#DueDateDisplay").persianDatepicker({
             format: 'YYYY/MM/DD',
             autoClose: true,
-            altField: '#DueDate',         // 👈 اینجا هم همین
-            altFormat: 'YYYY-MM-DD'
+            altField: '#DueDate',
+            altFormat: 'YYYY/MM/DD',
+            calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' }},
+            timePicker: { enabled: false }
         });
-
         // 🎯 مدیریت نمایش فیلدها بر اساس IssueType
         const IssueTypes = {
             Epic: 1,

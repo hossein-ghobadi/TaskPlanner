@@ -176,28 +176,33 @@
         // اطمینان از مقداردهی درست ورودی‌ها و مقدارهای پنهان بعد از لود کامل DOM
         $(function () {
             // هم‌سنگ کردن مقدارهای اولیه ورودی‌های پنهان با نمایشگر
-            $("#StartDate").val($("#StartDateDisplay").val() || "");
-            $("#DueDate").val($("#DueDateDisplay").val() || "");
+               // 👇 مقدار اولیه hidden را ثابت نگه دار
+        $("#StartDate").val("@Model.StartDateSh");
+        $("#DueDate").val("@Model.DueDateSh");
 
-            // مقداردهی دیت‌پیکرها پس از لود کامل DOM
-            $("#StartDateDisplay").persianDatepicker({
-                format: 'YYYY/MM/DD',
-                initialValue: true,
-                initialValueType: 'persian',
-                autoClose: true,
-                altField: '#StartDate',
-                altFormat: 'YYYY/MM/DD'
-            });
+        // ✅ تاریخ شروع
+        $("#StartDateDisplay").persianDatepicker({
+            format: 'YYYY/MM/DD',
+            autoClose: true,
+            initialValueType: "persian",
+            initialValue: true,
+            altField: '#StartDate',
+            altFormat: 'YYYY/MM/DD', // 👈 مهم برای جلوگیری از +1 روز
+            timePicker: { enabled: false },
+            calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+        });
 
-            $("#DueDateDisplay").persianDatepicker({
-                format: 'YYYY/MM/DD',
-                initialValue: true,
-                initialValueType: 'persian',
-                autoClose: true,
-                altField: '#DueDate',
-                altFormat: 'YYYY/MM/DD'
-            });
-
+        // ✅ تاریخ پایان
+        $("#DueDateDisplay").persianDatepicker({
+            format: 'YYYY/MM/DD',
+            autoClose: true,
+            initialValueType: "persian",
+            initialValue: true,
+            altField: '#DueDate',
+            altFormat: 'YYYY/MM/DD',
+            timePicker: { enabled: false },
+            calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+        });
             // بعد از مقداردهی، دوباره hidden ها را با مقدار نمایشگر همسان‌سازی کن
             $("#StartDate").val($("#StartDateDisplay").val() || "");
             $("#DueDate").val($("#DueDateDisplay").val() || "");
