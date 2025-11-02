@@ -76,7 +76,14 @@
             {
                 @foreach (var task in ViewBag.Tasks)
                 {
-                    <option value="@task.Id" data-issue-type="@((int)task.IssueType)" @@(Model.ParentId == task.Id ? "selected" : "")>@task.Title</option>
+                    @if (Model.ParentId == task.Id)
+                    {
+                        <option value="@task.Id" data-issue-type="@((int)task.IssueType)" selected>@task.Title</option>
+                    }
+                    else
+                    {
+                        <option value="@task.Id" data-issue-type="@((int)task.IssueType)">@task.Title</option>
+                    }
                 }
             }
         </select>

@@ -26,8 +26,9 @@ namespace Endpoint.Site.Models
         [Display(Name = "تکرار رمز عبور")]
         public string ConfirmPassword { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "شماره تلفن الزامی است")]
         [Display(Name = "شماره تلفن")]
         [Phone(ErrorMessage = "شماره تلفن معتبر نیست")]
-        public string? Phone { get; set; }
+        public string Phone { get; set; } = string.Empty;
     }
 }
