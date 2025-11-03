@@ -125,6 +125,12 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
+            // دریافت وضعیت‌های workflow پروژه
+            var workflowStatuses = await _context.WorkflowStatuses
+                .Where(ws => ws.ProjectId == sprint.ProjectId)
+                .OrderBy(ws => ws.Order)
+                .ToListAsync();
+
             var sprintDetailsVm = new SprintDetailsVm
             {
                 Id = sprint.Id,
@@ -143,14 +149,16 @@ namespace Endpoint.Site.Controllers
                 Project = sprint.Project,
                 Tasks = sprint.SprintTasks.Select(st => st.Task).ToList(),
                 SprintTasks = sprint.SprintTasks.ToList(),
-                TodoTasks = sprint.SprintTasks.Where(st => st.Status != SprintTaskStatus.Completed).Select(st => st.Task).ToList(),
+                TodoTasks = sprint.SprintTasks.Select(st => st.Task).Where(t => t.StatusId == null || !workflowStatuses.Any(ws => ws.Id == t.StatusId && ws.IsFinal)).ToList(),
                 CompletedAt = sprint.IsCompleted ? sprint.UpdatedAt : null,
                 TotalTasks = sprint.SprintTasks.Count,
-                CompletedTasks = sprint.SprintTasks.Count(st => st.Status == SprintTaskStatus.Completed),
-                InProgressTasks = sprint.SprintTasks.Count(st => st.Status == SprintTaskStatus.InProgress),
-                PendingTasks = sprint.SprintTasks.Count(st => st.Status == SprintTaskStatus.Pending),
-                BlockedTasks = sprint.SprintTasks.Count(st => st.Status == SprintTaskStatus.Blocked)
+                CompletedTasks = sprint.SprintTasks.Select(st => st.Task).Count(t => t.StatusId.HasValue && workflowStatuses.Any(ws => ws.Id == t.StatusId && ws.IsFinal)),
+                InProgressTasks = sprint.SprintTasks.Select(st => st.Task).Count(t => t.StatusId.HasValue && workflowStatuses.Any(ws => ws.Id == t.StatusId && ws.Type == WorkflowType.InProgress)),
+                PendingTasks = sprint.SprintTasks.Select(st => st.Task).Count(t => t.StatusId == null || workflowStatuses.Any(ws => ws.Id == t.StatusId && ws.Type == WorkflowType.Todo)),
+                BlockedTasks = sprint.SprintTasks.Select(st => st.Task).Count(t => t.StatusId.HasValue && workflowStatuses.Any(ws => ws.Id == t.StatusId && ws.Type == WorkflowType.Blocked))
             };
+
+            ViewBag.WorkflowStatuses = workflowStatuses;
 
             return View(sprintDetailsVm);
         }

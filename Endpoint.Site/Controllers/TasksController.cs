@@ -445,11 +445,23 @@ namespace Endpoint.Site.Controllers
 
             if (!data.TryGetProperty("taskId", out var taskIdProp) || taskIdProp.ValueKind != JsonValueKind.Number)
                 return BadRequest("taskId الزامی است.");
-            if (!data.TryGetProperty("toStatusId", out var toStatusProp) || toStatusProp.ValueKind != JsonValueKind.Number)
-                return BadRequest("toStatusId الزامی است.");
-
+            
             int taskId = taskIdProp.GetInt32();
-            int toStatusId = toStatusProp.GetInt32();
+            int? toStatusId = null;
+            
+            // toStatusId ممکن است null باشد (برای حذف وضعیت)
+            if (data.TryGetProperty("toStatusId", out var toStatusProp))
+            {
+                if (toStatusProp.ValueKind == JsonValueKind.Number)
+                {
+                    toStatusId = toStatusProp.GetInt32();
+                }
+                else if (toStatusProp.ValueKind == JsonValueKind.Null)
+                {
+                    toStatusId = null;
+                }
+            }
+
             string? reason = data.TryGetProperty("reason", out var reasonProp) && reasonProp.ValueKind == JsonValueKind.String
                 ? reasonProp.GetString()
                 : null;
@@ -469,57 +481,73 @@ namespace Endpoint.Site.Controllers
             if (!hasAccess)
                 return Forbid();
 
-            // وضعیت مقصد باید در همان پروژه باشد
-            var toStatus = await _context.WorkflowStatuses
-                .FirstOrDefaultAsync(ws => ws.Id == toStatusId && ws.ProjectId == task.ProjectId);
-            if (toStatus == null)
-                return BadRequest("وضعیت مقصد معتبر نیست.");
-
             int? fromStatusId = task.StatusId; // ممکن است null باشد
 
-            // اعتبارسنجی Transition فقط وقتی fromStatus داریم
-            WorkflowTransition? usedTransition = null;
-            if (fromStatusId.HasValue)
+            // اگر toStatusId null است، وضعیت را حذف می‌کنیم
+            WorkflowStatus? toStatus = null;
+            if (toStatusId.HasValue)
             {
-                usedTransition = await _context.WorkflowTransitions
-                    .FirstOrDefaultAsync(tr => tr.ProjectId == task.ProjectId
-                                            && tr.FromStatusId == fromStatusId.Value
-                                            && tr.ToStatusId == toStatusId);
-                if (usedTransition == null)
-                    return BadRequest("این انتقال در Workflow پروژه مجاز نیست.");
+                // وضعیت مقصد باید در همان پروژه باشد
+                toStatus = await _context.WorkflowStatuses
+                    .FirstOrDefaultAsync(ws => ws.Id == toStatusId.Value && ws.ProjectId == task.ProjectId);
+                if (toStatus == null)
+                    return BadRequest("وضعیت مقصد معتبر نیست.");
 
-                if (usedTransition.OnlyAssigneeCanTransition && task.AssignedUserId != userId)
-                    return BadRequest("فقط مسئول Issue می‌تواند این انتقال را انجام دهد.");
+                // اعتبارسنجی Transition فقط وقتی fromStatus داریم و toStatus داریم
+                WorkflowTransition? usedTransition = null;
+                if (fromStatusId.HasValue)
+                {
+                    usedTransition = await _context.WorkflowTransitions
+                        .FirstOrDefaultAsync(tr => tr.ProjectId == task.ProjectId
+                                                && tr.FromStatusId == fromStatusId.Value
+                                                && tr.ToStatusId == toStatusId.Value);
+                    if (usedTransition == null)
+                        return BadRequest("این انتقال در Workflow پروژه مجاز نیست.");
+
+                    if (usedTransition.OnlyAssigneeCanTransition && task.AssignedUserId != userId)
+                        return BadRequest("فقط مسئول Issue می‌تواند این انتقال را انجام دهد.");
+                }
             }
 
             // بروزرسانی وضعیت Issue
-            task.StatusId = toStatus.Id;
+            task.StatusId = toStatus?.Id;
             task.UpdatedAt = DateTime.UtcNow;
-            if (toStatus.IsFinal)
+            if (toStatus != null && toStatus.IsFinal)
             {
                 task.IsCompleted = true;
             }
-
-            // ثبت تاریخچه
-            var history = new IssueStatusHistory
+            else if (toStatus == null || !toStatus.IsFinal)
             {
-                TaskId = task.Id,
-                FromStatusId = fromStatusId,
-                ToStatusId = toStatus.Id,
-                TransitionId = usedTransition?.Id,
-                ChangedByUserId = userId,
-                ChangeReason = reason,
-                ChangedAt = DateTime.UtcNow
-            };
-            _context.IssueStatusHistories.Add(history);
+                // اگر وضعیت نهایی نیست، IsCompleted را false کن (مگر اینکه از قبل true باشد و بخواهیم حفظ کنیم)
+                // برای ساده‌تر کردن، فقط وقتی به وضعیت نهایی می‌رود IsCompleted را true می‌کنیم
+            }
+
+            // ثبت تاریخچه (فقط اگر toStatus null نباشد، چون ToStatusId نمی‌تواند null باشد)
+            if (toStatus != null)
+            {
+                var history = new IssueStatusHistory
+                {
+                    TaskId = task.Id,
+                    FromStatusId = fromStatusId,
+                    ToStatusId = toStatus.Id,
+                    TransitionId = null, // وقتی null است یا transition نداریم
+                    ChangedByUserId = userId,
+                    ChangeReason = reason,
+                    ChangedAt = DateTime.UtcNow
+                };
+                _context.IssueStatusHistories.Add(history);
+            }
+            
             await _context.SaveChangesAsync();
 
             return Ok(new
             {
                 success = true,
-                message = $"وضعیت Issue به '{toStatus.Name}' تغییر کرد.",
-                toStatusId = toStatus.Id,
-                toStatusName = toStatus.Name,
+                message = toStatus != null 
+                    ? $"وضعیت Issue به '{toStatus.Name}' تغییر کرد."
+                    : "وضعیت Issue حذف شد.",
+                toStatusId = toStatus?.Id,
+                toStatusName = toStatus?.Name,
                 isCompleted = task.IsCompleted
             });
         }

@@ -170,54 +170,21 @@
                                         </td>
                                         <td>
                                             @{
-                                                // Find the SprintTask for this task
-                                                var sprintTask = Model.SprintTasks.FirstOrDefault(st => st.TaskId == task.Id);
-                                                var currentStatus = sprintTask?.Status ?? SprintTaskStatus.Pending;
+                                                var workflowStatuses = ViewBag.WorkflowStatuses as List<TaskPlanner.Domain.Entities.TaskPlanner.WorkflowStatus> ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.WorkflowStatus>();
+                                                var currentStatusId = task.StatusId;
                                             }
                                             <select class="form-select form-select-sm task-status" data-task-id="@task.Id">
-                                                @if (currentStatus == SprintTaskStatus.Pending)
+                                                <option value="">-- بدون وضعیت --</option>
+                                                @foreach (var status in workflowStatuses)
                                                 {
-                                                    <option value="Pending" selected>در انتظار</option>
-                                                }
-                                                else
-                                                {
-                                                    <option value="Pending">در انتظار</option>
-                                                }
-                                                
-                                                @if (currentStatus == SprintTaskStatus.InProgress)
-                                                {
-                                                    <option value="InProgress" selected>در حال انجام</option>
-                                                }
-                                                else
-                                                {
-                                                    <option value="InProgress">در حال انجام</option>
-                                                }
-                                                
-                                                @if (currentStatus == SprintTaskStatus.Completed)
-                                                {
-                                                    <option value="Completed" selected>تکمیل شده</option>
-                                                }
-                                                else
-                                                {
-                                                    <option value="Completed">تکمیل شده</option>
-                                                }
-                                                
-                                                @if (currentStatus == SprintTaskStatus.Blocked)
-                                                {
-                                                    <option value="Blocked" selected>مسدود شده</option>
-                                                }
-                                                else
-                                                {
-                                                    <option value="Blocked">مسدود شده</option>
-                                                }
-                                                
-                                                @if (currentStatus == SprintTaskStatus.Cancelled)
-                                                {
-                                                    <option value="Cancelled" selected>لغو شده</option>
-                                                }
-                                                else
-                                                {
-                                                    <option value="Cancelled">لغو شده</option>
+                                                    if (currentStatusId == status.Id)
+                                                    {
+                                                        <option value="@status.Id" selected style="color: @status.Color;">@status.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@status.Id" style="color: @status.Color;">@status.Name</option>
+                                                    }
                                                 }
                                             </select>
                                         </td>
@@ -397,27 +364,37 @@
             });
         }
 
-        // تغییر وضعیت تسک
+        // تغییر وضعیت تسک (استفاده از WorkflowStatus)
         $(document).on('change', '.task-status', function() {
             const taskId = $(this).data('task-id');
-            const status = $(this).val();
+            const toStatusId = $(this).val();
+
+            // اگر status خالی بود (بدون وضعیت)، null بفرست
+            const statusIdValue = toStatusId === '' || toStatusId === null ? null : parseInt(toStatusId);
 
             $.ajax({
-                url: '@Url.Action("UpdateTaskStatus", "Sprints")',
+                url: '@Url.Action("MoveIssue", "Tasks")',
                 type: 'POST',
-                data: { sprintId: sprintId, taskId: taskId, status: status },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                data: JSON.stringify({
+                    taskId: taskId,
+                    toStatusId: statusIdValue,
+                    reason: 'تغییر وضعیت از جزئیات اسپرینت'
+                }),
                 success: function(response) {
                     if (response.success) {
-                        // موفقیت - می‌توانید پیام نمایش دهید یا صفحه را بارگذاری مجدد کنید
-                        console.log('وضعیت تسک تغییر کرد');
+                        showNotification('وضعیت تسک با موفقیت تغییر کرد', 'success');
                     } else {
-                        alert('خطا: ' + response.message);
-                        // در صورت خطا، وضعیت قبلی را برگردانید
+                        showNotification('خطا: ' + response.message, 'error');
                         location.reload();
                     }
                 },
-                error: function() {
-                    alert('خطا در ارتباط با سرور');
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON?.message || 'خطا در ارتباط با سرور';
+                    showNotification('خطا: ' + errorMsg, 'error');
                     location.reload();
                 }
             });

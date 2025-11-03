@@ -255,16 +255,45 @@ namespace Endpoint.Site.Controllers
                 return Forbid();
             }
 
+            // جلوگیری از حذف وضعیت‌های شروع (IsDefault) و پایان (IsFinal)
+            if (status.IsDefault || status.IsFinal)
+            {
+                TempData["Error"] = "نمی‌توان وضعیت‌های شروع یا پایان را حذف کرد. لطفاً ابتدا یک وضعیت دیگر را به عنوان شروع/پایان تنظیم کنید.";
+                return RedirectToAction(nameof(Index), new { projectId = status.ProjectId });
+            }
+
             var projectId = status.ProjectId;
+
+            // بررسی اینکه حداقل یک وضعیت IsDefault و یک وضعیت IsFinal باقی بماند
+            var remainingStatuses = await _context.WorkflowStatuses
+                .Where(s => s.ProjectId == projectId && s.Id != id)
+                .ToListAsync();
+
+            var hasDefault = remainingStatuses.Any(s => s.IsDefault);
+            var hasFinal = remainingStatuses.Any(s => s.IsFinal);
+
+            if (!hasDefault)
+            {
+                TempData["Error"] = "نمی‌توان این وضعیت را حذف کرد. باید حداقل یک وضعیت شروع (پیش‌فرض) در پروژه وجود داشته باشد.";
+                return RedirectToAction(nameof(Index), new { projectId });
+            }
+
+            if (!hasFinal)
+            {
+                TempData["Error"] = "نمی‌توان این وضعیت را حذف کرد. باید حداقل یک وضعیت پایان در پروژه وجود داشته باشد.";
+                return RedirectToAction(nameof(Index), new { projectId });
+            }
 
             // حذف ارجاع تسک‌ها به این وضعیت
             var tasks = await _context.TaskItems
-                .Where(t => t.WorkflowStatusId == id)
+                .Where(t => t.WorkflowStatusId == id || t.StatusId == id)
                 .ToListAsync();
 
+            var defaultStatus = remainingStatuses.FirstOrDefault(s => s.IsDefault);
             foreach (var task in tasks)
             {
-                task.WorkflowStatusId = null;
+                task.WorkflowStatusId = defaultStatus?.Id;
+                task.StatusId = defaultStatus?.Id;
             }
 
             _context.WorkflowStatuses.Remove(status);
