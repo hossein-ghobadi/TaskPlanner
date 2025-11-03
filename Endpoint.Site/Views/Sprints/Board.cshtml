@@ -2,6 +2,9 @@
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    var sprintId = ViewBag.SprintId as int?;
+    var projectId = ViewBag.ProjectId as int?;
+    var workflowStatuses = ViewBag.WorkflowStatuses as List<WorkflowStatus> ?? new List<WorkflowStatus>();
 }
 
 <style>
@@ -86,13 +89,63 @@
         <a style="background-color: royalblue; color: white;" class="btn" href="/Projects/Index">
             <i class="bi bi-arrow-right"></i> پروژه ها
         </a>
-        <a class="btn btn-secondary" href="/Sprints/Details/@Model.SprintId">
-            <i class="bi bi-arrow-right"></i> جزئیات اسپرینت
-        </a>
     </div>
-
 </div>
 
+<!-- اطلاعات اسپرینت -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h5>اطلاعات اسپرینت</h5>
+                <p><strong>نام:</strong> @Model.SprintName</p>
+                @if (!string.IsNullOrEmpty(Model.Description))
+                {
+                    <p><strong>توضیحات:</strong> @Model.Description</p>
+                }
+                @if (!string.IsNullOrEmpty(Model.Goal))
+                {
+                    <p><strong>هدف:</strong> @Model.Goal</p>
+                }
+                <p><strong>تاریخ شروع:</strong> @Model.StartDatePersian</p>
+                <p><strong>تاریخ پایان:</strong> @Model.EndDatePersian</p>
+                <p>
+                    <strong>وضعیت:</strong> 
+                    <span class="badge @(Model.Status == SprintStatus.Active ? "bg-success" : Model.Status == SprintStatus.Completed ? "bg-secondary" : "bg-warning")">
+                        @(Model.Status == SprintStatus.Active ? "فعال" : Model.Status == SprintStatus.Completed ? "خاتمه یافته" : "در حال برنامه‌ریزی")
+                    </span>
+                </p>
+            </div>
+            <div class="col-md-6">
+                <h5>آمار</h5>
+                <div class="mb-3">
+                    <h6>پیشرفت کلی</h6>
+                    <div class="progress">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: @Model.CompletionPercentage%" aria-valuenow="@Model.CompletionPercentage" aria-valuemin="0" aria-valuemax="100">
+                            @Model.CompletionPercentage.ToString("F1")%
+                        </div>
+                    </div>
+                </div>
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        کل تسک‌ها
+                        <span class="badge bg-primary rounded-pill">@Model.TotalTasks</span>
+                    </li>
+                    @foreach (var status in workflowStatuses)
+                    {
+                        var taskCountForStatus = Model.SprintIssues.Count(t => t.StatusId == status.Id);
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span style="color: @status.Color;">@status.Name</span>
+                            <span class="badge rounded-pill" style="background-color: @status.Color;">@taskCountForStatus</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- تخته کانبان -->
 <div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
     @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
     {
@@ -126,17 +179,30 @@
                         <div class="kanban-card" 
                              draggable="true"
                              ondragstart="onDragIssue(event, @issue.Id)"
-                             data-issue-id="@issue.Id">
+                             onclick="handleCardClick(event, @issue.Id)"
+                             data-issue-id="@issue.Id"
+                             style="cursor: pointer;">
                             
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <span class="issue-key">@issue.IssueKey</span>
-                                <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
+                                    @if (Model.Status == SprintStatus.Active)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger p-0 px-1" 
+                                                onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(@issue.Id);" 
+                                                title="خارج کردن از اسپرینت"
+                                                style="font-size: 0.7rem; line-height: 1;">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                    }
+                                </div>
                             </div>
                             
                             <div class="issue-title">@issue.Title</div>
                             
                             <div class="issue-meta">
-                                <div>👤 @issue.AssignedUserName</div>
+                                <div>👤 @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص")</div>
                                 @if (issue.DueDatePersian != "تعیین نشده")
                                 {
                                     <div>🗓️ @issue.DueDatePersian</div>
@@ -161,18 +227,81 @@
     }
 </div>
 
+<!-- تسک‌های موجود برای اضافه شدن به اسپرینت -->
+@if (Model.Status == SprintStatus.Active)
+{
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">تسک‌های موجود</h5>
+        </div>
+        <div class="card-body">
+            <div id="availableTasksContainer">
+                <p class="text-muted">در حال بارگذاری...</p>
+            </div>
+        </div>
+    </div>
+}
+
 @section Scripts {
+    @Html.AntiForgeryToken()
     <script>
         let draggedIssueId = null;
         let draggedCard = null;
+        let isDragging = false;
+        let mouseDownX = 0;
+        let mouseDownY = 0;
+        const projectId = @(projectId ?? 0);
+        const sprintId = @(sprintId ?? 0);
 
         function onDragIssue(e, issueId) {
+            isDragging = true;
             draggedIssueId = issueId;
             draggedCard = e.currentTarget;
             draggedCard.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', issueId);
         }
+
+        function handleCardClick(e, issueId) {
+            // اگر drag در حال انجام است یا از دکمه حذف کلیک شده، از redirect جلوگیری کن
+            if (isDragging) {
+                return;
+            }
+            // بررسی اینکه آیا از دکمه حذف کلیک شده یا نه
+            if (e.target.closest('button')) {
+                return;
+            }
+            // در غیر این صورت، به جزئیات تسک برو
+            window.location.href = '/Tasks/Details/' + issueId;
+        }
+
+        // ثبت موقعیت mouse down برای تشخیص drag vs click
+        document.addEventListener('mousedown', function(e) {
+            if (e.target.closest('.kanban-card')) {
+                mouseDownX = e.clientX;
+                mouseDownY = e.clientY;
+            }
+        });
+
+        // بررسی اینکه آیا واقعاً drag شده یا فقط click
+        document.addEventListener('mousemove', function(e) {
+            if (mouseDownX !== 0 && mouseDownY !== 0) {
+                const deltaX = Math.abs(e.clientX - mouseDownX);
+                const deltaY = Math.abs(e.clientY - mouseDownY);
+                // اگر بیش از 5 پیکسل حرکت کرده، drag است
+                if (deltaX > 5 || deltaY > 5) {
+                    isDragging = true;
+                }
+            }
+        });
+
+        // Reset موقعیت mouse بعد از mouse up
+        document.addEventListener('mouseup', function(e) {
+            if (!isDragging) {
+                mouseDownX = 0;
+                mouseDownY = 0;
+            }
+        });
 
         function onDragEnter(e) {
             e.preventDefault();
@@ -187,14 +316,12 @@
 
         async function onDropIssue(e, toStatusId) {
             e.preventDefault();
-            // Capture the drop target BEFORE any await to avoid losing event references
             const dropZone = e.currentTarget;
-            onDragLeave(e); // Reset style
+            onDragLeave(e);
             
             const issueId = draggedIssueId || parseInt(e.dataTransfer.getData('text/plain'));
             if (!issueId) return;
 
-            // Show loading
             if (draggedCard) {
                 draggedCard.style.opacity = '0.5';
             }
@@ -222,7 +349,6 @@
                     return;
                 }
 
-                // ✅ موفق - کارت رو به ستون جدید منتقل کن
                 const result = await res.json();
                 console.log('Success:', result);
 
@@ -230,22 +356,17 @@
                     draggedCard.classList.remove('dragging');
                     draggedCard.style.opacity = '1';
                     
-                    // پیدا کردن ستون مبدا قبل از appendChild
                     const sourceColumn = draggedCard.closest('.kanban-column-body');
                     
-                    // Append card to the captured drop zone
                     if (dropZone) {
-                        // مخفی کردن پیام "هیچ آیتمی وجود ندارد" در ستون مقصد
                         const emptyMessage = dropZone.querySelector('.empty-message');
                         if (emptyMessage) {
                             emptyMessage.style.display = 'none';
                         }
                         
-                        // اضافه کردن کارت به ستون
                         dropZone.appendChild(draggedCard);
                     }
                     
-                    // بررسی ستون مبدا - اگر خالی شد، پیام خالی را نمایش بده
                     if (sourceColumn && sourceColumn !== dropZone) {
                         const sourceCards = sourceColumn.querySelectorAll('.kanban-card');
                         if (sourceCards.length === 0) {
@@ -253,7 +374,6 @@
                             if (sourceEmptyMessage) {
                                 sourceEmptyMessage.style.display = 'block';
                             } else {
-                                // اگر پیام خالی وجود نداشت، ایجاد کن
                                 const emptyMsg = document.createElement('div');
                                 emptyMsg.className = 'empty-message text-muted text-center small p-4';
                                 emptyMsg.innerHTML = '<i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد';
@@ -262,10 +382,8 @@
                         }
                     }
                     
-                    // Update issue count in header
                     updateIssueCounts();
                 } else {
-                    // اگر کارت پیدا نشد، صفحه رو refresh کن
                     location.reload();
                 }
 
@@ -292,13 +410,156 @@
             });
         }
 
-        // Add visual feedback when dragging
         document.addEventListener('dragend', function(e) {
+            isDragging = false;
+            mouseDownX = 0;
+            mouseDownY = 0;
             document.querySelectorAll('.drop-zone').forEach(zone => {
                 zone.style.backgroundColor = '';
                 zone.style.borderColor = '';
             });
         });
+
+        // بارگذاری تسک‌های موجود (فقط برای اسپرینت فعال)
+        @if (Model.Status == SprintStatus.Active)
+        {
+            <text>
+            function showNotification(message, type = 'success') {
+                const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+                const alertHtml = `
+                    <div class="alert ${alertClass} alert-dismissible fade show position-fixed top-0 end-0 m-3" role="alert" style="z-index: 9999; min-width: 300px;">
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                $('body').append(alertHtml);
+                
+                setTimeout(() => {
+                    $('.alert').fadeOut(300, function() {
+                        $(this).remove();
+                    });
+                }, 3000);
+            }
+
+            function loadAvailableTasks() {
+                $.ajax({
+                    url: '/Sprints/GetProjectTasks',
+                    type: 'GET',
+                    data: { projectId: projectId, sprintId: sprintId },
+                    success: function(response) {
+                        if (response.success) {
+                            displayAvailableTasks(response.tasks);
+                        } else {
+                            $('#availableTasksContainer').html('<p class="text-muted">خطا در بارگذاری تسک‌ها: ' + response.message + '</p>');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        $('#availableTasksContainer').html('<p class="text-danger">خطا در ارتباط با سرور: ' + error + '</p>');
+                    }
+                });
+            }
+
+            function displayAvailableTasks(tasks) {
+                const container = $('#availableTasksContainer');
+                
+                if (tasks.length === 0) {
+                    container.html('<p class="text-muted">تسک قابل اضافه شدن وجود ندارد.</p>');
+                    return;
+                }
+
+                let html = '<div class="list-group">';
+                tasks.forEach(task => {
+                    html += `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">${task.title}</h6>
+                                <small class="text-muted">${task.categoryName} - ${task.assignedUserName}</small>
+                            </div>
+                            <button class="btn btn-sm btn-success" onclick="addTaskToSprint(${task.id})">
+                                <i class="bi bi-plus"></i> اضافه کردن
+                            </button>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                
+                container.html(html);
+            }
+
+            function addTaskToSprint(taskId) {
+                $.ajax({
+                    url: '/Sprints/AddTaskToSprint',
+                    type: 'POST',
+                    data: { sprintId: sprintId, taskId: taskId },
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('تسک با موفقیت به اسپرینت اضافه شد', 'success');
+                            loadAvailableTasks();
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            showNotification('خطا: ' + response.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        showNotification('خطا در ارتباط با سرور', 'error');
+                    }
+                });
+            }
+
+            function removeTaskFromSprint(taskId) {
+                if (!confirm('آیا مطمئن هستید که می‌خواهید این تسک را از اسپرینت خارج کنید؟')) {
+                    return;
+                }
+
+                $.ajax({
+                    url: '/Sprints/RemoveTaskFromSprint',
+                    type: 'POST',
+                    data: { sprintId: sprintId, taskId: taskId },
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('تسک با موفقیت از اسپرینت خارج شد', 'success');
+                            // حذف کارت از صفحه
+                            const card = document.querySelector(`.kanban-card[data-issue-id="${taskId}"]`);
+                            if (card) {
+                                card.style.transition = 'opacity 0.3s';
+                                card.style.opacity = '0';
+                                setTimeout(() => {
+                                    const column = card.closest('.kanban-column-body');
+                                    card.remove();
+                                    updateIssueCounts();
+                                    
+                                    // نمایش پیام خالی اگر ستون خالی شد
+                                    const remainingCards = column.querySelectorAll('.kanban-card');
+                                    if (remainingCards.length === 0) {
+                                        const emptyMsg = document.createElement('div');
+                                        emptyMsg.className = 'empty-message text-muted text-center small p-4';
+                                        emptyMsg.innerHTML = '<i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد';
+                                        column.appendChild(emptyMsg);
+                                    }
+                                }, 300);
+                            }
+                            // بارگذاری مجدد تسک‌های موجود
+                            loadAvailableTasks();
+                        } else {
+                            showNotification('خطا: ' + response.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        showNotification('خطا در ارتباط با سرور', 'error');
+                    }
+                });
+            }
+
+            $(document).ready(function() {
+                loadAvailableTasks();
+            });
+            </text>
+        }
     </script>
 }
-

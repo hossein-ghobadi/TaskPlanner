@@ -89,78 +89,12 @@ namespace Endpoint.Site.Controllers
             return View(sprintVms);
         }
 
-        // 📌 جزئیات اسپرینت
+        // 📌 جزئیات اسپرینت - Redirect به Board
         [HttpGet("{id}")]
-        public async Task<IActionResult> Details(int id)
+        public IActionResult Details(int id)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            var sprint = await _context.Sprints
-                .Include(s => s.Project)
-                .Include(s => s.SprintTasks)
-                    .ThenInclude(st => st.Task)
-                        .ThenInclude(t => t.Category)
-                .Include(s => s.SprintTasks)
-                    .ThenInclude(st => st.Task)
-                        .ThenInclude(t => t.AssignedUser)
-                .Include(s => s.SprintTasks)
-                    .ThenInclude(st => st.Task)
-                        .ThenInclude(t => t.WorkflowStatus)
-                .FirstOrDefaultAsync(s => s.Id == id);
-
-            if (sprint == null)
-            {
-                TempData["Error"] = "اسپرینت یافت نشد.";
-                return RedirectToAction("Index", "Projects");
-            }
-
-            // بررسی دسترسی
-            var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == sprint.ProjectId && 
-                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
-
-            if (!hasAccess)
-            {
-                TempData["Error"] = "شما به این اسپرینت دسترسی ندارید.";
-                return RedirectToAction("Index", "Projects");
-            }
-
-            // دریافت وضعیت‌های workflow اسپرینت
-            var workflowStatuses = await _context.WorkflowStatuses
-                .Where(ws => ws.SprintId == sprint.Id)
-                .OrderBy(ws => ws.Order)
-                .ToListAsync();
-
-            var sprintDetailsVm = new SprintDetailsVm
-            {
-                Id = sprint.Id,
-                Name = sprint.Name,
-                Description = sprint.Description,
-                Goal = sprint.Goal,
-                StartDate = sprint.StartDate,
-                EndDate = sprint.EndDate,
-                IsActive = sprint.IsActive,
-                IsCompleted = sprint.IsCompleted,
-                Status = sprint.Status,
-                CreatedAt = sprint.CreatedAt,
-                UpdatedAt = sprint.UpdatedAt,
-                ProjectId = sprint.ProjectId,
-                ProjectName = sprint.Project.Name,
-                Project = sprint.Project,
-                Tasks = sprint.SprintTasks.Select(st => st.Task).ToList(),
-                SprintTasks = sprint.SprintTasks.ToList(),
-                TodoTasks = sprint.SprintTasks.Select(st => st.Task).Where(t => t.StatusId == null || !workflowStatuses.Any(ws => ws.Id == t.StatusId && ws.IsFinal)).ToList(),
-                CompletedAt = sprint.IsCompleted ? sprint.UpdatedAt : null,
-                TotalTasks = sprint.SprintTasks.Count,
-                CompletedTasks = sprint.SprintTasks.Select(st => st.Task).Count(t => t.StatusId.HasValue && workflowStatuses.Any(ws => ws.Id == t.StatusId && ws.IsFinal)),
-                InProgressTasks = sprint.SprintTasks.Select(st => st.Task).Count(t => t.StatusId.HasValue && workflowStatuses.Any(ws => ws.Id == t.StatusId && ws.Type == WorkflowType.InProgress)),
-                PendingTasks = sprint.SprintTasks.Select(st => st.Task).Count(t => t.StatusId == null || workflowStatuses.Any(ws => ws.Id == t.StatusId && ws.Type == WorkflowType.Todo)),
-                BlockedTasks = sprint.SprintTasks.Select(st => st.Task).Count(t => t.StatusId.HasValue && workflowStatuses.Any(ws => ws.Id == t.StatusId && ws.Type == WorkflowType.Blocked))
-            };
-
-            ViewBag.WorkflowStatuses = workflowStatuses;
-
-            return View(sprintDetailsVm);
+            // Redirect به Board (تلفیق Details و Board)
+            return RedirectToAction(nameof(Board), new { id });
         }
 
         // 📌 برد (Kanban) اسپرینت مانند Jira
@@ -174,6 +108,9 @@ namespace Endpoint.Site.Controllers
                 .Include(s => s.SprintTasks)
                     .ThenInclude(st => st.Task)
                         .ThenInclude(t => t.Status)
+                .Include(s => s.SprintTasks)
+                    .ThenInclude(st => st.Task)
+                        .ThenInclude(t => t.WorkflowStatus)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (sprint == null)
@@ -198,15 +135,37 @@ namespace Endpoint.Site.Controllers
                 .OrderBy(ws => ws.Order)
                 .ToListAsync();
 
+            var sprintTasks = sprint.SprintTasks.Select(st => st.Task).ToList();
+
+            // محاسبه آمار
+            var completedTasks = sprintTasks.Count(t => t.StatusId.HasValue && statuses.Any(ws => ws.Id == t.StatusId && ws.IsFinal));
+            var inProgressTasks = sprintTasks.Count(t => t.StatusId.HasValue && statuses.Any(ws => ws.Id == t.StatusId && ws.Type == WorkflowType.InProgress));
+            var pendingTasks = sprintTasks.Count(t => t.StatusId == null || statuses.Any(ws => ws.Id == t.StatusId && ws.Type == WorkflowType.Todo));
+            var blockedTasks = sprintTasks.Count(t => t.StatusId.HasValue && statuses.Any(ws => ws.Id == t.StatusId && ws.Type == WorkflowType.Blocked));
+
             var vm = new SprintBoardVm
             {
                 SprintId = sprint.Id,
                 SprintName = sprint.Name,
+                Description = sprint.Description,
+                Goal = sprint.Goal,
+                StartDate = sprint.StartDate,
+                EndDate = sprint.EndDate,
+                Status = sprint.Status,
                 ProjectId = sprint.ProjectId,
                 ProjectName = sprint.Project.Name,
                 Statuses = statuses,
-                SprintIssues = sprint.SprintTasks.Select(st => st.Task).ToList()
+                SprintIssues = sprintTasks,
+                TotalTasks = sprintTasks.Count,
+                CompletedTasks = completedTasks,
+                InProgressTasks = inProgressTasks,
+                PendingTasks = pendingTasks,
+                BlockedTasks = blockedTasks
             };
+
+            ViewBag.WorkflowStatuses = statuses;
+            ViewBag.ProjectId = sprint.ProjectId;
+            ViewBag.SprintId = sprint.Id;
 
             return View(vm);
         }

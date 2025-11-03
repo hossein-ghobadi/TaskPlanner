@@ -250,7 +250,7 @@ namespace Endpoint.Site.Controllers
 
             return View(model);
         }
-
+        [HttpGet("{id}")]
         // GET: ویرایش وضعیت
         public async Task<IActionResult> Edit(int id)
         {
@@ -301,7 +301,7 @@ namespace Endpoint.Site.Controllers
         }
 
         // POST: ویرایش وضعیت
-        [HttpPost]
+        [HttpPost("{id}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, WorkflowStatusEditVm model)
         {
