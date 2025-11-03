@@ -58,7 +58,7 @@
 
     <div class="mb-3">
         <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
-        <a class="btn btn-secondary" href="/Sprints/Details/@Model.Id">انصراف</a>
+        <a class="btn btn-secondary" asp-controller="Sprints" asp-action="Details" asp-route-id="@Model.Id">انصراف</a>
     </div>
 </form>
 

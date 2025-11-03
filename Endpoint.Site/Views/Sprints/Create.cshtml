@@ -59,7 +59,7 @@
 
     <div class="mb-3">
         <button type="submit" class="btn btn-primary">ایجاد اسپرینت</button>
-        <a class="btn btn-secondary" href="/TaskPlanner/Sprints/Index">انصراف</a>
+        <a class="btn btn-secondary" asp-controller="Sprints" asp-action="Index" asp-route-projectId="@Model.ProjectId">انصراف</a>
     </div>
 </form>
 
