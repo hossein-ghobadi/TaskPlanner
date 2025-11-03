@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Security.Claims;
+using System.Text.Json;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Persistence.Contexts;
 using Endpoint.Site.Models;
@@ -111,6 +112,12 @@ namespace Endpoint.Site.Controllers
                 .Include(s => s.SprintTasks)
                     .ThenInclude(st => st.Task)
                         .ThenInclude(t => t.WorkflowStatus)
+                .Include(s => s.SprintTasks)
+                    .ThenInclude(st => st.Task)
+                        .ThenInclude(t => t.ChildIssues)
+                .Include(s => s.SprintTasks)
+                    .ThenInclude(st => st.Task)
+                        .ThenInclude(t => t.AssignedUser)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (sprint == null)
@@ -166,6 +173,17 @@ namespace Endpoint.Site.Controllers
             ViewBag.WorkflowStatuses = statuses;
             ViewBag.ProjectId = sprint.ProjectId;
             ViewBag.SprintId = sprint.Id;
+
+            // دریافت دسته‌بندی‌ها برای فرم ایجاد تسک (همه دسته‌بندی‌ها - دسته‌بندی‌ها global هستند)
+            var categories = await _context.TaskCategories.ToListAsync();
+            ViewBag.Categories = categories;
+
+            // دریافت اعضای پروژه برای فرم ایجاد تسک
+            var memberIds = await _context.ProjectMembers
+                .Where(m => m.ProjectId == sprint.ProjectId)
+                .Select(m => m.UserId)
+                .ToListAsync();
+            ViewBag.MemberIds = memberIds;
 
             return View(vm);
         }
@@ -514,6 +532,158 @@ namespace Endpoint.Site.Controllers
             catch (Exception ex)
             {
                 return Json(new { success = false, message = "خطا در حذف تسک: " + ex.Message });
+            }
+        }
+
+        // 📌 ایجاد تسک سریع و افزودن به اسپرینت
+        [HttpPost]
+        public async Task<IActionResult> CreateQuickTask([FromBody] JsonElement data)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!data.TryGetProperty("sprintId", out var sprintIdProp) || !data.TryGetProperty("title", out var titleProp))
+            {
+                return Json(new { success = false, message = "اسپرینت و عنوان الزامی است." });
+            }
+
+            int sprintId = sprintIdProp.GetInt32();
+            string title = titleProp.GetString();
+
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return Json(new { success = false, message = "عنوان الزامی است." });
+            }
+
+            var sprint = await _context.Sprints
+                .Include(s => s.Project)
+                .FirstOrDefaultAsync(s => s.Id == sprintId);
+
+            if (sprint == null)
+            {
+                return Json(new { success = false, message = "اسپرینت یافت نشد." });
+            }
+
+            // بررسی دسترسی
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == sprint.ProjectId &&
+                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+            if (!hasAccess)
+            {
+                return Json(new { success = false, message = "شما به این اسپرینت دسترسی ندارید." });
+            }
+
+            // فقط اسپرینت فعال می‌تواند تسک جدید داشته باشد
+            if (sprint.Status != SprintStatus.Active)
+            {
+                return Json(new { success = false, message = "فقط اسپرینت فعال می‌تواند تسک جدید داشته باشد." });
+            }
+
+            var project = sprint.Project;
+            if (project == null)
+            {
+                project = await _context.Projects.FindAsync(sprint.ProjectId);
+            }
+
+            try
+            {
+                // تولید IssueKey
+                if (project != null)
+                {
+                    _context.Entry(project).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                }
+                project = await _context.Projects.FindAsync(sprint.ProjectId);
+
+                if (project == null)
+                {
+                    return Json(new { success = false, message = "پروژه یافت نشد." });
+                }
+
+                string generatedIssueKey = project.GenerateNextIssueKey();
+                bool keyExists = await _context.TaskItems
+                    .AnyAsync(t => t.IssueKey == generatedIssueKey);
+
+                if (keyExists)
+                {
+                    project.LastIssueNumber++;
+                    generatedIssueKey = project.GenerateNextIssueKey();
+                }
+
+                // دریافت categoryId (اختیاری)
+                int? categoryId = null;
+                if (data.TryGetProperty("categoryId", out var catProp) && catProp.ValueKind == JsonValueKind.Number)
+                {
+                    categoryId = catProp.GetInt32();
+                    if (categoryId <= 0) categoryId = null;
+                }
+
+                // دریافت IssueType (پیش‌فرض: Task)
+                IssueType issueType = IssueType.Task;
+                if (data.TryGetProperty("issueType", out var issueTypeProp) && issueTypeProp.ValueKind == JsonValueKind.Number)
+                {
+                    issueType = (IssueType)issueTypeProp.GetInt32();
+                }
+
+                // ساخت تسک جدید
+                var newTask = new TaskItem
+                {
+                    Title = title,
+                    Description = data.TryGetProperty("description", out var descProp) ? descProp.GetString() : null,
+                    IssueType = issueType,
+                    IssueKey = generatedIssueKey,
+                    StartDate = DateTime.Today,
+                    DueDate = null,
+                    ProjectId = sprint.ProjectId,
+                    CategoryId = categoryId,
+                    AssignedUserId = data.TryGetProperty("assignedUserId", out var assignedProp) && !string.IsNullOrEmpty(assignedProp.GetString()) ? assignedProp.GetString() : null,
+                    StoryPoints = data.TryGetProperty("storyPoints", out var spProp) && spProp.ValueKind == JsonValueKind.Number ? spProp.GetInt32() : null,
+                    IsCompleted = false,
+                    CreatedByUserId = userId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.TaskItems.Add(newTask);
+                project.LastIssueNumber = project.LastIssueNumber;
+                _context.Projects.Update(project);
+                await _context.SaveChangesAsync();
+
+                // اضافه کردن به اسپرینت
+                var sprintTask = new SprintTask
+                {
+                    SprintId = sprintId,
+                    TaskId = newTask.Id,
+                    AddedAt = DateTime.UtcNow,
+                    AddedByUserId = userId,
+                    Status = SprintTaskStatus.Pending,
+                    SprintPriority = (int)TaskPriority.Medium
+                };
+
+                _context.SprintTasks.Add(sprintTask);
+                await _context.SaveChangesAsync();
+
+                // تعیین وضعیت پیش‌فرض (اولین وضعیت Todo)
+                var defaultStatus = await _context.WorkflowStatuses
+                    .Where(ws => ws.SprintId == sprintId && ws.IsDefault)
+                    .FirstOrDefaultAsync();
+
+                if (defaultStatus != null)
+                {
+                    newTask.StatusId = defaultStatus.Id;
+                    await _context.SaveChangesAsync();
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    message = "تسک با موفقیت ایجاد و به اسپرینت اضافه شد.",
+                    taskId = newTask.Id,
+                    issueKey = newTask.IssueKey
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "خطا در ایجاد تسک: " + ex.Message });
             }
         }
 

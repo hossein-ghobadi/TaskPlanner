@@ -92,6 +92,52 @@
     </div>
 </div>
 
+<!-- بخش افزودن تسک سریع -->
+@if (Model.Status == SprintStatus.Active)
+{
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-plus-circle"></i> افزودن تسک جدید
+            </h5>
+        </div>
+        <div class="card-body">
+            <form id="quickTaskForm" class="row g-3">
+                <div class="col-md-4">
+                    <label for="quickTaskTitle" class="form-label">عنوان <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="quickTaskTitle" required placeholder="عنوان تسک را وارد کنید">
+                </div>
+                <div class="col-md-2">
+                    <label for="quickTaskType" class="form-label">نوع</label>
+                    <select class="form-select" id="quickTaskType">
+                        <option value="@((int)IssueType.Task)" selected>تسک</option>
+                        <option value="@((int)IssueType.Story)">استوری</option>
+                        <option value="@((int)IssueType.Bug)">باگ</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="quickTaskCategory" class="form-label">دسته‌بندی</label>
+                    <select class="form-select" id="quickTaskCategory">
+                        <option value="">-- بدون دسته --</option>
+                        @{
+                            var categories = ViewBag.Categories as List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory> ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory>();
+                        }
+                        @foreach (var cat in categories)
+                        {
+                            <option value="@cat.Id">@cat.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-circle"></i> افزودن
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
 <!-- اطلاعات اسپرینت -->
 <div class="card mb-4">
     <div class="card-body">
@@ -187,13 +233,28 @@
                                 <span class="issue-key">@issue.IssueKey</span>
                                 <div class="d-flex align-items-center gap-1">
                                     <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
+                                    @if (Model.Status == SprintStatus.Active && issue.CanHaveChildren)
+                                    {
+                                        <button class="btn btn-sm btn-outline-primary p-0 px-1" 
+                                                onclick="event.stopPropagation(); event.preventDefault(); openAddSubtaskModal(@issue.Id, '@issue.IssueKey');" 
+                                                title="افزودن زیرتسک"
+                                                style="font-size: 0.7rem; line-height: 1;">
+                                            <i class="bi bi-plus-circle"></i>
+                                        </button>
+                                    }
                                     @if (Model.Status == SprintStatus.Active)
                                     {
-                                        <button class="btn btn-sm btn-outline-danger p-0 px-1" 
+                                        <button class="btn btn-sm btn-outline-warning p-0 px-1" 
                                                 onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(@issue.Id);" 
                                                 title="خارج کردن از اسپرینت"
                                                 style="font-size: 0.7rem; line-height: 1;">
                                             <i class="bi bi-x-circle"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger p-0 px-1" 
+                                                onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@issue.Id, '@issue.Title');" 
+                                                title="حذف تسک"
+                                                style="font-size: 0.7rem; line-height: 1;">
+                                            <i class="bi bi-trash"></i>
                                         </button>
                                     }
                                 </div>
@@ -211,7 +272,57 @@
                                 {
                                     <div>⚡ @issue.StoryPoints SP</div>
                                 }
+                                @if (issue.ChildIssues != null && issue.ChildIssues.Any())
+                                {
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <button class="btn btn-sm btn-outline-secondary p-0 px-2" 
+                                                onclick="event.stopPropagation(); event.preventDefault(); toggleSubtasks(@issue.Id);" 
+                                                style="font-size: 0.7rem;">
+                                            <i class="bi bi-chevron-down" id="subtask-icon-@issue.Id"></i>
+                                            @issue.ChildIssues.Count زیرتسک
+                                        </button>
+                                    </div>
+                                }
                             </div>
+
+                            @* نمایش زیرتسک‌ها *@
+                            @if (issue.ChildIssues != null && issue.ChildIssues.Any())
+                            {
+                                <div class="subtasks-container mt-2" id="subtasks-@issue.Id" style="display: none; border-top: 1px solid #dee2e6; padding-top: 8px;">
+                                    @foreach (var subtask in issue.ChildIssues.OrderBy(c => c.CreatedAt))
+                                    {
+                                        <div class="subtask-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded" style="font-size: 0.85rem;">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="issue-type-icon" style="font-size: 0.9rem;">@subtask.IssueTypeIcon</span>
+                                                <div>
+                                                    <div class="fw-bold">@subtask.IssueKey: @subtask.Title</div>
+                                                    @if (!string.IsNullOrEmpty(subtask.Description))
+                                                    {
+                                                        <small class="text-muted">@(subtask.Description.Length > 50 ? subtask.Description.Substring(0, 50) + "..." : subtask.Description)</small>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div class="d-flex gap-1">
+                                                <a href="/Tasks/Details/@subtask.Id" class="btn btn-sm btn-outline-info p-0 px-1" 
+                                                   onclick="event.stopPropagation();" 
+                                                   title="جزئیات"
+                                                   style="font-size: 0.7rem;">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                @if (Model.Status == SprintStatus.Active)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-danger p-0 px-1" 
+                                                            onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@subtask.Id, '@subtask.Title');" 
+                                                            title="حذف زیرتسک"
+                                                            style="font-size: 0.7rem;">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
                         </div>
                     }
                 }
@@ -225,6 +336,48 @@
             </div>
         </div>
     }
+</div>
+
+<!-- Modal افزودن Subtask -->
+<div class="modal fade" id="addSubtaskModal" tabindex="-1" aria-labelledby="addSubtaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addSubtaskModalLabel">افزودن زیرتسک</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addSubtaskForm">
+                    <input type="hidden" id="subtaskParentId" />
+                    <div class="mb-3">
+                        <label for="subtaskParentKey" class="form-label">تسک والد</label>
+                        <input type="text" class="form-control" id="subtaskParentKey" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="subtaskTitle" class="form-label">عنوان زیرتسک <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="subtaskTitle" required placeholder="عنوان زیرتسک را وارد کنید">
+                    </div>
+                    <div class="mb-3">
+                        <label for="subtaskCategory" class="form-label">دسته‌بندی</label>
+                        <select class="form-select" id="subtaskCategory">
+                            <option value="">-- بدون دسته --</option>
+                            @{
+                                var categoriesForSubtask = ViewBag.Categories as List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory> ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory>();
+                            }
+                            @foreach (var cat in categoriesForSubtask)
+                            {
+                                <option value="@cat.Id">@cat.Name</option>
+                            }
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-primary" onclick="submitSubtask()">افزودن زیرتسک</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- تسک‌های موجود برای اضافه شدن به اسپرینت -->
@@ -558,6 +711,207 @@
 
             $(document).ready(function() {
                 loadAvailableTasks();
+            });
+
+            // باز کردن Modal افزودن Subtask
+            function openAddSubtaskModal(parentId, parentKey) {
+                $('#subtaskParentId').val(parentId);
+                $('#subtaskParentKey').val(parentKey);
+                $('#subtaskTitle').val('');
+                $('#subtaskCategory').val('');
+                const modal = new bootstrap.Modal(document.getElementById('addSubtaskModal'));
+                modal.show();
+            }
+
+            // ارسال درخواست ایجاد Subtask
+            function submitSubtask() {
+                const parentId = $('#subtaskParentId').val();
+                const title = $('#subtaskTitle').val().trim();
+                const categoryId = $('#subtaskCategory').val();
+
+                if (!title) {
+                    showNotification('عنوان زیرتسک الزامی است', 'error');
+                    return;
+                }
+
+                const data = {
+                    parentId: parseInt(parentId),
+                    title: title
+                };
+
+                if (categoryId) {
+                    data.categoryId = parseInt(categoryId);
+                }
+
+                // نمایش loading
+                const submitBtn = $('button[onclick="submitSubtask()"]');
+                const originalText = submitBtn.html();
+                submitBtn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> در حال ایجاد...');
+
+                $.ajax({
+                    url: '/Tasks/AddChildIssue',
+                    type: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    data: JSON.stringify(data),
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification(response.message || 'زیرتسک با موفقیت ایجاد شد', 'success');
+                            // بستن Modal
+                            bootstrap.Modal.getInstance(document.getElementById('addSubtaskModal')).hide();
+                            // بارگذاری مجدد صفحه برای نمایش زیرتسک جدید
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            showNotification('خطا: ' + (response.message || 'خطا در ایجاد زیرتسک'), 'error');
+                            submitBtn.prop('disabled', false).html(originalText);
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMsg = 'خطا در ارتباط با سرور';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMsg = xhr.responseJSON.message;
+                        } else if (xhr.responseText) {
+                            errorMsg = xhr.responseText;
+                        }
+                        showNotification('خطا: ' + errorMsg, 'error');
+                        submitBtn.prop('disabled', false).html(originalText);
+                    }
+                });
+            }
+
+            // نمایش/مخفی کردن زیرتسک‌ها
+            function toggleSubtasks(issueId) {
+                const container = document.getElementById(`subtasks-${issueId}`);
+                const icon = document.getElementById(`subtask-icon-${issueId}`);
+                
+                if (container.style.display === 'none') {
+                    container.style.display = 'block';
+                    icon.className = 'bi bi-chevron-up';
+                } else {
+                    container.style.display = 'none';
+                    icon.className = 'bi bi-chevron-down';
+                }
+            }
+
+            // حذف تسک یا زیرتسک
+            function deleteTask(taskId, taskTitle) {
+                if (!confirm(`آیا مطمئن هستید که می‌خواهید تسک "${taskTitle}" را حذف کنید؟\n\nاین عمل قابل بازگشت نیست و تمام زیرتسک‌های آن نیز حذف خواهند شد.`)) {
+                    return;
+                }
+
+                $.ajax({
+                    url: '/Tasks/DeleteTask',
+                    type: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    data: JSON.stringify({ taskId: taskId }),
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification(response.message || 'تسک با موفقیت حذف شد', 'success');
+                        } else {
+                            showNotification('خطا: ' + (response.message || 'خطا در حذف تسک'), 'error');
+                            return;
+                        }
+                        // حذف کارت از صفحه
+                        const card = document.querySelector(`.kanban-card[data-issue-id="${taskId}"]`);
+                        const subtaskItem = document.querySelector(`.subtask-item`);
+                        
+                        if (card) {
+                            card.style.transition = 'opacity 0.3s';
+                            card.style.opacity = '0';
+                            setTimeout(() => {
+                                const column = card.closest('.kanban-column-body');
+                                card.remove();
+                                updateIssueCounts();
+                                
+                                const remainingCards = column.querySelectorAll('.kanban-card');
+                                if (remainingCards.length === 0) {
+                                    const emptyMsg = document.createElement('div');
+                                    emptyMsg.className = 'empty-message text-muted text-center small p-4';
+                                    emptyMsg.innerHTML = '<i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد';
+                                    column.appendChild(emptyMsg);
+                                }
+                            }, 300);
+                        } else if (subtaskItem && subtaskItem.closest(`[data-issue-id]`)) {
+                            // اگر زیرتسک حذف شد، صفحه را refresh کن
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            // اگر کارت پیدا نشد، صفحه را refresh کن
+                            setTimeout(() => location.reload(), 1000);
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMsg = 'خطا در ارتباط با سرور';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMsg = xhr.responseJSON.message;
+                        } else if (xhr.responseText) {
+                            errorMsg = xhr.responseText;
+                        }
+                        showNotification('خطا: ' + errorMsg, 'error');
+                    }
+                });
+            }
+
+            // فرم ایجاد تسک سریع
+            $('#quickTaskForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const title = $('#quickTaskTitle').val().trim();
+                if (!title) {
+                    showNotification('عنوان تسک الزامی است', 'error');
+                    return;
+                }
+
+                const issueType = parseInt($('#quickTaskType').val());
+                const categoryId = $('#quickTaskCategory').val();
+                
+                const data = {
+                    sprintId: sprintId,
+                    title: title,
+                    issueType: issueType
+                };
+                
+                if (categoryId) {
+                    data.categoryId = parseInt(categoryId);
+                }
+
+                // نمایش loading
+                const submitBtn = $(this).find('button[type="submit"]');
+                const originalText = submitBtn.html();
+                submitBtn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> در حال ایجاد...');
+
+                $.ajax({
+                    url: '/Sprints/CreateQuickTask',
+                    type: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    data: JSON.stringify(data),
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification(response.message, 'success');
+                            // پاک کردن فرم
+                            $('#quickTaskTitle').val('');
+                            $('#quickTaskType').val('@((int)IssueType.Task)');
+                            $('#quickTaskCategory').val('');
+                            // بارگذاری مجدد صفحه برای نمایش تسک جدید
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            showNotification('خطا: ' + response.message, 'error');
+                            submitBtn.prop('disabled', false).html(originalText);
+                        }
+                    },
+                    error: function(xhr) {
+                        const errorMsg = xhr.responseJSON?.message || 'خطا در ارتباط با سرور';
+                        showNotification('خطا: ' + errorMsg, 'error');
+                        submitBtn.prop('disabled', false).html(originalText);
+                    }
+                });
             });
             </text>
         }

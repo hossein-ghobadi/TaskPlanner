@@ -414,25 +414,70 @@ namespace Endpoint.Site.Controllers
             var task = await _context.TaskItems
                 .Include(t => t.ChildIssues)
                 .ThenInclude(st => st.ChildIssues)
+                .Include(t => t.SprintTasks)
+                .Include(t => t.StatusHistory)
                 .FirstOrDefaultAsync(t => t.Id == taskId);
 
             if (task == null)
-                return NotFound();
+                return Json(new { success = false, message = "تسک یافت نشد." });
 
-            // 🔹 تابع بازگشتی برای حذف Child Issues
-            void DeleteRecursive(TaskItem item)
+            try
             {
-                foreach (var sub in item.ChildIssues.ToList())
+                // 🔹 تابع بازگشتی برای حذف Child Issues
+                async Task DeleteRecursiveAsync(TaskItem item)
                 {
-                    DeleteRecursive(sub);
+                    // حذف زیرتسک‌ها به صورت بازگشتی
+                    var childIssues = await _context.TaskItems
+                        .Include(c => c.SprintTasks)
+                        .Include(c => c.StatusHistory)
+                        .Where(c => c.ParentTaskId == item.Id)
+                        .ToListAsync();
+
+                    foreach (var child in childIssues)
+                    {
+                        await DeleteRecursiveAsync(child);
+                    }
+
+                    // حذف رکوردهای SprintTasks مربوط به این تسک
+                    var sprintTasks = await _context.SprintTasks
+                        .Where(st => st.TaskId == item.Id)
+                        .ToListAsync();
+                    if (sprintTasks.Any())
+                    {
+                        _context.SprintTasks.RemoveRange(sprintTasks);
+                    }
+
+                    // حذف تاریخچه وضعیت‌ها
+                    var statusHistories = await _context.IssueStatusHistories
+                        .Where(h => h.TaskId == item.Id)
+                        .ToListAsync();
+                    if (statusHistories.Any())
+                    {
+                        _context.IssueStatusHistories.RemoveRange(statusHistories);
+                    }
+
+                    // حذف کامنت‌ها
+                    var comments = await _context.TaskComments
+                        .Where(c => c.TaskId == item.Id)
+                        .ToListAsync();
+                    if (comments.Any())
+                    {
+                        _context.TaskComments.RemoveRange(comments);
+                    }
+
+                    // حذف خود تسک
+                    _context.TaskItems.Remove(item);
                 }
-                _context.TaskItems.Remove(item);
+
+                await DeleteRecursiveAsync(task);
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "تسک با موفقیت حذف شد." });
             }
-
-            DeleteRecursive(task);
-            await _context.SaveChangesAsync();
-
-            return Ok();
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "خطا در حذف تسک: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -514,15 +559,22 @@ namespace Endpoint.Site.Controllers
                         return BadRequest("انتقال از وضعیت انجام شده به وضعیت‌های قبلی مجاز نیست.");
                     }
 
-                    usedTransition = await _context.WorkflowTransitions
-                        .FirstOrDefaultAsync(tr => tr.ProjectId == task.ProjectId
-                                                && tr.FromStatusId == fromStatusId.Value
-                                                && tr.ToStatusId == toStatusId.Value);
-                    if (usedTransition == null)
-                        return BadRequest("این انتقال در Workflow پروژه مجاز نیست.");
+                    // اگر تسک در یک اسپرینت است، از وضعیت‌های sprint استفاده می‌کنیم و نیازی به بررسی transition نیست
+                    // چون در Board همه انتقال‌ها مجاز هستند (drag & drop آزاد)
+                    if (!task.SprintId.HasValue)
+                    {
+                        // فقط برای project-level statuses، transition را بررسی می‌کنیم
+                        usedTransition = await _context.WorkflowTransitions
+                            .FirstOrDefaultAsync(tr => tr.ProjectId == task.ProjectId
+                                                    && tr.FromStatusId == fromStatusId.Value
+                                                    && tr.ToStatusId == toStatusId.Value);
+                        if (usedTransition == null)
+                            return BadRequest("این انتقال در Workflow پروژه مجاز نیست.");
 
-                    if (usedTransition.OnlyAssigneeCanTransition && task.AssignedUserId != userId)
-                        return BadRequest("فقط مسئول Issue می‌تواند این انتقال را انجام دهد.");
+                        if (usedTransition.OnlyAssigneeCanTransition && task.AssignedUserId != userId)
+                            return BadRequest("فقط مسئول Issue می‌تواند این انتقال را انجام دهد.");
+                    }
+                    // برای sprint-level statuses، انتقال آزاد است (drag & drop)
                 }
             }
 
