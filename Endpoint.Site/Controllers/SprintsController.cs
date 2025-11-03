@@ -1188,6 +1188,12 @@ namespace Endpoint.Site.Controllers
                 TempData["Error"] = "خطا در تغییر وضعیت اسپرینت: " + ex.Message;
             }
 
+            // اگر اسپرینت تکمیل شد، به صفحه Details پروژه redirect می‌کنیم
+            if (status == SprintStatus.Completed)
+            {
+                return RedirectToAction("Details", "Projects", new { id = sprint.ProjectId });
+            }
+
             return RedirectToAction(nameof(Details), new { id });
         }
     }
