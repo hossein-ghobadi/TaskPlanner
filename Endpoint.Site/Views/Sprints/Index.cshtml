@@ -75,7 +75,16 @@ else
                         <h5 class="mb-0">@sprint.Name</h5>
                         <span class="badge @statusBadgeClass">@statusText</span>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body position-relative">
+                        @if (sprint.Status == SprintStatus.Active)
+                        {
+                            <a class="stretched-link" href="/Sprints/Details/@sprint.Id" aria-label="جزئیات اسپرینت"></a>
+                        }
+                        else if (sprint.Status == SprintStatus.Planning)
+                        {
+                            <a class="stretched-link" href="/WorkflowStatus/Index?sprintId=@sprint.Id" aria-label="مدیریت وضعیت‌های اسپرینت"></a>
+                        }
+                        
                         @if (!string.IsNullOrEmpty(sprint.Description))
                         {
                             <p class="card-text">@sprint.Description</p>
@@ -104,37 +113,26 @@ else
                             <strong>تعداد تسک‌ها:</strong> @sprint.Tasks.Count
                         </div>
                         
-                        <div class="mt-3">
-                            @if (sprint.Status == SprintStatus.Active)
-                            {
-                                <a class="stretched-link" href="/Sprints/Details/@sprint.Id" aria-label="جزئیات اسپرینت"></a>
-@*                                 <a class="stretched-link" href="/Sprints/Board/@sprint.Id" aria-label="جزئیات اسپرینت"></a>
- *@                            }
+                        <div class="mt-3 position-relative" style="z-index: 10;">
                             @if (sprint.Status == SprintStatus.Planning)
                             {
-
-                                <a class="btn btn-sm btn-warning" href="/Sprints/Edit/@sprint.Id" onclick="event.stopPropagation();">ویرایش</a>
-                                <a class="btn btn-sm btn-danger" href="/Sprints/Delete/@sprint.Id" onclick="event.stopPropagation();">حذف</a>
-                                
-                            }
-                            
-                            @if (sprint.Status == SprintStatus.Planning)
-                            {
-                                <form method="post" action="/Sprints/ChangeStatus" class="d-inline" onclick="event.stopPropagation();">
+                                <a class="btn btn-sm btn-warning" href="/Sprints/Edit/@sprint.Id" onclick="event.stopPropagation(); event.preventDefault(); window.location.href='/Sprints/Edit/@sprint.Id';">ویرایش</a>
+                                <a class="btn btn-sm btn-danger" href="/Sprints/Delete/@sprint.Id" onclick="event.stopPropagation(); event.preventDefault(); window.location.href='/Sprints/Delete/@sprint.Id';">حذف</a>
+                                <form method="post" action="/Sprints/ChangeStatus" class="d-inline" onsubmit="event.stopPropagation();">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@sprint.Id" />
                                     <input type="hidden" name="status" value="@SprintStatus.Active" />
-                                    <button type="submit" class="btn btn-sm btn-success">شروع اسپرینت</button>
+                                    <button type="submit" class="btn btn-sm btn-success" onclick="event.stopPropagation();">شروع اسپرینت</button>
                                 </form>
                             }
                             else if (sprint.Status == SprintStatus.Active)
                             {
-                                <a class="btn btn-sm btn-warning" href="/Sprints/Edit/@sprint.Id" onclick="event.stopPropagation();">ویرایش</a>
-                                <form method="post" action="/Sprints/ChangeStatus" class="d-inline" onclick="event.stopPropagation();">
+                                <a class="btn btn-sm btn-warning" href="/Sprints/Edit/@sprint.Id" onclick="event.stopPropagation(); event.preventDefault(); window.location.href='/Sprints/Edit/@sprint.Id';">ویرایش</a>
+                                <form method="post" action="/Sprints/ChangeStatus" class="d-inline" onsubmit="event.stopPropagation();">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@sprint.Id" />
                                     <input type="hidden" name="status" value="@SprintStatus.Completed" />
-                                    <button type="submit" class="btn btn-sm btn-secondary">تکمیل اسپرینت</button>
+                                    <button type="submit" class="btn btn-sm btn-secondary" onclick="event.stopPropagation();">تکمیل اسپرینت</button>
                                 </form>
                             }
                         </div>
