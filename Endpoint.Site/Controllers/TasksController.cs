@@ -573,9 +573,13 @@ namespace Endpoint.Site.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // 🎯 فقط پروژه‌هایی که کاربر عضو یا سازنده‌ی آنهاست
+            // 🎯 فقط پروژه‌هایی که کاربر سازنده/عضو آنهاست یا دعوت پذیرفته‌شده دارد (بدون دعوت‌های صرفاً دریافتی/در انتظار)
             var userProjects = await _context.Projects
-                .Where(p => p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId))
+                .Where(p =>
+                    p.CreatorUserId == userId ||
+                    p.Members.Any(m => m.UserId == userId) ||
+                    _context.ProjectInvitations.Any(i => i.ProjectId == p.Id && i.InviteeId == userId && i.Status == InvitationStatus.Accepted)
+                )
                 .Select(p => new { p.Id, p.Name })
                 .ToListAsync();
 
@@ -585,8 +589,9 @@ namespace Endpoint.Site.Controllers
             ViewBag.Categories = await _context.TaskCategories.ToListAsync();
 
             // 🧩 تسک‌های همین پروژه‌ها برای انتخاب Parent Task
+            var allowedProjectIds = userProjects.Select(p => p.Id).ToList();
             ViewBag.Tasks = await _context.TaskItems
-                .Where(t => userProjects.Select(p => p.Id).Contains(t.ProjectId))
+                .Where(t => allowedProjectIds.Contains(t.ProjectId))
                 .ToListAsync();
 
             // 🏃 اسپرینت‌ها و چرخه کاری حذف شدند - تسک‌ها مستقل ایجاد می‌شوند
