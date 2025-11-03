@@ -36,21 +36,11 @@
         <p><strong>👤 سازنده:</strong> @Model.CreatorUserName</p>
         
         <div class="mt-3">
-            @if (Model.ActiveSprintId.HasValue)
-            {
-                <a class="btn btn-primary btn-lg" href="/Sprints/Board/@Model.ActiveSprintId">
-                    <i class="bi bi-kanban"></i> تخته کانبان (@Model.ActiveSprintName)
-                </a>
-            }
-            <a class="btn btn-outline-primary" href="/Sprints/Backlog?projectId=@Model.Id">
-                🗂️ بک‌لاگ
-            </a>
+           
             <a class="btn btn-info" href="/Sprints/Index?projectId=@Model.Id">
                 <i class="bi bi-calendar-range"></i> اسپرینت‌ها
             </a>
-            <a class="btn btn-success" href="/Tasks/Index?projectId=@Model.Id">
-                <i class="bi bi-list-task"></i> تسک‌ها
-            </a>
+           
         </div>
     </div>
 </div>

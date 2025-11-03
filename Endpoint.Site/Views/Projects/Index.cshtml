@@ -4,33 +4,65 @@
     Layout = "/Views/Shared/_Layout.cshtml";
 
 }
-<h2>لیست پروژه‌ها</h2>
-<a class="btn btn-primary mb-3" href="/Projects/Create">افزودن پروژه جدید</a>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="m-0">پروژه‌ها</h2>
+    <a class="btn btn-primary" href="/Projects/Create">
+        <i class="bi bi-plus-circle"></i>
+        ایجاد پروژه
+    </a>
+    </div>
 
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>نام پروژه</th>
-            <th>توضیحات</th>
-         
-            <th>تعداد تسک‌ها</th>
-            <th>عملیات</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var p in Model)
-        {
-            <tr>
-                <td>@p.Name</td>
-                <td>@p.Description</td>
-             
-                <td>@p.Tasks?.Count</td>
-                <td>
-                    <a class="btn btn-sm btn-info" asp-action="Details" asp-route-id="@p.Id">جزئیات</a>
-                    <a class="btn btn-sm btn-warning" asp-action="Edit" asp-route-id="@p.Id">ویرایش</a>
-                    <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@p.Id">حذف</a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
+    @foreach (var p in Model)
+    {
+        <div class="col">
+            <div class="card h-100 shadow-sm border-0 position-relative" style="transition: box-shadow .2s ease;">
+                <a asp-action="Details" asp-route-id="@p.Id" class="text-decoration-none text-dark">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title fw-bold" style="font-size:1.25rem;">@p.Name</h5>
+                            <span class="badge bg-secondary">@((p.Tasks?.Count) ?? 0) تسک</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(p.Description))
+                        {
+                            <p class="card-text text-muted" style="min-height:2.5rem; overflow: hidden; text-overflow: ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
+                                @p.Description
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="card-text text-muted">بدون توضیحات</p>
+                        }
+                    </div>
+                </a>
+                <div class="card-footer bg-white border-0 d-flex justify-content-between align-items-center pt-0 pb-3 px-3">
+                    <div class="d-flex align-items-center gap-2">
+                        @{ var sprintLookup = ViewBag.ActiveSprintByProject as System.Collections.Generic.Dictionary<int,int>; }
+                        @if (sprintLookup != null && sprintLookup.ContainsKey(p.Id))
+                        {
+                            <a class="btn btn-outline-success btn-sm" asp-controller="Sprints" asp-action="Board" asp-route-id="@sprintLookup[p.Id]" title="برد اسپرینت فعال" onclick="event.stopPropagation();">
+                                <i class="bi bi-kanban"></i>
+                            </a>
+                        }
+                        <a class="btn btn-outline-primary btn-sm" asp-controller="Tasks" asp-action="Index" asp-route-projectId="@p.Id" title="لیست کارها" onclick="event.stopPropagation();">
+                            <i class="bi bi-list-task"></i>
+                        </a>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-outline-secondary btn-sm" asp-action="Edit" asp-route-id="@p.Id" title="ویرایش" onclick="event.stopPropagation();">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                        <a class="btn btn-outline-danger btn-sm" asp-action="Delete" asp-route-id="@p.Id" title="حذف" onclick="event.stopPropagation();">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .card:hover { box-shadow: 0 0.75rem 1.5rem rgba(0,0,0,.08); }
+    .card .btn { border-radius: 8px; }
+</style>

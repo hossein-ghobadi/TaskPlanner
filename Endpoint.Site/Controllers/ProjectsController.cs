@@ -78,6 +78,18 @@ namespace Endpoint.Site.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var projects = await _projectQueryService.GetUserProjectsAsync(userId);
+
+            // Active sprint lookup for quick access in cards
+            var projectIds = projects.Select(p => p.Id).ToList();
+            var activeSprints = await _context.Sprints
+                .Where(s => projectIds.Contains(s.ProjectId) && s.IsActive)
+                .Select(s => new { s.ProjectId, s.Id })
+                .ToListAsync();
+
+            ViewBag.ActiveSprintByProject = activeSprints
+                .GroupBy(x => x.ProjectId)
+                .ToDictionary(g => g.Key, g => g.First().Id);
+
             return View(projects);
         }
         [HttpGet("{id}")]

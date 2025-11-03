@@ -332,68 +332,7 @@ namespace Endpoint.Site.Controllers
             }
         }
 
-        // 📋 Backlog: نمایش Issues خارج از اسپرینت و امکان افزودن به اسپرینت فعال
-        [HttpGet]
-        public async Task<IActionResult> Backlog(int projectId)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            // دسترسی
-            var project = await _context.Projects
-                .Include(p => p.WorkflowStatuses)
-                .FirstOrDefaultAsync(p => p.Id == projectId);
-            if (project == null)
-            {
-                TempData["Error"] = "پروژه یافت نشد.";
-                return RedirectToAction("Index", "Projects");
-            }
-            var hasAccess = project.CreatorUserId == userId || await _context.ProjectMembers.AnyAsync(m => m.ProjectId == projectId && m.UserId == userId);
-            if (!hasAccess)
-            {
-                TempData["Error"] = "شما به این پروژه دسترسی ندارید.";
-                return RedirectToAction("Index", "Projects");
-            }
-
-            // اسپرینت فعال (برای امکان افزودن آیتم‌ها)
-            var activeSprint = await _context.Sprints
-                .Where(s => s.ProjectId == projectId && s.Status == SprintStatus.Active)
-                .Select(s => new { s.Id, s.Name })
-                .FirstOrDefaultAsync();
-
-            // آیدی تسک‌های حاضر در هر اسپرینتی که تکمیل نشده
-            var tasksInOpenSprints = await _context.SprintTasks
-                .Where(st => _context.Sprints.Any(s => s.Id == st.SprintId && s.ProjectId == projectId && s.Status != SprintStatus.Completed))
-                .Select(st => st.TaskId)
-                .Distinct()
-                .ToListAsync();
-
-            // Backlog = تسک‌های پروژه که کامل نشده‌اند، و در هیچ اسپرینت باز نیستند، و قابل افزودن به اسپرینت هستند
-            var backlogIssues = await _context.TaskItems
-                .Include(t => t.AssignedUser)
-                .Include(t => t.Category)
-                .Where(t => t.ProjectId == projectId
-                            && !t.IsCompleted
-                            && (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task)
-                            && !tasksInOpenSprints.Contains(t.Id))
-                .OrderByDescending(t => t.Priority)
-                .ThenBy(t => t.DueDate)
-                .ToListAsync();
-
-            var vm = new SprintBoardVm
-            {
-                SprintId = activeSprint?.Id ?? 0,
-                SprintName = activeSprint?.Name ?? "—",
-                ProjectId = projectId,
-                ProjectName = project.Name,
-                Statuses = await _context.WorkflowStatuses.Where(ws => ws.ProjectId == projectId).OrderBy(ws => ws.Order).ToListAsync(),
-                SprintIssues = new List<TaskItem>() // در Backlog استفاده نمی‌کنیم؛ از backlogIssues در View استفاده می‌شود
-            };
-
-            ViewBag.BacklogIssues = backlogIssues;
-            ViewBag.HasActiveSprint = activeSprint != null;
-            return View(vm);
-        }
-
+        
         // 📌 دریافت تسک‌های پروژه برای اضافه کردن به اسپرینت
         [HttpGet]
         public async Task<IActionResult> GetProjectTasks(int projectId, int sprintId)
@@ -473,7 +412,7 @@ namespace Endpoint.Site.Controllers
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == sprint.ProjectId && 
+                .AnyAsync(p => p.Id == sprint.ProjectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -533,8 +472,9 @@ namespace Endpoint.Site.Controllers
                 })
                 .ToListAsync();
 
-            return Json(new { 
-                success = true, 
+            return Json(new
+            {
+                success = true,
                 message = "تسک با موفقیت به اسپرینت اضافه شد.",
                 tasks = allTasks
             });

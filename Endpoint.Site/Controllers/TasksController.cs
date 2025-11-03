@@ -34,7 +34,7 @@ namespace Endpoint.Site.Controllers
 
         // GET: لیست تسک‌ها
         [Authorize]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? projectId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -42,6 +42,16 @@ namespace Endpoint.Site.Controllers
                 .Where(p => p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId))
                 .Select(p => p.Id)
                 .ToListAsync();
+
+            // اگر projectId داده شده، دسترسی را بررسی و فیلتر کن
+            if (projectId.HasValue)
+            {
+                if (!userProjectIds.Contains(projectId.Value))
+                {
+                    return Forbid();
+                }
+                userProjectIds = new List<int> { projectId.Value };
+            }
 
             var tasks = await _context.TaskItems
                 .Include(t => t.Project)

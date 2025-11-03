@@ -27,10 +27,7 @@
         <p class="text-muted">پروژه: <a href="/Projects/Details/@Model.ProjectId">@Model.ProjectName</a></p>
     </div>
     <div>
-        @if (Model.Status != SprintStatus.Completed)
-        {
-            <a class="btn btn-primary" href="/Sprints/Planning/@Model.Id">📅 برنامه‌ریزی</a>
-        }
+        
         @if (Model.Status == SprintStatus.Active)
         {
             <a class="btn btn-success" href="/Sprints/Board/@Model.Id">تخته کانبان</a>
