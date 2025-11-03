@@ -1,0 +1,77 @@
+@model IEnumerable<TaskPlanner.Domain.Entities.TaskPlanner.Sprint>
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var projectId = ViewBag.ProjectId as int?;
+    var projectName = ViewBag.ProjectName as string;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2>انتخاب اسپرینت</h2>
+        @if (!string.IsNullOrEmpty(projectName))
+        {
+            <p class="text-muted">پروژه: <strong>@projectName</strong></p>
+        }
+    </div>
+    <div>
+        <a class="btn btn-secondary" href="/Projects/Details/@projectId">بازگشت به پروژه</a>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> برای مدیریت وضعیت‌ها، لطفاً یک اسپرینت انتخاب کنید.
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-warning">
+        <p>هیچ اسپرینتی برای این پروژه تعریف نشده است.</p>
+        <a class="btn btn-primary" href="/Sprints/Create?projectId=@projectId">ایجاد اسپرینت جدید</a>
+    </div>
+}
+else
+{
+    <div class="row">
+        @foreach (var sprint in Model)
+        {
+            var statusBadgeClass = sprint.Status switch
+            {
+                SprintStatus.Active => "bg-success",
+                SprintStatus.Completed => "bg-secondary",
+                _ => "bg-warning"
+            };
+
+            var statusText = sprint.Status switch
+            {
+                SprintStatus.Active => "فعال",
+                SprintStatus.Completed => "خاتمه یافته",
+                _ => "در حال برنامه‌ریزی"
+            };
+
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">@sprint.Name</h5>
+                        <p class="card-text">
+                            <span class="badge @statusBadgeClass">@statusText</span>
+                        </p>
+                        @if (!string.IsNullOrEmpty(sprint.Description))
+                        {
+                            <p class="card-text text-muted">@sprint.Description</p>
+                        }
+                        <p class="card-text">
+                            <small class="text-muted">
+                                از @sprint.StartDate.ToShortDateString() تا @sprint.EndDate.ToShortDateString()
+                            </small>
+                        </p>
+                        <a class="btn btn-primary" href="/WorkflowStatus/Index?sprintId=@sprint.Id">
+                            <i class="bi bi-gear"></i> مدیریت وضعیت‌ها
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+

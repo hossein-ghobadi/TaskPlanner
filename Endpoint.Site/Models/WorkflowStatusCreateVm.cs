@@ -23,6 +23,9 @@ namespace Endpoint.Site.Models
         [Display(Name = "پروژه")]
         public int ProjectId { get; set; }
 
+        [Display(Name = "اسپرینت")]
+        public int? SprintId { get; set; }
+
         [Required(ErrorMessage = "نوع وضعیت الزامی است")]
         [Display(Name = "نوع وضعیت")]
         public string Type { get; set; } = "Todo";

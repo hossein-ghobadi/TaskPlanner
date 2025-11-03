@@ -148,6 +148,13 @@ namespace TaskPlanner.Persistence.Contexts
                 .HasForeignKey(w => w.ProjectId)
                 .OnDelete(DeleteBehavior.NoAction);
 
+            // رابطه WorkflowStatus با Sprint (اختیاری)
+            modelBuilder.Entity<WorkflowStatus>()
+                .HasOne(w => w.Sprint)
+                .WithMany()
+                .HasForeignKey(w => w.SprintId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // رابطه TaskItem با Sprint (اختیاری)
             modelBuilder.Entity<TaskItem>()
                 .HasOne(t => t.Sprint)

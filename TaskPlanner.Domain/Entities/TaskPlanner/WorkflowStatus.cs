@@ -34,6 +34,12 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public Project Project { get; set; } = null!;
 
         /// <summary>
+        /// اسپرینت مربوطه (اختیاری - اگر null باشد، وضعیت در سطح پروژه است)
+        /// </summary>
+        public int? SprintId { get; set; }
+        public Sprint? Sprint { get; set; }
+
+        /// <summary>
         /// نوع وضعیت: Todo, InProgress, Done
         /// این برای دسته‌بندی کلی استفاده می‌شود
         /// </summary>

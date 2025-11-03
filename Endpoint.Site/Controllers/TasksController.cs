@@ -487,9 +487,19 @@ namespace Endpoint.Site.Controllers
             WorkflowStatus? toStatus = null;
             if (toStatusId.HasValue)
             {
-                // وضعیت مقصد باید در همان پروژه باشد
-                toStatus = await _context.WorkflowStatuses
-                    .FirstOrDefaultAsync(ws => ws.Id == toStatusId.Value && ws.ProjectId == task.ProjectId);
+                // اگر تسک در یک اسپرینت است، باید از وضعیت‌های همان اسپرینت استفاده کند
+                if (task.SprintId.HasValue)
+                {
+                    toStatus = await _context.WorkflowStatuses
+                        .FirstOrDefaultAsync(ws => ws.Id == toStatusId.Value && ws.SprintId == task.SprintId.Value);
+                }
+                else
+                {
+                    // اگر تسک در اسپرینت نیست، از وضعیت‌های پروژه استفاده می‌کند (سازگاری با داده‌های قدیمی)
+                    toStatus = await _context.WorkflowStatuses
+                        .FirstOrDefaultAsync(ws => ws.Id == toStatusId.Value && ws.ProjectId == task.ProjectId && ws.SprintId == null);
+                }
+                
                 if (toStatus == null)
                     return BadRequest("وضعیت مقصد معتبر نیست.");
 
@@ -497,6 +507,13 @@ namespace Endpoint.Site.Controllers
                 WorkflowTransition? usedTransition = null;
                 if (fromStatusId.HasValue)
                 {
+                    // جلوگیری از بازگشت از Done به وضعیت‌های قبلی
+                    var fromStatus = await _context.WorkflowStatuses.FirstOrDefaultAsync(ws => ws.Id == fromStatusId.Value);
+                    if (fromStatus != null && fromStatus.Type == WorkflowType.Done && fromStatus.IsFinal && toStatus.Type != WorkflowType.Done)
+                    {
+                        return BadRequest("انتقال از وضعیت انجام شده به وضعیت‌های قبلی مجاز نیست.");
+                    }
+
                     usedTransition = await _context.WorkflowTransitions
                         .FirstOrDefaultAsync(tr => tr.ProjectId == task.ProjectId
                                                 && tr.FromStatusId == fromStatusId.Value

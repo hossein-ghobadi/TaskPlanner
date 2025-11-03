@@ -1,26 +1,39 @@
 @model IEnumerable<WorkflowStatus>
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    var sprintId = ViewBag.SprintId as int?;
+    var sprintName = ViewBag.SprintName as string;
+    var sprintStatus = ViewBag.SprintStatus as SprintStatus?;
     var projectId = ViewBag.ProjectId as int?;
     var projectName = ViewBag.ProjectName as string;
+    var canEdit = ViewBag.CanEdit as bool? ?? false;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h2>وضعیت‌های چرخه کاری (Workflow)</h2>
+        @if (!string.IsNullOrEmpty(sprintName))
+        {
+            <p class="text-muted">اسپرینت: <strong>@sprintName</strong></p>
+        }
         @if (!string.IsNullOrEmpty(projectName))
         {
             <p class="text-muted">پروژه: <strong>@projectName</strong></p>
         }
+        @if (sprintStatus.HasValue && sprintStatus != SprintStatus.Planning)
+        {
+            <div class="alert alert-warning mt-2 mb-0">
+                <small><i class="bi bi-lock"></i> اسپرینت در حالت @(sprintStatus == SprintStatus.Active ? "فعال" : "تکمیل شده") است. وضعیت‌ها قابل تغییر نیستند.</small>
+            </div>
+        }
     </div>
     <div>
-        <a class="btn btn-primary" href="/WorkflowStatus/Create?projectId=@projectId">ایجاد وضعیت جدید</a>
-        <form method="post" action="/WorkflowStatus/CreateDefaultStatuses" class="d-inline">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="projectId" value="@projectId" />
-            <button type="submit" class="btn btn-success">ایجاد وضعیت‌های پیش‌فرض</button>
-        </form>
-        <a class="btn btn-secondary" href="/Projects/Details/@projectId">بازگشت به پروژه</a>
+        @if (canEdit)
+        {
+            <a class="btn btn-primary" href="/WorkflowStatus/Create?sprintId=@sprintId">ایجاد وضعیت جدید</a>
+            
+        }
+        <a class="btn btn-secondary" href="/Sprints/Details/@sprintId">بازگشت به اسپرینت</a>
     </div>
 </div>
 
@@ -43,52 +56,54 @@
 @if (!Model.Any())
 {
     <div class="alert alert-info">
-        <p>هیچ وضعیتی برای این پروژه تعریف نشده است.</p>
-        <p>می‌توانید از دکمه "ایجاد وضعیت‌های پیش‌فرض" برای ایجاد سریع وضعیت‌های استاندارد استفاده کنید.</p>
+        <p>هیچ وضعیتی برای این اسپرینت تعریف نشده است.</p>
+        @if (canEdit)
+        {
+            <p>می‌توانید از دکمه "ایجاد وضعیت‌های پیش‌فرض" برای ایجاد سریع وضعیت‌های استاندارد استفاده کنید.</p>
+        }
+        else
+        {
+            <p>برای ایجاد وضعیت، لطفاً ابتدا اسپرینت را به حالت برنامه‌ریزی برگردانید.</p>
+        }
     </div>
 }
 else
 {
     <div class="card">
         <div class="card-body">
-            <table class="table table-striped">
+            <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle"></i> برای تغییر ترتیب وضعیت‌ها، روی ردیف‌ها کلیک کرده و آن‌ها را به بالا یا پایین بکشید (drag & drop)
+            </div>
+            <table class="table table-striped" id="statusTable">
                 <thead>
                     <tr>
+                        <th style="width: 40px;">🔄</th>
                         <th>ترتیب</th>
                         <th>نام وضعیت</th>
-                        <th>نوع</th>
                         <th>رنگ</th>
                         <th>توضیحات</th>
                         <th>تعداد تسک‌ها</th>
                         <th>عملیات</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @foreach (var status in Model)
+                <tbody id="statusTableBody">
+                    @foreach (var status in Model.OrderBy(s => s.Order))
                     {
-                        <tr>
-                            <td>@status.Order</td>
+                        var isFirstStatus = status.Order == 1 && status.Type == WorkflowType.Todo && status.IsDefault;
+                        var isLastStatus = status.Type == WorkflowType.Done && status.IsFinal;
+                        var isLocked = isFirstStatus || isLastStatus;
+                        <tr data-status-id="@status.Id" data-is-default="@(isFirstStatus ? "true" : "false")" data-is-final="@(isLastStatus ? "true" : "false")" style="cursor: @(isLocked ? "default" : "move");">
+                            <td>@if (isLocked) { <i class="bi bi-lock text-muted" title="@(isFirstStatus ? "این وضعیت همیشه اولین گام است" : "این وضعیت همیشه آخرین گام است")"></i> } else { <i class="bi bi-grip-vertical text-muted"></i> }</td>
+                            <td class="order-number">@status.Order</td>
                             <td>
                                 <span class="badge" style="background-color: @status.Color">@status.Name</span>
-                            </td>
-                            <td>
-                                @switch (status.Type)
+                                @if (status.Type == WorkflowType.Todo && status.IsDefault)
                                 {
-                                    case "Todo":
-                                        <span class="badge bg-secondary">باید انجام شود</span>
-                                        break;
-                                    case "InProgress":
-                                        <span class="badge bg-info">در حال انجام</span>
-                                        break;
-                                    case "Done":
-                                        <span class="badge bg-success">انجام شده</span>
-                                        break;
-                                    case "Blocked":
-                                        <span class="badge bg-danger">مسدود شده</span>
-                                        break;
-                                    default:
-                                        <span class="badge bg-light text-dark">@status.Type</span>
-                                        break;
+                                    <span class="badge bg-secondary ms-2" title="اولین گام">اول</span>
+                                }
+                                @if (status.Type == WorkflowType.Done && status.IsFinal)
+                                {
+                                    <span class="badge bg-success ms-2" title="آخرین گام">آخر</span>
                                 }
                             </td>
                             <td>
@@ -102,8 +117,22 @@ else
                                 <span class="badge bg-primary rounded-pill">@status.Tasks.Count</span>
                             </td>
                             <td>
-                                <a class="btn btn-sm btn-warning" href="/WorkflowStatus/Edit/@status.Id">ویرایش</a>
-                                <a class="btn btn-sm btn-danger" href="/WorkflowStatus/Delete/@status.Id">حذف</a>
+                                @if (canEdit)
+                                {
+                                    @if (isLocked)
+                                    {
+                                        <span class="text-muted">وضعیت پیش‌فرض</span>
+                                    }
+                                    else
+                                    {
+                                        <a class="btn btn-sm btn-warning" href="/WorkflowStatus/Edit/@status.Id">ویرایش</a>
+                                        <a class="btn btn-sm btn-danger" href="/WorkflowStatus/Delete/@status.Id">حذف</a>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted">قفل شده</span>
+                                }
                             </td>
                         </tr>
                     }
@@ -111,6 +140,75 @@ else
             </table>
         </div>
     </div>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+        $(function() {
+            const statusTableBody = document.getElementById('statusTableBody');
+            const canEdit = @(canEdit ? "true" : "false");
+            
+            if (statusTableBody && canEdit) {
+                const sortable = Sortable.create(statusTableBody, {
+                    handle: 'tr',
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    disabled: !canEdit,
+                    filter: 'tr[data-is-default="true"], tr[data-is-final="true"]', // جلوگیری از جابجایی وضعیت اول و آخر
+                    onEnd: function(evt) {
+                        const rows = Array.from(statusTableBody.querySelectorAll('tr'));
+                        const statusOrders = rows.map((row, index) => {
+                            const statusId = row.getAttribute('data-status-id');
+                            const orderCell = row.querySelector('.order-number');
+                            if (orderCell) {
+                                orderCell.textContent = index + 1;
+                            }
+                            return { statusId: parseInt(statusId), order: index + 1 };
+                        });
+
+                        // ارسال به سرور
+                        $.ajax({
+                            url: '@Url.Action("UpdateOrder", "WorkflowStatus")',
+                            type: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                            },
+                            data: JSON.stringify({
+                                sprintId: @sprintId,
+                                statusOrders: statusOrders
+                            }),
+                            success: function(response) {
+                                if (response.success) {
+                                    // نمایش پیام موفقیت
+                                    const alertHtml = '<div class="alert alert-success alert-dismissible fade show" role="alert">ترتیب وضعیت‌ها با موفقیت به‌روزرسانی شد<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+                                    $('.alert-success').remove();
+                                    $('h2').after(alertHtml);
+                                }
+                            },
+                            error: function(xhr) {
+                                const errorMsg = xhr.responseJSON?.message || 'خطا در به‌روزرسانی ترتیب وضعیت‌ها';
+                                alert(errorMsg);
+                                location.reload();
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    </script>
+    <style>
+        .sortable-ghost {
+            opacity: 0.5;
+        }
+        #statusTableBody tr:hover {
+            background-color: #f8f9fa;
+        }
+        #statusTableBody tr {
+            user-select: none;
+        }
+    </style>
 }
 
 <div class="mt-4">

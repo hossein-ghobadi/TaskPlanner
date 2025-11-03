@@ -112,18 +112,31 @@
                         کل تسک‌ها
                         <span class="badge bg-primary rounded-pill">@Model.TotalTasks</span>
                     </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        باید انجام شود
-                        <span class="badge bg-secondary rounded-pill">@Model.PendingTasks</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        در حال انجام
-                        <span class="badge bg-info rounded-pill">@Model.InProgressTasks</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        تکمیل شده
-                        <span class="badge bg-success rounded-pill">@Model.CompletedTasks</span>
-                    </li>
+
+                    @{ var statsStatuses = ViewBag.WorkflowStatuses as List<TaskPlanner.Domain.Entities.TaskPlanner.WorkflowStatus> ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.WorkflowStatus>(); }
+
+                    @* بدون وضعیت *@
+                    @{ var noStatusCount = Model.Tasks.Count(t => !t.StatusId.HasValue); }
+                    @if (noStatusCount > 0)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            بدون وضعیت
+                            <span class="badge bg-light text-dark rounded-pill">@noStatusCount</span>
+                        </li>
+                    }
+
+                    @* آمار بر مبنای ستون‌های کانبان (WorkflowStatus) *@
+                    @foreach (var st in statsStatuses.OrderBy(s => s.Order))
+                    {
+                        var count = Model.Tasks.Count(t => t.StatusId == st.Id);
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>
+                                <span class="badge me-2" style="background-color:@st.Color">&nbsp;</span>
+                                @st.Name
+                            </span>
+                            <span class="badge rounded-pill" style="background-color:@(st.Color ?? "#6c757d"); color: #fff;">@count</span>
+                        </li>
+                    }
                 </ul>
             </div>
         </div>
@@ -170,7 +183,7 @@
                                         </td>
                                         <td>
                                             @{
-                                                var workflowStatuses = ViewBag.WorkflowStatuses as List<TaskPlanner.Domain.Entities.TaskPlanner.WorkflowStatus> ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.WorkflowStatus>();
+                                                var workflowStatuses = ViewBag.WorkflowStatuses as List<WorkflowStatus> ?? new List<WorkflowStatus>();
                                                 var currentStatusId = task.StatusId;
                                             }
                                             <select class="form-select form-select-sm task-status" data-task-id="@task.Id">
@@ -368,7 +381,7 @@
         $(document).on('change', '.task-status', function() {
             const taskId = $(this).data('task-id');
             const toStatusId = $(this).val();
-
+            
             // اگر status خالی بود (بدون وضعیت)، null بفرست
             const statusIdValue = toStatusId === '' || toStatusId === null ? null : parseInt(toStatusId);
 
@@ -387,6 +400,8 @@
                 success: function(response) {
                     if (response.success) {
                         showNotification('وضعیت تسک با موفقیت تغییر کرد', 'success');
+                        // بارگذاری مجدد صفحه برای نمایش آمار به‌روز شده
+                        setTimeout(() => location.reload(), 1000);
                     } else {
                         showNotification('خطا: ' + response.message, 'error');
                         location.reload();

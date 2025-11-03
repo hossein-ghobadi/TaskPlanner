@@ -1,6 +1,8 @@
 @model WorkflowStatus
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    var sprintId = ViewBag.SprintId as int?;
+    var sprintName = ViewBag.SprintName as string;
 }
 
 <h2>حذف وضعیت</h2>
@@ -23,6 +25,11 @@
                 <dd class="col-sm-9">@Model.Description</dd>
             }
 
+            @if (!string.IsNullOrEmpty(sprintName))
+            {
+                <dt class="col-sm-3">اسپرینت:</dt>
+                <dd class="col-sm-9">@sprintName</dd>
+            }
             <dt class="col-sm-3">پروژه:</dt>
             <dd class="col-sm-9">@Model.Project.Name</dd>
 
@@ -46,7 +53,14 @@
         <form method="post" asp-action="Delete" asp-route-id="@Model.Id">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-danger">بله، حذف شود</button>
-            <a class="btn btn-secondary" href="/WorkflowStatus/Index?projectId=@Model.ProjectId">انصراف</a>
+            @if (sprintId.HasValue)
+            {
+                <a class="btn btn-secondary" href="/WorkflowStatus/Index?sprintId=@sprintId">انصراف</a>
+            }
+            else
+            {
+                <a class="btn btn-secondary" href="/WorkflowStatus/Index?projectId=@Model.ProjectId">انصراف</a>
+            }
         </form>
     </div>
 </div>

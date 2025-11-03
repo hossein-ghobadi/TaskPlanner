@@ -108,9 +108,11 @@ else
                             @if (sprint.Status == SprintStatus.Active)
                             {
                                 <a class="stretched-link" href="/Sprints/Details/@sprint.Id" aria-label="جزئیات اسپرینت"></a>
-                            }
+@*                                 <a class="stretched-link" href="/Sprints/Board/@sprint.Id" aria-label="جزئیات اسپرینت"></a>
+ *@                            }
                             @if (sprint.Status == SprintStatus.Planning)
                             {
+
                                 <a class="btn btn-sm btn-warning" href="/Sprints/Edit/@sprint.Id" onclick="event.stopPropagation();">ویرایش</a>
                                 <a class="btn btn-sm btn-danger" href="/Sprints/Delete/@sprint.Id" onclick="event.stopPropagation();">حذف</a>
                                 

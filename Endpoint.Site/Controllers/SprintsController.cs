@@ -125,9 +125,9 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
-            // دریافت وضعیت‌های workflow پروژه
+            // دریافت وضعیت‌های workflow اسپرینت
             var workflowStatuses = await _context.WorkflowStatuses
-                .Where(ws => ws.ProjectId == sprint.ProjectId)
+                .Where(ws => ws.SprintId == sprint.Id)
                 .OrderBy(ws => ws.Order)
                 .ToListAsync();
 
@@ -192,9 +192,9 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
-            // وضعیت‌های پروژه (ستون‌ها)
+            // وضعیت‌های اسپرینت (ستون‌ها)
             var statuses = await _context.WorkflowStatuses
-                .Where(ws => ws.ProjectId == sprint.ProjectId)
+                .Where(ws => ws.SprintId == sprint.Id)
                 .OrderBy(ws => ws.Order)
                 .ToListAsync();
 
@@ -274,7 +274,7 @@ namespace Endpoint.Site.Controllers
                 SprintName = sprint.Name,
                 ProjectId = sprint.ProjectId,
                 ProjectName = sprint.Project.Name,
-                Statuses = await _context.WorkflowStatuses.Where(ws => ws.ProjectId == sprint.ProjectId).OrderBy(ws => ws.Order).ToListAsync(),
+                Statuses = await _context.WorkflowStatuses.Where(ws => ws.SprintId == sprint.Id).OrderBy(ws => ws.Order).ToListAsync(),
                 SprintIssues = sprintIssues
             };
 
@@ -822,7 +822,39 @@ namespace Endpoint.Site.Controllers
                 
                 Console.WriteLine($"[Create POST] Sprint created successfully with Id: {sprint.Id}");
 
-                TempData["Success"] = "اسپرینت با موفقیت ایجاد شد.";
+                // ایجاد وضعیت‌های پیش‌فرض برای اسپرینت
+                var defaultStatuses = new[]
+                {
+                    new WorkflowStatus 
+                    { 
+                        Name = "باید انجام شود", 
+                        Type = WorkflowType.Todo, 
+                        Order = 1, 
+                        Color = "#6c757d", 
+                        ProjectId = sprint.ProjectId, 
+                        SprintId = sprint.Id, 
+                        IsDefault = true,
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    new WorkflowStatus 
+                    { 
+                        Name = "انجام شده", 
+                        Type = WorkflowType.Done, 
+                        Order = 2, 
+                        Color = "#198754", 
+                        ProjectId = sprint.ProjectId, 
+                        SprintId = sprint.Id, 
+                        IsFinal = true,
+                        CreatedAt = DateTime.UtcNow
+                    }
+                };
+
+                _context.WorkflowStatuses.AddRange(defaultStatuses);
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"[Create POST] Default workflow statuses created for sprint {sprint.Id}");
+
+                TempData["Success"] = "اسپرینت با موفقیت ایجاد شد و وضعیت‌های پیش‌فرض تنظیم شدند.";
                 return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId });
             }
             catch (Exception ex)
@@ -1124,10 +1156,30 @@ namespace Endpoint.Site.Controllers
                 var isCompleted = status == SprintStatus.Completed ? 1 : 0;
                 var isActive = status == SprintStatus.Active ? 1 : 0;
 
-                // Update using SQL to avoid Entity Framework tracking issues
+                // Update sprint state
                 await _context.Database.ExecuteSqlRawAsync(
                     "UPDATE Sprints SET Status = {0}, UpdatedAt = {1}, IsCompleted = {2}, IsActive = {3} WHERE Id = {4}",
                     statusValue, updatedAt, isCompleted, isActive, id);
+
+                // وقتی اسپرینت خاتمه می‌یابد، تمام تسک‌های با وضعیت Done را تکمیل کن
+                if (status == SprintStatus.Completed)
+                {
+                    var doneTasks = await _context.SprintTasks
+                        .Where(st => st.SprintId == id)
+                        .Include(st => st.Task)
+                        .ThenInclude(t => t.Status)
+                        .Select(st => st.Task)
+                        .Where(t => t.Status != null && t.Status.Type == WorkflowType.Done && t.Status.IsFinal)
+                        .ToListAsync();
+
+                    foreach (var t in doneTasks)
+                    {
+                        t.IsCompleted = true;
+                        t.UpdatedAt = DateTime.UtcNow;
+                    }
+
+                    await _context.SaveChangesAsync();
+                }
 
                 TempData["Success"] = "وضعیت اسپرینت با موفقیت تغییر کرد.";
             }

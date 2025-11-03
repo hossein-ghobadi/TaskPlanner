@@ -36,11 +36,12 @@
         <p><strong>👤 سازنده:</strong> @Model.CreatorUserName</p>
         
         <div class="mt-3">
-           
             <a class="btn btn-info" href="/Sprints/Index?projectId=@Model.Id">
                 <i class="bi bi-calendar-range"></i> اسپرینت‌ها
             </a>
-           
+            <a class="btn btn-primary" href="/WorkflowStatus/Index?projectId=@Model.Id">
+                <i class="bi bi-gear"></i> مدیریت وضعیت‌ها
+            </a>
         </div>
     </div>
 </div>
