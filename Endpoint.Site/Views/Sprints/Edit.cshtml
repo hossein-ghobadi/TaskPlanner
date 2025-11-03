@@ -27,15 +27,15 @@
 
     <div class="mb-3">
         <label asp-for="StartDate" class="form-label">تاریخ شروع</label>
-        <input type="text" id="StartDateDisplay" class="form-control" placeholder="تاریخ شروع را انتخاب کنید" value="@Model.StartDate.ToShortPersianDateString()" />
-        <input type="hidden" asp-for="StartDate" name="StartDate" id="StartDateHidden" />
+        <input type="text" id="StartDateDisplay" class="form-control" autocomplete="off" placeholder="تاریخ شروع را انتخاب کنید" value="@Model.StartDate.ToShortPersianDateString()" />
+        <input type="hidden" asp-for="StartDate" name="StartDate" id="StartDate" />
         <span asp-validation-for="StartDate" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
         <label asp-for="EndDate" class="form-label">تاریخ پایان</label>
-        <input type="text" id="EndDateDisplay" class="form-control" placeholder="تاریخ پایان را انتخاب کنید" value="@Model.EndDate.ToShortPersianDateString()" />
-        <input type="hidden" asp-for="EndDate" name="EndDate" id="EndDateHidden" />
+        <input type="text" id="EndDateDisplay" class="form-control" autocomplete="off" placeholder="تاریخ پایان را انتخاب کنید" value="@Model.EndDate.ToShortPersianDateString()" />
+        <input type="hidden" asp-for="EndDate" name="EndDate" id="EndDate" />
         <span asp-validation-for="EndDate" class="text-danger"></span>
     </div>
 
@@ -66,33 +66,36 @@
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     
     <script>
-        $(document).ready(function() {
-            // تقویم فارسی برای تاریخ شروع
-            $('#StartDateDisplay').persianDatepicker({
+        $(function() {
+            // مقداردهی اولیه hidden field ها
+            var startDateValue = "@Model.StartDate.ToShortPersianDateString()";
+            var endDateValue = "@Model.EndDate.ToShortPersianDateString()";
+            
+            $("#StartDate").val(startDateValue || "");
+            $("#EndDate").val(endDateValue || "");
+
+            // ✅ تقویم فارسی برای تاریخ شروع
+            $("#StartDateDisplay").persianDatepicker({
                 format: 'YYYY/MM/DD',
-                altField: '#StartDateHidden',
-                altFormat: 'YYYY-MM-DD',
-                observer: true,
-                timePicker: {
-                    enabled: false
-                },
                 autoClose: true,
-                initialValue: false,
-                initialValueType: 'persian'
+                initialValueType: "persian",
+                initialValue: true,
+                altField: '#StartDate',
+                altFormat: 'YYYY/MM/DD',
+                timePicker: { enabled: false },
+                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
             });
 
-            // تقویم فارسی برای تاریخ پایان
-            $('#EndDateDisplay').persianDatepicker({
+            // ✅ تقویم فارسی برای تاریخ پایان
+            $("#EndDateDisplay").persianDatepicker({
                 format: 'YYYY/MM/DD',
-                altField: '#EndDateHidden',
-                altFormat: 'YYYY-MM-DD',
-                observer: true,
-                timePicker: {
-                    enabled: false
-                },
                 autoClose: true,
-                initialValue: false,
-                initialValueType: 'persian'
+                initialValueType: "persian",
+                initialValue: true,
+                altField: '#EndDate',
+                altFormat: 'YYYY/MM/DD',
+                timePicker: { enabled: false },
+                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
             });
         });
     </script>
