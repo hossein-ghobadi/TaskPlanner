@@ -377,7 +377,7 @@ namespace Endpoint.Site.Controllers
                     title = t.Title,
                     description = t.Description,
                     categoryName = t.Category.Name,
-                    assignedUserName = t.AssignedUser != null ? t.AssignedUser.UserName : "تخصیص نیافته",
+                    assignedUserName = t.AssignedUser != null ? (t.AssignedUser.FullName ?? t.AssignedUser.UserName) : "تخصیص نیافته",
                     dueDate = t.DueDate,
                     priority = t.Priority.ToString(),
                     isCompleted = t.IsCompleted

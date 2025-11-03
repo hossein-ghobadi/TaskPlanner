@@ -33,7 +33,7 @@
             <a class="btn btn-success" href="/Sprints/Board/@Model.Id">تخته کانبان</a>
         }
         <a class="btn btn-warning" href="/Sprints/Edit/@Model.Id">ویرایش</a>
-        <a class="btn btn-secondary" href="/Sprints/Index?projectId=@Model.ProjectId">بازگشت به لیست</a>
+        
     </div>
 </div>
 
@@ -221,7 +221,7 @@
                                                 }
                                             </select>
                                         </td>
-                                        <td>@(task.AssignedUserName ?? "نامشخص")</td>
+                                        <td>@(task.AssignedUser?.FullName ?? task.AssignedUserName ?? task.AssignedUser?.UserName ?? "نامشخص")</td>
                                         <td>@(task.DueDatePersian ?? "-")</td>
                                         <td>
                                             @if (Model.Status == SprintStatus.Active)
