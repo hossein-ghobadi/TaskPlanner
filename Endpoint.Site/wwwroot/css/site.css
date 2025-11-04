@@ -1,4 +1,29 @@
-﻿/* ===== پایه‌ها ===== */
+﻿/* ===== تنظیمات فونت مرکزی ===== */
+/* 
+ * برای تغییر فونت کل پروژه، فقط مقدار --primary-font-family را در زیر تغییر دهید.
+ * فونت انتخاب شده به صورت خودکار در تمام بخش‌های پروژه اعمال می‌شود.
+ * 
+ * مثال‌های فونت‌های فارسی:
+ * - 'Vazir', 'Tahoma', 'Arial', sans-serif  (پیش‌فرض)
+ * - 'Shabnam', 'Tahoma', 'Arial', sans-serif
+ * - 'Samim', 'Tahoma', 'Arial', sans-serif
+ * - 'Tanha', 'Tahoma', 'Arial', sans-serif
+ * 
+ * برای فونت‌های انگلیسی:
+ * - 'Roboto', 'Arial', sans-serif
+ * - 'Open Sans', 'Arial', sans-serif
+ * - 'Lato', 'Arial', sans-serif
+ */
+:root {
+    /* فونت اصلی پروژه - قابل تغییر از اینجا */
+    --primary-font-family: 'Vazir', 'Tahoma', 'Arial', sans-serif;
+    
+    /* فونت‌های جایگزین (اختیاری) */
+    --secondary-font-family: 'Tahoma', 'Arial', sans-serif;
+    --monospace-font-family: 'Courier New', monospace;
+}
+
+/* ===== پایه‌ها ===== */
 html {
     font-size: 14px;
     position: relative;
@@ -13,6 +38,17 @@ html {
 
 body {
     margin-bottom: 60px;
+    font-family: var(--primary-font-family);
+}
+
+/* اعمال فونت به تمام عناصر */
+* {
+    font-family: var(--primary-font-family);
+}
+
+/* فونت monospace برای کدها */
+code, pre, kbd, samp {
+    font-family: var(--monospace-font-family);
 }
 
 .btn:focus,
