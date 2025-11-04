@@ -249,6 +249,11 @@ namespace TaskPlanner.Persistence.Contexts
             modelBuilder.Entity<SprintTask>()
                 .HasIndex(x => new { x.SprintId, x.TaskId })
                 .IsUnique();
+
+            // 🚀 Index برای Phone در User (برای بهینه‌سازی لاگین)
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Phone)
+                .HasFilter("[Phone] IS NOT NULL");
         }
         public void MarkAsModified<T>(T entity) where T : class
         {

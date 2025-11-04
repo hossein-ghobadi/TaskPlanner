@@ -50,10 +50,16 @@ namespace Endpoint.Site.Controllers
                     return View(model);
                 }
 
-                // جستجوی کاربر با نام کاربری، ایمیل یا شماره تلفن
-                var user = await _userManager.FindByNameAsync(model.UserName) 
-                         ?? await _userManager.FindByEmailAsync(model.UserName)
-                         ?? await _userManager.Users.FirstOrDefaultAsync(u => u.Phone == model.UserName);
+                // 🚀 بهینه‌سازی: جستجوی کاربر با یک query واحد (به جای 3 query جداگانه)
+                // بررسی UserName، Email (Normalized) و Phone در یک query
+                var userName = model.UserName;
+                var normalizedUserName = userName.ToUpper();
+                
+                var user = await _userManager.Users
+                    .FirstOrDefaultAsync(u => 
+                        (u.NormalizedUserName != null && u.NormalizedUserName == normalizedUserName) ||
+                        (u.NormalizedEmail != null && u.NormalizedEmail == normalizedUserName) ||
+                        (u.Phone != null && u.Phone == userName));
 
                 if (user == null)
                 {
