@@ -92,6 +92,169 @@
     </div>
 </div>
 
+
+<!-- تخته کانبان -->
+<div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
+    @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
+    {
+        <div class="kanban-column">
+            <div class="kanban-column-header" style="background-color: @(status.Color ?? "#6c757d");">
+                @status.Name
+                <span class="badge bg-light text-dark ms-1">
+                    @{
+                        var count = Model.SprintIssues.Count(t =>
+                        (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id);
+                    }
+                    @count
+                </span>
+            </div>
+            <div class="kanban-column-body drop-zone"
+                 ondragover="event.preventDefault();"
+                 ondragenter="onDragEnter(event)"
+                 ondragleave="onDragLeave(event)"
+                 ondrop="onDropIssue(event, @status.Id)"
+                 data-status-id="@status.Id">
+                @{
+                    var cards = Model.SprintIssues
+                    .Where(t => (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id)
+                    .OrderBy(t => t.Priority)
+                    .ToList();
+                }
+                @if (cards.Any())
+                {
+                    foreach (var issue in cards)
+                    {
+                        <div class="kanban-card"
+                             draggable="true"
+                             ondragstart="onDragIssue(event, @issue.Id)"
+                             onclick="handleCardClick(event, @issue.Id)"
+                             data-issue-id="@issue.Id"
+                             style="cursor: pointer;">
+
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="issue-key">@issue.IssueKey</span>
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
+                                    @if (Model.Status == SprintStatus.Active && issue.CanHaveChildren)
+                                    {
+                                        <button class="btn btn-sm btn-outline-primary p-0 px-1"
+                                                onclick="event.stopPropagation(); event.preventDefault(); openAddSubtaskModal(@issue.Id, '@issue.IssueKey');"
+                                                title="افزودن زیرتسک"
+                                                style="font-size: 0.7rem; line-height: 1;">
+                                            <i class="bi bi-plus-circle"></i>
+                                        </button>
+                                    }
+                                    @if (Model.Status == SprintStatus.Active)
+                                    {
+                                        <button class="btn btn-sm btn-outline-warning p-0 px-1"
+                                                onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(@issue.Id);"
+                                                title="خارج کردن از اسپرینت"
+                                                style="font-size: 0.7rem; line-height: 1;">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger p-0 px-1"
+                                                onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@issue.Id, '@issue.Title');"
+                                                title="حذف تسک"
+                                                style="font-size: 0.7rem; line-height: 1;">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="issue-title">@issue.Title</div>
+
+                            <div class="issue-meta">
+                                <div>👤 @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص")</div>
+                                @if (issue.DueDatePersian != "تعیین نشده")
+                                {
+                                    <div>🗓️ @issue.DueDatePersian</div>
+                                }
+                                @if (issue.StoryPoints.HasValue && issue.StoryPoints > 0)
+                                {
+                                    <div>⚡ @issue.StoryPoints SP</div>
+                                }
+                                @if (issue.ChildIssues != null && issue.ChildIssues.Any())
+                                {
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <button class="btn btn-sm btn-outline-secondary p-0 px-2"
+                                                onclick="event.stopPropagation(); event.preventDefault(); toggleSubtasks(@issue.Id);"
+                                                style="font-size: 0.7rem;">
+                                            <i class="bi bi-chevron-down" id="subtask-icon-@issue.Id"></i>
+                                            @issue.ChildIssues.Count زیرتسک
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+
+                            @* نمایش زیرتسک‌ها *@
+                            @if (issue.ChildIssues != null && issue.ChildIssues.Any())
+                            {
+                                <div class="subtasks-container mt-2" id="subtasks-@issue.Id" style="display: none; border-top: 1px solid #dee2e6; padding-top: 8px;">
+                                    @foreach (var subtask in issue.ChildIssues.OrderBy(c => c.CreatedAt))
+                                    {
+                                        <div class="subtask-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded" style="font-size: 0.85rem;">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="issue-type-icon" style="font-size: 0.9rem;">@subtask.IssueTypeIcon</span>
+                                                <div>
+                                                    <div class="fw-bold">@subtask.IssueKey: @subtask.Title</div>
+                                                    @if (!string.IsNullOrEmpty(subtask.Description))
+                                                    {
+                                                        <small class="text-muted">@(subtask.Description.Length > 50 ? subtask.Description.Substring(0, 50) + "..." : subtask.Description)</small>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div class="d-flex gap-1">
+                                                <a href="/Tasks/Details/@subtask.Id" class="btn btn-sm btn-outline-info p-0 px-1"
+                                                   onclick="event.stopPropagation();"
+                                                   title="جزئیات"
+                                                   style="font-size: 0.7rem;">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                @if (Model.Status == SprintStatus.Active)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-danger p-0 px-1"
+                                                            onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@subtask.Id, '@subtask.Title');"
+                                                            title="حذف زیرتسک"
+                                                            style="font-size: 0.7rem;">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="empty-message text-muted text-center small p-4">
+                        <i class="bi bi-inbox"></i><br>
+                        هیچ آیتمی وجود ندارد
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+<!-- تسک‌های موجود برای اضافه شدن به اسپرینت -->
+@if (Model.Status == SprintStatus.Active)
+{
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="mb-0">تسک‌های موجود</h5>
+        </div>
+        <div class="card-body">
+            <div id="availableTasksContainer">
+                <p class="text-muted">در حال بارگذاری...</p>
+            </div>
+        </div>
+    </div>
+}
+
+
 <!-- بخش افزودن تسک سریع -->
 @if (Model.Status == SprintStatus.Active)
 {
@@ -191,152 +354,6 @@
     </div>
 </div>
 
-<!-- تخته کانبان -->
-<div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
-    @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
-    {
-        <div class="kanban-column">
-            <div class="kanban-column-header" style="background-color: @(status.Color ?? "#6c757d");">
-                @status.Name
-                <span class="badge bg-light text-dark ms-1">
-                    @{
-                        var count = Model.SprintIssues.Count(t => 
-                            (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id);
-                    }
-                    @count
-                </span>
-            </div>
-            <div class="kanban-column-body drop-zone" 
-                 ondragover="event.preventDefault();"
-                 ondragenter="onDragEnter(event)"
-                 ondragleave="onDragLeave(event)"
-                 ondrop="onDropIssue(event, @status.Id)"
-                 data-status-id="@status.Id">
-                @{
-                    var cards = Model.SprintIssues
-                        .Where(t => (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id)
-                        .OrderBy(t => t.Priority)
-                        .ToList();
-                }
-                @if (cards.Any())
-                {
-                    foreach (var issue in cards)
-                    {
-                        <div class="kanban-card" 
-                             draggable="true"
-                             ondragstart="onDragIssue(event, @issue.Id)"
-                             onclick="handleCardClick(event, @issue.Id)"
-                             data-issue-id="@issue.Id"
-                             style="cursor: pointer;">
-                            
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <span class="issue-key">@issue.IssueKey</span>
-                                <div class="d-flex align-items-center gap-1">
-                                    <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
-                                    @if (Model.Status == SprintStatus.Active && issue.CanHaveChildren)
-                                    {
-                                        <button class="btn btn-sm btn-outline-primary p-0 px-1" 
-                                                onclick="event.stopPropagation(); event.preventDefault(); openAddSubtaskModal(@issue.Id, '@issue.IssueKey');" 
-                                                title="افزودن زیرتسک"
-                                                style="font-size: 0.7rem; line-height: 1;">
-                                            <i class="bi bi-plus-circle"></i>
-                                        </button>
-                                    }
-                                    @if (Model.Status == SprintStatus.Active)
-                                    {
-                                        <button class="btn btn-sm btn-outline-warning p-0 px-1" 
-                                                onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(@issue.Id);" 
-                                                title="خارج کردن از اسپرینت"
-                                                style="font-size: 0.7rem; line-height: 1;">
-                                            <i class="bi bi-x-circle"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger p-0 px-1" 
-                                                onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@issue.Id, '@issue.Title');" 
-                                                title="حذف تسک"
-                                                style="font-size: 0.7rem; line-height: 1;">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    }
-                                </div>
-                            </div>
-                            
-                            <div class="issue-title">@issue.Title</div>
-                            
-                            <div class="issue-meta">
-                                <div>👤 @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص")</div>
-                                @if (issue.DueDatePersian != "تعیین نشده")
-                                {
-                                    <div>🗓️ @issue.DueDatePersian</div>
-                                }
-                                @if (issue.StoryPoints.HasValue && issue.StoryPoints > 0)
-                                {
-                                    <div>⚡ @issue.StoryPoints SP</div>
-                                }
-                                @if (issue.ChildIssues != null && issue.ChildIssues.Any())
-                                {
-                                    <div class="d-flex justify-content-between align-items-center mt-2">
-                                        <button class="btn btn-sm btn-outline-secondary p-0 px-2" 
-                                                onclick="event.stopPropagation(); event.preventDefault(); toggleSubtasks(@issue.Id);" 
-                                                style="font-size: 0.7rem;">
-                                            <i class="bi bi-chevron-down" id="subtask-icon-@issue.Id"></i>
-                                            @issue.ChildIssues.Count زیرتسک
-                                        </button>
-                                    </div>
-                                }
-                            </div>
-
-                            @* نمایش زیرتسک‌ها *@
-                            @if (issue.ChildIssues != null && issue.ChildIssues.Any())
-                            {
-                                <div class="subtasks-container mt-2" id="subtasks-@issue.Id" style="display: none; border-top: 1px solid #dee2e6; padding-top: 8px;">
-                                    @foreach (var subtask in issue.ChildIssues.OrderBy(c => c.CreatedAt))
-                                    {
-                                        <div class="subtask-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded" style="font-size: 0.85rem;">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <span class="issue-type-icon" style="font-size: 0.9rem;">@subtask.IssueTypeIcon</span>
-                                                <div>
-                                                    <div class="fw-bold">@subtask.IssueKey: @subtask.Title</div>
-                                                    @if (!string.IsNullOrEmpty(subtask.Description))
-                                                    {
-                                                        <small class="text-muted">@(subtask.Description.Length > 50 ? subtask.Description.Substring(0, 50) + "..." : subtask.Description)</small>
-                                                    }
-                                                </div>
-                                            </div>
-                                            <div class="d-flex gap-1">
-                                                <a href="/Tasks/Details/@subtask.Id" class="btn btn-sm btn-outline-info p-0 px-1" 
-                                                   onclick="event.stopPropagation();" 
-                                                   title="جزئیات"
-                                                   style="font-size: 0.7rem;">
-                                                    <i class="bi bi-eye"></i>
-                                                </a>
-                                                @if (Model.Status == SprintStatus.Active)
-                                                {
-                                                    <button class="btn btn-sm btn-outline-danger p-0 px-1" 
-                                                            onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@subtask.Id, '@subtask.Title');" 
-                                                            title="حذف زیرتسک"
-                                                            style="font-size: 0.7rem;">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                }
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
-                }
-                else
-                {
-                    <div class="empty-message text-muted text-center small p-4">
-                        <i class="bi bi-inbox"></i><br>
-                        هیچ آیتمی وجود ندارد
-                    </div>
-                }
-            </div>
-        </div>
-    }
-</div>
 
 <!-- Modal افزودن Subtask -->
 <div class="modal fade" id="addSubtaskModal" tabindex="-1" aria-labelledby="addSubtaskModalLabel" aria-hidden="true">
@@ -380,20 +397,7 @@
     </div>
 </div>
 
-<!-- تسک‌های موجود برای اضافه شدن به اسپرینت -->
-@if (Model.Status == SprintStatus.Active)
-{
-    <div class="card mt-4">
-        <div class="card-header">
-            <h5 class="mb-0">تسک‌های موجود</h5>
-        </div>
-        <div class="card-body">
-            <div id="availableTasksContainer">
-                <p class="text-muted">در حال بارگذاری...</p>
-            </div>
-        </div>
-    </div>
-}
+
 
 @section Scripts {
     @Html.AntiForgeryToken()

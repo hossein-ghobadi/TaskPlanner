@@ -18,14 +18,14 @@
         <div class="col">
             <div class="card h-100 shadow-sm border-0 position-relative" style="transition: box-shadow .2s ease;">
                 <a asp-action="Details" asp-route-id="@p.Id" class="text-decoration-none text-dark">
-                    <div class="card-body">
+                    <div class="card-body" style="min-height: 350px;">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h5 class="card-title fw-bold" style="font-size:1.25rem;">@p.Name</h5>
                             <span class="badge bg-secondary">@((p.Tasks?.Count) ?? 0) تسک</span>
                         </div>
                         @if (!string.IsNullOrWhiteSpace(p.Description))
                         {
-                            <p class="card-text text-muted" style="min-height:2.5rem; overflow: hidden; text-overflow: ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">
+                            <p class="card-text text-muted" style="min-height:3.5rem; overflow: hidden; text-overflow: ellipsis; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;">
                                 @p.Description
                             </p>
                         }
