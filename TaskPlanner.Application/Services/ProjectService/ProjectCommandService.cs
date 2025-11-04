@@ -152,13 +152,17 @@ namespace TaskPlanner.Application.Services.ProjectService
         }
 
         /// <summary>
-        /// حذف پروژه و تمام وابستگی‌های آن
+        /// حذف پروژه و تمام وابستگی‌های آن - فقط سازنده می‌تواند حذف کند
         /// </summary>
-        public async Task DeleteProjectAsync(int projectId)
+        public async Task DeleteProjectAsync(int projectId, string userId)
         {
             var project = await _context.Projects.FindAsync(projectId);
             if (project == null)
                 throw new InvalidOperationException("پروژه یافت نشد.");
+
+            // بررسی اینکه فقط سازنده پروژه می‌تواند آن را حذف کند
+            if (project.CreatorUserId != userId)
+                throw new InvalidOperationException("فقط سازنده پروژه می‌تواند آن را حذف کند.");
 
             // حذف به ترتیب صحیح (از وابسته‌ترین به مستقل‌ترین)
             

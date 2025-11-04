@@ -224,6 +224,14 @@ namespace Endpoint.Site.Controllers
                 if (project == null)
                     return NotFound();
 
+                // بررسی اینکه فقط سازنده پروژه می‌تواند آن را ویرایش کند
+                var projectEntity = await _context.Projects.FindAsync(id);
+                if (projectEntity == null || projectEntity.CreatorUserId != currentUser.Id)
+                {
+                    TempData["Error"] = "فقط سازنده پروژه می‌تواند آن را ویرایش کند.";
+                    return RedirectToAction(nameof(Index));
+                }
+
                 var availableUsers = await _projectQueryService.GetAvailableUsersForEditAsync(currentUser.Id, id);
 
                 ViewBag.Users = availableUsers.Select(u => new { Id = u.Id, DisplayName = u.DisplayName }).ToList();
@@ -250,6 +258,27 @@ namespace Endpoint.Site.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(ProjectEditVm vm)
         {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
+            {
+                TempData["Error"] = "کاربر لاگین‌شده یافت نشد.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // بررسی اینکه فقط سازنده پروژه می‌تواند آن را ویرایش کند
+            var projectEntity = await _context.Projects.FindAsync(vm.Id);
+            if (projectEntity == null)
+            {
+                TempData["Error"] = "پروژه یافت نشد.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (projectEntity.CreatorUserId != currentUser.Id)
+            {
+                TempData["Error"] = "فقط سازنده پروژه می‌تواند آن را ویرایش کند.";
+                return RedirectToAction(nameof(Index));
+            }
+
             if (!ModelState.IsValid)
             {
                 var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -293,10 +322,24 @@ namespace Endpoint.Site.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
+            {
+                TempData["Error"] = "کاربر لاگین‌شده یافت نشد.";
+                return RedirectToAction(nameof(Index));
+            }
+
             var project = await _context.Projects
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (project == null) return NotFound();
+
+            // بررسی اینکه فقط سازنده پروژه می‌تواند آن را حذف کند
+            if (project.CreatorUserId != currentUser.Id)
+            {
+                TempData["Error"] = "فقط سازنده پروژه می‌تواند آن را حذف کند.";
+                return RedirectToAction(nameof(Index));
+            }
 
             return View(project);
         }
@@ -305,9 +348,16 @@ namespace Endpoint.Site.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
+            {
+                TempData["Error"] = "کاربر لاگین‌شده یافت نشد.";
+                return RedirectToAction(nameof(Index));
+            }
+
             try
             {
-                await _projectCommandService.DeleteProjectAsync(id);
+                await _projectCommandService.DeleteProjectAsync(id, currentUser.Id);
                 TempData["Success"] = "پروژه با موفقیت حذف شد.";
                 return RedirectToAction(nameof(Index));
             }
@@ -342,9 +392,16 @@ namespace Endpoint.Site.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmedRoute(int id)
         {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
+            {
+                TempData["Error"] = "کاربر لاگین‌شده یافت نشد.";
+                return RedirectToAction(nameof(Index));
+            }
+
             try
             {
-                await _projectCommandService.DeleteProjectAsync(id);
+                await _projectCommandService.DeleteProjectAsync(id, currentUser.Id);
                 TempData["Success"] = "پروژه با موفقیت حذف شد.";
                 return RedirectToAction(nameof(Index));
             }

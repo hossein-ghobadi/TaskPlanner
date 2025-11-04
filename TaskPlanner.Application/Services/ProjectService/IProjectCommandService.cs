@@ -16,9 +16,9 @@ namespace TaskPlanner.Application.Services.ProjectService
         Task UpdateProjectAsync(UpdateProjectDto dto);
 
         /// <summary>
-        /// حذف پروژه و تمام وابستگی‌های آن
+        /// حذف پروژه و تمام وابستگی‌های آن - فقط سازنده می‌تواند حذف کند
         /// </summary>
-        Task DeleteProjectAsync(int projectId);
+        Task DeleteProjectAsync(int projectId, string userId);
 
         /// <summary>
         /// دعوت کاربر به پروژه

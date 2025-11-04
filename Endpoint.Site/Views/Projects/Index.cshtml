@@ -1,8 +1,9 @@
 ﻿@model IEnumerable<Project>
+@using System.Security.Claims
 @{
     // ViewData["Title"] = "خانه";
     Layout = "/Views/Shared/_Layout.cshtml";
-
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 }
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="m-0">پروژه‌ها</h2>
@@ -49,12 +50,15 @@
                         </a>
                     </div>
                     <div class="d-flex gap-2">
-                        <a class="btn btn-outline-secondary btn-sm" asp-action="Edit" asp-route-id="@p.Id" title="ویرایش" onclick="event.stopPropagation();">
-                        <i class="bi bi-pencil"></i>
-                    </a>
-                        <a class="btn btn-outline-danger btn-sm" asp-action="Delete" asp-route-id="@p.Id" title="حذف" onclick="event.stopPropagation();">
-                        <i class="bi bi-trash"></i>
-                    </a>
+                        @if (p.CreatorUserId == currentUserId)
+                        {
+                            <a class="btn btn-outline-secondary btn-sm" asp-action="Edit" asp-route-id="@p.Id" title="ویرایش" onclick="event.stopPropagation();">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a class="btn btn-outline-danger btn-sm" asp-action="Delete" asp-route-id="@p.Id" title="حذف" onclick="event.stopPropagation();">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        }
                     </div>
                 </div>
             </div>
