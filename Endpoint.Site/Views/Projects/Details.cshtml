@@ -39,6 +39,13 @@
             <a class="btn btn-info" href="/Sprints/Index?projectId=@Model.Id">
                 <i class="bi bi-calendar-range"></i> اسپرینت‌ها
             </a>
+            @if (@Model.ActiveSprintId!=null){
+
+                <a class="btn btn-success" href="/Sprints/Board/@Model.ActiveSprintId">
+                    <i class="bi bi-calendar-range"></i> تخته کانبان
+                </a>
+            }
+           
            
         </div>
     </div>
