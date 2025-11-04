@@ -48,6 +48,7 @@ namespace Endpoint.Site.Controllers
             ViewBag.ProjectId = projectId;
 
             var notes = await _context.ProjectNotes
+                .Include(n => n.Attachments) // 📎 اضافه شد برای نمایش فایل‌ها در لیست
                 .Where(n => n.ProjectId == projectId)
                 .OrderByDescending(n => n.CreatedAt)
                 .ToListAsync();
@@ -191,7 +192,7 @@ namespace Endpoint.Site.Controllers
         }
 
         // 📌 ویرایش یادداشت
-        [HttpGet("{id}")]
+        [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
             var note = await _context.ProjectNotes

@@ -91,21 +91,36 @@
                                             }
                                             else if (att.FileType == "Audio")
                                             {
-                                                <span class="badge bg-info" style="font-size: 0.9em;">
-                                                    <i class="bi bi-music-note"></i> صوت
-                                                </span>
+                                                <div onclick="event.stopPropagation();" style="width: 100%;">
+                                                    <audio controls class="w-100" style="max-height: 30px; height: 30px;">
+                                                        <source src="@att.FilePath" type="@att.MimeType">
+                                                    </audio>
+                                                    <small class="text-muted d-block" style="font-size: 0.7em;">@att.FileName</small>
+                                                </div>
                                             }
                                             else if (att.FileType == "Document")
                                             {
-                                                <span class="badge bg-success" style="font-size: 0.9em;">
-                                                    <i class="bi bi-file-earmark-text"></i> سند
-                                                </span>
+                                                <a href="@att.FilePath" target="_blank" onclick="event.stopPropagation();" 
+                                                   class="text-decoration-none" title="@att.FileName">
+                                                    <div class="border rounded p-2 text-center" style="width: 60px;">
+                                                        <i class="bi bi-file-earmark-text text-success" style="font-size: 1.5rem;"></i>
+                                                        <small class="d-block text-muted" style="font-size: 0.65em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                            @(att.FileName.Length > 8 ? att.FileName.Substring(0, 8) + "..." : att.FileName)
+                                                        </small>
+                                                    </div>
+                                                </a>
                                             }
                                             else
                                             {
-                                                <span class="badge bg-secondary" style="font-size: 0.9em;">
-                                                    <i class="bi bi-file-earmark"></i> فایل
-                                                </span>
+                                                <a href="@att.FilePath" target="_blank" onclick="event.stopPropagation();" 
+                                                   class="text-decoration-none" title="@att.FileName">
+                                                    <div class="border rounded p-2 text-center" style="width: 60px;">
+                                                        <i class="bi bi-file-earmark text-secondary" style="font-size: 1.5rem;"></i>
+                                                        <small class="d-block text-muted" style="font-size: 0.65em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                            @(att.FileName.Length > 8 ? att.FileName.Substring(0, 8) + "..." : att.FileName)
+                                                        </small>
+                                                    </div>
+                                                </a>
                                             }
                                         }
                                         @if (note.Attachments.Count > 3)
@@ -172,43 +187,51 @@
                             }
                         </small>
                     </td>
-                    <td>
+                    <td onclick="event.stopPropagation();">
                         @if (note.Attachments != null && note.Attachments.Any())
                         {
-                            <div class="d-flex flex-wrap gap-1 align-items-center">
+                            <div class="d-flex flex-column gap-2">
                                 @foreach (var att in note.Attachments.Take(2))
                                 {
                                     @if (att.FileType == "Image")
                                     {
                                         <img src="@att.FilePath" alt="@att.FileName" 
                                              class="img-thumbnail" 
-                                             style="width: 40px; height: 40px; object-fit: cover; cursor: pointer;"
+                                             style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;"
                                              title="@att.FileName"
-                                             onclick="event.stopPropagation(); window.location.href='/ProjectNotes/Details?id=@note.Id'" />
+                                             onclick="window.location.href='/ProjectNotes/Details?id=@note.Id'" />
                                     }
                                     else if (att.FileType == "Audio")
                                     {
-                                        <span class="badge bg-info" title="@att.FileName">
-                                            <i class="bi bi-music-note"></i>
-                                        </span>
+                                        <div style="min-width: 150px;">
+                                            <audio controls style="width: 150px; height: 25px;">
+                                                <source src="@att.FilePath" type="@att.MimeType">
+                                            </audio>
+                                        </div>
                                     }
                                     else if (att.FileType == "Document")
                                     {
-                                        <span class="badge bg-success" title="@att.FileName">
-                                            <i class="bi bi-file-earmark-text"></i>
-                                        </span>
+                                        <a href="@att.FilePath" target="_blank" class="text-decoration-none" title="@att.FileName">
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-file-earmark-text"></i> 
+                                                @(att.FileName.Length > 15 ? att.FileName.Substring(0, 15) + "..." : att.FileName)
+                                            </span>
+                                        </a>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-secondary" title="@att.FileName">
-                                            <i class="bi bi-file-earmark"></i>
-                                        </span>
+                                        <a href="@att.FilePath" target="_blank" class="text-decoration-none" title="@att.FileName">
+                                            <span class="badge bg-secondary">
+                                                <i class="bi bi-file-earmark"></i> 
+                                                @(att.FileName.Length > 15 ? att.FileName.Substring(0, 15) + "..." : att.FileName)
+                                            </span>
+                                        </a>
                                     }
                                 }
                                 @if (note.Attachments.Count > 2)
                                 {
                                     <span class="badge bg-light text-dark" title="@note.Attachments.Count فایل">
-                                        +@(note.Attachments.Count - 2)
+                                        <i class="bi bi-three-dots"></i> +@(note.Attachments.Count - 2) فایل دیگر
                                     </span>
                                 }
                             </div>

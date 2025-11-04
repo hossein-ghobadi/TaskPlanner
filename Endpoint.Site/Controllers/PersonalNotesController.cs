@@ -33,6 +33,7 @@ namespace Endpoint.Site.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             var notes = await _context.PersonalNotes
+                .Include(n => n.Attachments) // 📎 اضافه شد برای نمایش فایل‌ها در لیست
                 .Where(n => n.UserId == userId)
                 .OrderByDescending(n => n.IsPinned)
                 .ThenByDescending(n => n.CreatedAt)
@@ -42,7 +43,7 @@ namespace Endpoint.Site.Controllers
         }
 
         // 📌 جزئیات یادداشت
-        [HttpGet("{id}")]
+        [HttpGet]
         public async Task<IActionResult> Details(int id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -139,7 +140,7 @@ namespace Endpoint.Site.Controllers
         }
 
         // 📌 ویرایش یادداشت
-        [HttpGet("{id}")]
+        [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
