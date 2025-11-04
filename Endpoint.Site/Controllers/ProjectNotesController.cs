@@ -56,7 +56,7 @@ namespace Endpoint.Site.Controllers
         }
 
         // 📌 جزئیات یادداشت
-        [HttpGet("{id}")]
+        [HttpGet]
         public async Task<IActionResult> Details(int id)
         {
             var note = await _context.ProjectNotes
@@ -229,7 +229,7 @@ namespace Endpoint.Site.Controllers
             return View(vm);
         }
 
-        [HttpPost("{id}")]
+        [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(ProjectNoteEditVm vm)
         {
@@ -330,7 +330,7 @@ namespace Endpoint.Site.Controllers
         }
 
         // 📌 حذف یادداشت
-        [HttpGet("{id}")]
+        [HttpGet]
         public async Task<IActionResult> Delete(int id)
         {
             var note = await _context.ProjectNotes

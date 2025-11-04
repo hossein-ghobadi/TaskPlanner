@@ -168,7 +168,7 @@ namespace Endpoint.Site.Controllers
             return View(vm);
         }
 
-        [HttpPost("{id}")]
+        [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(PersonalNoteEditVm vm)
         {
@@ -259,7 +259,7 @@ namespace Endpoint.Site.Controllers
         }
 
         // 📌 حذف یادداشت
-        [HttpGet("{id}")]
+        [HttpGet]
         public async Task<IActionResult> Delete(int id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -276,7 +276,7 @@ namespace Endpoint.Site.Controllers
             return View(note);
         }
 
-        [HttpPost("{id}"), ActionName("Delete")]
+        [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {

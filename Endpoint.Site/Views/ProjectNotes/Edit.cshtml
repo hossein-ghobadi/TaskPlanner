@@ -41,33 +41,68 @@
     @if (existingAttachments != null && existingAttachments.Any())
     {
         <div class="mb-3">
-            <label class="form-label">📎 فایل‌های پیوست موجود</label>
-            <div id="existingAttachments">
+            <label class="form-label">📎 فایل‌های پیوست موجود (@existingAttachments.Count فایل)</label>
+            <div class="row g-2" id="existingAttachments">
                 @foreach (var att in existingAttachments)
                 {
-                    <div class="card mb-2" id="attachment-@att.Id">
-                        <div class="card-body d-flex justify-content-between align-items-center">
-                            <div>
+                    <div class="col-md-6 col-lg-4" id="attachment-@att.Id">
+                        <div class="card h-100">
+                            <div class="card-body">
                                 @if (att.FileType == "Image")
                                 {
-                                    <span class="badge bg-primary">🖼️ تصویر</span>
+                                    <div class="text-center mb-2">
+                                        <img src="@att.FilePath" alt="@att.FileName" 
+                                             class="img-fluid rounded" 
+                                             style="max-height: 150px; object-fit: cover;" />
+                                    </div>
+                                    <span class="badge bg-primary mb-2">
+                                        <i class="bi bi-image"></i> تصویر
+                                    </span>
                                 }
                                 else if (att.FileType == "Audio")
                                 {
-                                    <span class="badge bg-info">🎵 صوت</span>
+                                    <div class="mb-2">
+                                        <audio controls class="w-100" style="max-height: 40px;">
+                                            <source src="@att.FilePath" type="@att.MimeType">
+                                        </audio>
+                                    </div>
+                                    <span class="badge bg-info mb-2">
+                                        <i class="bi bi-music-note"></i> صوت
+                                    </span>
                                 }
                                 else if (att.FileType == "Document")
                                 {
-                                    <span class="badge bg-success">📄 سند</span>
+                                    <div class="text-center mb-2">
+                                        <i class="bi bi-file-earmark-text text-success" style="font-size: 3rem;"></i>
+                                    </div>
+                                    <span class="badge bg-success mb-2">
+                                        <i class="bi bi-file-earmark-text"></i> سند
+                                    </span>
                                 }
                                 else
                                 {
-                                    <span class="badge bg-secondary">📎 فایل</span>
+                                    <div class="text-center mb-2">
+                                        <i class="bi bi-file-earmark text-secondary" style="font-size: 3rem;"></i>
+                                    </div>
+                                    <span class="badge bg-secondary mb-2">
+                                        <i class="bi bi-file-earmark"></i> فایل
+                                    </span>
                                 }
-                                <a href="@att.FilePath" target="_blank">@att.FileName</a>
-                                <small class="text-muted">(@(att.FileSize / 1024) KB)</small>
+                                <div class="small text-muted mb-2" style="word-break: break-word;">
+                                    <strong>@att.FileName</strong>
+                                </div>
+                                <div class="small text-muted mb-2">
+                                    حجم: @(Math.Round(att.FileSize / 1024.0, 2)) KB
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <a href="@att.FilePath" target="_blank" class="btn btn-sm btn-outline-info">
+                                        <i class="bi bi-download"></i> دانلود
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteAttachment(@att.Id)">
+                                        <i class="bi bi-trash"></i> حذف
+                                    </button>
+                                </div>
                             </div>
-                            <button type="button" class="btn btn-sm btn-danger" onclick="deleteAttachment(@att.Id)">🗑️ حذف</button>
                         </div>
                     </div>
                 }
@@ -79,12 +114,17 @@
     <!-- آپلود فایل‌های جدید -->
     <div class="mb-3">
         <label class="form-label">📎 افزودن فایل‌های جدید</label>
-        <input type="file" name="NewAttachments" class="form-control" id="fileInput" multiple accept="image/*,audio/*,.pdf,.doc,.docx,.txt,.zip,.rar" />
+        <input type="file" name="NewAttachments" class="form-control" id="fileInput" multiple 
+               accept="image/*,audio/*,.pdf,.doc,.docx,.txt,.zip,.rar"
+               onchange="handleFileSelect(event)" />
         <small class="text-muted">
             فرمت‌های مجاز: تصویر (jpg, png, gif), صوت (mp3, wav, ogg), سند (pdf, doc, docx)
             <br>
-            حداکثر حجم هر فایل: 10 مگابایت
+            حداکثر حجم هر فایل: 10 مگابایت - می‌توانید چندین فایل را یکجا انتخاب کنید
         </small>
+        
+        <!-- پیش‌نمایش فایل‌های جدید -->
+        <div id="filesPreview" class="mt-3"></div>
     </div>
 
     <!-- 🎤 ضبط ویس آنلاین -->
@@ -114,6 +154,162 @@
     <script>
         const deletedIds = [];
         const token = '@token';
+        let selectedFiles = []; // ذخیره فایل‌های جدید انتخاب شده
+
+        // مدیریت انتخاب فایل‌ها
+        function handleFileSelect(event) {
+            const fileInput = event.target;
+            const files = Array.from(fileInput.files);
+            
+            // اضافه کردن فایل‌های جدید به لیست
+            files.forEach(file => {
+                // بررسی تکراری نبودن
+                const exists = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+                if (!exists) {
+                    selectedFiles.push(file);
+                }
+            });
+            
+            updateFilesPreview();
+            updateFileInput();
+        }
+
+        // به‌روزرسانی پیش‌نمایش فایل‌های جدید
+        function updateFilesPreview() {
+            const previewContainer = document.getElementById('filesPreview');
+            
+            if (selectedFiles.length === 0) {
+                previewContainer.innerHTML = '';
+                return;
+            }
+            
+            previewContainer.innerHTML = `
+                <div class="alert alert-success">
+                    <strong>${selectedFiles.length} فایل جدید برای آپلود:</strong>
+                </div>
+                <div class="row g-2" id="newFilesList"></div>
+            `;
+            
+            const filesList = document.getElementById('newFilesList');
+            
+            selectedFiles.forEach((file, index) => {
+                const fileCard = createFilePreviewCard(file, index);
+                filesList.appendChild(fileCard);
+            });
+        }
+
+        // ساخت کارت پیش‌نمایش فایل (همان تابع Create.cshtml)
+        function createFilePreviewCard(file, index) {
+            const col = document.createElement('div');
+            col.className = 'col-md-6 col-lg-4';
+            
+            const card = document.createElement('div');
+            card.className = 'card h-100';
+            
+            const cardBody = document.createElement('div');
+            cardBody.className = 'card-body';
+            
+            let previewHtml = '';
+            
+            if (file.type.startsWith('image/')) {
+                const imageUrl = URL.createObjectURL(file);
+                previewHtml = `
+                    <div class="text-center mb-2">
+                        <img src="${imageUrl}" alt="${file.name}" 
+                             class="img-fluid rounded" 
+                             style="max-height: 150px; object-fit: cover;" />
+                    </div>
+                    <span class="badge bg-primary mb-2">
+                        <i class="bi bi-image"></i> تصویر
+                    </span>
+                `;
+            } else if (file.type.startsWith('audio/')) {
+                const audioUrl = URL.createObjectURL(file);
+                previewHtml = `
+                    <div class="mb-2">
+                        <audio controls class="w-100" style="max-height: 40px;">
+                            <source src="${audioUrl}" type="${file.type}">
+                        </audio>
+                    </div>
+                    <span class="badge bg-info mb-2">
+                        <i class="bi bi-music-note"></i> صوت
+                    </span>
+                `;
+            } else if (file.type.includes('pdf')) {
+                previewHtml = `
+                    <div class="text-center mb-2">
+                        <i class="bi bi-file-pdf text-danger" style="font-size: 3rem;"></i>
+                    </div>
+                    <span class="badge bg-danger mb-2">
+                        <i class="bi bi-file-pdf"></i> PDF
+                    </span>
+                `;
+            } else if (file.type.includes('word') || file.type.includes('document')) {
+                previewHtml = `
+                    <div class="text-center mb-2">
+                        <i class="bi bi-file-word text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <span class="badge bg-success mb-2">
+                        <i class="bi bi-file-earmark-text"></i> سند
+                    </span>
+                `;
+            } else {
+                previewHtml = `
+                    <div class="text-center mb-2">
+                        <i class="bi bi-file-earmark text-secondary" style="font-size: 3rem;"></i>
+                    </div>
+                    <span class="badge bg-secondary mb-2">
+                        <i class="bi bi-file-earmark"></i> فایل
+                    </span>
+                `;
+            }
+            
+            cardBody.innerHTML = `
+                ${previewHtml}
+                <div class="small text-muted mb-2" style="word-break: break-word;">
+                    <strong>${file.name}</strong>
+                </div>
+                <div class="small text-muted">
+                    حجم: ${formatFileSize(file.size)}
+                </div>
+                <button type="button" class="btn btn-sm btn-danger w-100 mt-2" onclick="removeNewFile(${index})">
+                    <i class="bi bi-trash"></i> حذف
+                </button>
+            `;
+            
+            card.appendChild(cardBody);
+            col.appendChild(card);
+            
+            return col;
+        }
+
+        // فرمت کردن حجم فایل
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // حذف فایل جدید از لیست
+        function removeNewFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFilesPreview();
+            updateFileInput();
+        }
+
+        // به‌روزرسانی input فایل
+        function updateFileInput() {
+            const fileInput = document.getElementById('fileInput');
+            const dataTransfer = new DataTransfer();
+            
+            selectedFiles.forEach(file => {
+                dataTransfer.items.add(file);
+            });
+            
+            fileInput.files = dataTransfer.files;
+        }
 
         function deleteAttachment(id) {
             if (!confirm('آیا از حذف این فایل مطمئن هستید؟')) return;
@@ -239,23 +435,15 @@
         function addFileToInput(file) {
             console.log('📎 addFileToInput called with:', file.name, file.size, 'bytes');
             
-            const fileInput = document.getElementById('fileInput');
-            console.log('📎 Current files in input:', fileInput.files.length);
-            
-            const dataTransfer = new DataTransfer();
-            
-            // حفظ فایل‌های قبلی
-            for (let i = 0; i < fileInput.files.length; i++) {
-                dataTransfer.items.add(fileInput.files[i]);
-                console.log('📎 Keeping existing file:', fileInput.files[i].name);
+            // اضافه کردن به لیست فایل‌های انتخاب شده
+            const exists = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+            if (!exists) {
+                selectedFiles.push(file);
+                updateFilesPreview();
+                updateFileInput();
             }
             
-            // افزودن فایل جدید
-            dataTransfer.items.add(file);
-            fileInput.files = dataTransfer.files;
-            
-            console.log('📎 Total files in input after adding:', fileInput.files.length);
-            console.log('📎 Files:', Array.from(fileInput.files).map(f => f.name));
+            console.log('📎 Total files:', selectedFiles.length);
         }
     </script>
 }

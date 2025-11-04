@@ -83,7 +83,7 @@ namespace TaskPlanner.Application.Services.FileUpload
                         break;
                     default:
                         _logger.LogInformation("📁 آپلود فایل عمومی به باکت...");
-                        remoteUrl = await _imageUploader.UploadAsync(file, folder); // fallback
+                        remoteUrl = await _documentUploader.UploadAsync(file, folder); // fallback
                         break;
                 }
                 
