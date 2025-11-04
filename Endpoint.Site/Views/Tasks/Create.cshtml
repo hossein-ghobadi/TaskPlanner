@@ -4,7 +4,7 @@
     Layout = "/Views/Shared/_Layout.cshtml";
 }
 
-<h2>🎯 افزودن Issue جدید (مثل Jira)</h2>
+<h2>🎯 افزودن کار</h2>
 
 <form asp-action="Create" method="post">
     <div asp-validation-summary="All" class="text-danger mb-3"></div>
@@ -12,7 +12,7 @@
     <!-- نوع Issue -->
     <div class="mb-3">
         <label asp-for="IssueType" class="form-label">
-            <strong>نوع Issue</strong> 
+            <strong>نوع کار</strong> 
             <span class="text-danger">*</span>
         </label>
         <select asp-for="IssueType" class="form-control" id="issueTypeSelect">
@@ -57,7 +57,7 @@
     </div>
     <div class="mb-3">
         <label class="form-label">پروژه</label>
-        <select asp-for="ProjectId" class="form-control"
+        <select asp-for="ProjectId" class="form-control" id="projectSelect"
                 asp-items="@(new SelectList(ViewBag.Projects, "Id", "Name", Model?.ProjectId))">
             <option value="">-- انتخاب پروژه --</option>
         </select>
@@ -74,7 +74,7 @@
     </div>
     <div class="mb-3">
         <label asp-for="AssignedUserId" class="form-label">مسئول تسک</label>
-        <select asp-for="AssignedUserId" class="form-control"
+        <select asp-for="AssignedUserId" class="form-control" id="assignedUserSelect"
                 asp-items="@(new SelectList(ViewBag.AssignedUsers, "Id", "Name", Model?.AssignedUserId))">
             <option value="">-- انتخاب کاربر --</option>
         </select>
@@ -83,11 +83,11 @@
     <!-- Parent Issue (فقط برای Subtask الزامی است) -->
     <div class="mb-3" id="parentIssueDiv">
         <label asp-for="ParentId" class="form-label">
-            <strong>Parent Issue</strong>
+            <strong>والد کار</strong>
             <span id="parentRequired" class="text-danger" style="display:none">*</span>
         </label>
         <select asp-for="ParentId" class="form-control" id="parentIssueSelect">
-            <option value="">-- بدون Parent (مستقل) --</option>
+            <option value="">-- بدون والد --</option>
             @if (ViewBag.Tasks != null)
             {
                 @foreach (var task in ViewBag.Tasks)
@@ -105,7 +105,7 @@
     <!-- Story Points (فقط برای Story و Task) -->
     <div class="mb-3" id="storyPointsDiv" style="display:none">
         <label asp-for="StoryPoints" class="form-label">
-            <strong>Story Points</strong>
+            <strong>امتیاز کار</strong>
         </label>
         <input asp-for="StoryPoints" type="number" min="0" max="100" class="form-control" 
                placeholder="مثلاً: 5" />
@@ -251,6 +251,54 @@
         // تغییر IssueType
         $('#issueTypeSelect').on('change', function() {
             updateFieldsBasedOnIssueType();
+        });
+
+        // 🔄 به‌روزرسانی لیست کاربران با تغییر پروژه
+        $('#projectSelect').on('change', function() {
+            const projectId = $(this).val();
+            const assignedUserSelect = $('#assignedUserSelect');
+            
+            // پاک کردن لیست فعلی
+            assignedUserSelect.empty();
+            assignedUserSelect.append('<option value="">-- انتخاب کاربر --</option>');
+            
+            if (projectId && projectId !== '') {
+                // نمایش لودینگ
+                assignedUserSelect.prop('disabled', true);
+                assignedUserSelect.append('<option value="">در حال بارگذاری...</option>');
+                
+                // دریافت لیست اعضای پروژه
+                $.ajax({
+                    url: '@Url.Action("GetProjectMembers", "Tasks")',
+                    type: 'GET',
+                    data: { projectId: projectId },
+                    success: function(users) {
+                        assignedUserSelect.empty();
+                        assignedUserSelect.append('<option value="">-- انتخاب کاربر --</option>');
+                        
+                        // اضافه کردن کاربران به لیست
+                        if (users && users.length > 0) {
+                            $.each(users, function(index, user) {
+                                assignedUserSelect.append(
+                                    $('<option></option>')
+                                        .attr('value', user.id)
+                                        .text(user.name)
+                                );
+                            });
+                        }
+                        
+                        assignedUserSelect.prop('disabled', false);
+                    },
+                    error: function(xhr, status, error) {
+                        assignedUserSelect.empty();
+                        assignedUserSelect.append('<option value="">-- خطا در بارگذاری کاربران --</option>');
+                        assignedUserSelect.prop('disabled', false);
+                        console.error('خطا در دریافت لیست کاربران:', error);
+                    }
+                });
+            } else {
+                assignedUserSelect.prop('disabled', false);
+            }
         });
     </script>
 }
