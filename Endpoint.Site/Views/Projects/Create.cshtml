@@ -64,5 +64,12 @@
         <small class="text-muted">هیچ دعوتی در انتظار تایید شما وجود ندارد.</small>
     }
 
-    <button type="submit" class="btn btn-success mt-3">ایجاد پروژه</button>
+    <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-circle"></i> ایجاد پروژه
+        </button>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-x-circle"></i> انصراف
+        </a>
+    </div>
 </form>

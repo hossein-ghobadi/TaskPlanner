@@ -9,17 +9,30 @@
 
 <h2 class="mb-4">🗂️ کارهای شما </h2>
 
-<div class="mb-3 d-flex justify-content-between align-items-center">
-    @if (projectIdInt.HasValue)
-    {
-        <a class="btn btn-primary" href="/Tasks/Create?projectId=@projectIdInt">
-            ➕ افزودن کار جدید
+<div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="d-flex gap-2">
+        @if (projectIdInt.HasValue)
+        {
+            <a class="btn btn-success" href="/Tasks/Create?projectId=@projectIdInt">
+                <i class="bi bi-plus-circle"></i> افزودن کار جدید
+            </a>
+        }
+        else
+        {
+            <button class="btn btn-secondary" disabled title="برای افزودن کار، ابتدا یک پروژه انتخاب کنید">
+                <i class="bi bi-plus-circle"></i> افزودن کار جدید
+            </button>
+        }
+    </div>
+    
+    <div class="d-flex gap-2">
+        <a class="btn btn-info text-white" asp-controller="Tasks" asp-action="Weekly">
+            <i class="bi bi-calendar-week"></i> برنامه هفتگی
         </a>
-    }
-   
-    <a class="btn btn-outline-secondary" asp-controller="Tasks" asp-action="Weekly">
-        🗓️ مشاهده برنامه هفتگی
-    </a>
+        <a class="btn btn-primary" asp-controller="Projects" asp-action="Index">
+            <i class="bi bi-grid-3x3-gap"></i> پروژه‌ها
+        </a>
+    </div>
 </div>
 
 @if (Model == null || !Model.Any())
