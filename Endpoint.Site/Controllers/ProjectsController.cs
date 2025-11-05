@@ -82,7 +82,7 @@ namespace Endpoint.Site.Controllers
             // Active sprint lookup for quick access in cards
             var projectIds = projects.Select(p => p.Id).ToList();
             var activeSprints = await _context.Sprints
-                .Where(s => projectIds.Contains(s.ProjectId) && s.IsActive)
+                .Where(s => projectIds.Contains(s.ProjectId) && s.Status == SprintStatus.Active)
                 .Select(s => new { s.ProjectId, s.Id })
                 .ToListAsync();
 

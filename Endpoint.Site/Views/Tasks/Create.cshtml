@@ -123,7 +123,7 @@
         <button type="submit" class="btn btn-success">
             <i class="bi bi-check-circle"></i> ثبت Issue
         </button>
-        <a asp-action="Index" class="btn btn-secondary">
+        <a asp-action="Index" asp-route-projectId="@Model.ProjectId" class="btn btn-secondary">
             <i class="bi bi-x-circle"></i> انصراف
         </a>
     </div>

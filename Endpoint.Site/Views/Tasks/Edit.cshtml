@@ -92,7 +92,14 @@
         <small class="form-text text-muted" id="parentHelp"></small>
     </div>
 
-    <button type="submit" class="btn btn-warning">ذخیره تغییرات</button>
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-warning">
+            <i class="bi bi-check-circle"></i> ذخیره تغییرات
+        </button>
+        <a asp-action="Index" asp-route-projectId="@Model.ProjectId" class="btn btn-secondary">
+            <i class="bi bi-x-circle"></i> انصراف
+        </a>
+    </div>
 </form>
 @section Scripts {
     <script>
