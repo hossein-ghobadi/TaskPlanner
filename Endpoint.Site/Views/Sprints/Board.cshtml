@@ -94,9 +94,23 @@
             <strong>پروژه:</strong> <a href="/Projects/Details/@Model.ProjectId">@Model.ProjectName</a>
         </p>
     </div>
-    <div>
-        <a style="background-color: royalblue; color: white;" class="btn" href="/Projects/Index">
-            <i class="bi bi-arrow-right"></i> پروژه ها
+    <div class="d-flex gap-2">
+        @if (Model.Status == SprintStatus.Active)
+        {
+            <form method="post" action="/Sprints/ChangeStatus" class="d-inline" id="completeSprintForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.SprintId" />
+                <input type="hidden" name="status" value="@((int)SprintStatus.Completed)" />
+                <button type="button" class="btn btn-danger" onclick="completeSprint()">
+                    <i class="bi bi-check-circle"></i> خاتمه اسپرینت
+                </button>
+            </form>
+        }
+        <a class="btn btn-primary" href="/Projects/Details/@Model.ProjectId">
+            <i class="bi bi-folder-open"></i> جزئیات پروژه
+        </a>
+        <a class="btn btn-outline-primary" href="/Projects/Index">
+            <i class="bi bi-grid-3x3-gap"></i> پروژه‌ها
         </a>
     </div>
 </div>
@@ -926,6 +940,20 @@
                     }
                 });
             });
+
+            // خاتمه اسپرینت
+            function completeSprint() {
+                const confirmMsg = `آیا مطمئن هستید که می‌خواهید این اسپرینت را خاتمه دهید؟\n\n` +
+                    `این عمل باعث می‌شود:\n` +
+                    `✓ اسپرینت به حالت "خاتمه یافته" تغییر کند\n` +
+                    `✓ تمام تسک‌های Done به صورت خودکار تکمیل شوند\n` +
+                    `✓ به صفحه جزئیات پروژه هدایت شوید`;
+                
+                if (confirm(confirmMsg)) {
+                    // ارسال فرم
+                    document.getElementById('completeSprintForm').submit();
+                }
+            }
             </text>
         }
     </script>
