@@ -1,72 +1,356 @@
 ﻿@model IEnumerable<Project>
 @using System.Security.Claims
 @{
-    // ViewData["Title"] = "خانه";
+    ViewData["Title"] = "داشبورد";
     Layout = "/Views/Shared/_Layout.cshtml";
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 }
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="m-0">پروژه‌ها</h2>
-    <a class="btn btn-primary" href="/Projects/Create">
-        <i class="bi bi-plus-circle"></i>
-        ایجاد پروژه
-    </a>
+
+<!-- بخش خوش‌آمدگویی -->
+<div class="welcome-section mb-4">
+    <h1 class="display-5 fw-bold mb-2">به برنامه‌ریز خود خوش آمدید! 👋</h1>
+    <p class="text-muted">تمام ابزارهای مدیریت کار و پروژه شما در یک مکان</p>
+</div>
+
+<!-- کارت‌های دسترسی سریع -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
+    <!-- برنامه هفتگی -->
+    <div class="col">
+        <a href="/Tasks/Weekly" class="text-decoration-none">
+            <div class="quick-access-card">
+                <div class="icon-wrapper bg-gradient-primary">
+                    <i class="bi bi-calendar-week"></i>
+                </div>
+                <h5 class="card-title">برنامه هفتگی</h5>
+                <p class="card-text">مشاهده و مدیریت برنامه هفتگی خود</p>
+            </div>
+        </a>
     </div>
 
-<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
-    @foreach (var p in Model)
+    <!-- دسته‌بندی‌ها -->
+    <div class="col">
+        <a href="/Categories/Index" class="text-decoration-none">
+            <div class="quick-access-card">
+                <div class="icon-wrapper bg-gradient-success">
+                    <i class="bi bi-folder"></i>
+                </div>
+                <h5 class="card-title">دسته‌بندی‌ها</h5>
+                <p class="card-text">مدیریت دسته‌بندی کارها</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- لیست کارها -->
+    <div class="col">
+        <a href="/Tasks/Index" class="text-decoration-none">
+            <div class="quick-access-card">
+                <div class="icon-wrapper bg-gradient-warning">
+                    <i class="bi bi-list-task"></i>
+                </div>
+                <h5 class="card-title">لیست کارها</h5>
+                <p class="card-text">مشاهده و مدیریت تمام کارهای خود</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- یادداشت‌های شخصی -->
+    <div class="col">
+        <a href="/PersonalNotes/Index" class="text-decoration-none">
+            <div class="quick-access-card">
+                <div class="icon-wrapper bg-gradient-info">
+                    <i class="bi bi-journal-text"></i>
+                </div>
+                <h5 class="card-title">یادداشت‌های شخصی</h5>
+                <p class="card-text">یادداشت‌ها و نکات مهم خود را ثبت کنید</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- دعوت کاربران -->
+    <div class="col">
+        <a href="/Invitations/MyInvitations" class="text-decoration-none">
+            <div class="quick-access-card">
+                <div class="icon-wrapper bg-gradient-danger">
+                    <i class="bi bi-envelope"></i>
+                </div>
+                <h5 class="card-title">دعوت‌ها</h5>
+                <p class="card-text">مدیریت دعوت‌نامه‌های پروژه</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- ایجاد پروژه جدید -->
+    <div class="col">
+        <a href="/Projects/Create" class="text-decoration-none">
+            <div class="quick-access-card">
+                <div class="icon-wrapper bg-gradient-purple">
+                    <i class="bi bi-plus-circle"></i>
+                </div>
+                <h5 class="card-title">پروژه جدید</h5>
+                <p class="card-text">ایجاد یک پروژه جدید</p>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- بخش پروژه‌ها -->
+<div class="projects-section">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="section-title">
+            <i class="bi bi-briefcase me-2"></i>
+            پروژه‌های من
+        </h2>
+       
+    </div>
+
+    @if (Model != null && Model.Any())
     {
-        <div class="col">
-            <div class="card h-100 shadow-sm border-0 position-relative" style="transition: box-shadow .2s ease;">
-                <a asp-action="Details" asp-route-id="@p.Id" class="text-decoration-none text-dark">
-                    <div class="card-body" style="min-height: 350px;">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title fw-bold" style="font-size:1.25rem;">@p.Name</h5>
-                            <span class="badge bg-secondary">@((p.Tasks?.Count) ?? 0) تسک</span>
-                        </div>
-                        @if (!string.IsNullOrWhiteSpace(p.Description))
-                        {
-                            <p class="card-text text-muted" style="min-height:3.5rem; overflow: hidden; text-overflow: ellipsis; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;">
-                                @p.Description
-                            </p>
-                        }
-                        else
-                        {
-                            <p class="card-text text-muted">بدون توضیحات</p>
-                        }
-                    </div>
-                </a>
-                <div class="card-footer bg-white border-0 d-flex justify-content-between align-items-center pt-0 pb-3 px-3">
-                    <div class="d-flex align-items-center gap-2">
-                        @{ var sprintLookup = ViewBag.ActiveSprintByProject as System.Collections.Generic.Dictionary<int,int>; }
-                        @if (sprintLookup != null && sprintLookup.ContainsKey(p.Id))
-                        {
-                            <a class="btn btn-outline-success btn-sm" asp-controller="Sprints" asp-action="Board" asp-route-id="@sprintLookup[p.Id]" title="برد اسپرینت فعال" onclick="event.stopPropagation();">
-                                <i class="bi bi-kanban"></i>
-                            </a>
-                        }
-                        <a class="btn btn-outline-primary btn-sm" asp-controller="Tasks" asp-action="Index" asp-route-projectId="@p.Id" title="لیست کارها" onclick="event.stopPropagation();">
-                            <i class="bi bi-list-task"></i>
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
+            @foreach (var p in Model)
+            {
+                <div class="col">
+                    <div class="project-card">
+                        <a asp-action="Details" asp-route-id="@p.Id" class="text-decoration-none text-dark">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 class="card-title fw-bold mb-0">@p.Name</h5>
+                                    <span class="badge bg-primary">@((p.Tasks?.Count) ?? 0) تسک</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(p.Description))
+                                {
+                                    <p class="card-text text-muted description-text">
+                                        @p.Description
+                                    </p>
+                                }
+                                else
+                                {
+                                    <p class="card-text text-muted">بدون توضیحات</p>
+                                }
+                            </div>
                         </a>
-                    </div>
-                    <div class="d-flex gap-2">
-                        @if (p.CreatorUserId == currentUserId)
-                        {
-                            <a class="btn btn-outline-secondary btn-sm" asp-action="Edit" asp-route-id="@p.Id" title="ویرایش" onclick="event.stopPropagation();">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <a class="btn btn-outline-danger btn-sm" asp-action="Delete" asp-route-id="@p.Id" title="حذف" onclick="event.stopPropagation();">
-                                <i class="bi bi-trash"></i>
-                            </a>
-                        }
+                        <div class="card-footer">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex gap-2">
+                                    @{ var sprintLookup = ViewBag.ActiveSprintByProject as System.Collections.Generic.Dictionary<int,int>; }
+                                    @if (sprintLookup != null && sprintLookup.ContainsKey(p.Id))
+                                    {
+                                        <a class="btn btn-sm btn-outline-success" asp-controller="Sprints" asp-action="Board" asp-route-id="@sprintLookup[p.Id]" title="برد اسپرینت فعال" onclick="event.stopPropagation();">
+                                            <i class="bi bi-kanban"></i>
+                                        </a>
+                                    }
+                                    <a class="btn btn-sm btn-outline-primary" asp-controller="Tasks" asp-action="Index" asp-route-projectId="@p.Id" title="لیست کارها" onclick="event.stopPropagation();">
+                                        <i class="bi bi-list-task"></i>
+                                    </a>
+                                </div>
+                                @if (p.CreatorUserId == currentUserId)
+                                {
+                                    <div class="d-flex gap-2">
+                                        <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@p.Id" title="ویرایش" onclick="event.stopPropagation();">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@p.Id" title="حذف" onclick="event.stopPropagation();">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="empty-state text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+            <h4 class="text-muted">هنوز پروژه‌ای ندارید</h4>
+            <p class="text-muted mb-4">با ایجاد اولین پروژه خود شروع کنید</p>
+            <a href="/Projects/Create" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>
+                ایجاد اولین پروژه
+            </a>
         </div>
     }
 </div>
 
 <style>
-    .card:hover { box-shadow: 0 0.75rem 1.5rem rgba(0,0,0,.08); }
-    .card .btn { border-radius: 8px; }
+    /* بخش خوش‌آمدگویی */
+    .welcome-section {
+        padding: 2rem 0;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    /* کارت‌های دسترسی سریع */
+    .quick-access-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .quick-access-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        border-color: #e9ecef;
+    }
+
+    .quick-access-card .icon-wrapper {
+        width: 70px;
+        height: 70px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+
+    .quick-access-card .icon-wrapper i {
+        font-size: 2rem;
+        color: white;
+    }
+
+    .quick-access-card .card-title {
+        color: #2d3748;
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .quick-access-card .card-text {
+        color: #718096;
+        font-size: 0.875rem;
+        margin: 0;
+    }
+
+    /* گرادیانت‌ها */
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .bg-gradient-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .bg-gradient-warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    .bg-gradient-info {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+
+    .bg-gradient-danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+
+    .bg-gradient-purple {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    }
+
+    /* بخش پروژه‌ها */
+    .projects-section {
+        margin-top: 3rem;
+    }
+
+    .section-title {
+        color: #2d3748;
+        font-size: 1.75rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .btn-create {
+        border-radius: 12px;
+        padding: 0.625rem 1.5rem;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    }
+
+    /* کارت‌های پروژه */
+    .project-card {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        border: 2px solid #f3f4f6;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .project-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+        border-color: #e5e7eb;
+    }
+
+    .project-card .card-body {
+        padding: 1.5rem;
+        flex-grow: 1;
+    }
+
+    .project-card .card-title {
+        font-size: 1.25rem;
+        color: #1f2937;
+    }
+
+    .project-card .description-text {
+        min-height: 3rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        font-size: 0.9rem;
+    }
+
+    .project-card .card-footer {
+        background: #f9fafb;
+        border-top: 1px solid #e5e7eb;
+        padding: 1rem 1.5rem;
+    }
+
+    .project-card .btn {
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .project-card .badge {
+        padding: 0.4rem 0.8rem;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+
+    /* حالت خالی */
+    .empty-state i {
+        opacity: 0.3;
+    }
+
+    /* ریسپانسیو */
+    @@media (max-width: 768px) {
+        .welcome-section h1 {
+            font-size: 1.75rem;
+        }
+
+        .quick-access-card {
+            padding: 1.5rem;
+        }
+
+        .quick-access-card .icon-wrapper {
+            width: 60px;
+            height: 60px;
+        }
+
+        .quick-access-card .icon-wrapper i {
+            font-size: 1.5rem;
+        }
+    }
 </style>
