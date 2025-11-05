@@ -5,295 +5,653 @@
     Layout = "/Views/Shared/_Layout.cshtml";
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
     var isCreator = currentUserId == Model.CreatorUserId;
+    var totalTasks = Model.Tasks?.Count ?? 0;
+    var completedTasks = Model.Tasks?.Count(t => t.IsCompleted) ?? 0;
+    var progressPercentage = totalTasks > 0 ? (completedTasks * 100 / totalTasks) : 0;
 }
 
-<h2 class="mb-4">📘 جزئیات پروژه</h2>
+<style>
+    .project-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        color: white;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+    }
+    
+    .stat-card {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: transform 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.25);
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 0;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin: 0;
+    }
+    
+    .modern-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    
+    .modern-card:hover {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+    
+    .card-header-modern {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border: none;
+        padding: 1.25rem 1.5rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .category-card {
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+    
+    .category-card:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 5px 15px rgba(59, 130, 246, 0.2);
+        transform: translateY(-3px);
+    }
+    
+    .task-row {
+        transition: all 0.2s ease;
+        border-left: 4px solid transparent;
+    }
+    
+    .task-row:hover {
+        background-color: #f8f9fa;
+        border-left-color: #3b82f6;
+    }
+    
+    .progress-ring {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .nav-tabs-modern {
+        border-bottom: 2px solid #e9ecef;
+        margin-bottom: 2rem;
+    }
+    
+    .nav-tabs-modern .nav-link {
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: #6c757d;
+        font-weight: 500;
+        padding: 1rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .nav-tabs-modern .nav-link:hover {
+        color: #3b82f6;
+        border-bottom-color: #3b82f6;
+    }
+    
+    .nav-tabs-modern .nav-link.active {
+        color: #3b82f6;
+        border-bottom-color: #3b82f6;
+        background: transparent;
+    }
+    
+    .member-avatar {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+    
+    .action-btn-modern {
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    
+    .action-btn-modern:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+</style>
 
-<!-- پیام‌های دعوت -->
+<!-- پیام‌های سیستم -->
 @if (TempData["InviteSuccess"] != null)
 {
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert" style="border-radius: 10px;">
         <i class="bi bi-check-circle-fill"></i> @TempData["InviteSuccess"]
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
 @if (TempData["InviteWarning"] != null)
 {
-    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+    <div class="alert alert-warning alert-dismissible fade show shadow-sm" role="alert" style="border-radius: 10px;">
         <i class="bi bi-exclamation-triangle-fill"></i> @TempData["InviteWarning"]
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
 @if (TempData["InviteError"] != null)
 {
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert" style="border-radius: 10px;">
         <i class="bi bi-x-circle-fill"></i> @TempData["InviteError"]
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
 
-<div class="card mb-4 shadow-sm">
-    <div class="card-body">
-        <h4 class="card-title text-primary">@Model.Name</h4>
-        <p class="card-text">@Model.Description</p>
-        <p><strong>👤 سازنده:</strong> @Model.CreatorUserName</p>
-        
-        <div class="mt-3">
-            <a class="btn btn-info" href="/Sprints/Index?projectId=@Model.Id">
-                <i class="bi bi-calendar-range"></i> اسپرینت‌ها
-            </a>
-            @if (@Model.ActiveSprintId!=null){
-
-                <a class="btn btn-success" href="/Sprints/Board/@Model.ActiveSprintId">
-                    <i class="bi bi-calendar-range"></i> تخته کانبان
-                </a>
+<!-- هدر پروژه با آمار -->
+<div class="project-header">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h1 class="mb-2" style="font-size: 2.5rem; font-weight: 700;">
+                <i class="bi bi-folder-fill me-3"></i>@Model.Name
+            </h1>
+            @if (!string.IsNullOrWhiteSpace(Model.Description))
+            {
+                <p class="mb-3" style="font-size: 1.1rem; opacity: 0.95;">@Model.Description</p>
             }
-           
-           
-        </div>
-    </div>
-</div>
-
-<!-- ارسال دعوت جدید -->
-<div class="card mb-4 shadow-sm">
-    <div class="card-header bg-light fw-bold">📨 ارسال دعوت جدید به پروژه</div>
-    <div class="card-body">
-        <form asp-controller="Projects" asp-action="InviteUserToProject" method="post" class="row g-2 align-items-center">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="projectId" value="@Model.Id" />
-            <div class="col-md-8">
-                <input name="phone" class="form-control" placeholder="شماره موبایل کاربر" required />
-            </div>
-            <div class="col-md-4">
-                <button type="submit" class="btn btn-primary w-100">ارسال دعوت</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- اعضای پروژه -->
-<div class="card mb-4 shadow-sm">
-    <div class="card-header bg-light fw-bold">👥 اعضای پروژه</div>
-    <div class="card-body">
-        @if (Model.MemberUserNames?.Any() == true)
-        {
-            <ul class="list-group list-group-flush">
-                @foreach (var member in Model.MemberUserNames)
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-person-circle me-2" style="font-size: 1.3rem;"></i>
+                    <span>سازنده: <strong>@Model.CreatorUserName</strong></span>
+                </div>
+                @if (isCreator)
                 {
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>@member</span>
-                        <span class="badge bg-success">عضو فعال</span>
-                    </li>
+                    <span class="badge" style="background: rgba(255, 255, 255, 0.3); font-size: 0.9rem; padding: 0.4rem 0.8rem;">
+                        <i class="bi bi-shield-check me-1"></i>شما سازنده هستید
+                    </span>
                 }
-            </ul>
-        }
-        else
-        {
-            <p class="text-muted mb-0">هیچ عضوی اضافه نشده است.</p>
-        }
-    </div>
-</div>
-
-<!-- دعوت‌های در انتظار -->
-@if (Model.Invitations?.Any() == true)
-{
-    <div class="card mb-4 shadow-sm">
-        <div class="card-header bg-light fw-bold">🕓 دعوت‌های در انتظار پاسخ</div>
-        <div class="card-body p-0">
-            <table class="table table-bordered table-striped mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>شماره کاربر دعوت‌شده</th>
-                        <th>تاریخ ارسال</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var inv in Model.Invitations)
-                    {
-                        <tr>
-                            <td>@inv.InviteePhone</td>
-                            <td>@inv.CreatedAt.ToLocalTime().ToShortPersianDateTimeString()</td>
-
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            </div>
+        </div>
+        <div class="col-md-4 mt-3 mt-md-0">
+            <div class="row g-3">
+                <div class="col-6">
+                    <div class="stat-card text-center">
+                        <p class="stat-number">@totalTasks</p>
+                        <p class="stat-label"><i class="bi bi-list-task me-1"></i>کل تسک‌ها</p>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="stat-card text-center">
+                        <p class="stat-number">@completedTasks</p>
+                        <p class="stat-label"><i class="bi bi-check-circle me-1"></i>تکمیل شده</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-}
-
-<!-- دکمه‌های دسترسی سریع -->
-<div class="mb-3">
-    <a class="btn btn-info" href="/ProjectNotes/Index?projectId=@Model.Id">
-        📝 یادداشت‌های پروژه
-    </a>
-</div>
-
-<!-- دسته‌بندی‌ها -->
-<div class="card mb-4 shadow-sm">
-    <div class="card-header bg-light fw-bold d-flex justify-content-between align-items-center">
-        <span>🏷️ دسته‌بندی‌ها</span>
-        @if (isCreator)
+    
+    <!-- Progress Bar -->
+    @if (totalTasks > 0)
+    {
+        <div class="mt-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span style="opacity: 0.9;">پیشرفت پروژه</span>
+                <span style="font-weight: bold;">@progressPercentage%</span>
+            </div>
+            <div class="progress" style="height: 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.2);">
+                <div class="progress-bar bg-white" role="progressbar" style="width: @progressPercentage%; border-radius: 10px;" aria-valuenow="@progressPercentage" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+    }
+    
+    <!-- دکمه‌های دسترسی سریع -->
+    <div class="mt-4 d-flex gap-2 flex-wrap">
+        <a class="btn btn-light action-btn-modern" href="/Sprints/Index?projectId=@Model.Id">
+            <i class="bi bi-calendar-range me-2"></i>اسپرینت‌ها
+        </a>
+        @if (Model.ActiveSprintId != null)
         {
-            <a class="btn btn-sm btn-success" href="/Categories/Create?projectId=@Model.Id">
-                <i class="bi bi-plus-circle"></i> افزودن دسته‌بندی
+            <a class="btn btn-light action-btn-modern" href="/Sprints/Board/@Model.ActiveSprintId">
+                <i class="bi bi-kanban me-2"></i>تخته کانبان
             </a>
         }
+        <a class="btn btn-light action-btn-modern" href="/ProjectNotes/Index?projectId=@Model.Id">
+            <i class="bi bi-journal-text me-2"></i>یادداشت‌ها
+        </a>
+        <a class="btn btn-light action-btn-modern" asp-controller="Tasks" asp-action="Create" asp-route-projectId="@Model.Id">
+            <i class="bi bi-plus-circle me-2"></i>افزودن تسک
+        </a>
     </div>
-    <div class="card-body">
-        @if (Model.Categories?.Any() == true)
-        {
-            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
-                @foreach (var category in Model.Categories)
-                {
-                    <div class="col">
-                        <div class="card h-100 border-primary">
-                            <div class="card-body">
-                                <h6 class="card-title text-primary">
-                                    <i class="bi bi-folder"></i> @category.Name
-                                </h6>
-                                <p class="card-text text-muted mb-0">
-                                    <small>
-                                        @{
-                                            var taskCount = Model.Tasks?.Count(t => t.CategoryId == category.Id) ?? 0;
-                                        }
-                                        @taskCount کار
-                                    </small>
-                                </p>
-                            </div>
-                            @if (isCreator)
-                            {
-                                <div class="card-footer bg-transparent border-0">
-                                    <div class="d-flex gap-2">
-                                        <a class="btn btn-sm btn-outline-warning" href="/Categories/Edit/@category.Id">
-                                            <i class="bi bi-pencil"></i> ویرایش
-                                        </a>
-                                        <a class="btn btn-sm btn-outline-danger" href="/Categories/Delete/@category.Id">
-                                            <i class="bi bi-trash"></i> حذف
-                                        </a>
+</div>
+
+<!-- Navigation Tabs -->
+<ul class="nav nav-tabs nav-tabs-modern" id="projectTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
+            <i class="bi bi-house-door me-2"></i>نمای کلی
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks" type="button" role="tab">
+            <i class="bi bi-list-task me-2"></i>تسک‌ها (@totalTasks)
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="categories-tab" data-bs-toggle="tab" data-bs-target="#categories" type="button" role="tab">
+            <i class="bi bi-folder me-2"></i>دسته‌بندی‌ها (@(Model.Categories?.Count ?? 0))
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="team-tab" data-bs-toggle="tab" data-bs-target="#team" type="button" role="tab">
+            <i class="bi bi-people me-2"></i>تیم (@(Model.MemberUserNames?.Count ?? 0))
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="projectTabsContent">
+    <!-- Overview Tab -->
+    <div class="tab-pane fade show active" id="overview" role="tabpanel">
+        <div class="row">
+            <!-- دسته‌بندی‌ها (پیش‌نمایش) -->
+            <div class="col-lg-6 mb-4">
+                <div class="modern-card">
+                    <div class="card-header-modern d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-folder-fill me-2"></i>دسته‌بندی‌ها</span>
+                        @if (isCreator)
+                        {
+                            <a class="btn btn-sm btn-success" href="/Categories/Create?projectId=@Model.Id">
+                                <i class="bi bi-plus-circle"></i>
+                            </a>
+                        }
+                    </div>
+                    <div class="card-body">
+                        @if (Model.Categories?.Any() == true)
+                        {
+                            <div class="row g-2">
+                                @foreach (var category in Model.Categories.Take(6))
+                                {
+                                    <div class="col-6">
+                                        <div class="category-card p-3">
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <div>
+                                                    <h6 class="mb-1" style="color: #3b82f6;">
+                                                        <i class="bi bi-tag-fill me-1"></i>@category.Name
+                                                    </h6>
+                                                    <small class="text-muted">
+                                                        @{
+                                                            var taskCount = Model.Tasks?.Count(t => t.CategoryId == category.Id) ?? 0;
+                                                        }
+                                                        @taskCount کار
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
+                                }
+                            </div>
+                            @if (Model.Categories.Count > 6)
+                            {
+                                <div class="text-center mt-3">
+                                    <a href="#categories" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('categories-tab').click()">
+                                        مشاهده همه (@Model.Categories.Count)
+                                    </a>
                                 </div>
                             }
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center mb-0 py-3">
+                                <i class="bi bi-folder-x me-2"></i>هیچ دسته‌بندی‌ای وجود ندارد
+                            </p>
+                        }
+                    </div>
+                </div>
+            </div>
+            
+            <!-- اعضای تیم (پیش‌نمایش) -->
+            <div class="col-lg-6 mb-4">
+                <div class="modern-card">
+                    <div class="card-header-modern">
+                        <i class="bi bi-people-fill me-2"></i>اعضای تیم
+                    </div>
+                    <div class="card-body">
+                        @if (Model.MemberUserNames?.Any() == true)
+                        {
+                            <div class="d-flex flex-wrap gap-3">
+                                @foreach (var member in Model.MemberUserNames.Take(6))
+                                {
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="member-avatar">
+                                            @(member.Substring(0, 1).ToUpper())
+                                        </div>
+                                        <div>
+                                            <small class="d-block fw-bold">@member</small>
+                                            <small class="text-muted">عضو</small>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            @if (Model.MemberUserNames.Count > 6)
+                            {
+                                <div class="text-center mt-3">
+                                    <a href="#team" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('team-tab').click()">
+                                        مشاهده همه (@Model.MemberUserNames.Count)
+                                    </a>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center mb-0 py-3">
+                                <i class="bi bi-person-x me-2"></i>هیچ عضوی اضافه نشده است
+                            </p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tasks Tab -->
+    <div class="tab-pane fade" id="tasks" role="tabpanel">
+        <div class="modern-card">
+            <div class="card-header-modern d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-task me-2"></i>تسک‌های پروژه</span>
+                <a class="btn btn-sm btn-success action-btn-modern" asp-controller="Tasks" asp-action="Create" asp-route-projectId="@Model.Id">
+                    <i class="bi bi-plus-circle me-1"></i>افزودن تسک جدید
+                </a>
+            </div>
+            <div class="card-body p-0">
+                @if (Model.Tasks?.Any() == true)
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead style="background: #f8f9fa;">
+                                <tr>
+                                    <th style="border-top: none;">عنوان</th>
+                                    <th style="border-top: none;">تاریخ شروع</th>
+                                    <th style="border-top: none;">تاریخ پایان</th>
+                                    <th style="border-top: none;">وضعیت</th>
+                                    <th style="border-top: none;">عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var task in Model.Tasks)
+                                {
+                                    <tr class="task-row">
+                                        <td>
+                                            <div class="d-flex align-items-start gap-2">
+                                                <span class="mt-1" title="@task.IssueTypeName" style="font-size: 1.2rem;">@task.IssueTypeIcon</span>
+                                                <div class="flex-grow-1">
+                                                    <div class="fw-bold">@task.Title</div>
+                                                    @if (!string.IsNullOrEmpty(task.IssueKey))
+                                                    {
+                                                        <small class="text-muted">@task.IssueKey</small>
+                                                    }
+                                                    @if (task.AssignedUser != null)
+                                                    {
+                                                        <div class="mt-1">
+                                                            <small class="text-muted">
+                                                                <i class="bi bi-person me-1"></i>
+                                                                @(string.IsNullOrEmpty(task.AssignedUser.FullName) ? task.AssignedUser.UserName : task.AssignedUser.FullName)
+                                                            </small>
+                                                        </div>
+                                                    }
+                                                    @if (task.ChildIssues != null && task.ChildIssues.Any())
+                                                    {
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="toggleSubtasks(@task.Id)" aria-expanded="false">
+                                                            <i class="bi bi-list-nested me-1"></i>سابتسک‌ها (@task.ChildIssues.Count)
+                                                        </button>
+                                                        <div id="subtasks-@task.Id" class="mt-2 ms-3" style="display:none;">
+                                                            <ul class="list-unstyled mb-0">
+                                                                @foreach (var sub in task.ChildIssues.OrderBy(ci => ci.Priority))
+                                                                {
+                                                                    <li class="py-1">
+                                                                        <span class="me-1">@sub.IssueTypeIcon</span>
+                                                                        <span>@sub.Title</span>
+                                                                        @if (sub.AssignedUser != null)
+                                                                        {
+                                                                            <small class="text-muted ms-2">
+                                                                                — @(string.IsNullOrEmpty(sub.AssignedUser.FullName) ? sub.AssignedUser.UserName : sub.AssignedUser.FullName)
+                                                                            </small>
+                                                                        }
+                                                                    </li>
+                                                                }
+                                                            </ul>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>@task.StartDate.ToShortPersianDateString()</td>
+                                        <td>@(task.DueDate.HasValue ? task.DueDate.Value.ToShortPersianDateString() : "-")</td>
+                                        <td>
+                                            <span class="badge @(task.IsCompleted ? "bg-success" : "bg-warning text-dark")" style="padding: 0.5rem 0.75rem;">
+                                                @(task.IsCompleted ? "✅ انجام شد" : "⏳ در حال انجام")
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex gap-2">
+                                                <a class="btn btn-sm btn-outline-warning action-btn-modern" asp-controller="Tasks" asp-action="Edit" asp-route-id="@task.Id">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a class="btn btn-sm btn-outline-info action-btn-modern" asp-controller="Tasks" asp-action="Details" asp-route-id="@task.Id">
+                                                    <i class="bi bi-chat-dots"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox" style="font-size: 4rem; color: #dee2e6;"></i>
+                        <p class="text-muted mt-3 mb-0">هیچ تسکی برای این پروژه ثبت نشده است.</p>
+                        <a class="btn btn-success mt-3" asp-controller="Tasks" asp-action="Create" asp-route-projectId="@Model.Id">
+                            <i class="bi bi-plus-circle me-2"></i>افزودن اولین تسک
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    
+    <!-- Categories Tab -->
+    <div class="tab-pane fade" id="categories" role="tabpanel">
+        <div class="modern-card">
+            <div class="card-header-modern d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-folder-fill me-2"></i>دسته‌بندی‌ها</span>
+                @if (isCreator)
+                {
+                    <a class="btn btn-sm btn-success action-btn-modern" href="/Categories/Create?projectId=@Model.Id">
+                        <i class="bi bi-plus-circle me-1"></i>افزودن دسته‌بندی
+                    </a>
+                }
+            </div>
+            <div class="card-body">
+                @if (Model.Categories?.Any() == true)
+                {
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                        @foreach (var category in Model.Categories)
+                        {
+                            <div class="col">
+                                <div class="category-card h-100">
+                                    <div class="card-body">
+                                        <h5 class="card-title mb-3" style="color: #3b82f6;">
+                                            <i class="bi bi-folder-fill me-2"></i>@category.Name
+                                        </h5>
+                                        <p class="text-muted mb-3">
+                                            <i class="bi bi-list-task me-1"></i>
+                                            @{
+                                                var taskCount = Model.Tasks?.Count(t => t.CategoryId == category.Id) ?? 0;
+                                            }
+                                            <strong>@taskCount</strong> کار
+                                        </p>
+                                        @if (isCreator)
+                                        {
+                                            <div class="d-flex gap-2">
+                                                <a class="btn btn-sm btn-outline-warning flex-fill" href="/Categories/Edit/@category.Id">
+                                                    <i class="bi bi-pencil me-1"></i>ویرایش
+                                                </a>
+                                                <a class="btn btn-sm btn-outline-danger flex-fill" href="/Categories/Delete/@category.Id">
+                                                    <i class="bi bi-trash me-1"></i>حذف
+                                                </a>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-folder-x" style="font-size: 4rem; color: #dee2e6;"></i>
+                        <p class="text-muted mt-3 mb-0">هیچ دسته‌بندی‌ای برای این پروژه ایجاد نشده است.</p>
+                        @if (isCreator)
+                        {
+                            <a class="btn btn-success mt-3" href="/Categories/Create?projectId=@Model.Id">
+                                <i class="bi bi-plus-circle me-2"></i>افزودن اولین دسته‌بندی
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    
+    <!-- Team Tab -->
+    <div class="tab-pane fade" id="team" role="tabpanel">
+        <div class="row">
+            <!-- اعضای پروژه -->
+            <div class="col-lg-8 mb-4">
+                <div class="modern-card">
+                    <div class="card-header-modern">
+                        <i class="bi bi-people-fill me-2"></i>اعضای پروژه
+                    </div>
+                    <div class="card-body">
+                        @if (Model.MemberUserNames?.Any() == true)
+                        {
+                            <div class="row g-3">
+                                @foreach (var member in Model.MemberUserNames)
+                                {
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center gap-3 p-3" style="background: #f8f9fa; border-radius: 10px;">
+                                            <div class="member-avatar">
+                                                @(member.Substring(0, 1).ToUpper())
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-0">@member</h6>
+                                                <small class="text-muted">عضو فعال</small>
+                                            </div>
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle me-1"></i>آنلاین
+                                            </span>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-5">
+                                <i class="bi bi-person-x" style="font-size: 4rem; color: #dee2e6;"></i>
+                                <p class="text-muted mt-3 mb-0">هیچ عضوی اضافه نشده است.</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ارسال دعوت -->
+            <div class="col-lg-4 mb-4">
+                <div class="modern-card">
+                    <div class="card-header-modern">
+                        <i class="bi bi-envelope-paper-fill me-2"></i>ارسال دعوت
+                    </div>
+                    <div class="card-body">
+                        <form asp-controller="Projects" asp-action="InviteUserToProject" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="projectId" value="@Model.Id" />
+                            <div class="mb-3">
+                                <label class="form-label">شماره موبایل</label>
+                                <input name="phone" class="form-control" placeholder="09123456789" required />
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 action-btn-modern">
+                                <i class="bi bi-send me-2"></i>ارسال دعوت
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- دعوت‌های در انتظار -->
+                @if (Model.Invitations?.Any() == true)
+                {
+                    <div class="modern-card mt-3">
+                        <div class="card-header-modern">
+                            <i class="bi bi-clock-history me-2"></i>دعوت‌های در انتظار
+                        </div>
+                        <div class="card-body">
+                            <div class="list-group list-group-flush">
+                                @foreach (var inv in Model.Invitations)
+                                {
+                                    <div class="list-group-item border-0 px-0">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>@inv.InviteePhone</strong>
+                                                <br>
+                                                <small class="text-muted">@inv.CreatedAt.ToLocalTime().ToShortPersianDateTimeString()</small>
+                                            </div>
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="bi bi-hourglass-split me-1"></i>در انتظار
+                                            </span>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
                         </div>
                     </div>
                 }
             </div>
-        }
-        else
-        {
-            <p class="text-muted mb-0">هیچ دسته‌بندی‌ای برای این پروژه ایجاد نشده است.</p>
-        }
+        </div>
     </div>
 </div>
 
-<!-- تسک‌ها -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0">📝 تسک‌های پروژه</h4>
-    <a class="btn btn-success"
-       
-       asp-controller="Tasks"
-       asp-action="Create"
-       asp-route-projectId="@Model.Id">
-        افزودن تسک جدید
+<!-- دکمه بازگشت -->
+<div class="mt-4 text-center">
+    <a asp-action="Index" class="btn btn-outline-secondary action-btn-modern">
+        <i class="bi bi-arrow-right me-2"></i>بازگشت به لیست پروژه‌ها
     </a>
 </div>
-
-@if (Model.Tasks?.Any() == true)
-{
-    <table class="table table-bordered table-striped">
-        <thead class="table-light">
-            <tr>
-                <th>عنوان</th>
-                <th>تاریخ شروع</th>
-                <th>تاریخ پایان</th>
-                <th>وضعیت</th>
-                <th>عملیات</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var task in Model.Tasks)
-            {
-                <tr>
-                    <td>
-                        <div class="d-flex align-items-start justify-content-between">
-                            <div>
-                                <div>
-                                    <span class="me-2" title="@task.IssueTypeName">@task.IssueTypeIcon</span>
-                                    @task.Title
-                                    @if (!string.IsNullOrEmpty(task.IssueKey))
-                                    {
-                                        <small class="text-muted">(@task.IssueKey)</small>
-                                    }
-                                </div>
-                                @if (task.AssignedUser != null)
-                                {
-                                    <div class="mt-1">
-                                        <small class="text-muted">👤 @(string.IsNullOrEmpty(task.AssignedUser.FullName) ? task.AssignedUser.UserName : task.AssignedUser.FullName)</small>
-                                    </div>
-                                }
-                            </div>
-                            @if (task.ChildIssues != null && task.ChildIssues.Any())
-                            {
-                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleSubtasks(@task.Id)" aria-expanded="false" aria-controls="subtasks-@task.Id">
-                                    نمایش سابتسک‌ها (@task.ChildIssues.Count)
-                                </button>
-                            }
-                        </div>
-                        @if (task.ChildIssues != null && task.ChildIssues.Any())
-                        {
-                            <div id="subtasks-@task.Id" class="mt-2 ms-3" style="display:none;">
-                                <ul class="mb-0">
-                                    @foreach (var sub in task.ChildIssues.OrderBy(ci => ci.Priority))
-                                    {
-                                        <li>
-                                            <span class="me-1" title="@sub.IssueTypeName">@sub.IssueTypeIcon</span>
-                                            <span>@sub.Title</span>
-                                            @if (sub.AssignedUser != null)
-                                            {
-                                                <small class="text-muted">— @(string.IsNullOrEmpty(sub.AssignedUser.FullName) ? sub.AssignedUser.UserName : sub.AssignedUser.FullName)</small>
-                                            }
-                                            else
-                                            {
-                                                <small class="text-muted">— نامشخص</small>
-                                            }
-                                        </li>
-                                    }
-                                </ul>
-                            </div>
-                        }
-                    </td>
-                    <td>@task.StartDate.ToShortPersianDateString()</td>
-                    <td>@(task.DueDate.HasValue ? task.DueDate.Value.ToShortPersianDateString() : "-")</td>
-
-                    <td>
-                        <span class="badge @(task.IsCompleted ? "bg-success" : "bg-warning text-dark")">
-                            @(task.IsCompleted ? "انجام شد" : "در حال انجام")
-                        </span>
-                    </td>
-                    <td>
-                        <a class="btn btn-sm btn-outline-warning"
-                           
-                           asp-controller="Tasks"
-                           asp-action="Edit"
-                           asp-route-id="@task.Id">ویرایش</a>
-
-                        <a class="btn btn-sm btn-outline-info"
-                           
-                           asp-controller="Tasks"
-                           asp-action="Details"
-                           asp-route-id="@task.Id">💬 گفتگو</a>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-else
-{
-    <p class="text-muted">هیچ تسکی برای این پروژه ثبت نشده است.</p>
-}
-
-<a asp-action="Index" class="btn btn-secondary mt-3">بازگشت به لیست پروژه‌ها</a>
 
 @section Scripts {
     <script>
@@ -308,7 +666,7 @@ else
                 const expanded = isHidden ? 'true' : 'false';
                 btn.setAttribute('aria-expanded', expanded);
                 const count = container.querySelectorAll('li').length;
-                btn.textContent = (isHidden ? 'عدم نمایش سابتسک‌ها' : 'نمایش سابتسک‌ها') + ` (${count})`;
+                btn.innerHTML = (isHidden ? '<i class="bi bi-chevron-up me-1"></i>عدم نمایش' : '<i class="bi bi-chevron-down me-1"></i>نمایش') + ` سابتسک‌ها (${count})`;
             }
         }
     </script>
