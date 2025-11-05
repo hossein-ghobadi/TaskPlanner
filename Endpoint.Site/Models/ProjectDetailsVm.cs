@@ -9,6 +9,7 @@ namespace Endpoint.Site.Models
         public string? Description { get; set; }
 
         // سازنده پروژه
+        public string CreatorUserId { get; set; } = null!;
         public string CreatorUserName { get; set; } = null!;
 
         // اعضای پروژه
@@ -17,6 +18,9 @@ namespace Endpoint.Site.Models
         // تسک‌ها
         public List<TaskItem> Tasks { get; set; } = new();
         public List<ProjectInvitationVm> Invitations { get; set; } = new();
+
+        // دسته‌بندی‌های پروژه
+        public List<TaskCategory> Categories { get; set; } = new();
 
         // اسپرینت فعال
         public int? ActiveSprintId { get; set; }

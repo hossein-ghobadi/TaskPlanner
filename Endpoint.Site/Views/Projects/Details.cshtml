@@ -1,7 +1,10 @@
 ﻿@using DNTPersianUtils.Core
+@using System.Security.Claims
 @model Endpoint.Site.Models.ProjectDetailsVm
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var isCreator = currentUserId == Model.CreatorUserId;
 }
 
 <h2 class="mb-4">📘 جزئیات پروژه</h2>
@@ -124,6 +127,63 @@
     <a class="btn btn-info" href="/ProjectNotes/Index?projectId=@Model.Id">
         📝 یادداشت‌های پروژه
     </a>
+</div>
+
+<!-- دسته‌بندی‌ها -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-light fw-bold d-flex justify-content-between align-items-center">
+        <span>🏷️ دسته‌بندی‌ها</span>
+        @if (isCreator)
+        {
+            <a class="btn btn-sm btn-success" href="/Categories/Create?projectId=@Model.Id">
+                <i class="bi bi-plus-circle"></i> افزودن دسته‌بندی
+            </a>
+        }
+    </div>
+    <div class="card-body">
+        @if (Model.Categories?.Any() == true)
+        {
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+                @foreach (var category in Model.Categories)
+                {
+                    <div class="col">
+                        <div class="card h-100 border-primary">
+                            <div class="card-body">
+                                <h6 class="card-title text-primary">
+                                    <i class="bi bi-folder"></i> @category.Name
+                                </h6>
+                                <p class="card-text text-muted mb-0">
+                                    <small>
+                                        @{
+                                            var taskCount = Model.Tasks?.Count(t => t.CategoryId == category.Id) ?? 0;
+                                        }
+                                        @taskCount کار
+                                    </small>
+                                </p>
+                            </div>
+                            @if (isCreator)
+                            {
+                                <div class="card-footer bg-transparent border-0">
+                                    <div class="d-flex gap-2">
+                                        <a class="btn btn-sm btn-outline-warning" href="/Categories/Edit/@category.Id">
+                                            <i class="bi bi-pencil"></i> ویرایش
+                                        </a>
+                                        <a class="btn btn-sm btn-outline-danger" href="/Categories/Delete/@category.Id">
+                                            <i class="bi bi-trash"></i> حذف
+                                        </a>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-muted mb-0">هیچ دسته‌بندی‌ای برای این پروژه ایجاد نشده است.</p>
+        }
+    </div>
 </div>
 
 <!-- تسک‌ها -->

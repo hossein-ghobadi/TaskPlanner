@@ -3,14 +3,37 @@
     Layout = "/Views/Shared/_Layout.cshtml";
 }
 
-<h2>حذف دسته‌بندی</h2>
+<div class="container mt-4">
+    <div class="card shadow-sm border-danger">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">
+                <i class="bi bi-trash"></i> حذف دسته‌بندی
+            </h4>
+            <small>پروژه: @ViewBag.ProjectName</small>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <strong>هشدار!</strong> آیا مطمئن هستید که می‌خواهید این دسته‌بندی را حذف کنید؟
+            </div>
 
-<p>آیا مطمئنی می‌خواهی این دسته‌بندی را حذف کنی؟</p>
+            <div class="mb-3">
+                <p class="mb-0"><strong>نام دسته‌بندی:</strong></p>
+                <h5 class="text-danger">@Model.Name</h5>
+            </div>
 
-<p><b>@Model.Name</b></p>
-
-<form asp-action="Delete" method="post">
-    @Html.HiddenFor(m => m.Id)
-    <button type="submit" class="btn btn-danger">بله، حذف شود</button>
-    <a href="/TaskPlanner/Categories/Index" class="btn btn-secondary">انصراف</a>
-</form>
+            <form asp-action="Delete" method="post">
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(m => m.Id)
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> بله، حذف شود
+                    </button>
+                    <a asp-controller="Projects" asp-action="Details" asp-route-id="@Model.ProjectId" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> انصراف
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

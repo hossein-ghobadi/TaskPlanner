@@ -54,6 +54,9 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         // انتقالات (Transitions) بین وضعیت‌ها
         public ICollection<WorkflowTransition> WorkflowTransitions { get; set; } = new List<WorkflowTransition>();
 
+        // دسته‌بندی‌های پروژه
+        public ICollection<TaskCategory> Categories { get; set; } = new List<TaskCategory>();
+
         /// <summary>
         /// Generate کردن IssueKey بعدی برای این پروژه
         /// مثلاً: PROJ-1, PROJ-2, ...

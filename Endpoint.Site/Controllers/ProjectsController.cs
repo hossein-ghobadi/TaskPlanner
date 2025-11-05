@@ -104,6 +104,7 @@ namespace Endpoint.Site.Controllers
                     Id = dto.Id,
                     Name = dto.Name,
                     Description = dto.Description,
+                    CreatorUserId = dto.CreatorUserId,
                     CreatorUserName = dto.CreatorUserName,
                     MemberUserNames = dto.MemberUserNames,
                     Tasks = dto.Tasks,
@@ -113,6 +114,7 @@ namespace Endpoint.Site.Controllers
                         Status = i.Status,
                         CreatedAt = i.CreatedAt
                     }).ToList(),
+                    Categories = dto.Categories,
                     ActiveSprintId = dto.ActiveSprintId,
                     ActiveSprintName = dto.ActiveSprintName
                 };

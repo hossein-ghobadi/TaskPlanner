@@ -74,6 +74,7 @@ namespace TaskPlanner.Application.Services.ProjectService
                 Id = project.Id,
                 Name = project.Name,
                 Description = project.Description,
+                CreatorUserId = project.CreatorUserId,
                 CreatorUserName = creator != null ? creator.FullName : "ناشناس",
                 Tasks = new List<TaskItem>(),
                 MemberUserNames = new List<string>(),
@@ -110,6 +111,12 @@ namespace TaskPlanner.Application.Services.ProjectService
                     Status = i.Status,
                     CreatedAt = i.CreatedAt
                 })
+                .ToListAsync();
+
+            // 🏷️ دسته‌بندی‌های پروژه
+            dto.Categories = await _context.TaskCategories
+                .Where(c => c.ProjectId == projectId)
+                .OrderBy(c => c.Name)
                 .ToListAsync();
 
             // 🎯 اسپرینت فعال
