@@ -5,9 +5,10 @@
     Layout = "/Views/Shared/_Layout.cshtml";
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
     var isCreator = currentUserId == Model.CreatorUserId;
-    var totalTasks = Model.Tasks?.Count ?? 0;
-    var completedTasks = Model.Tasks?.Count(t => t.IsCompleted) ?? 0;
-    var progressPercentage = totalTasks > 0 ? (completedTasks * 100 / totalTasks) : 0;
+    // استفاده از مقادیر از پیش محاسبه شده برای بهینه‌سازی
+    var totalTasks = Model.TotalTasks;
+    var completedTasks = Model.CompletedTasks;
+    var progressPercentage = Model.ProgressPercentage;
 }
 
 <style>
@@ -303,7 +304,7 @@
                                                     </h6>
                                                     <small class="text-muted">
                                                         @{
-                                                            var taskCount = Model.Tasks?.Count(t => t.CategoryId == category.Id) ?? 0;
+                                                            var taskCount = Model.CategoryTaskCounts.GetValueOrDefault(category.Id, 0);
                                                         }
                                                         @taskCount کار
                                                     </small>
@@ -511,7 +512,7 @@
                                         <p class="text-muted mb-3">
                                             <i class="bi bi-list-task me-1"></i>
                                             @{
-                                                var taskCount = Model.Tasks?.Count(t => t.CategoryId == category.Id) ?? 0;
+                                                var taskCount = Model.CategoryTaskCounts.GetValueOrDefault(category.Id, 0);
                                             }
                                             <strong>@taskCount</strong> کار
                                         </p>

@@ -26,6 +26,12 @@ namespace Endpoint.Site.Models
         public int? ActiveSprintId { get; set; }
         public string? ActiveSprintName { get; set; }
 
+        // محاسبات از پیش انجام شده برای بهینه‌سازی
+        public int TotalTasks { get; set; }
+        public int CompletedTasks { get; set; }
+        public int ProgressPercentage { get; set; }
+        public Dictionary<int, int> CategoryTaskCounts { get; set; } = new();
+
     }
 
 }

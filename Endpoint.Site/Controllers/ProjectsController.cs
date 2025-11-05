@@ -99,6 +99,19 @@ namespace Endpoint.Site.Controllers
             {
                 var dto = await _projectQueryService.GetProjectDetailsDtoAsync(id);
                 
+                // محاسبه آمار تسک‌ها (از پیش محاسبه شده برای بهینه‌سازی)
+                var tasks = dto.Tasks ?? new List<TaskItem>();
+                var totalTasks = tasks.Count;
+                var completedTasks = tasks.Count(t => t.IsCompleted);
+                var progressPercentage = totalTasks > 0 ? (completedTasks * 100 / totalTasks) : 0;
+                
+                // محاسبه تعداد تسک‌های هر دسته‌بندی (از پیش محاسبه شده برای بهینه‌سازی)
+                var categoryTaskCounts = dto.Categories?
+                    .ToDictionary(
+                        cat => cat.Id,
+                        cat => tasks.Count(t => t.CategoryId == cat.Id)
+                    ) ?? new Dictionary<int, int>();
+                
                 var vm = new ProjectDetailsVm
                 {
                     Id = dto.Id,
@@ -107,7 +120,7 @@ namespace Endpoint.Site.Controllers
                     CreatorUserId = dto.CreatorUserId,
                     CreatorUserName = dto.CreatorUserName,
                     MemberUserNames = dto.MemberUserNames,
-                    Tasks = dto.Tasks,
+                    Tasks = tasks,
                     Invitations = dto.Invitations.Select(i => new ProjectInvitationVm
                     {
                         InviteePhone = i.InviteePhone,
@@ -116,7 +129,12 @@ namespace Endpoint.Site.Controllers
                     }).ToList(),
                     Categories = dto.Categories,
                     ActiveSprintId = dto.ActiveSprintId,
-                    ActiveSprintName = dto.ActiveSprintName
+                    ActiveSprintName = dto.ActiveSprintName,
+                    // مقادیر از پیش محاسبه شده
+                    TotalTasks = totalTasks,
+                    CompletedTasks = completedTasks,
+                    ProgressPercentage = progressPercentage,
+                    CategoryTaskCounts = categoryTaskCounts
                 };
                 
                 return View(vm);
