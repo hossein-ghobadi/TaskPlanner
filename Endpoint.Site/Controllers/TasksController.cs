@@ -751,100 +751,78 @@ namespace Endpoint.Site.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // 🎯 فقط پروژه‌هایی که کاربر سازنده/عضو آنهاست یا دعوت پذیرفته‌شده دارد (بدون دعوت‌های صرفاً دریافتی/در انتظار)
-            var userProjects = await _context.Projects
-                .Where(p =>
-                    p.CreatorUserId == userId ||
-                    p.Members.Any(m => m.UserId == userId) ||
-                    _context.ProjectInvitations.Any(i => i.ProjectId == p.Id && i.InviteeId == userId && i.Status == InvitationStatus.Accepted)
-                )
-                .Select(p => new { p.Id, p.Name })
-                .ToListAsync();
+            // ✅ projectId اجباری است - کار فقط از داخل پروژه ایجاد می‌شود
+            if (!projectId.HasValue)
+            {
+                TempData["Error"] = "برای ایجاد کار باید از داخل یک پروژه اقدام کنید.";
+                return RedirectToAction("Index", "Projects");
+            }
 
-            ViewBag.Projects = userProjects;
+            // 🔒 بررسی دسترسی کاربر به پروژه
+            var project = await _context.Projects
+                .FirstOrDefaultAsync(p => p.Id == projectId.Value &&
+                    (p.CreatorUserId == userId ||
+                     p.Members.Any(m => m.UserId == userId) ||
+                     _context.ProjectInvitations.Any(i => i.ProjectId == p.Id && i.InviteeId == userId && i.Status == InvitationStatus.Accepted))
+                );
+
+            if (project == null)
+            {
+                TempData["Error"] = "پروژه یافت نشد یا شما به آن دسترسی ندارید.";
+                return RedirectToAction("Index", "Projects");
+            }
+
+            // نام پروژه برای نمایش
+            ViewBag.ProjectName = project.Name;
 
             // 📂 دسته‌بندی‌ها
             ViewBag.Categories = await _context.TaskCategories.ToListAsync();
 
-            // 🧩 تسک‌های همین پروژه‌ها برای انتخاب Parent Task
-            var allowedProjectIds = userProjects.Select(p => p.Id).ToList();
+            // 🧩 تسک‌های این پروژه برای انتخاب Parent Task
             ViewBag.Tasks = await _context.TaskItems
-                .Where(t => allowedProjectIds.Contains(t.ProjectId))
+                .Where(t => t.ProjectId == projectId.Value)
                 .ToListAsync();
 
-            // 🏃 اسپرینت‌ها و چرخه کاری حذف شدند - تسک‌ها مستقل ایجاد می‌شوند
-
-            // 👤 کاربران قابل انتخاب برای AssignedUserId
+            // 👤 کاربران قابل انتخاب برای AssignedUserId (فقط اعضای این پروژه)
             var assignedUsers = new List<dynamic>();
-
-            // 1️⃣ اعضای پذیرفته‌شده پروژه (اگر projectId داده شده باشد)
-            if (projectId.HasValue)
+            
+            // اضافه کردن سازنده پروژه
+            if (!string.IsNullOrEmpty(project.CreatorUserId))
             {
-                var project = await _context.Projects.FindAsync(projectId.Value);
-                
-                // اضافه کردن سازنده پروژه
-                if (project != null && !string.IsNullOrEmpty(project.CreatorUserId))
-                {
-                    var creatorInfo = await _userManager.FindByIdAsync(project.CreatorUserId);
-                    if (creatorInfo != null)
-                    {
-                        assignedUsers.Add(new
-                        {
-                            Id = project.CreatorUserId,
-                            Name = $"{creatorInfo.FullName ?? creatorInfo.UserName} ({creatorInfo.Phone}) - سازنده پروژه"
-                        });
-                    }
-                }
-
-                var acceptedProjectMembers = await _context.ProjectInvitations
-                    .Where(i => i.ProjectId == projectId.Value && i.Status == InvitationStatus.Accepted)
-                    .Select(i => i.InviteeId)
-                    .ToListAsync();
-
-                foreach (var memberId in acceptedProjectMembers)
-                {
-                    // جلوگیری از اضافه کردن مجدد سازنده پروژه
-                    if (project != null && memberId == project.CreatorUserId) continue;
-
-                    var userInfo = await _userManager.FindByIdAsync(memberId);
-                    if (userInfo != null)
-                    {
-                        assignedUsers.Add(new
-                        {
-                            Id = memberId,
-                            Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.Phone})"
-                        });
-                    }
-                }
-            }
-
-            // 2️⃣ کاربران دعوت‌شده سیستمی که با کاربر فعلی ارتباط دارند (دعوت Accepted)
-            var acceptedSystemRelations = await _context.ProjectInvitations
-                .Where(i =>
-                    i.Status == InvitationStatus.Accepted &&
-                    (
-                        i.InviterId == userId ||      // کاربر دعوت‌کننده بوده
-                        i.InviteeId == userId         // کاربر دعوت‌شده بوده
-                    ) &&
-                    i.ProjectId == null)              // دعوت سیستمی
-                .Select(i => i.InviterId == userId ? i.InviteeId : i.InviterId)
-                .Distinct()
-                .ToListAsync();
-
-            foreach (var relatedUserId in acceptedSystemRelations)
-            {
-                var userInfo = await _userManager.FindByIdAsync(relatedUserId);
-                if (userInfo != null && !assignedUsers.Any(u => u.Id == relatedUserId))
+                var creatorInfo = await _userManager.FindByIdAsync(project.CreatorUserId);
+                if (creatorInfo != null)
                 {
                     assignedUsers.Add(new
                     {
-                        Id = relatedUserId,
+                        Id = project.CreatorUserId,
+                        Name = $"{creatorInfo.FullName ?? creatorInfo.UserName} ({creatorInfo.Phone}) - سازنده پروژه"
+                    });
+                }
+            }
+
+            // اعضای پذیرفته‌شده پروژه
+            var acceptedProjectMembers = await _context.ProjectInvitations
+                .Where(i => i.ProjectId == projectId.Value && i.Status == InvitationStatus.Accepted)
+                .Select(i => i.InviteeId)
+                .ToListAsync();
+
+            foreach (var memberId in acceptedProjectMembers)
+            {
+                // جلوگیری از اضافه کردن مجدد سازنده پروژه
+                if (memberId == project.CreatorUserId) continue;
+
+                var userInfo = await _userManager.FindByIdAsync(memberId);
+                if (userInfo != null)
+                {
+                    assignedUsers.Add(new
+                    {
+                        Id = memberId,
                         Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.Phone})"
                     });
                 }
             }
 
-            // 3️⃣ خود کاربر لاگین‌شده نیز باید در لیست باشد
+            // خود کاربر لاگین‌شده نیز باید در لیست باشد (اگر از قبل نیست)
             var currentUser = await _userManager.FindByIdAsync(userId);
             if (currentUser != null && !assignedUsers.Any(u => u.Id == userId))
             {
@@ -858,9 +836,10 @@ namespace Endpoint.Site.Controllers
             ViewBag.AssignedUsers = assignedUsers.OrderBy(u => u.Name).ToList();
 
             // 📦 مدل اولیه
-            var model = new TaskCreateVm();
-            if (projectId.HasValue)
-                model.ProjectId = projectId.Value;
+            var model = new TaskCreateVm
+            {
+                ProjectId = projectId.Value
+            };
 
             return View(model);
         }
@@ -1073,7 +1052,7 @@ namespace Endpoint.Site.Controllers
                 await FillListsForCreate(vm.ProjectId);
                 return View(vm);
             }
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId });
         }
 
         private async Task FillListsForCreate(int projectId)
@@ -1113,7 +1092,7 @@ namespace Endpoint.Site.Controllers
             if (!hasAccess)
             {
                 TempData["Error"] = "شما به این تسک دسترسی ندارید.";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { projectId = task.ProjectId });
             }
 
             var pc = new System.Globalization.PersianCalendar();
@@ -1253,7 +1232,7 @@ namespace Endpoint.Site.Controllers
             if (!hasAccess)
             {
                 TempData["Error"] = "شما به این تسک دسترسی ندارید.";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { projectId = task.ProjectId });
             }
 
             // 🔒 جلوگیری از تغییر پروژه - ProjectId نباید تغییر کند
@@ -1402,7 +1381,7 @@ namespace Endpoint.Site.Controllers
 
             _context.Update(task);
             await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { projectId = task.ProjectId });
         }
 
 
@@ -1428,7 +1407,7 @@ namespace Endpoint.Site.Controllers
             if (!hasAccess)
             {
                 TempData["Error"] = "شما به این تسک دسترسی ندارید.";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { projectId = task.ProjectId });
             }
 
             ViewBag.CurrentUserId = userId;
@@ -1453,7 +1432,9 @@ namespace Endpoint.Site.Controllers
             // load the task
             var task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id);
             if (task == null)
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("Index", "Projects");
+
+            var projectId = task.ProjectId; // ذخیره projectId قبل از حذف
 
             // detach children to satisfy self-referencing FK before delete
             var children = await _context.TaskItems
@@ -1468,7 +1449,7 @@ namespace Endpoint.Site.Controllers
 
             _context.TaskItems.Remove(task);
             await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { projectId = projectId });
         }
 
         // 💬 دریافت کامنت‌های یک تسک (Ajax)

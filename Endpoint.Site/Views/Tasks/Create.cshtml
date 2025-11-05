@@ -55,12 +55,16 @@
         <input type="hidden" asp-for="DueDateSh" id="DueDate" />
         <span asp-validation-for="DueDateSh" class="text-danger"></span>
     </div>
+    
+    <!-- پروژه (فقط نمایشی - غیرقابل تغییر) -->
     <div class="mb-3">
-        <label class="form-label">پروژه</label>
-        <select asp-for="ProjectId" class="form-control" id="projectSelect"
-                asp-items="@(new SelectList(ViewBag.Projects, "Id", "Name", Model?.ProjectId))">
-            <option value="">-- انتخاب پروژه --</option>
-        </select>
+        <label class="form-label">
+            <strong>پروژه</strong>
+            <span class="text-danger">*</span>
+        </label>
+        <input type="text" class="form-control" value="@ViewBag.ProjectName" readonly disabled style="background-color: #e9ecef; cursor: not-allowed;" />
+        <input type="hidden" asp-for="ProjectId" id="projectSelect" />
+        <small class="form-text text-muted">کار فقط در این پروژه ایجاد می‌شود</small>
         <span asp-validation-for="ProjectId" class="text-danger"></span>
     </div>
 
@@ -251,54 +255,6 @@
         // تغییر IssueType
         $('#issueTypeSelect').on('change', function() {
             updateFieldsBasedOnIssueType();
-        });
-
-        // 🔄 به‌روزرسانی لیست کاربران با تغییر پروژه
-        $('#projectSelect').on('change', function() {
-            const projectId = $(this).val();
-            const assignedUserSelect = $('#assignedUserSelect');
-            
-            // پاک کردن لیست فعلی
-            assignedUserSelect.empty();
-            assignedUserSelect.append('<option value="">-- انتخاب کاربر --</option>');
-            
-            if (projectId && projectId !== '') {
-                // نمایش لودینگ
-                assignedUserSelect.prop('disabled', true);
-                assignedUserSelect.append('<option value="">در حال بارگذاری...</option>');
-                
-                // دریافت لیست اعضای پروژه
-                $.ajax({
-                    url: '@Url.Action("GetProjectMembers", "Tasks")',
-                    type: 'GET',
-                    data: { projectId: projectId },
-                    success: function(users) {
-                        assignedUserSelect.empty();
-                        assignedUserSelect.append('<option value="">-- انتخاب کاربر --</option>');
-                        
-                        // اضافه کردن کاربران به لیست
-                        if (users && users.length > 0) {
-                            $.each(users, function(index, user) {
-                                assignedUserSelect.append(
-                                    $('<option></option>')
-                                        .attr('value', user.id)
-                                        .text(user.name)
-                                );
-                            });
-                        }
-                        
-                        assignedUserSelect.prop('disabled', false);
-                    },
-                    error: function(xhr, status, error) {
-                        assignedUserSelect.empty();
-                        assignedUserSelect.append('<option value="">-- خطا در بارگذاری کاربران --</option>');
-                        assignedUserSelect.prop('disabled', false);
-                        console.error('خطا در دریافت لیست کاربران:', error);
-                    }
-                });
-            } else {
-                assignedUserSelect.prop('disabled', false);
-            }
         });
     </script>
 }

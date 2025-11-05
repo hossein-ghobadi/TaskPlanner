@@ -3,14 +3,20 @@
 
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    var projectId = Context.Request.Query["projectId"].ToString();
+    var projectIdInt = !string.IsNullOrEmpty(projectId) ? int.Parse(projectId) : (int?)null;
 }
 
-<h2 class="mb-4">🗂️ ساختار کارها </h2>
+<h2 class="mb-4">🗂️ کارهای شما </h2>
 
 <div class="mb-3 d-flex justify-content-between align-items-center">
-    <a class="btn btn-primary" href="/Tasks/Create">
-        ➕ افزودن کار جدید
-    </a>
+    @if (projectIdInt.HasValue)
+    {
+        <a class="btn btn-primary" href="/Tasks/Create?projectId=@projectIdInt">
+            ➕ افزودن کار جدید
+        </a>
+    }
+   
     <a class="btn btn-outline-secondary" asp-controller="Tasks" asp-action="Weekly">
         🗓️ مشاهده برنامه هفتگی
     </a>

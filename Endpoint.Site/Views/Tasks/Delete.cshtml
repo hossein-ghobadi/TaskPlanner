@@ -11,5 +11,5 @@
     @Html.AntiForgeryToken()
     @Html.HiddenFor(m => m.Id)
     <button type="submit" class="btn btn-danger">بله حذف شود</button>
-    <a href="/Tasks/Index" class="btn btn-secondary">انصراف</a>
+    <a href="/Tasks/Index?projectId=@Model.ProjectId" class="btn btn-secondary">انصراف</a>
 </form>
