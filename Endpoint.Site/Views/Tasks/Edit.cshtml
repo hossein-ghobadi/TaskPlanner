@@ -2,6 +2,7 @@
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    var parentTitle = ViewBag.ParentTaskTitle as string;
 }
 
 <h2>ویرایش کار</h2>
@@ -70,26 +71,14 @@
     </div>
 
     <!-- تسک والد -->
-    <div class="mb-3" id="parentIssueDiv">
+    <div class="mb-3">
         <label asp-for="ParentId" class="form-label">زیرمجموعه‌ی کدام کار باشد؟</label>
-        <select asp-for="ParentId" class="form-control" id="parentIssueSelect">
-            <option value="">-- مستقل --</option>
-            @if (ViewBag.Tasks != null)
-            {
-                @foreach (var task in ViewBag.Tasks)
-                {
-                    @if (Model.ParentId == task.Id)
-                    {
-                        <option value="@task.Id" data-issue-type="@((int)task.IssueType)" selected>@task.Title</option>
-                    }
-                    else
-                    {
-                        <option value="@task.Id" data-issue-type="@((int)task.IssueType)">@task.Title</option>
-                    }
-                }
-            }
-        </select>
-        <small class="form-text text-muted" id="parentHelp"></small>
+        <input type="text"
+               class="form-control"
+               value="@(Model.ParentId.HasValue ? (parentTitle ?? "نامشخص") : "بدون والد")"
+               readonly />
+        @Html.HiddenFor(m => m.ParentId)
+        <small class="form-text text-muted">والد کار پس از ایجاد قابل تغییر نیست.</small>
     </div>
 
     <div class="d-flex gap-2">
@@ -103,121 +92,39 @@
 </form>
 @section Scripts {
     <script>
-        // 🎯 مدیریت فیلتر Parent Issue بر اساس IssueType
-        const IssueTypes = {
-            Epic: 1,
-            Story: 2,
-            Task: 3,
-            Subtask: 4,
-            Bug: 5
-        };
-
-        const currentIssueType = @((int)Model.IssueType);
-
-        function filterParentOptions() {
-            const parentSelect = $('#parentIssueSelect');
-            const currentValue = parentSelect.val();
-
-            if (currentIssueType === IssueTypes.Story) {
-                // Story می‌تواند فقط زیر Epic قرار بگیرد
-                $('#parentHelp').text('Story می‌تواند زیر Epic قرار بگیرد (اختیاری) - فقط Epic قابل انتخاب است');
-                
-                parentSelect.find('option').each(function() {
-                    const $option = $(this);
-                    const issueType = parseInt($option.data('issue-type'));
-                    if ($option.val() === '') {
-                        // گزینه "مستقل" همیشه نمایش داده شود
-                        $option.show();
-                    } else if (issueType === IssueTypes.Epic) {
-                        // فقط Epic نمایش داده شود
-                        $option.show();
-                    } else {
-                        // سایر انواع (Task, Story, Bug, Subtask) مخفی شوند
-                        $option.hide();
-                        // اگر مقدار فعلی یکی از اینها باشد و نوع Issue Story است، آن را پاک کن
-                        if ($option.val() === currentValue && issueType !== IssueTypes.Epic) {
-                            parentSelect.val('');
-                        }
-                    }
-                });
-            } else if (currentIssueType === IssueTypes.Subtask) {
-                // Subtask باید زیر Task, Story, یا Bug باشد
-                $('#parentHelp').text('Subtask باید حتماً Parent داشته باشد (Task, Story یا Bug)');
-                $('#parentIssueSelect').prop('required', true);
-                
-                parentSelect.find('option').each(function() {
-                    const $option = $(this);
-                    const issueType = parseInt($option.data('issue-type'));
-                    if ($option.val() === '') {
-                        // گزینه "مستقل" مخفی شود چون برای Subtask الزامی است
-                        $option.hide();
-                    } else if (issueType === IssueTypes.Task || 
-                               issueType === IssueTypes.Story || 
-                               issueType === IssueTypes.Bug) {
-                        // فقط Task, Story, Bug نمایش داده شوند
-                        $option.show();
-                    } else {
-                        // Epic و Subtask مخفی شوند
-                        $option.hide();
-                        if ($option.val() === currentValue && 
-                            (issueType === IssueTypes.Epic || issueType === IssueTypes.Subtask)) {
-                            parentSelect.val('');
-                        }
-                    }
-                });
-            } else {
-                // Epic, Task, Bug نمی‌توانند parent داشته باشند
-                $('#parentHelp').text('');
-                parentSelect.find('option').each(function() {
-                    const $option = $(this);
-                    if ($option.val() === '') {
-                        $option.show();
-                    } else {
-                        $option.hide();
-                    }
-                });
-                if (currentValue) {
-                    parentSelect.val('');
-                }
-            }
-        }
-
         // اطمینان از مقداردهی درست ورودی‌ها و مقدارهای پنهان بعد از لود کامل DOM
         $(function () {
-            // هم‌سنگ کردن مقدارهای اولیه ورودی‌های پنهان با نمایشگر
-               // 👇 مقدار اولیه hidden را ثابت نگه دار
-        $("#StartDate").val("@Model.StartDateSh");
-        $("#DueDate").val("@Model.DueDateSh");
+            // 👇 مقدار اولیه hidden را ثابت نگه دار
+            $("#StartDate").val("@Model.StartDateSh");
+            $("#DueDate").val("@Model.DueDateSh");
 
-        // ✅ تاریخ شروع
-        $("#StartDateDisplay").persianDatepicker({
-            format: 'YYYY/MM/DD',
-            autoClose: true,
-            initialValueType: "persian",
-            initialValue: true,
-            altField: '#StartDate',
-            altFormat: 'YYYY/MM/DD', // 👈 مهم برای جلوگیری از +1 روز
-            timePicker: { enabled: false },
-            calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
-        });
+            // ✅ تاریخ شروع
+            $("#StartDateDisplay").persianDatepicker({
+                format: 'YYYY/MM/DD',
+                autoClose: true,
+                initialValueType: "persian",
+                initialValue: true,
+                altField: '#StartDate',
+                altFormat: 'YYYY/MM/DD', // 👈 مهم برای جلوگیری از +1 روز
+                timePicker: { enabled: false },
+                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+            });
 
-        // ✅ تاریخ پایان
-        $("#DueDateDisplay").persianDatepicker({
-            format: 'YYYY/MM/DD',
-            autoClose: true,
-            initialValueType: "persian",
-            initialValue: true,
-            altField: '#DueDate',
-            altFormat: 'YYYY/MM/DD',
-            timePicker: { enabled: false },
-            calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
-        });
+            // ✅ تاریخ پایان
+            $("#DueDateDisplay").persianDatepicker({
+                format: 'YYYY/MM/DD',
+                autoClose: true,
+                initialValueType: "persian",
+                initialValue: true,
+                altField: '#DueDate',
+                altFormat: 'YYYY/MM/DD',
+                timePicker: { enabled: false },
+                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+            });
+
             // بعد از مقداردهی، دوباره hidden ها را با مقدار نمایشگر همسان‌سازی کن
             $("#StartDate").val($("#StartDateDisplay").val() || "");
             $("#DueDate").val($("#DueDateDisplay").val() || "");
-
-            // فیلتر کردن گزینه‌های Parent بر اساس IssueType
-            filterParentOptions();
         });
     </script>
 }

@@ -1200,6 +1200,19 @@ namespace Endpoint.Site.Controllers
             ViewBag.AssignedUsers = assignedUsers.OrderBy(u => u.Name).ToList();
         }
 
+        private async Task<string?> GetParentTaskTitleAsync(int? parentTaskId)
+        {
+            if (!parentTaskId.HasValue)
+            {
+                return null;
+            }
+
+            return await _context.TaskItems
+                .Where(t => t.Id == parentTaskId.Value)
+                .Select(t => t.Title)
+                .FirstOrDefaultAsync();
+        }
+
 
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
@@ -1247,11 +1260,8 @@ namespace Endpoint.Site.Controllers
                 .Where(c => c.ProjectId == task.ProjectId)
                 .OrderBy(c => c.Name)
                 .ToListAsync();
-            
-            // 🎯 فقط تسک‌های همان پروژه برای Parent Task
-            ViewBag.Tasks = await _context.TaskItems
-                .Where(t => t.Id != id && t.ProjectId == task.ProjectId)
-                .ToListAsync();
+
+            ViewBag.ParentTaskTitle = await GetParentTaskTitleAsync(task.ParentTaskId);
             
             // 🔒 پروژه فقط برای نمایش (غیرفعال خواهد شد) - فقط پروژه فعلی
             ViewBag.Projects = new List<Project> { task.Project };
@@ -1310,9 +1320,9 @@ namespace Endpoint.Site.Controllers
                         .OrderBy(c => c.Name)
                         .ToListAsync()
                     : new List<TaskCategory>();
-                ViewBag.Tasks = taskForError != null 
-                    ? await _context.TaskItems.Where(t => t.Id != vm.Id && t.ProjectId == taskForError.ProjectId).ToListAsync()
-                    : new List<TaskItem>();
+                ViewBag.ParentTaskTitle = taskForError != null
+                    ? await GetParentTaskTitleAsync(taskForError.ParentTaskId)
+                    : null;
                 ViewBag.Projects = taskForError?.Project != null 
                     ? new List<Project> { taskForError.Project } 
                     : new List<Project>();
@@ -1382,7 +1392,7 @@ namespace Endpoint.Site.Controllers
                     .Where(c => c.ProjectId == task.ProjectId)
                     .OrderBy(c => c.Name)
                     .ToListAsync();
-                ViewBag.Tasks = await _context.TaskItems.Where(t => t.Id != vm.Id && t.ProjectId == task.ProjectId).ToListAsync();
+                ViewBag.ParentTaskTitle = await GetParentTaskTitleAsync(task.ParentTaskId);
                 ViewBag.Projects = new List<Project> { task.Project };
                 
                 // بارگذاری مجدد لیست کاربران
@@ -1427,7 +1437,7 @@ namespace Endpoint.Site.Controllers
                         .Where(c => c.ProjectId == task.ProjectId)
                         .OrderBy(c => c.Name)
                         .ToListAsync();
-                    ViewBag.Tasks = await _context.TaskItems.Where(t => t.Id != vm.Id && t.ProjectId == task.ProjectId).ToListAsync();
+                    ViewBag.ParentTaskTitle = await GetParentTaskTitleAsync(task.ParentTaskId);
                     ViewBag.Projects = task.Project != null ? new List<Project> { task.Project } : new List<Project>();
 
                     var users = new List<dynamic>();
@@ -1472,7 +1482,7 @@ namespace Endpoint.Site.Controllers
                         .Where(c => c.ProjectId == task.ProjectId)
                         .OrderBy(c => c.Name)
                         .ToListAsync();
-                    ViewBag.Tasks = await _context.TaskItems.Where(t => t.Id != vm.Id && t.ProjectId == task.ProjectId).ToListAsync();
+                    ViewBag.ParentTaskTitle = await GetParentTaskTitleAsync(task.ParentTaskId);
                     ViewBag.Projects = task.Project != null ? new List<Project> { task.Project } : new List<Project>();
                     
                     // بارگذاری مجدد لیست کاربران
@@ -1524,7 +1534,7 @@ namespace Endpoint.Site.Controllers
                         .Where(c => c.ProjectId == task.ProjectId)
                         .OrderBy(c => c.Name)
                         .ToListAsync();
-                    ViewBag.Tasks = await _context.TaskItems.Where(t => t.Id != vm.Id && t.ProjectId == task.ProjectId).ToListAsync();
+                    ViewBag.ParentTaskTitle = await GetParentTaskTitleAsync(task.ParentTaskId);
                     ViewBag.Projects = task.Project != null ? new List<Project> { task.Project } : new List<Project>();
                     
                     // بارگذاری مجدد لیست کاربران
