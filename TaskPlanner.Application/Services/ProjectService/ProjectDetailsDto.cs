@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
 namespace TaskPlanner.Application.Services.ProjectService
@@ -18,6 +19,10 @@ namespace TaskPlanner.Application.Services.ProjectService
         public List<TaskCategory> Categories { get; set; } = new();
         public int? ActiveSprintId { get; set; }
         public string? ActiveSprintName { get; set; }
+        public int TotalTasks { get; set; }
+        public int CompletedTasks { get; set; }
+        public int ProgressPercentage { get; set; }
+        public Dictionary<int, int> CategoryTaskCounts { get; set; } = new();
     }
 
     /// <summary>

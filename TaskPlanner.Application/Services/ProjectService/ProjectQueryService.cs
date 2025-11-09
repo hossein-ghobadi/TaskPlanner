@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Application.Interfaces.Contexts;
+using System.Linq;
 
 namespace TaskPlanner.Application.Services.ProjectService
 {
@@ -130,6 +131,35 @@ namespace TaskPlanner.Application.Services.ProjectService
                 dto.ActiveSprintId = activeSprint.Id;
                 dto.ActiveSprintName = activeSprint.Name;
             }
+
+            // 📊 آمار تسک‌ها برای نمایش در View
+            var taskStats = await _context.TaskItems
+                .Where(t => t.ProjectId == projectId && t.IssueType != IssueType.Epic)
+                .GroupBy(_ => 1)
+                .Select(g => new
+                {
+                    Total = g.Count(),
+                    Completed = g.Count(t => t.IsCompleted)
+                })
+                .FirstOrDefaultAsync();
+
+            dto.TotalTasks = taskStats?.Total ?? 0;
+            dto.CompletedTasks = taskStats?.Completed ?? 0;
+            dto.ProgressPercentage = dto.TotalTasks > 0
+                ? (dto.CompletedTasks * 100 / dto.TotalTasks)
+                : 0;
+
+            var categoryTaskCounts = await _context.TaskItems
+                .Where(t => t.ProjectId == projectId && t.CategoryId != null && t.IssueType != IssueType.Epic)
+                .GroupBy(t => t.CategoryId!.Value)
+                .Select(g => new
+                {
+                    CategoryId = g.Key,
+                    Count = g.Count()
+                })
+                .ToListAsync();
+
+            dto.CategoryTaskCounts = categoryTaskCounts.ToDictionary(x => x.CategoryId, x => x.Count);
 
             return dto;
         }
