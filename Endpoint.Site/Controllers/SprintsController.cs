@@ -174,8 +174,11 @@ namespace Endpoint.Site.Controllers
             ViewBag.ProjectId = sprint.ProjectId;
             ViewBag.SprintId = sprint.Id;
 
-            // دریافت دسته‌بندی‌ها برای فرم ایجاد تسک (همه دسته‌بندی‌ها - دسته‌بندی‌ها global هستند)
-            var categories = await _context.TaskCategories.ToListAsync();
+            // دریافت دسته‌بندی‌ها برای فرم ایجاد تسک (متعلق به همین پروژه)
+            var categories = await _context.TaskCategories
+                .Where(c => c.ProjectId == sprint.ProjectId)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
             ViewBag.Categories = categories;
 
             // دریافت اعضای پروژه برای فرم ایجاد تسک

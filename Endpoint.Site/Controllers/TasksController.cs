@@ -81,7 +81,10 @@ namespace Endpoint.Site.Controllers
                 );
 
             ViewBag.UserLookup = userLookup;
-            ViewBag.Categories = await _context.TaskCategories.ToListAsync(); // 🔹 اضافه شد
+            ViewBag.Categories = await _context.TaskCategories
+                .Where(c => userProjectIds.Contains(c.ProjectId))
+                .OrderBy(c => c.Name)
+                .ToListAsync();
 
             return View(tasks);
         }
@@ -140,6 +143,18 @@ namespace Endpoint.Site.Controllers
                 return Forbid();
             }
 
+            TaskCategory selectedCategory = null;
+            if (categoryId > 0)
+            {
+                selectedCategory = await _context.TaskCategories
+                    .FirstOrDefaultAsync(c => c.Id == categoryId && c.ProjectId == parent.ProjectId);
+
+                if (selectedCategory == null)
+                {
+                    return BadRequest("دسته‌بندی انتخاب‌شده متعلق به این پروژه نیست.");
+                }
+            }
+
             // 📝 Generate کردن IssueKey
             var project = parent.Project;
             if (project == null)
@@ -184,7 +199,7 @@ namespace Endpoint.Site.Controllers
                         StartDate = DateTime.Today,
                         DueDate = parent.DueDate, // وراثت DueDate از parent
                         ProjectId = parent.ProjectId,
-                        CategoryId = categoryId > 0 ? categoryId : parent.CategoryId, // اگه category نداد، از parent بگیر
+                        CategoryId = selectedCategory?.Id ?? parent.CategoryId, // اگه category نداد، از parent بگیر
                         ParentTaskId = parent.Id,
                         AssignedUserId = parent.AssignedUserId, // وراثت مسئول از parent
                         IsCompleted = false,
@@ -268,6 +283,18 @@ namespace Endpoint.Site.Controllers
 
             if (parent == null)
                 return NotFound("Parent Issue یافت نشد.");
+
+            TaskCategory selectedCategory = null;
+            if (categoryId > 0)
+            {
+                selectedCategory = await _context.TaskCategories
+                    .FirstOrDefaultAsync(c => c.Id == categoryId && c.ProjectId == parent.ProjectId);
+
+                if (selectedCategory == null)
+                {
+                    return BadRequest("دسته‌بندی انتخاب‌شده متعلق به این پروژه نیست.");
+                }
+            }
 
             // 🎯 Smart Logic: تعیین IssueType بر اساس Parent
             IssueType finalIssueType;
@@ -362,7 +389,7 @@ namespace Endpoint.Site.Controllers
                         StartDate = DateTime.Today,
                         DueDate = parent.DueDate, // وراثت DueDate از parent
                         ProjectId = parent.ProjectId,
-                        CategoryId = categoryId > 0 ? categoryId : parent.CategoryId,
+                        CategoryId = selectedCategory?.Id ?? parent.CategoryId,
                         ParentTaskId = parent.Id,
                         AssignedUserId = parent.AssignedUserId, // وراثت مسئول از parent
                         StoryPoints = storyPoints, // فقط برای Story/Task
@@ -779,7 +806,10 @@ namespace Endpoint.Site.Controllers
             ViewBag.ProjectName = project.Name;
 
             // 📂 دسته‌بندی‌ها
-            ViewBag.Categories = await _context.TaskCategories.ToListAsync();
+            ViewBag.Categories = await _context.TaskCategories
+                .Where(c => c.ProjectId == project.Id)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
 
             // 🧩 تسک‌های این پروژه برای انتخاب Parent Task
             ViewBag.Tasks = await _context.TaskItems
@@ -867,6 +897,19 @@ namespace Endpoint.Site.Controllers
                 ModelState.AddModelError(nameof(vm.StartDateSh), "تاریخ شروع معتبر نیست.");
                 await FillListsForCreate(vm.ProjectId);
                 return View(vm);
+            }
+
+            if (vm.CategoryId.HasValue)
+            {
+                var categoryIsValid = await _context.TaskCategories
+                    .AnyAsync(c => c.Id == vm.CategoryId.Value && c.ProjectId == vm.ProjectId);
+
+                if (!categoryIsValid)
+                {
+                    ModelState.AddModelError(nameof(vm.CategoryId), "دسته‌بندی انتخاب‌شده متعلق به این پروژه نیست.");
+                    await FillListsForCreate(vm.ProjectId);
+                    return View(vm);
+                }
             }
 
             // ✅ اگر AssignedUserId ست شده، حتماً عضو پروژه یا سازنده پروژه باشد
@@ -1085,16 +1128,76 @@ namespace Endpoint.Site.Controllers
 
         private async Task FillListsForCreate(int projectId)
         {
-            ViewBag.Categories = await _context.TaskCategories.ToListAsync();
-            ViewBag.Tasks = await _context.TaskItems.ToListAsync();
-            ViewBag.Projects = await _context.Projects.ToListAsync();
+            var project = await _context.Projects.FindAsync(projectId);
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var memberIds = await _context.ProjectMembers
-                .Where(m => m.ProjectId == projectId)
-                .Select(m => m.UserId)
+            ViewBag.ProjectName = project?.Name ?? "پروژه";
+
+            ViewBag.Categories = await _context.TaskCategories
+                .Where(c => c.ProjectId == projectId)
+                .OrderBy(c => c.Name)
                 .ToListAsync();
 
-            ViewBag.AssignedUsers = memberIds.Select(id => new { Id = id, Name = id }).ToList();
+            ViewBag.Tasks = await _context.TaskItems
+                .Where(t => t.ProjectId == projectId)
+                .ToListAsync();
+
+            ViewBag.Projects = project != null
+                ? new List<Project> { project }
+                : new List<Project>();
+
+            var assignedUsers = new List<dynamic>();
+
+            if (project != null && !string.IsNullOrEmpty(project.CreatorUserId))
+            {
+                var creatorInfo = await _userManager.FindByIdAsync(project.CreatorUserId);
+                if (creatorInfo != null)
+                {
+                    assignedUsers.Add(new
+                    {
+                        Id = project.CreatorUserId,
+                        Name = $"{creatorInfo.FullName ?? creatorInfo.UserName} ({creatorInfo.Phone}) - سازنده پروژه"
+                    });
+                }
+            }
+
+            if (project != null)
+            {
+                var acceptedProjectMembers = await _context.ProjectInvitations
+                    .Where(i => i.ProjectId == projectId && i.Status == InvitationStatus.Accepted)
+                    .Select(i => i.InviteeId)
+                    .ToListAsync();
+
+                foreach (var memberId in acceptedProjectMembers)
+                {
+                    if (memberId == project.CreatorUserId) continue;
+
+                    var userInfo = await _userManager.FindByIdAsync(memberId);
+                    if (userInfo != null)
+                    {
+                        assignedUsers.Add(new
+                        {
+                            Id = memberId,
+                            Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.Phone})"
+                        });
+                    }
+                }
+            }
+
+            if (!string.IsNullOrEmpty(currentUserId) && !assignedUsers.Any(u => u.Id == currentUserId))
+            {
+                var currentUser = await _userManager.FindByIdAsync(currentUserId);
+                if (currentUser != null)
+                {
+                    assignedUsers.Add(new
+                    {
+                        Id = currentUserId,
+                        Name = $"{currentUser.FullName ?? currentUser.UserName} ({currentUser.Phone})"
+                    });
+                }
+            }
+
+            ViewBag.AssignedUsers = assignedUsers.OrderBy(u => u.Name).ToList();
         }
 
 
@@ -1140,7 +1243,10 @@ namespace Endpoint.Site.Controllers
                 IssueType = task.IssueType
             };
 
-            ViewBag.Categories = _context.TaskCategories.ToList();
+            ViewBag.Categories = await _context.TaskCategories
+                .Where(c => c.ProjectId == task.ProjectId)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
             
             // 🎯 فقط تسک‌های همان پروژه برای Parent Task
             ViewBag.Tasks = await _context.TaskItems
@@ -1198,7 +1304,12 @@ namespace Endpoint.Site.Controllers
                     .Include(t => t.Project)
                     .FirstOrDefaultAsync(t => t.Id == vm.Id);
                 
-                ViewBag.Categories = _context.TaskCategories.ToList();
+                ViewBag.Categories = taskForError != null
+                    ? await _context.TaskCategories
+                        .Where(c => c.ProjectId == taskForError.ProjectId)
+                        .OrderBy(c => c.Name)
+                        .ToListAsync()
+                    : new List<TaskCategory>();
                 ViewBag.Tasks = taskForError != null 
                     ? await _context.TaskItems.Where(t => t.Id != vm.Id && t.ProjectId == taskForError.ProjectId).ToListAsync()
                     : new List<TaskItem>();
@@ -1267,7 +1378,10 @@ namespace Endpoint.Site.Controllers
             if (vm.ProjectId != task.ProjectId)
             {
                 ModelState.AddModelError(nameof(vm.ProjectId), "تغییر پروژه تسک مجاز نیست.");
-                ViewBag.Categories = _context.TaskCategories.ToList();
+                ViewBag.Categories = await _context.TaskCategories
+                    .Where(c => c.ProjectId == task.ProjectId)
+                    .OrderBy(c => c.Name)
+                    .ToListAsync();
                 ViewBag.Tasks = await _context.TaskItems.Where(t => t.Id != vm.Id && t.ProjectId == task.ProjectId).ToListAsync();
                 ViewBag.Projects = new List<Project> { task.Project };
                 
@@ -1301,6 +1415,51 @@ namespace Endpoint.Site.Controllers
                 return View(vm);
             }
 
+            if (vm.CategoryId.HasValue)
+            {
+                var categoryIsValid = await _context.TaskCategories
+                    .AnyAsync(c => c.Id == vm.CategoryId.Value && c.ProjectId == task.ProjectId);
+
+                if (!categoryIsValid)
+                {
+                    ModelState.AddModelError(nameof(vm.CategoryId), "دسته‌بندی انتخاب‌شده متعلق به این پروژه نیست.");
+                    ViewBag.Categories = await _context.TaskCategories
+                        .Where(c => c.ProjectId == task.ProjectId)
+                        .OrderBy(c => c.Name)
+                        .ToListAsync();
+                    ViewBag.Tasks = await _context.TaskItems.Where(t => t.Id != vm.Id && t.ProjectId == task.ProjectId).ToListAsync();
+                    ViewBag.Projects = task.Project != null ? new List<Project> { task.Project } : new List<Project>();
+
+                    var users = new List<dynamic>();
+                    if (task.Project != null && !string.IsNullOrEmpty(task.Project.CreatorUserId))
+                    {
+                        var creatorInfo = await _userManager.FindByIdAsync(task.Project.CreatorUserId);
+                        if (creatorInfo != null)
+                        {
+                            users.Add(new
+                            {
+                                Id = task.Project.CreatorUserId,
+                                Name = $"{creatorInfo.FullName ?? creatorInfo.UserName} ({creatorInfo.Phone}) - سازنده پروژه"
+                            });
+                        }
+                    }
+                    var acceptedMembers = await _context.ProjectInvitations
+                        .Where(i => i.ProjectId == task.ProjectId && i.Status == InvitationStatus.Accepted)
+                        .Select(i => i.InviteeId)
+                        .ToListAsync();
+                    foreach (var memberId in acceptedMembers)
+                    {
+                        if (task.Project != null && memberId == task.Project.CreatorUserId) continue;
+                        var userInfo = await _userManager.FindByIdAsync(memberId);
+                        if (userInfo != null)
+                            users.Add(new { Id = memberId, Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.Phone})" });
+                    }
+                    ViewBag.AssignedUsers = users;
+
+                    return View(vm);
+                }
+            }
+
             // ✅ اگر AssignedUserId ست شده، حتماً عضو پروژه یا سازنده پروژه باشد
             if (!string.IsNullOrWhiteSpace(vm.AssignedUserId))
             {
@@ -1309,7 +1468,10 @@ namespace Endpoint.Site.Controllers
                 if (project == null)
                 {
                     ModelState.AddModelError(nameof(vm.ProjectId), "پروژه یافت نشد.");
-                    ViewBag.Categories = _context.TaskCategories.ToList();
+                    ViewBag.Categories = await _context.TaskCategories
+                        .Where(c => c.ProjectId == task.ProjectId)
+                        .OrderBy(c => c.Name)
+                        .ToListAsync();
                     ViewBag.Tasks = await _context.TaskItems.Where(t => t.Id != vm.Id && t.ProjectId == task.ProjectId).ToListAsync();
                     ViewBag.Projects = task.Project != null ? new List<Project> { task.Project } : new List<Project>();
                     
@@ -1358,7 +1520,10 @@ namespace Endpoint.Site.Controllers
                 if (!isCreator && !isMember && !isAcceptedInvitee)
                 {
                     ModelState.AddModelError(nameof(vm.AssignedUserId), "کاربر انتخاب‌شده عضو این پروژه نیست.");
-                    ViewBag.Categories = _context.TaskCategories.ToList();
+                    ViewBag.Categories = await _context.TaskCategories
+                        .Where(c => c.ProjectId == task.ProjectId)
+                        .OrderBy(c => c.Name)
+                        .ToListAsync();
                     ViewBag.Tasks = await _context.TaskItems.Where(t => t.Id != vm.Id && t.ProjectId == task.ProjectId).ToListAsync();
                     ViewBag.Projects = task.Project != null ? new List<Project> { task.Project } : new List<Project>();
                     
