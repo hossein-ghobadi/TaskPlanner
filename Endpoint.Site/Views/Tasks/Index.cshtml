@@ -112,12 +112,20 @@ else
             modal.show();
         }
 
+        let isSubmittingChildIssue = false;
+
         // ارسال Child Issue (Smart)
         async function submitChildIssueForm() {
+            if (isSubmittingChildIssue) {
+                return;
+            }
+
             const title = document.getElementById('subTaskTitle').value.trim();
             const categoryId = document.getElementById('subTaskCategory').value || '0';
             const issueTypeField = document.getElementById('issueTypeField');
             const storyPoints = document.getElementById('storyPoints').value;
+            const submitButton = document.querySelector('#subTaskModal .btn-primary');
+            const originalButtonContent = submitButton ? submitButton.innerHTML : '';
             
             if (!title) {
                 showToast("عنوان الزامی است ❗", true);
@@ -138,19 +146,37 @@ else
                 }
             }
 
-            const response = await fetch("/Tasks/AddChildIssue", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
+            let shouldResetButton = true;
+            try {
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>در حال ثبت...';
+                }
+                isSubmittingChildIssue = true;
 
-            if (response.ok) {
-                const result = await response.json();
-                showToast(result.message || "Issue با موفقیت افزوده شد ✅");
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                const error = await response.text();
-                showToast(error || "خطا در افزودن Issue ❌", true);
+                const response = await fetch("/Tasks/AddChildIssue", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    shouldResetButton = false;
+                    const result = await response.json();
+                    showToast(result.message || "Issue با موفقیت افزوده شد ✅");
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    const error = await response.text();
+                    showToast(error || "خطا در افزودن Issue ❌", true);
+                }
+            } finally {
+                if (shouldResetButton) {
+                    isSubmittingChildIssue = false;
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalButtonContent;
+                    }
+                }
             }
         }
 

@@ -256,5 +256,38 @@
         $('#issueTypeSelect').on('change', function() {
             updateFieldsBasedOnIssueType();
         });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.querySelector('form');
+            if (!form) return;
+
+            let isSubmittingForm = false;
+            const submitButton = form.querySelector('button[type="submit"]');
+            const originalButtonContent = submitButton ? submitButton.innerHTML : '';
+
+            form.addEventListener('submit', function (event) {
+                if (isSubmittingForm) {
+                    event.preventDefault();
+                    return false;
+                }
+
+                isSubmittingForm = true;
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>در حال ثبت...';
+                }
+            });
+
+            // در صورت برگشت صفحه با خطای اعتبارسنجی، دکمه دوباره فعال شود
+            window.addEventListener('pageshow', function (event) {
+                if (event.persisted || (submitButton && submitButton.disabled)) {
+                    isSubmittingForm = false;
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalButtonContent;
+                    }
+                }
+            });
+        });
     </script>
 }
