@@ -9,6 +9,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 using TaskPlanner.Domain.Entities.TaskPlanner;
+using TaskPlanner.Domain.Entities.Notifications;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Application.Interfaces.Contexts;
 
@@ -39,6 +40,7 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<WorkflowStatus> WorkflowStatuses { get; set; }
         public DbSet<WorkflowTransition> WorkflowTransitions { get; set; }
         public DbSet<IssueStatusHistory> IssueStatusHistories { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -254,6 +256,26 @@ namespace TaskPlanner.Persistence.Contexts
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Phone)
                 .HasFilter("[Phone] IS NOT NULL");
+
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Notification>()
+                .Property(n => n.Title)
+                .HasMaxLength(200);
+
+            modelBuilder.Entity<Notification>()
+                .Property(n => n.RelatedEntityType)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<Notification>()
+                .HasIndex(n => new { n.UserId, n.IsRead });
+
+            modelBuilder.Entity<Notification>()
+                .HasIndex(n => n.CreatedAt);
         }
         public void MarkAsModified<T>(T entity) where T : class
         {

@@ -1,5 +1,5 @@
-﻿using DNTPersianUtils.Core;
-
+﻿using System;
+using DNTPersianUtils.Core;
 using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +11,7 @@ using TaskPlanner.Domain.Entities.Users;
 using System.Security.Claims;
 using System.Text.Json;
 using TaskPlanner.Application.Services.FileUpload;
+using TaskPlanner.Application.Services.NotificationService;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
 namespace Endpoint.Site.Controllers
@@ -22,12 +23,14 @@ namespace Endpoint.Site.Controllers
         private readonly MVPTestDatabaseContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IFileUploadService _fileUploadService;
+        private readonly INotificationService _notificationService;
 
-        public TasksController(MVPTestDatabaseContext context, UserManager<User> userManager, IFileUploadService fileUploadService)
+        public TasksController(MVPTestDatabaseContext context, UserManager<User> userManager, IFileUploadService fileUploadService, INotificationService notificationService)
         {
             _context = context;
             _userManager = userManager;
             _fileUploadService = fileUploadService;
+            _notificationService = notificationService;
 
         }
 
@@ -1052,6 +1055,31 @@ namespace Endpoint.Site.Controllers
                 await FillListsForCreate(vm.ProjectId);
                 return View(vm);
             }
+
+            if (!string.IsNullOrWhiteSpace(newTask.AssignedUserId))
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!string.Equals(newTask.AssignedUserId, currentUserId, StringComparison.OrdinalIgnoreCase))
+                {
+                    var projectName = projectForIssueKey?.Name ?? "پروژه";
+                    await _notificationService.CreateNotificationAsync(new NotificationCreateRequest
+                    {
+                        UserId = newTask.AssignedUserId,
+                        Title = $"تسک جدید به شما واگذار شد",
+                        Message = $"تسک «{newTask.Title}» در پروژه «{projectName}» به شما واگذار شد.",
+                        RelatedEntityId = newTask.Id.ToString(),
+                        RelatedEntityType = nameof(TaskItem),
+                        Type = NotificationCreateType.TaskAssigned,
+                        PayloadJson = JsonSerializer.Serialize(new
+                        {
+                            taskId = newTask.Id,
+                            issueKey = newTask.IssueKey,
+                            projectId = newTask.ProjectId
+                        })
+                    });
+                }
+            }
+            await _notificationService.TrySendDueSoonNotificationAsync(newTask, projectForIssueKey?.Name);
             return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId });
         }
 
@@ -1365,6 +1393,7 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
+            var previousAssignee = task.AssignedUserId;
             task.Title = vm.Title;
             task.Description = vm.Description;
             task.CategoryId = vm.CategoryId;
@@ -1381,6 +1410,32 @@ namespace Endpoint.Site.Controllers
 
             _context.Update(task);
             await _context.SaveChangesAsync();
+
+            var assignmentChanged = !string.Equals(previousAssignee, vm.AssignedUserId, StringComparison.OrdinalIgnoreCase);
+            if (assignmentChanged && !string.IsNullOrWhiteSpace(vm.AssignedUserId))
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!string.Equals(vm.AssignedUserId, currentUserId, StringComparison.OrdinalIgnoreCase))
+                {
+                    var projectName = task.Project?.Name ?? "پروژه";
+                    await _notificationService.CreateNotificationAsync(new NotificationCreateRequest
+                    {
+                        UserId = vm.AssignedUserId,
+                        Title = $"تسک به شما واگذار شد",
+                        Message = $"تسک «{task.Title}» در پروژه «{projectName}» به شما واگذار شد.",
+                        RelatedEntityId = task.Id.ToString(),
+                        RelatedEntityType = nameof(TaskItem),
+                        Type = NotificationCreateType.TaskAssigned,
+                        PayloadJson = JsonSerializer.Serialize(new
+                        {
+                            taskId = task.Id,
+                            issueKey = task.IssueKey,
+                            projectId = task.ProjectId
+                        })
+                    });
+                }
+            }
+            await _notificationService.TrySendDueSoonNotificationAsync(task, task.Project?.Name);
             return RedirectToAction(nameof(Index), new { projectId = task.ProjectId });
         }
 

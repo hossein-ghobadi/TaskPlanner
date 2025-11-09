@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using System.Text.Json;
 using TaskPlanner.Application.Interfaces.Contexts;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Users;
+using TaskPlanner.Application.Services.NotificationService;
 
 namespace TaskPlanner.Application.Services.ProjectService
 {
@@ -13,11 +15,13 @@ namespace TaskPlanner.Application.Services.ProjectService
     {
         private readonly IMVPTestDatabaseContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly INotificationService _notificationService;
 
-        public ProjectCommandService(IMVPTestDatabaseContext context, UserManager<User> userManager)
+        public ProjectCommandService(IMVPTestDatabaseContext context, UserManager<User> userManager, INotificationService notificationService)
         {
             _context = context;
             _userManager = userManager;
+            _notificationService = notificationService;
         }
 
         /// <summary>
@@ -228,6 +232,10 @@ namespace TaskPlanner.Application.Services.ProjectService
             if (string.IsNullOrWhiteSpace(phone))
                 throw new ArgumentException("شماره تلفن وارد نشده است.", nameof(phone));
 
+            var project = await _context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
+            if (project == null)
+                throw new InvalidOperationException("پروژه یافت نشد.");
+
             // بررسی وجود دعوت در انتظار
             var exists = await _context.ProjectInvitations
                 .AnyAsync(i => i.InviteePhone == phone && i.ProjectId == projectId && i.Status == InvitationStatus.Pending);
@@ -252,6 +260,21 @@ namespace TaskPlanner.Application.Services.ProjectService
 
             _context.ProjectInvitations.Add(invite);
             await _context.SaveChangesAsync();
+
+            await _notificationService.CreateNotificationAsync(new NotificationCreateRequest
+            {
+                UserId = user.Id,
+                Title = $"دعوت به پروژه جدید",
+                Message = $"برای شما دعوتی به پروژه «{project.Name}» ارسال شد.",
+                RelatedEntityId = invite.Id.ToString(),
+                RelatedEntityType = nameof(ProjectInvitation),
+                Type = NotificationCreateType.ProjectInvitation,
+                PayloadJson = JsonSerializer.Serialize(new
+                {
+                    invitationId = invite.Id,
+                    projectId = projectId
+                })
+            });
         }
     }
 }

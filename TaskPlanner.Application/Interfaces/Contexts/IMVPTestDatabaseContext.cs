@@ -7,6 +7,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 using TaskPlanner.Domain.Entities.TaskPlanner;
+using TaskPlanner.Domain.Entities.Notifications;
 
 namespace TaskPlanner.Application.Interfaces.Contexts
 {
@@ -31,6 +32,7 @@ namespace TaskPlanner.Application.Interfaces.Contexts
         DbSet<WorkflowStatus> WorkflowStatuses { get; set; }
         DbSet<WorkflowTransition> WorkflowTransitions { get; set; }
         DbSet<IssueStatusHistory> IssueStatusHistories { get; set; }
+        DbSet<Notification> Notifications { get; set; }
 
 
         void MarkAsModified<T>(T entity) where T : class;

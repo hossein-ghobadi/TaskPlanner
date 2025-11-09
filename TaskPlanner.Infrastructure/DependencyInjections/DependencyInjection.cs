@@ -18,6 +18,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using TaskPlanner.Application.Services;
 using TaskPlanner.Application.Services.TaskPlanner;
 using TaskPlanner.Application.Services.ProjectService;
+using TaskPlanner.Application.Services.NotificationService;
 
 
 namespace TaskPlanner.Infrastructure.DependencyInjections
@@ -43,6 +44,9 @@ namespace TaskPlanner.Infrastructure.DependencyInjections
 
             // سرویس‌های Command برای پروژه‌ها
             services.AddScoped<IProjectCommandService, ProjectCommandService>();
+
+            // سرویس نوتیفیکیشن
+            services.AddScoped<INotificationService, NotificationService>();
 
             return services;
         }

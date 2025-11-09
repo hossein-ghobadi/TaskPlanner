@@ -1,9 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using TaskPlanner.Domain.Entities.Notifications;
 
 namespace TaskPlanner.Domain.Entities.Users
 {
@@ -26,5 +24,6 @@ namespace TaskPlanner.Domain.Entities.Users
         public bool IsVarify { get; set; } = false;
         public bool IsCentralOffice { get; set; } = false;
 
+        public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     }
 }
