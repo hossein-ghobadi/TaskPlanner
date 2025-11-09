@@ -30,6 +30,7 @@ namespace TaskPlanner.Application.Services.ProjectService
     /// </summary>
     public class ProjectInvitationDto
     {
+        public int Id { get; set; }
         public string InviteePhone { get; set; } = null!;
         public InvitationStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }

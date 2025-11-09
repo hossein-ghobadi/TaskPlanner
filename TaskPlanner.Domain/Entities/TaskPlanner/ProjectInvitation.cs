@@ -21,6 +21,9 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public string InviteeId { get; set; } = null!;
         public string InviteePhone { get; set; } = null!; // شماره‌ای که وارد شده
 
+        // پیام پاسخ دعوت (اختیاری)
+        public string? ResponseMessage { get; set; }
+
         // وضعیت دعوت (در انتظار، پذیرفته، رد شده)
         public InvitationStatus Status { get; set; } = InvitationStatus.Pending;
 

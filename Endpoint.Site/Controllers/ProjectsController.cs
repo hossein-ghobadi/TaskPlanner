@@ -119,6 +119,7 @@ namespace Endpoint.Site.Controllers
                     Tasks = tasks,
                     Invitations = dto.Invitations.Select(i => new ProjectInvitationVm
                     {
+                        Id = i.Id,
                         InviteePhone = i.InviteePhone,
                         Status = i.Status,
                         CreatedAt = i.CreatedAt
@@ -473,6 +474,34 @@ namespace Endpoint.Site.Controllers
                     TempData["InviteError"] = ex.Message;
             }
 
+            return RedirectToAction("Details", new { id = projectId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteProjectInvite(int projectId, int inviteId)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var invite = await _context.ProjectInvitations
+                .FirstOrDefaultAsync(i => i.Id == inviteId && i.ProjectId == projectId && i.InviterId == currentUserId);
+
+            if (invite == null)
+            {
+                TempData["InviteError"] = "دعوت مورد نظر یافت نشد.";
+                return RedirectToAction("Details", new { id = projectId });
+            }
+
+            if (invite.Status != InvitationStatus.Pending)
+            {
+                TempData["InviteWarning"] = "فقط دعوت‌های در انتظار قابل حذف هستند.";
+                return RedirectToAction("Details", new { id = projectId });
+            }
+
+            _context.ProjectInvitations.Remove(invite);
+            await _context.SaveChangesAsync();
+
+            TempData["InviteSuccess"] = "دعوت با موفقیت حذف شد.";
             return RedirectToAction("Details", new { id = projectId });
         }
 

@@ -232,9 +232,19 @@ namespace TaskPlanner.Application.Services.ProjectService
             if (string.IsNullOrWhiteSpace(phone))
                 throw new ArgumentException("شماره تلفن وارد نشده است.", nameof(phone));
 
+            phone = phone.Trim();
+
             var project = await _context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
             if (project == null)
                 throw new InvalidOperationException("پروژه یافت نشد.");
+
+            var inviter = await _userManager.FindByIdAsync(inviterId);
+
+            if (inviter != null && !string.IsNullOrWhiteSpace(inviter.Phone) &&
+                string.Equals(inviter.Phone, phone, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("نمی‌توانید خودتان را به پروژه دعوت کنید.");
+            }
 
             // بررسی وجود دعوت در انتظار
             var exists = await _context.ProjectInvitations
@@ -243,10 +253,28 @@ namespace TaskPlanner.Application.Services.ProjectService
             if (exists)
                 throw new InvalidOperationException("برای این شماره قبلاً دعوت در انتظار ارسال شده است.");
 
+            var hasAcceptedInvite = await _context.ProjectInvitations
+                .AnyAsync(i => i.InviteePhone == phone && i.ProjectId == projectId && i.Status == InvitationStatus.Accepted);
+
+            if (hasAcceptedInvite)
+                throw new InvalidOperationException("این کاربر قبلاً دعوت را پذیرفته و در پروژه حضور دارد.");
+
             // پیدا کردن کاربر
             var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Phone == phone);
             if (user == null)
                 throw new InvalidOperationException("کاربری با این شماره پیدا نشد.");
+
+            if (string.Equals(user.Id, inviterId, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("نمی‌توانید خودتان را به پروژه دعوت کنید.");
+
+            if (string.Equals(project.CreatorUserId, user.Id, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("سازنده پروژه نیازی به دعوت ندارد.");
+
+            var isMember = await _context.ProjectMembers
+                .AnyAsync(pm => pm.ProjectId == projectId && pm.UserId == user.Id);
+
+            if (isMember)
+                throw new InvalidOperationException("این کاربر هم‌اکنون عضو پروژه است.");
 
             // ثبت دعوت
             var invite = new ProjectInvitation

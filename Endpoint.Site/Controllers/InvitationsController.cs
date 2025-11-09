@@ -42,6 +42,16 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("MyInvitations");
             }
 
+            phone = phone.Trim();
+
+            var inviter = await _userManager.FindByIdAsync(inviterId);
+            if (inviter != null && !string.IsNullOrWhiteSpace(inviter.Phone) &&
+                string.Equals(inviter.Phone, phone, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "نمی‌توانید خودتان را دعوت کنید.";
+                return RedirectToAction("MyInvitations");
+            }
+
             // بررسی تکرار دعوت در انتظار
             var exists = await _context.ProjectInvitations
                 .AnyAsync(i => i.InviterId == inviterId && i.InviteePhone == phone && i.ProjectId == null && i.Status == InvitationStatus.Pending);
@@ -49,6 +59,15 @@ namespace Endpoint.Site.Controllers
             if (exists)
             {
                 TempData["Error"] = "برای این شماره قبلاً دعوت در انتظار ارسال شده است.";
+                return RedirectToAction("MyInvitations");
+            }
+
+            var alreadyAccepted = await _context.ProjectInvitations
+                .AnyAsync(i => i.InviteePhone == phone && i.ProjectId == null && i.Status == InvitationStatus.Accepted);
+
+            if (alreadyAccepted)
+            {
+                TempData["Error"] = "این کاربر قبلاً دعوت شما یا فرد دیگری را پذیرفته است.";
                 return RedirectToAction("MyInvitations");
             }
 
@@ -138,9 +157,22 @@ namespace Endpoint.Site.Controllers
                 .OrderByDescending(i => i.CreatedAt)
                 .ToListAsync();
 
+            var sentProjectInvitations = await _context.ProjectInvitations
+                .Include(i => i.Project)
+                .Where(i => i.InviterId == userId && i.ProjectId != null)
+                .OrderByDescending(i => i.CreatedAt)
+                .ToListAsync();
+
+            var sentSystemInvitations = await _context.ProjectInvitations
+                .Where(i => i.InviterId == userId && i.ProjectId == null)
+                .OrderByDescending(i => i.CreatedAt)
+                .ToListAsync();
+
             // 📍 دیکشنری از نام کاربران
             var inviterIds = projectInvitations.Select(i => i.InviterId)
                               .Concat(systemInvitations.Select(i => i.InviterId))
+                              .Concat(sentProjectInvitations.Select(i => i.InviterId))
+                              .Concat(sentSystemInvitations.Select(i => i.InviterId))
                               .Distinct()
                               .ToList();
 
@@ -155,7 +187,9 @@ namespace Endpoint.Site.Controllers
             var model = new CombinedInvitationsVm
             {
                 ProjectInvitations = projectInvitations,
-                UserInvitations = systemInvitations
+                UserInvitations = systemInvitations,
+                SentProjectInvitations = sentProjectInvitations,
+                SentSystemInvitations = sentSystemInvitations
             };
 
             return View(model);
@@ -180,6 +214,34 @@ namespace Endpoint.Site.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = accept ? "دعوت عضویت پذیرفته شد ✅" : "دعوت عضویت رد شد ❌";
+            return RedirectToAction("MyInvitations");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteSystemInvite(int id)
+        {
+            var inviterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var invite = await _context.ProjectInvitations
+                .FirstOrDefaultAsync(i => i.Id == id && i.ProjectId == null && i.InviterId == inviterId);
+
+            if (invite == null)
+            {
+                TempData["Error"] = "دعوت مورد نظر یافت نشد.";
+                return RedirectToAction("MyInvitations");
+            }
+
+            if (invite.Status != InvitationStatus.Pending)
+            {
+                TempData["Error"] = "فقط دعوت‌های در انتظار قابل حذف هستند.";
+                return RedirectToAction("MyInvitations");
+            }
+
+            _context.ProjectInvitations.Remove(invite);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "دعوت با موفقیت حذف شد.";
             return RedirectToAction("MyInvitations");
         }
 

@@ -107,6 +107,7 @@ namespace TaskPlanner.Application.Services.ProjectService
                 .Where(i => i.ProjectId == projectId && i.Status == InvitationStatus.Pending)
                 .Select(i => new ProjectInvitationDto
                 {
+                    Id = i.Id,
                     InviteePhone = i.InviteePhone,
                     Status = i.Status,
                     CreatedAt = i.CreatedAt

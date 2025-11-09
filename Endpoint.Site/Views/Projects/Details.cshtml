@@ -640,9 +640,25 @@
                                                 <br>
                                                 <small class="text-muted">@inv.CreatedAt.ToLocalTime().ToShortPersianDateTimeString()</small>
                                             </div>
-                                            <span class="badge bg-warning text-dark">
-                                                <i class="bi bi-hourglass-split me-1"></i>در انتظار
-                                            </span>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="bi bi-hourglass-split me-1"></i>در انتظار
+                                                </span>
+                                                @if (isCreator)
+                                                {
+                                                    <form asp-controller="Projects"
+                                                          asp-action="DeleteProjectInvite"
+                                                          method="post"
+                                                          onsubmit="return confirm('حذف این دعوت؟');">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="projectId" value="@Model.Id" />
+                                                        <input type="hidden" name="inviteId" value="@inv.Id" />
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                            </div>
                                         </div>
                                     </div>
                                 }
