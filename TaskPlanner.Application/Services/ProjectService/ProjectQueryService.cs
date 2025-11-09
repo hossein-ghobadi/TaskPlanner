@@ -95,7 +95,6 @@ namespace TaskPlanner.Application.Services.ProjectService
             // 📋 تسک‌های نمایش‌پذیر در بخش پروژه (بدون Epic)
             dto.Tasks = await _context.TaskItems
                 .Where(t => t.ProjectId == projectId
-                    && t.ParentTaskId == null
                     && (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug))
                 .Include(t => t.Category)
                 .Include(t => t.AssignedUser)
@@ -134,7 +133,8 @@ namespace TaskPlanner.Application.Services.ProjectService
 
             // 📊 آمار تسک‌ها برای نمایش در View
             var taskStats = await _context.TaskItems
-                .Where(t => t.ProjectId == projectId && t.IssueType != IssueType.Epic)
+                .Where(t => t.ProjectId == projectId
+                    && (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug))
                 .GroupBy(_ => 1)
                 .Select(g => new
                 {
@@ -150,7 +150,9 @@ namespace TaskPlanner.Application.Services.ProjectService
                 : 0;
 
             var categoryTaskCounts = await _context.TaskItems
-                .Where(t => t.ProjectId == projectId && t.CategoryId != null && t.IssueType != IssueType.Epic)
+                .Where(t => t.ProjectId == projectId
+                    && t.CategoryId != null
+                    && (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug))
                 .GroupBy(t => t.CategoryId!.Value)
                 .Select(g => new
                 {
