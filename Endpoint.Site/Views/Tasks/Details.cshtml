@@ -149,11 +149,11 @@
             attachmentsHtml = '<div class="mt-2">';
             comment.attachments.forEach(att => {
                 if (att.fileType === 'Image') {
-                    attachmentsHtml += `<div class="mb-2"><img src="${att.filePath}" alt="${att.fileName}" class="img-fluid rounded" style="max-height: 150px;" /></div>`;
+                    attachmentsHtml += `<div class="mb-2"><a href="${att.filePath}" target="_blank" rel="noopener"><img src="${att.filePath}" alt="${att.fileName}" class="img-fluid rounded" style="max-height: 150px; cursor: zoom-in;" /></a></div>`;
                 } else if (att.fileType === 'Audio') {
                     attachmentsHtml += `<div class="mb-2"><audio controls class="w-100"><source src="${att.filePath}" type="${att.mimeType}"></audio></div>`;
                 } else {
-                    attachmentsHtml += `<div class="mb-2"><a href="${att.filePath}" target="_blank" class="text-decoration-none">📄 ${att.fileName} (${Math.round(att.fileSize / 1024)} KB)</a></div>`;
+                    attachmentsHtml += `<div class="mb-2"><a href="${att.filePath}" target="_blank" rel="noopener" class="text-decoration-none">📄 ${att.fileName} (${Math.round(att.fileSize / 1024)} KB)</a></div>`;
                 }
             });
             attachmentsHtml += '</div>';
@@ -185,6 +185,7 @@
         } else {
             selectedFilesDiv.textContent = '';
         }
+        refreshClipboardPreviews();
     }
 
     // ضبط ویس
@@ -306,7 +307,84 @@
         dataTransfer.items.add(file);
         fileInput.files = dataTransfer.files;
         showSelectedFiles();
+        refreshClipboardPreviews();
     }
+
+    function removeFileFromInput(index) {
+        const fileInput = document.getElementById('fileInput');
+        const dataTransfer = new DataTransfer();
+
+        for (let i = 0; i < fileInput.files.length; i++) {
+            if (i !== index) {
+                dataTransfer.items.add(fileInput.files[i]);
+            }
+        }
+
+        fileInput.files = dataTransfer.files;
+        showSelectedFiles();
+        refreshClipboardPreviews();
+    }
+
+    function refreshClipboardPreviews() {
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('clipboardPreviews');
+        if (!previewContainer) {
+            return;
+        }
+
+        previewContainer.innerHTML = '';
+        Array.from(fileInput.files).forEach((file, index) => {
+            if (file.type.startsWith('image/')) {
+                const url = URL.createObjectURL(file);
+                const wrapper = document.createElement('div');
+                wrapper.className = 'position-relative d-inline-block me-2 mb-2';
+                wrapper.innerHTML = `
+                    <img src="${url}" alt="${file.name}" class="img-fluid rounded" style="max-height: 120px;" />
+                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1" onclick="removeFileFromInput(${index})">&times;</button>
+                `;
+                previewContainer.appendChild(wrapper);
+            }
+        });
+    }
+
+    const filesInfoContainer = document.getElementById('selectedFiles');
+    if (filesInfoContainer) {
+        filesInfoContainer.insertAdjacentHTML('afterend', '<div id="clipboardPreviews" class="mt-2"></div>');
+    }
+
+    // چسباندن تصویر از کلیپ‌بورد
+    document.getElementById('messageInput').addEventListener('paste', (event) => {
+        if (!event.clipboardData || !event.clipboardData.items) {
+            return;
+        }
+
+        const items = event.clipboardData.items;
+        let handled = false;
+
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+                const file = item.getAsFile();
+                if (file) {
+                    addFileToInput(file);
+                    handled = true;
+
+                    // پیش‌نمایش سریع تصویر اضافه‌شده
+                    refreshClipboardPreviews();
+                }
+            }
+        }
+
+        if (handled) {
+            event.preventDefault();
+            const filesInfo = document.getElementById('selectedFiles');
+            if (filesInfo.textContent) {
+                filesInfo.textContent += '، تصویر از کلیپ‌بورد';
+            } else {
+                filesInfo.textContent = 'تصویر از کلیپ‌بورد اضافه شد.';
+            }
+        }
+    });
 
     // ارسال کامنت
     document.getElementById('chatForm').addEventListener('submit', async (e) => {
@@ -352,6 +430,7 @@
                 fileInput.value = '';
                 document.getElementById('selectedFiles').textContent = '';
                 document.getElementById('audioPreview').innerHTML = '';
+                refreshClipboardPreviews();
                 
                 const count = parseInt(document.getElementById('commentCount').textContent);
                 document.getElementById('commentCount').textContent = count + 1;
