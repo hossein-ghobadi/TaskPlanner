@@ -80,7 +80,7 @@
                             
                             <span id="recordTimer" class="text-muted small"></span>
                             
-                            <button type="submit" class="btn btn-sm btn-primary ms-auto">ارسال</button>
+                            <button type="submit" id="sendBtn" class="btn btn-sm btn-primary ms-auto">ارسال</button>
                         </div>
                     </div>
                     
@@ -101,6 +101,8 @@
     const taskId = @Model.Id;
     const currentUserId = '@ViewBag.CurrentUserId';
     const token = '@token';
+    const sendButton = document.getElementById('sendBtn');
+    const recordButton = document.getElementById('recordBtn');
 
     // ضبط ویس
     let mediaRecorder;
@@ -166,7 +168,7 @@
                 ${attachmentsHtml}
                 <div class="small ${comment.isCurrentUser ? 'text-white-50' : 'text-muted'} mt-1 d-flex justify-content-between align-items-center">
                     <span>${date}</span>
-                    ${comment.isCurrentUser ? `<a href="#" class="text-white ms-2 text-decoration-none" onclick="deleteComment(${comment.id}); return false;">🗑️ حذف</a>` : ''}
+                    ${comment.isCurrentUser ? `<a href="#" class="text-white ms-2 text-decoration-none delete-comment-link" onclick="deleteComment(${comment.id}, this); return false;">🗑️ حذف</a>` : ''}
                 </div>
             </div>
         `;
@@ -398,7 +400,17 @@
             alert('لطفاً پیام یا فایلی ارسال کنید');
             return;
         }
-        
+        if (sendButton.disabled) {
+            return;
+        }
+
+        const wasDisabled = sendButton.disabled;
+        sendButton.disabled = true;
+        const shouldDisableRecord = recordButton && !recordButton.disabled;
+        if (shouldDisableRecord) {
+            recordButton.disabled = true;
+        }
+
         try {
             const formData = new FormData();
             formData.append('TaskId', taskId);
@@ -441,13 +453,25 @@
         } catch (error) {
             console.error('خطا در ارسال پیام:', error);
             alert('خطا در ارسال پیام');
+        } finally {
+            sendButton.disabled = false;
+            if (shouldDisableRecord && recordButton) {
+                recordButton.disabled = false;
+            }
         }
     });
 
     // حذف کامنت
-    async function deleteComment(commentId) {
+    async function deleteComment(commentId, triggerElement) {
         if (!confirm('آیا مطمئن هستید که می‌خواهید این پیام را حذف کنید؟')) {
             return;
+        }
+
+        let previousContent = '';
+        if (triggerElement) {
+            previousContent = triggerElement.innerHTML;
+            triggerElement.style.pointerEvents = 'none';
+            triggerElement.innerHTML = '<span class="spinner-border spinner-border-sm text-white" role="status" aria-hidden="true"></span>';
         }
         
         try {
@@ -474,6 +498,11 @@
         } catch (error) {
             console.error('خطا در حذف پیام:', error);
             alert('خطا در حذف پیام');
+        } finally {
+            if (triggerElement && document.body.contains(triggerElement)) {
+                triggerElement.style.pointerEvents = '';
+                triggerElement.innerHTML = previousContent || '🗑️ حذف';
+            }
         }
     }
 
