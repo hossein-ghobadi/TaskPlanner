@@ -789,12 +789,12 @@ namespace Endpoint.Site.Controllers
             
             // بررسی اینکه آیا اسپرینت فعال وجود دارد
             var hasActiveSprint = await _context.Sprints
-                .AnyAsync(s => s.ProjectId == vm.ProjectId && s.Status == SprintStatus.Active);
-
+                .AnyAsync(s => s.ProjectId == vm.ProjectId && (s.Status == SprintStatus.Active|| s.Status == SprintStatus.Planning));
+            
             if (hasActiveSprint)
             {
                 Console.WriteLine("[Create POST] Active sprint exists");
-                TempData["Error"] = "فقط یک اسپرینت می‌تواند در هر پروژه فعال باشد. لطفاً اسپرینت فعال را خاتمه دهید.";
+                TempData["Error"] = "فقط یک اسپرینت می‌تواند در هر پروژه فعال باشد. لطفاً اسپرینت فعال یا در حال برنامه ریزی را مدیریت کنید.";
                 return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId });
             }
 
