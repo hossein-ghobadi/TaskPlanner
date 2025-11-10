@@ -83,6 +83,16 @@
     }
     .drop-zone {
         min-height: 400px;
+        display: flex;
+        flex-direction: column;
+        pointer-events: auto;
+    }
+    .drop-zone .empty-message {
+        pointer-events: none;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 </style>
 
@@ -120,7 +130,12 @@
 <div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
     @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
     {
-        <div class="kanban-column">
+        <div class="kanban-column"
+             ondragover="onDragOverColumn(event)"
+             ondragenter="onDragEnter(event)"
+             ondragleave="onDragLeave(event)"
+             ondrop="onDropIssue(event, @status.Id)"
+             data-status-id="@status.Id">
             <div class="kanban-column-header" style="background-color: @(status.Color ?? "#6c757d");">
                 @status.Name
                 <span class="badge bg-light text-dark ms-1">
@@ -132,10 +147,6 @@
                 </span>
             </div>
             <div class="kanban-column-body drop-zone"
-                 ondragover="event.preventDefault();"
-                 ondragenter="onDragEnter(event)"
-                 ondragleave="onDragLeave(event)"
-                 ondrop="onDropIssue(event, @status.Id)"
                  data-status-id="@status.Id">
                 @{
                     var cards = Model.SprintIssues
@@ -440,12 +451,16 @@
             draggedCard.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', issueId);
+            draggedCard.style.height = `${draggedCard.offsetHeight}px`;
         }
 
         function handleCardClick(e, issueId) {
             // اگر drag در حال انجام است یا از دکمه حذف کلیک شده، از redirect جلوگیری کن
             if (isDragging) {
                 return;
+            }
+            if (draggedCard) {
+                draggedCard.style.height = '';
             }
             // بررسی اینکه آیا از دکمه حذف کلیک شده یا نه
             if (e.target.closest('button')) {
@@ -483,21 +498,44 @@
             }
         });
 
+        function getDropZoneElement(element) {
+            if (!element) return null;
+            return element.classList?.contains('drop-zone')
+                ? element
+                : element.querySelector?.('.drop-zone');
+        }
+
+        function onDragOverColumn(e) {
+            e.preventDefault();
+        }
+
+        function highlightDropZone(element, isActive) {
+            const zone = getDropZoneElement(element);
+            if (!zone) return;
+            if (isActive) {
+                zone.style.backgroundColor = '#e3f2fd';
+                zone.style.borderColor = '#2196f3';
+            } else {
+                zone.style.backgroundColor = '';
+                zone.style.borderColor = '';
+            }
+        }
+
         function onDragEnter(e) {
             e.preventDefault();
-            e.currentTarget.style.backgroundColor = '#e3f2fd';
-            e.currentTarget.style.borderColor = '#2196f3';
+            highlightDropZone(e.currentTarget, true);
         }
 
         function onDragLeave(e) {
-            e.currentTarget.style.backgroundColor = '';
-            e.currentTarget.style.borderColor = '';
+            highlightDropZone(e.currentTarget, false);
         }
 
         async function onDropIssue(e, toStatusId) {
             e.preventDefault();
-            const dropZone = e.currentTarget;
-            onDragLeave(e);
+            const dropZone = getDropZoneElement(e.currentTarget);
+            if (dropZone) {
+                highlightDropZone(dropZone, false);
+            }
             
             const issueId = draggedIssueId || parseInt(e.dataTransfer.getData('text/plain'));
             if (!issueId) return;
