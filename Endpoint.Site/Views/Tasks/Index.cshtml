@@ -1,13 +1,236 @@
 ﻿@using DNTPersianUtils.Core
+@using TaskPlanner.Domain.Entities.TaskPlanner
 @model IEnumerable<TaskPlanner.Domain.Entities.TaskPlanner.TaskItem>
 
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     var projectId = Context.Request.Query["projectId"].ToString();
     var projectIdInt = !string.IsNullOrEmpty(projectId) ? int.Parse(projectId) : (int?)null;
+    var today = DateTime.Today;
+    var soonThreshold = today.AddDays(3);
+
+    bool IsTrackable(TaskPlanner.Domain.Entities.TaskPlanner.TaskItem t) =>
+        t.IssueType is IssueType.Story or IssueType.Task or IssueType.Bug;
+
+    var allTasks = Model?.ToList() ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.TaskItem>();
+    var rootTasks = allTasks.Where(t => t.ParentTaskId == null).ToList();
+    var activeRootTasks = rootTasks.Where(t => !t.IsCompleted).ToList();
+    var activeRootTrackableCount = rootTasks.Count(t => !t.IsCompleted && IsTrackable(t));
+    var firstTask = allTasks.FirstOrDefault();
+    var hasProjectFilter = projectIdInt.HasValue;
+    var projectName = firstTask?.Project?.Name ?? "پروژه";
+    var headerTitle = hasProjectFilter ? $"کارهای پروژه «{projectName}»" : "همه کارها";
+
+    var totalTasks = allTasks.Count(IsTrackable);
+    var completedTasks = allTasks.Count(t => t.IsCompleted && IsTrackable(t));
+    var activeTasks = allTasks.Count(t => !t.IsCompleted && IsTrackable(t));
+    var overdueTasks = allTasks.Count(t => !t.IsCompleted && IsTrackable(t) && t.DueDate.HasValue && t.DueDate.Value.Date < today);
+    var dueSoonTasks = allTasks.Count(t => !t.IsCompleted && IsTrackable(t) && t.DueDate.HasValue && t.DueDate.Value.Date >= today && t.DueDate.Value.Date <= soonThreshold);
+    var completionRate = totalTasks == 0 ? 0 : (int)Math.Round((double)completedTasks / totalTasks * 100);
+    var lastUpdated = allTasks.OrderByDescending(t => t.UpdatedAt).FirstOrDefault()?.UpdatedAt.ToLocalTime();
+    var lastUpdatedText = lastUpdated.HasValue ? lastUpdated.Value.ToShortPersianDateTimeString() : "نامشخص";
+
+    var userLookup = ViewBag.UserLookup as Dictionary<string, string> ?? new Dictionary<string, string>();
+    var issueTypeOptions = activeRootTasks
+        .Select(t => t.IssueType)
+        .Distinct()
+        .OrderBy(t => t)
+        .ToList();
+    var assigneeOptions = activeRootTasks
+        .Where(t => !string.IsNullOrEmpty(t.AssignedUserId))
+        .Select(t => t.AssignedUserId!)
+        .Distinct()
+        .Select(id => new
+        {
+            Id = id,
+            Name = userLookup.ContainsKey(id) ? userLookup[id] : "کاربر نامشخص"
+        })
+        .OrderBy(a => a.Name)
+        .ToList();
+
+    Func<TaskPlanner.Domain.Entities.TaskPlanner.TaskItem, string> dueState = item =>
+    {
+        if (!item.DueDate.HasValue) return "none";
+        if (item.DueDate.Value.Date < today) return "overdue";
+        if (item.DueDate.Value.Date <= soonThreshold) return "soon";
+        return "later";
+    };
 }
 
-<h2 class="mb-4">🗂️ کارهای شما </h2>
+<style>
+    .hero-card {
+        background: linear-gradient(135deg, #1e3a8a, #2563eb);
+        border-radius: 18px;
+        color: #fff;
+        overflow: hidden;
+    }
+    .hero-card .overlay-pattern {
+        position: absolute;
+        top: -60px;
+        right: -60px;
+        width: 200px;
+        height: 200px;
+        background: radial-gradient(circle at center, rgba(96,165,250,0.45), transparent 70%);
+        filter: blur(10px);
+    }
+    .stat-card {
+        border: 1px solid rgba(80, 106, 255, 0.12);
+        border-radius: 14px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: #fff;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 14px 30px rgba(80, 85, 249, 0.12);
+    }
+    .filter-card {
+        border-radius: 14px;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        background: #fff;
+    }
+    .filter-chip {
+        background: rgba(80, 85, 249, 0.12);
+        color: #3634a5;
+        border-radius: 999px;
+        padding: 0.2rem 0.75rem;
+        font-size: 0.85rem;
+    }
+    .task-tree-wrapper {
+        border-radius: 14px;
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        padding: 1.5rem;
+    }
+    .search-input::placeholder {
+        color: #98a1b3;
+    }
+    .task-card {
+        position: relative;
+        background: linear-gradient(135deg, rgba(248, 249, 255, 0.9), #ffffff);
+        border: 1px solid rgba(73, 84, 255, 0.1) !important;
+        box-shadow: 0 10px 30px rgba(80, 85, 249, 0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .task-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 16px 40px rgba(80, 85, 249, 0.16);
+    }
+    .task-card--completed {
+        background: linear-gradient(135deg, rgba(229, 255, 242, 0.9), #ffffff);
+        border-color: rgba(39, 174, 96, 0.18) !important;
+    }
+    .task-card__accent {
+        position: absolute;
+        inset: 0;
+        opacity: 0.08;
+        background: radial-gradient(circle at top left, rgba(80, 85, 249, 0.7), transparent 55%);
+        pointer-events: none;
+    }
+    .task-card--completed .task-card__accent {
+        background: radial-gradient(circle at top left, rgba(39, 174, 96, 0.9), transparent 55%);
+    }
+    .icon-wrapper .issue-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: inset 0 0 0 2px rgba(80, 85, 249, 0.15);
+    }
+    .task-card--completed .icon-wrapper .issue-icon {
+        box-shadow: inset 0 0 0 2px rgba(39, 174, 96, 0.2);
+    }
+    .task-title {
+        font-size: 1.15rem;
+    }
+    .meta-row .meta-item {
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.85rem;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    .action-group .btn {
+        border-radius: 999px;
+    }
+    .task-card__children {
+        border-left: 2px dashed rgba(80, 85, 249, 0.2);
+    }
+</style>
+
+<div class="position-relative hero-card shadow-sm mb-4">
+    <div class="overlay-pattern"></div>
+    <div class="p-4 p-md-5">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+            <div>
+                <span class="badge bg-light text-primary mb-2">داشبورد تسک‌ها</span>
+                <h2 class="fw-bold mb-2">🗂️ @headerTitle</h2>
+                <p class="mb-0 opacity-75">پیگیری، مدیریت و برنامه‌ریزی هوشمند کارها با فیلترهای پویا و نمای درختی چند سطحی.</p>
+            </div>
+            <div class="text-md-end">
+                <p class="mb-1 small opacity-75">آخرین بروزرسانی</p>
+                <h5 class="mb-2">@lastUpdatedText</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small opacity-75">نرخ پیشرفت</span>
+                    <span class="badge bg-light text-primary fs-6">@completionRate%</span>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <div class="progress rounded-pill overflow-hidden" style="height: 8px; background-color: rgba(255,255,255,0.28);">
+                <div class="progress-bar" role="progressbar" style="width: @completionRate%; background: linear-gradient(90deg,#38bdf8,#2563eb);" aria-valuenow="@completionRate" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-card p-3 shadow-sm h-100">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small">کل کارها</span>
+                <span class="badge bg-primary-subtle text-primary-emphasis">📊</span>
+            </div>
+            <h3 class="fw-bold mb-0">@totalTasks</h3>
+            <small class="text-muted">(@activeTasks فعال / @completedTasks خاتمه یافته)</small>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card p-3 shadow-sm h-100">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small">سررسید گذشته</span>
+                <span class="badge bg-danger-subtle text-danger">⏰</span>
+            </div>
+            <h3 class="fw-bold mb-0 text-danger">@overdueTasks</h3>
+            <small class="text-muted">تسک‌های نیازمند توجه فوری</small>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card p-3 shadow-sm h-100">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small">سررسید نزدیک</span>
+                <span class="badge bg-warning-subtle text-warning">🗓️</span>
+            </div>
+            <h3 class="fw-bold mb-0 text-warning">@dueSoonTasks</h3>
+            <small class="text-muted">۳ روز آینده</small>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card p-3 shadow-sm h-100">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small">کارهای فعال (ریشه)</span>
+                <span class="badge bg-success-subtle text-success">🌳</span>
+            </div>
+            <h3 class="fw-bold mb-0">
+                <span id="activeCountBadge">@activeRootTrackableCount</span>
+            </h3>
+            <small class="text-muted">نمایش درختی سطح بالا</small>
+        </div>
+    </div>
+</div>
 
 <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div class="d-flex gap-2">
@@ -41,23 +264,88 @@
     </div>
 </div>
 
+<div class="card filter-card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+            <div class="flex-grow-1">
+                <label for="taskSearch" class="form-label small text-muted mb-1">جست‌وجوی سریع</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-primary"></i></span>
+                    <input type="text" id="taskSearch" class="form-control border-start-0 search-input" placeholder="عنوان، کلید، مسئول یا توضیح..." />
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-3">
+                <div>
+                    <label class="form-label small text-muted mb-1" for="issueTypeFilter">نوع تسک</label>
+                    <select id="issueTypeFilter" class="form-select">
+                        <option value="all">همه</option>
+                        @foreach (var type in issueTypeOptions)
+                        {
+                            <option value="@((int)type)">@type.GetDisplayName()</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label small text-muted mb-1" for="assigneeFilter">مسئول</label>
+                    <select id="assigneeFilter" class="form-select">
+                        <option value="all">همه افراد</option>
+                        @foreach (var assignee in assigneeOptions)
+                        {
+                            <option value="@assignee.Id.ToLowerInvariant()">@assignee.Name</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label small text-muted mb-1" for="dueFilter">وضعیت سررسید</label>
+                    <select id="dueFilter" class="form-select">
+                        <option value="all">همه</option>
+                        <option value="overdue">گذشته</option>
+                        <option value="soon">۳ روز آینده</option>
+                        <option value="later">بیش از ۳ روز</option>
+                        <option value="none">بدون موعد</option>
+                    </select>
+                </div>
+            </div>
+            <div class="text-lg-end">
+                <label class="form-label small text-muted mb-1">خلاصه فیلترها</label>
+                <div class="d-flex flex-column align-items-lg-end gap-2">
+                    <span id="filterSummary" class="filter-chip text-center">همه آیتم‌ها نمایش داده می‌شوند</span>
+                    <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-counterclockwise"></i> بازنشانی فیلترها
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @if (Model == null || !Model.Any())
 {
     <div class="alert alert-info">هیچ کاری ثبت نشده است.</div>
 }
 else
 {
-    var activeRootTasks = Model
-        .Where(t => t.ParentTaskId == null && !t.IsCompleted)
-        .ToList();
-
     if (activeRootTasks.Any())
     {
-        <div id="taskTree">
+        <div class="task-tree-wrapper">
+            <div id="taskTree" class="d-flex flex-column gap-3">
             @foreach (var parent in activeRootTasks)
             {
-                @Html.Partial("_TaskBranch", parent)
-            }
+                var titleKey = $"{parent.Title} {(parent.IssueKey ?? string.Empty)} {parent.Project?.Name ?? string.Empty}";
+                var assigneeKey = (parent.AssignedUserId ?? "none").ToLowerInvariant();
+                var nodeDueState = dueState(parent);
+                var isTrackableNode = parent.IssueType is IssueType.Story or IssueType.Task or IssueType.Bug;
+                <div class="task-node" data-title="@titleKey.ToLowerInvariant()"
+                     data-issuetype="@((int)parent.IssueType)"
+                     data-assignee="@assigneeKey"
+                     data-due="@nodeDueState"
+                     data-trackable="@(isTrackableNode ? "true" : "false")">
+            @Html.Partial("_TaskBranch", parent)
+                </div>
+        }
+    </div>
+            <div id="noMatchMessage" class="alert alert-warning d-none mt-3">
+            </div>
         </div>
     }
     else
@@ -78,6 +366,104 @@ else
     <script>
         let selectedParentId = null;
         const completingTasks = new Set();
+        const filterState = {
+            search: '',
+            issueType: 'all',
+            assignee: 'all',
+            due: 'all'
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('taskSearch');
+            const issueTypeFilter = document.getElementById('issueTypeFilter');
+            const assigneeFilter = document.getElementById('assigneeFilter');
+            const dueFilter = document.getElementById('dueFilter');
+            const resetButton = document.getElementById('resetFilters');
+
+            if (searchInput && issueTypeFilter && assigneeFilter && dueFilter) {
+                const applyFilters = () => {
+                    const nodes = document.querySelectorAll('.task-node');
+                    const noMatchMessage = document.getElementById('noMatchMessage');
+                    const activeCountBadge = document.getElementById('activeCountBadge');
+                    const filterSummary = document.getElementById('filterSummary');
+
+                    let visibleCount = 0;
+
+                    nodes.forEach(node => {
+                        const titleMatches = filterState.search === '' ||
+                            node.dataset.title.includes(filterState.search);
+                        const issueTypeMatches = filterState.issueType === 'all' ||
+                            node.dataset.issuetype === filterState.issueType;
+                        const assigneeMatches = filterState.assignee === 'all' ||
+                            node.dataset.assignee === filterState.assignee;
+                        const dueMatches = filterState.due === 'all' ||
+                            node.dataset.due === filterState.due;
+
+                        const shouldShow = titleMatches && issueTypeMatches && assigneeMatches && dueMatches;
+                        node.classList.toggle('d-none', !shouldShow);
+                        if (shouldShow && node.dataset.trackable !== 'false') visibleCount++;
+                    });
+
+                    if (noMatchMessage) {
+                        noMatchMessage.classList.toggle('d-none', visibleCount > 0);
+                    }
+                    if (activeCountBadge) {
+                        activeCountBadge.textContent = visibleCount;
+                    }
+                    if (filterSummary) {
+                        const summaries = [];
+                        if (filterState.search) summaries.push(`جست‌وجو: «${filterState.search}»`);
+                        if (filterState.issueType !== 'all') {
+                            const selectedTypeText = issueTypeFilter.options[issueTypeFilter.selectedIndex].text;
+                            summaries.push(`نوع: ${selectedTypeText}`);
+                        }
+                        if (filterState.assignee !== 'all') {
+                            const selectedAssigneeText = assigneeFilter.options[assigneeFilter.selectedIndex].text;
+                            summaries.push(`مسئول: ${selectedAssigneeText}`);
+                        }
+                        if (filterState.due !== 'all') {
+                            const dueText = dueFilter.options[dueFilter.selectedIndex].text;
+                            summaries.push(`سررسید: ${dueText}`);
+                        }
+                        filterSummary.textContent = summaries.length
+                            ? summaries.join(' | ')
+                            : 'همه آیتم‌ها نمایش داده می‌شوند';
+                    }
+                };
+
+                searchInput.addEventListener('input', (event) => {
+                    filterState.search = event.target.value.trim().toLowerCase();
+                    applyFilters();
+                });
+                issueTypeFilter.addEventListener('change', (event) => {
+                    filterState.issueType = event.target.value;
+                    applyFilters();
+                });
+                assigneeFilter.addEventListener('change', (event) => {
+                    filterState.assignee = event.target.value;
+                    applyFilters();
+                });
+                dueFilter.addEventListener('change', (event) => {
+                    filterState.due = event.target.value;
+                    applyFilters();
+                });
+                if (resetButton) {
+                    resetButton.addEventListener('click', () => {
+                        searchInput.value = '';
+                        issueTypeFilter.value = 'all';
+                        assigneeFilter.value = 'all';
+                        dueFilter.value = 'all';
+                        filterState.search = '';
+                        filterState.issueType = 'all';
+                        filterState.assignee = 'all';
+                        filterState.due = 'all';
+                        applyFilters();
+                    });
+                }
+
+                applyFilters();
+            }
+        });
 
         // نمایش Toast پیام
         function showToast(message, isError = false) {

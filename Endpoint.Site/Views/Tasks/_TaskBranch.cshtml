@@ -6,111 +6,165 @@
     var collapseId = $"collapse_{Model.Id}";
 }
 
-<div class="card mb-2 border-start border-3 @(Model.IsCompleted ? "border-success" : "border-warning")">
-    <div class="card-header bg-light d-flex justify-content-between align-items-start">
-        <div>
-            <h5 class="fw-bold mb-1">
-                <span class="me-2" title="@Model.IssueTypeName">@Model.IssueTypeIcon</span>
-                @Model.Title
-                @if (!string.IsNullOrEmpty(Model.IssueKey))
-                {
-                    <small class="text-muted">(@Model.IssueKey)</small>
-                }
-                @if (Model.IsCompleted)
-                {
-                    <span class="badge bg-success ms-2">خاتمه یافته</span>
-                }
-            </h5>
-            <small class="text-muted">
-                📁 پروژه: @Model.Project?.Name |
-                🏷️ دسته: @Model.Category?.Name |
-                🗓️ شروع: @Model.StartDate.ToShortPersianDateString()
-                @if (Model.DueDate != null)
-                {
-                    <span> → پایان: @Model.DueDate.Value.ToShortPersianDateString()</span>
-                }
-                |
-                👤 مسئول:
-                @(
-                    Model.AssignedUserId != null && userLookup.ContainsKey(Model.AssignedUserId)
-                    ? userLookup[Model.AssignedUserId]
-                    : "تعیین نشده"
-                    )
-                @if (Model.Sprint != null)
-                {
-                    <span> | 🏃 اسپرینت: @Model.Sprint.Name</span>
-                }
-                @if (Model.WorkflowStatus != null)
-                {
-                    <span> | 🔄 وضعیت: <span class="badge" style="background-color: @Model.WorkflowStatus.Color">@Model.WorkflowStatus.Name</span></span>
-                }
-            </small>
-        </div>
+@{
+    var isCompleted = Model.IsCompleted;
+    var dueState = Model.DueDate switch
+    {
+        null => "badge rounded-pill bg-secondary-subtle text-secondary",
+        var due when due.Value.Date < DateTime.Today => "badge rounded-pill bg-danger-subtle text-danger",
+        var due when due.Value.Date <= DateTime.Today.AddDays(3) => "badge rounded-pill bg-warning-subtle text-warning",
+        _ => "badge rounded-pill bg-success-subtle text-success"
+    };
+    var assignedName = Model.AssignedUserId != null && userLookup.ContainsKey(Model.AssignedUserId)
+        ? userLookup[Model.AssignedUserId]
+        : "تعیین نشده";
+    string GetIssueTypePillClass(IssueType type) => type switch
+    {
+        IssueType.Epic => "badge rounded-pill bg-primary",
+        IssueType.Story => "badge rounded-pill bg-info",
+        IssueType.Task => "badge rounded-pill bg-success",
+        IssueType.Subtask => "badge rounded-pill bg-secondary",
+        IssueType.Bug => "badge rounded-pill bg-danger",
+        _ => "badge rounded-pill bg-dark"
+    };
+}
 
-        <div>
-            @if (!Model.IsCompleted)
-            {
-                <a class="btn btn-sm btn-outline-warning me-1"
-                   
+<div class="task-card border-0 shadow-sm mb-3 rounded-4 overflow-hidden @(isCompleted ? "task-card--completed" : "task-card--active")">
+    <div class="task-card__accent"></div>
+    <div class="task-card__body p-3 p-md-4">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+            <div class="d-flex align-items-start gap-3">
+                <div class="icon-wrapper flex-shrink-0">
+                    <div class="issue-icon">
+                        @Model.IssueTypeIcon
+                    </div>
+                </div>
+                <div>
+                    <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-2 mb-1">
+                        <h5 class="fw-bold mb-0 task-title">
+                            @Model.Title
+                        </h5>
+                        @if (!string.IsNullOrEmpty(Model.IssueKey))
+                        {
+                            <span class="badge rounded-pill bg-light text-dark border">@Model.IssueKey</span>
+                        }
+                        <span class="@GetIssueTypePillClass(Model.IssueType)">
+                            @Model.IssueTypeName
+                        </span>
+                        @if (isCompleted)
+                        {
+                            <span class="badge rounded-pill bg-success-subtle text-success d-flex align-items-center gap-1">
+                                <i class="bi bi-check2-circle"></i> خاتمه یافته
+                            </span>
+                        }
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 meta-row">
+                        <span class="meta-item">
+                            <i class="bi bi-diagram-3 text-primary"></i>
+                            <strong>پروژه:</strong> @Model.Project?.Name
+                        </span>
+                        <span class="meta-item">
+                            <i class="bi bi-tags text-info"></i>
+                            <strong>دسته:</strong> @Model.Category?.Name
+                        </span>
+                        <span class="meta-item">
+                            <i class="bi bi-calendar-event text-warning"></i>
+                            <strong>شروع:</strong> @Model.StartDate.ToShortPersianDateString()
+                        </span>
+                        @if (Model.DueDate != null)
+                        {
+                            <span class="meta-item">
+                                <i class="bi bi-flag text-danger"></i>
+                                <strong>پایان:</strong> <span class="@dueState">@Model.DueDate.Value.ToShortPersianDateString()</span>
+                            </span>
+                        }
+                        <span class="meta-item">
+                            <i class="bi bi-person text-success"></i>
+                            <strong>مسئول:</strong> @assignedName
+                        </span>
+                        @if (Model.Sprint != null)
+                        {
+                            <span class="meta-item">
+                                <i class="bi bi-lightning-charge text-warning"></i>
+                                <strong>اسپرینت:</strong> @Model.Sprint.Name
+                            </span>
+                        }
+                        @if (Model.WorkflowStatus != null)
+                        {
+                            <span class="meta-item">
+                                <i class="bi bi-arrow-repeat text-primary"></i>
+                                <strong>وضعیت:</strong>
+                                <span class="badge rounded-pill"
+                                      style="background-color: @Model.WorkflowStatus.Color; color: #fff;">
+                                    @Model.WorkflowStatus.Name
+                                </span>
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2 action-group">
+                @if (!Model.IsCompleted)
+                {
+                    <a class="btn btn-sm btn-outline-warning d-flex align-items-center gap-1"
+                       asp-controller="Tasks"
+                       asp-action="Edit"
+                       asp-route-id="@Model.Id">
+                        <i class="bi bi-pencil-square"></i> ویرایش
+                    </a>
+                }
+
+                <a class="btn btn-sm btn-outline-info d-flex align-items-center gap-1"
                    asp-controller="Tasks"
-                   asp-action="Edit"
+                   asp-action="Details"
                    asp-route-id="@Model.Id">
-                    ✏️ ویرایش
+                    <i class="bi bi-chat-dots"></i> گفتگو
                 </a>
-            }
 
-            <a class="btn btn-sm btn-outline-info me-1"
-               
-               asp-controller="Tasks"
-               asp-action="Details"
-               asp-route-id="@Model.Id">
-                💬 گفتگو
-            </a>
+                @if (!Model.IsCompleted)
+                {
+                    <button class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+                            onclick="completeTask(@Model.Id)">
+                        <i class="bi bi-check-lg"></i> خاتمه
+                    </button>
+                }
 
-            @if (!Model.IsCompleted)
-            {
-                <button class="btn btn-sm btn-outline-success me-1"
-                        onclick="completeTask(@Model.Id)">
-                    ✅ خاتمه
-                </button>
-            }
+                @if (!Model.IsCompleted && Model.CanHaveChildren)
+                {
+                    <button class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+                            onclick="openChildIssueModal(@Model.Id, '@Model.IssueType')"
+                            title="افزودن @(Model.IssueType == IssueType.Epic ? "Story/Task/Bug" : "Subtask")">
+                        <i class="bi bi-plus-circle"></i> زیرتسک
+                    </button>
+                }
 
-            @* دکمه افزودن Child Issue (Smart based on parent type) *@
-            @if (!Model.IsCompleted && Model.CanHaveChildren)
-            {
-                <button class="btn btn-sm btn-outline-primary me-1"
-                        onclick="openChildIssueModal(@Model.Id, '@Model.IssueType')"
-                        title="افزودن @(Model.IssueType == IssueType.Epic ? "Story/Task/Bug" : "Subtask")">
-                    ➕
-                </button>
-            }
+                @if (!Model.IsCompleted)
+                {
+                    <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
+                            onclick="deleteTask(@Model.Id)">
+                        <i class="bi bi-trash"></i> حذف
+                    </button>
+                }
 
-            @if (!Model.IsCompleted)
-            {
-                <button class="btn btn-sm btn-outline-danger me-1"
-                        onclick="deleteTask(@Model.Id)">
-                    🗑️ حذف
-                </button>
-            }
-
-            @if (hasSubs)
-            {
-                <button class="btn btn-sm btn-outline-secondary"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#@collapseId"
-                        aria-expanded="false"
-                        aria-controls="@collapseId">
-                    🔽 زیر‌تسک‌ها
-                </button>
-            }
+                @if (hasSubs)
+                {
+                    <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#@collapseId"
+                            aria-expanded="false"
+                            aria-controls="@collapseId">
+                        <i class="bi bi-diagram-3"></i> زیرتسک‌ها
+                    </button>
+                }
+            </div>
         </div>
     </div>
 
     @if (hasSubs)
     {
-        <div id="@collapseId" class="collapse ms-4">
-            <div class="card-body ps-3">
+<div id="@collapseId" class="collapse border-top">
+            <div class="task-card__children ps-3 ps-md-4 pt-3 pb-1">
                 @foreach (var sub in Model.ChildIssues)
                 {
                     @Html.Partial("_TaskBranch", sub)
