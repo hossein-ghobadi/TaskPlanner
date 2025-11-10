@@ -1739,6 +1739,7 @@ namespace Endpoint.Site.Controllers
             var task = await _context.TaskItems
                 .Include(t => t.Category)
                 .Include(t => t.ChildIssues)
+                .Include(t => t.ParentTask)
                 .Include(t => t.Project)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
