@@ -16,6 +16,10 @@
                 {
                     <small class="text-muted">(@Model.IssueKey)</small>
                 }
+                @if (Model.IsCompleted)
+                {
+                    <span class="badge bg-success ms-2">خاتمه یافته</span>
+                }
             </h5>
             <small class="text-muted">
                 📁 پروژه: @Model.Project?.Name |
@@ -44,13 +48,16 @@
         </div>
 
         <div>
-            <a class="btn btn-sm btn-outline-warning me-1"
-               
-               asp-controller="Tasks"
-               asp-action="Edit"
-               asp-route-id="@Model.Id">
-                ✏️ ویرایش
-            </a>
+            @if (!Model.IsCompleted)
+            {
+                <a class="btn btn-sm btn-outline-warning me-1"
+                   
+                   asp-controller="Tasks"
+                   asp-action="Edit"
+                   asp-route-id="@Model.Id">
+                    ✏️ ویرایش
+                </a>
+            }
 
             <a class="btn btn-sm btn-outline-info me-1"
                
@@ -60,8 +67,16 @@
                 💬 گفتگو
             </a>
 
+            @if (!Model.IsCompleted)
+            {
+                <button class="btn btn-sm btn-outline-success me-1"
+                        onclick="completeTask(@Model.Id)">
+                    ✅ خاتمه
+                </button>
+            }
+
             @* دکمه افزودن Child Issue (Smart based on parent type) *@
-            @if (Model.CanHaveChildren)
+            @if (!Model.IsCompleted && Model.CanHaveChildren)
             {
                 <button class="btn btn-sm btn-outline-primary me-1"
                         onclick="openChildIssueModal(@Model.Id, '@Model.IssueType')"
@@ -70,10 +85,13 @@
                 </button>
             }
 
-            <button class="btn btn-sm btn-outline-danger me-1"
-                    onclick="deleteTask(@Model.Id)">
-                🗑️ حذف
-            </button>
+            @if (!Model.IsCompleted)
+            {
+                <button class="btn btn-sm btn-outline-danger me-1"
+                        onclick="deleteTask(@Model.Id)">
+                    🗑️ حذف
+                </button>
+            }
 
             @if (hasSubs)
             {

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using TaskPlanner.Domain.Entities.Users;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Linq;
 using TaskPlanner.Application.Services.FileUpload;
 using TaskPlanner.Application.Services.NotificationService;
 using TaskPlanner.Domain.Entities.TaskPlanner;
@@ -85,6 +86,60 @@ namespace Endpoint.Site.Controllers
                 .Where(c => userProjectIds.Contains(c.ProjectId))
                 .OrderBy(c => c.Name)
                 .ToListAsync();
+
+            return View(tasks);
+        }
+
+        [Authorize]
+        public async Task<IActionResult> Completed(int? projectId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var userProjectIds = await _context.Projects
+                .Where(p => p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId))
+                .Select(p => p.Id)
+                .ToListAsync();
+
+            if (projectId.HasValue)
+            {
+                if (!userProjectIds.Contains(projectId.Value))
+                {
+                    return Forbid();
+                }
+                userProjectIds = new List<int> { projectId.Value };
+            }
+
+            var tasks = await _context.TaskItems
+                .Include(t => t.Project)
+                .Include(t => t.Category)
+                .Include(t => t.Sprint)
+                .Include(t => t.WorkflowStatus)
+                .Include(t => t.ChildIssues)
+                .ThenInclude(st => st.ChildIssues)
+                .Where(t => (userProjectIds.Contains(t.ProjectId) || t.AssignedUserId == userId) && t.IsCompleted)
+                .OrderBy(t => t.StartDate)
+                .ToListAsync();
+
+            var assignedUserIds = tasks
+                .Where(t => t.AssignedUserId != null)
+                .Select(t => t.AssignedUserId)
+                .Distinct()
+                .ToList();
+
+            var userLookup = await _userManager.Users
+                .Where(u => assignedUserIds.Contains(u.Id))
+                .ToDictionaryAsync(
+                    u => u.Id,
+                    u => $"{u.FullName ?? u.UserName} ({u.Phone})"
+                );
+
+            ViewBag.UserLookup = userLookup;
+            ViewBag.Categories = await _context.TaskCategories
+                .Where(c => userProjectIds.Contains(c.ProjectId))
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+
+            ViewBag.SelectedProjectId = projectId;
 
             return View(tasks);
         }
@@ -207,6 +262,13 @@ namespace Endpoint.Site.Controllers
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
+
+                    if (parent.IsCompleted)
+                    {
+                        parent.IsCompleted = false;
+                        parent.UpdatedAt = DateTime.UtcNow;
+                    }
+                    await MarkAncestorsIncompleteAsync(parent.ParentTaskId);
 
                     _context.TaskItems.Add(subTask);
                     _context.Projects.Update(project); // به‌روزرسانی LastIssueNumber
@@ -399,6 +461,13 @@ namespace Endpoint.Site.Controllers
                         UpdatedAt = DateTime.UtcNow
                     };
 
+                    if (parent.IsCompleted)
+                    {
+                        parent.IsCompleted = false;
+                        parent.UpdatedAt = DateTime.UtcNow;
+                    }
+                    await MarkAncestorsIncompleteAsync(parent.ParentTaskId);
+
                     _context.TaskItems.Add(newIssue);
                     _context.Projects.Update(project); // به‌روزرسانی LastIssueNumber
 
@@ -508,6 +577,52 @@ namespace Endpoint.Site.Controllers
             {
                 return Json(new { success = false, message = "خطا در حذف تسک: " + ex.Message });
             }
+        }
+
+        /// <summary>
+        /// خاتمه دادن به تسک و بروزرسانی وضعیت والدین آن
+        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> CompleteTask([FromBody] JsonElement data)
+        {
+            if (!data.TryGetProperty("taskId", out var taskIdProp) || taskIdProp.ValueKind != JsonValueKind.Number)
+            {
+                return BadRequest("taskId الزامی است.");
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            int taskId = taskIdProp.GetInt32();
+
+            var task = await _context.TaskItems
+                .Include(t => t.Project)
+                .FirstOrDefaultAsync(t => t.Id == taskId);
+
+            if (task == null)
+            {
+                return NotFound("تسک یافت نشد.");
+            }
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == task.ProjectId &&
+                               (p.CreatorUserId == userId ||
+                                p.Members.Any(m => m.UserId == userId)));
+
+            if (!hasAccess)
+            {
+                return Forbid();
+            }
+
+            await MarkTaskAndDescendantsCompletedAsync(task);
+            await _context.SaveChangesAsync();
+
+            await UpdateParentCompletionStatusAsync(task.ParentTaskId);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = "تسک با موفقیت خاتمه یافت."
+            });
         }
 
         /// <summary>
@@ -1874,6 +1989,76 @@ namespace Endpoint.Site.Controllers
             await _context.SaveChangesAsync();
 
             return Json(new { success = true });
+        }
+
+        private async Task MarkTaskAndDescendantsCompletedAsync(TaskItem task)
+        {
+            await _context.Entry(task).Collection(t => t.ChildIssues).LoadAsync();
+
+            foreach (var child in task.ChildIssues)
+            {
+                await MarkTaskAndDescendantsCompletedAsync(child);
+            }
+
+            if (!task.IsCompleted)
+            {
+                task.IsCompleted = true;
+                task.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        private async Task UpdateParentCompletionStatusAsync(int? parentId)
+        {
+            if (!parentId.HasValue)
+            {
+                return;
+            }
+
+            var parent = await _context.TaskItems
+                .Include(p => p.ChildIssues)
+                .FirstOrDefaultAsync(p => p.Id == parentId.Value);
+
+            if (parent == null)
+            {
+                return;
+            }
+
+            var hasChildren = parent.ChildIssues.Any();
+            if (hasChildren)
+            {
+                var allChildrenCompleted = parent.ChildIssues.All(c => c.IsCompleted);
+                if (parent.IsCompleted != allChildrenCompleted)
+                {
+                    parent.IsCompleted = allChildrenCompleted;
+                    parent.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            await UpdateParentCompletionStatusAsync(parent.ParentTaskId);
+        }
+
+        private async Task MarkAncestorsIncompleteAsync(int? parentId)
+        {
+            if (!parentId.HasValue)
+            {
+                return;
+            }
+
+            var parent = await _context.TaskItems
+                .FirstOrDefaultAsync(t => t.Id == parentId.Value);
+
+            if (parent == null)
+            {
+                return;
+            }
+
+            if (parent.IsCompleted)
+            {
+                parent.IsCompleted = false;
+                parent.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await MarkAncestorsIncompleteAsync(parent.ParentTaskId);
         }
 
     }
