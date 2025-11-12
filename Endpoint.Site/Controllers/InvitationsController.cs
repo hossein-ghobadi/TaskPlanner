@@ -204,7 +204,7 @@ namespace Endpoint.Site.Controllers
             var invite = await _context.ProjectInvitations.FindAsync(id);
             if (invite == null || invite.ProjectId != null)
             {
-                TempData["Error"] = "دعوت سیستمی معتبر نیست.";
+                TempData["Error"] = "دعوت معتبر نیست.";
                 return RedirectToAction("MyInvitations");
             }
 

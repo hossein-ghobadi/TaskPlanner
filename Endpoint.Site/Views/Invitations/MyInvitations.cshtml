@@ -97,7 +97,7 @@
 
 <!-- 🌐 دعوت‌های عضویت در سیستم -->
 <div class="card mb-4 shadow-sm">
-    <div class="card-header bg-light fw-bold">🌐 دعوت‌های عضویت در سیستم</div>
+    <div class="card-header bg-light fw-bold">🌐 دعوت‌های همکاری</div>
     <div class="card-body p-0">
         @if (Model.UserInvitations.Any())
         {
@@ -158,12 +158,12 @@
         }
         else
         {
-            <p class="text-muted p-3 mb-0">هیچ دعوت سیستمی در انتظار پاسخ نیست.</p>
+            <p class="text-muted p-3 mb-0">هیچ دعوتی برای همکاری در انتظار پاسخ نیست.</p>
         }
 
         <!-- 🔹 فرم ارسال دعوت جدید -->
         <div class="border-top p-3 bg-light">
-            <h6 class="fw-bold mb-3">➕ ارسال دعوت جدید به سیستم</h6>
+            <h6 class="fw-bold mb-3">➕ ارسال دعوت جدید به همکاری</h6>
 
             <!-- پیام فقط برای فرم دعوت -->
             @if (TempData["InviteSuccess"] != null)
@@ -264,8 +264,8 @@
                         @foreach (var inv in Model.SentSystemInvitations)
                         {
                             <tr>
-                                <td><span class="badge bg-secondary">سیستمی</span></td>
-                                <td>دعوت به عضویت در سیستم</td>
+                                <td><span class="badge bg-secondary">همکاری</span></td>
+                                <td>دعوت به همکاری</td>
                                 <td>@inv.InviteePhone</td>
                                 <td>@inv.CreatedAt.ToLocalTime().ToShortPersianDateTimeString()</td>
                                 <td>
