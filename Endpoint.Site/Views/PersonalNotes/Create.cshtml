@@ -4,78 +4,600 @@
     Layout = "/Views/Shared/_Layout.cshtml";
 }
 
-<h2>ایجاد یادداشت شخصی جدید</h2>
+<div class="create-note-container">
+    <!-- Header -->
+    <div class="create-header">
+        <a href="/PersonalNotes/Index" class="back-btn">
+            <i class="bi bi-arrow-right"></i>
+        </a>
+        <h1 class="create-title">ایجاد یادداشت جدید</h1>
+    </div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success">@TempData["Success"]</div>
+        <div class="alert alert-success alert-social" role="alert">
+            <i class="bi bi-check-circle-fill"></i>
+            @TempData["Success"]
+        </div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">@TempData["Error"]</div>
-}
+        <div class="alert alert-danger alert-social" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            @TempData["Error"]
+        </div>
+    }
 
-<form asp-action="Create" method="post" enctype="multipart/form-data">
-    <div asp-validation-summary="All" class="text-danger"></div>
-
-    <div class="mb-3">
-        <label asp-for="Title" class="form-label">عنوان یادداشت</label>
-        <input asp-for="Title" class="form-control" />
+    <form asp-action="Create" method="post" enctype="multipart/form-data" class="create-form">
+        <!-- Main Content Card -->
+        <div class="create-card">
+            <!-- Title Section -->
+            <div class="form-group">
+                <input asp-for="Title" class="form-input-title" placeholder="عنوان یادداشت را وارد کنید..." />
         <span asp-validation-for="Title" class="text-danger"></span>
     </div>
 
-    <div class="mb-3">
-        <label asp-for="Content" class="form-label">محتوا</label>
-        <textarea asp-for="Content" class="form-control" rows="8"></textarea>
+            <!-- Content Section -->
+            <div class="form-group">
+                <textarea asp-for="Content" class="form-textarea" rows="6" placeholder="متن یادداشت خود را بنویسید..."></textarea>
         <span asp-validation-for="Content" class="text-danger"></span>
     </div>
 
-    <div class="mb-3">
-        <label asp-for="Color" class="form-label">رنگ (اختیاری)</label>
-        <input asp-for="Color" type="color" class="form-control" value="#ffffff" />
-        <small class="form-text text-muted">رنگی برای خط کناری کارت یادداشت انتخاب کنید.</small>
+            <!-- Options Row -->
+            <div class="form-options">
+                <div class="option-group">
+                    <label class="color-picker-label">
+                        <i class="bi bi-palette"></i>
+                        <span>رنگ</span>
+                    </label>
+                    <input asp-for="Color" type="color" class="color-picker" value="#3b82f6" />
+                </div>
+                <div class="option-group">
+                    <label class="checkbox-label">
+                        <input asp-for="IsPinned" type="checkbox" class="checkbox-input" />
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">
+                            <i class="bi bi-pin-angle"></i>
+                            پین کردن
+                        </span>
+                    </label>
+    </div>
     </div>
 
-    <div class="mb-3 form-check">
-        <input asp-for="IsPinned" type="checkbox" class="form-check-input" />
-        <label asp-for="IsPinned" class="form-check-label">پین کردن این یادداشت</label>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">📎 فایل‌های پیوست</label>
-        <input type="file" name="Attachments" class="form-control" id="fileInput" multiple 
+            <!-- Attachments Section -->
+            <div class="attachments-section">
+                <label class="attachment-label">
+                    <input type="file" name="Attachments" class="file-input-hidden" id="fileInput" multiple 
                accept="image/*,audio/*,.pdf,.doc,.docx,.txt,.zip,.rar" 
                onchange="handleFileSelect(event)" />
-        <small class="text-muted">
-            فرمت‌های مجاز: تصویر (jpg, png, gif), صوت (mp3, wav, ogg), سند (pdf, doc, docx)
-            <br>
-            حداکثر حجم هر فایل: 10 مگابایت - می‌توانید چندین فایل را یکجا انتخاب کنید
-        </small>
-        
-        <!-- پیش‌نمایش فایل‌های انتخاب شده -->
-        <div id="filesPreview" class="mt-3"></div>
+                    <div class="file-input-trigger">
+                        <i class="bi bi-paperclip"></i>
+                        <span>افزودن فایل</span>
+                    </div>
+                </label>
+                
+                <!-- File Preview -->
+                <div id="filesPreview" class="files-preview"></div>
     </div>
 
-    <!-- 🎤 ضبط ویس آنلاین -->
-    <div class="mb-3">
-        <label class="form-label">🎤 ضبط ویس آنلاین</label>
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex gap-2 align-items-center mb-2">
-                    <button type="button" class="btn btn-danger" id="recordBtn" onclick="toggleRecording()">
-                        <span id="recordIcon">●</span> <span id="recordText">شروع ضبط</span>
+            <!-- Voice Recording Section -->
+            <div class="voice-section">
+                <button type="button" class="voice-btn" id="recordBtn" onclick="toggleRecording()">
+                    <span class="voice-icon" id="recordIcon">
+                        <i class="bi bi-mic"></i>
+                    </span>
+                    <span class="voice-text" id="recordText">ضبط صدا</span>
+                    <span class="voice-timer" id="recordTimer">00:00</span>
                     </button>
-                    <span id="recordTimer" class="text-muted">00:00</span>
-                </div>
-                <div id="audioPreview"></div>
-                <small class="text-muted">با کلیک روی دکمه، ضبط صدا شروع می‌شود. مجدداً کلیک کنید تا ضبط متوقف شود.</small>
+                <div id="audioPreview" class="audio-preview"></div>
             </div>
         </div>
+
+        <!-- Actions -->
+        <div class="form-actions">
+            <a class="btn-cancel" asp-action="Index">
+                <i class="bi bi-x-circle"></i>
+                <span>انصراف</span>
+            </a>
+            <button type="submit" class="btn-submit">
+                <i class="bi bi-check-lg"></i>
+                <span>انتشار یادداشت</span>
+            </button>
+        </div>
+    </form>
     </div>
 
-    <button type="submit" class="btn btn-success">ذخیره یادداشت</button>
-    <a class="btn btn-secondary" asp-action="Index">انصراف</a>
-</form>
+<style>
+    .create-note-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    /* Header */
+    .create-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .back-btn {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f9fa;
+        border-radius: 50%;
+        color: #3b82f6;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .back-btn:hover {
+        background: #e9ecef;
+        transform: scale(1.1);
+    }
+
+    .create-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0;
+    }
+
+    /* Alert */
+    .alert-social {
+        border-radius: 12px;
+        border: none;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 500;
+    }
+
+    /* Form */
+    .create-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .validation-summary {
+        background: #fee;
+        border: 1px solid #fcc;
+        border-radius: 8px;
+        padding: 1rem;
+        color: #c33;
+        list-style: none;
+        margin: 0;
+    }
+
+    /* Create Card */
+    .create-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-input-title {
+        width: 100%;
+        border: none;
+        border-bottom: 2px solid #e9ecef;
+        padding: 0.75rem 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1a1a1a;
+        background: transparent;
+        transition: border-color 0.2s ease;
+    }
+
+    .form-input-title:focus {
+        outline: none;
+        border-bottom-color: #3b82f6;
+    }
+
+    .form-input-title::placeholder {
+        color: #adb5bd;
+    }
+
+    .form-textarea {
+        width: 100%;
+        border: none;
+        padding: 0;
+        font-size: 1.05rem;
+        line-height: 1.6;
+        color: #4a5568;
+        background: transparent;
+        resize: vertical;
+        min-height: 150px;
+        font-family: inherit;
+    }
+
+    .form-textarea:focus {
+        outline: none;
+    }
+
+    .form-textarea::placeholder {
+        color: #adb5bd;
+    }
+
+    /* Options */
+    .form-options {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        padding: 1rem 0;
+        border-top: 1px solid #e9ecef;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .option-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .color-picker-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #6c757d;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+
+    .color-picker {
+        width: 40px;
+        height: 40px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .checkbox-input {
+        display: none;
+    }
+
+    .checkbox-custom {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #dee2e6;
+        border-radius: 4px;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    .checkbox-input:checked + .checkbox-custom {
+        background: #3b82f6;
+        border-color: #3b82f6;
+    }
+
+    .checkbox-input:checked + .checkbox-custom::after {
+        content: '✓';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .checkbox-text {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #4a5568;
+        font-size: 0.9rem;
+    }
+
+    /* Attachments */
+    .attachments-section {
+        margin-top: 1.5rem;
+    }
+
+    .attachment-label {
+        cursor: pointer;
+    }
+
+    .file-input-hidden {
+        display: none;
+    }
+
+    .file-input-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        background: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 10px;
+        color: #6c757d;
+        transition: all 0.2s ease;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    .file-input-trigger:hover {
+        background: #e9ecef;
+        border-color: #3b82f6;
+        color: #3b82f6;
+    }
+
+    .files-preview {
+        margin-top: 1rem;
+    }
+
+    /* Voice Recording */
+    .voice-section {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .voice-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1.5rem;
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        color: #6c757d;
+        font-size: 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .voice-btn:hover {
+        background: #e9ecef;
+        border-color: #3b82f6;
+        color: #3b82f6;
+    }
+
+    .voice-btn.recording {
+        background: #fee;
+        border-color: #ef4444;
+        color: #ef4444;
+        animation: pulse 1.5s infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    .voice-icon {
+        font-size: 1.25rem;
+    }
+
+    .voice-timer {
+        margin-right: auto;
+        font-weight: 600;
+    }
+
+    .audio-preview {
+        margin-top: 1rem;
+    }
+
+    /* File Preview */
+    .files-preview-header {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-bottom: 0.75rem;
+        font-weight: 500;
+    }
+
+    .files-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .file-preview-item {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 0.75rem;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    .file-preview-item:hover {
+        background: #e9ecef;
+        transform: translateY(-2px);
+    }
+
+    .file-preview-image {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1;
+        border-radius: 8px;
+        overflow: hidden;
+        background: white;
+        margin-bottom: 0.5rem;
+    }
+
+    .file-preview-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .file-preview-audio {
+        position: relative;
+        background: white;
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .file-preview-audio audio {
+        width: 100%;
+        height: 32px;
+    }
+
+    .file-preview-icon {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        font-size: 3rem;
+        color: #6c757d;
+    }
+
+    .file-remove-btn {
+        position: absolute;
+        top: -8px;
+        left: -8px;
+        width: 28px;
+        height: 28px;
+        background: white;
+        border: 2px solid #dee2e6;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ef4444;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        padding: 0;
+        font-size: 1rem;
+    }
+
+    .file-remove-btn:hover {
+        background: #fee;
+        border-color: #ef4444;
+        transform: scale(1.1);
+    }
+
+    .file-preview-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .file-name {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #1a1a1a;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .file-size {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+
+    /* Actions */
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+
+    .btn-cancel {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: #f8f9fa;
+        border: none;
+        border-radius: 10px;
+        color: #6c757d;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .btn-cancel:hover {
+        background: #e9ecef;
+        color: #1a1a1a;
+    }
+
+    .btn-submit {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 2rem;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .create-note-container {
+            padding: 1rem 0.5rem;
+        }
+
+        .create-card {
+            padding: 1.5rem;
+        }
+
+        .form-options {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+
+        .btn-cancel,
+        .btn-submit {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .files-list {
+            grid-template-columns: 1fr;
+        }
+
+        .file-preview-icon {
+            font-size: 2rem;
+        }
+    }
+</style>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
@@ -114,10 +636,10 @@
             }
             
             previewContainer.innerHTML = `
-                <div class="alert alert-info">
-                    <strong>${selectedFiles.length} فایل انتخاب شده:</strong>
+                <div class="files-preview-header">
+                    <strong>${selectedFiles.length} فایل انتخاب شده</strong>
                 </div>
-                <div class="row g-2" id="filesList"></div>
+                <div class="files-list" id="filesList"></div>
             `;
             
             const filesList = document.getElementById('filesList');
@@ -130,14 +652,8 @@
 
         // ساخت کارت پیش‌نمایش فایل
         function createFilePreviewCard(file, index) {
-            const col = document.createElement('div');
-            col.className = 'col-md-6 col-lg-4';
-            
-            const card = document.createElement('div');
-            card.className = 'card h-100';
-            
-            const cardBody = document.createElement('div');
-            cardBody.className = 'card-body';
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-preview-item';
             
             // پیش‌نمایش بر اساس نوع فایل
             let previewHtml = '';
@@ -145,73 +661,53 @@
             if (file.type.startsWith('image/')) {
                 const imageUrl = URL.createObjectURL(file);
                 previewHtml = `
-                    <div class="text-center mb-2">
-                        <img src="${imageUrl}" alt="${file.name}" 
-                             class="img-fluid rounded" 
-                             style="max-height: 150px; object-fit: cover;" />
+                    <div class="file-preview-image">
+                        <img src="${imageUrl}" alt="${file.name}" />
+                        <button type="button" class="file-remove-btn" onclick="removeFile(${index})">
+                            <i class="bi bi-x-circle-fill"></i>
+                        </button>
                     </div>
-                    <span class="badge bg-primary mb-2">
-                        <i class="bi bi-image"></i> تصویر
-                    </span>
+                    <div class="file-preview-info">
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-size">${formatFileSize(file.size)}</span>
+                    </div>
                 `;
             } else if (file.type.startsWith('audio/')) {
                 const audioUrl = URL.createObjectURL(file);
                 previewHtml = `
-                    <div class="mb-2">
-                        <audio controls class="w-100" style="max-height: 40px;">
+                    <div class="file-preview-audio">
+                        <audio controls>
                             <source src="${audioUrl}" type="${file.type}">
                         </audio>
+                        <button type="button" class="file-remove-btn" onclick="removeFile(${index})">
+                            <i class="bi bi-x-circle-fill"></i>
+                        </button>
                     </div>
-                    <span class="badge bg-info mb-2">
-                        <i class="bi bi-music-note"></i> صوت
-                    </span>
-                `;
-            } else if (file.type.includes('pdf')) {
-                previewHtml = `
-                    <div class="text-center mb-2">
-                        <i class="bi bi-file-pdf text-danger" style="font-size: 3rem;"></i>
+                    <div class="file-preview-info">
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-size">${formatFileSize(file.size)}</span>
                     </div>
-                    <span class="badge bg-danger mb-2">
-                        <i class="bi bi-file-pdf"></i> PDF
-                    </span>
-                `;
-            } else if (file.type.includes('word') || file.type.includes('document')) {
-                previewHtml = `
-                    <div class="text-center mb-2">
-                        <i class="bi bi-file-word text-primary" style="font-size: 3rem;"></i>
-                    </div>
-                    <span class="badge bg-success mb-2">
-                        <i class="bi bi-file-earmark-text"></i> سند
-                    </span>
                 `;
             } else {
+                const iconClass = file.type.includes('pdf') ? 'bi-file-pdf' : 
+                                 (file.type.includes('word') || file.type.includes('document')) ? 'bi-file-earmark-text' : 
+                                 'bi-file-earmark';
                 previewHtml = `
-                    <div class="text-center mb-2">
-                        <i class="bi bi-file-earmark text-secondary" style="font-size: 3rem;"></i>
+                    <div class="file-preview-icon">
+                        <i class="bi ${iconClass}"></i>
+                        <button type="button" class="file-remove-btn" onclick="removeFile(${index})">
+                            <i class="bi bi-x-circle-fill"></i>
+                        </button>
                     </div>
-                    <span class="badge bg-secondary mb-2">
-                        <i class="bi bi-file-earmark"></i> فایل
-                    </span>
+                    <div class="file-preview-info">
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-size">${formatFileSize(file.size)}</span>
+                    </div>
                 `;
             }
             
-            cardBody.innerHTML = `
-                ${previewHtml}
-                <div class="small text-muted mb-2" style="word-break: break-word;">
-                    <strong>${file.name}</strong>
-                </div>
-                <div class="small text-muted">
-                    حجم: ${formatFileSize(file.size)}
-                </div>
-                <button type="button" class="btn btn-sm btn-danger w-100 mt-2" onclick="removeFile(${index})">
-                    <i class="bi bi-trash"></i> حذف
-                </button>
-            `;
-            
-            card.appendChild(cardBody);
-            col.appendChild(card);
-            
-            return col;
+            fileItem.innerHTML = previewHtml;
+            return fileItem;
         }
 
         // فرمت کردن حجم فایل
@@ -303,10 +799,9 @@
                 recordingStartTime = Date.now();
                 console.log('Voice recording started...');
                 
-                document.getElementById('recordBtn').classList.remove('btn-danger');
-                document.getElementById('recordBtn').classList.add('btn-success');
-                document.getElementById('recordIcon').textContent = '■';
-                document.getElementById('recordText').textContent = 'توقف ضبط';
+                document.getElementById('recordBtn').classList.add('recording');
+                document.getElementById('recordIcon').innerHTML = '<i class="bi bi-stop-fill"></i>';
+                document.getElementById('recordText').textContent = 'در حال ضبط...';
 
                 timerInterval = setInterval(updateTimer, 1000);
             } catch (error) {
@@ -319,10 +814,9 @@
                 mediaRecorder.stop();
                 clearInterval(timerInterval);
 
-                document.getElementById('recordBtn').classList.remove('btn-success');
-                document.getElementById('recordBtn').classList.add('btn-danger');
-                document.getElementById('recordIcon').textContent = '●';
-                document.getElementById('recordText').textContent = 'شروع ضبط';
+                document.getElementById('recordBtn').classList.remove('recording');
+                document.getElementById('recordIcon').innerHTML = '<i class="bi bi-mic"></i>';
+                document.getElementById('recordText').textContent = 'ضبط صدا';
                 document.getElementById('recordTimer').textContent = '00:00';
             }
         }

@@ -1,90 +1,657 @@
 @model PersonalNote
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    var noteColor = !string.IsNullOrEmpty(Model.Color) ? Model.Color : "#3b82f6";
 }
 
-<h2>جزئیات یادداشت شخصی</h2>
+<div class="note-detail-container">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-social" role="alert">
+            <i class="bi bi-check-circle-fill"></i>
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-social" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            @TempData["Error"]
+        </div>
+    }
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success">@TempData["Success"]</div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger">@TempData["Error"]</div>
-}
+    <!-- Back Button -->
+    <div class="back-header">
+        <a href="/PersonalNotes/Index" class="back-btn">
+            <i class="bi bi-arrow-right"></i>
+            <span>بازگشت به لیست</span>
+        </a>
+    </div>
 
-<div class="card" style="@(!string.IsNullOrEmpty(Model.Color) ? $"border-left: 5px solid {Model.Color};" : "")">
-    <div class="card-body">
-        <h4 class="card-title">
-            @Model.Title
-            @if (Model.IsPinned)
-            {
-                <span class="badge bg-warning text-dark">📌 پین شده</span>
-            }
-        </h4>
-        <hr />
-        <p><strong>تاریخ ایجاد:</strong> @Model.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</p>
-        @if (Model.UpdatedAt.HasValue)
-        {
-            <p><strong>آخرین ویرایش:</strong> @Model.UpdatedAt.Value.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</p>
-        }
-        <hr />
-        <div class="mb-3">
-            <strong>محتوا:</strong>
-            <div class="mt-2" style="white-space: pre-wrap;">@Model.Content</div>
+    <!-- Main Post Card -->
+    <article class="note-detail-post" style="border-top: 4px solid @noteColor;">
+        <!-- Post Header -->
+        <div class="post-header">
+            <div class="post-avatar">
+                <div class="avatar-circle" style="background: linear-gradient(135deg, @noteColor 0%, @(noteColor)dd 100%);">
+                    <i class="bi bi-journal-text"></i>
+                </div>
+            </div>
+            <div class="post-author">
+                <div class="author-name">یادداشت شخصی</div>
+                <div class="post-time">
+                    <i class="bi bi-clock"></i>
+                    <span>@Model.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</span>
+                </div>
+                @if (Model.UpdatedAt.HasValue)
+                {
+                    <div class="post-updated">
+                        <i class="bi bi-pencil-square"></i>
+                        <span>ویرایش شده در: @Model.UpdatedAt.Value.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</span>
+                    </div>
+                }
+            </div>
+            <div class="post-actions-header">
+                @if (Model.IsPinned)
+                {
+                    <span class="pin-badge" title="پین شده">
+                        <i class="bi bi-pin-angle-fill"></i>
+                    </span>
+                }
+                <div class="dropdown">
+                    <button class="btn-options" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="/PersonalNotes/Edit?id=@Model.Id">
+                                <i class="bi bi-pencil"></i> ویرایش
+                            </a>
+                        </li>
+                        <li>
+                            <form asp-action="TogglePin" asp-route-id="@Model.Id" method="post" class="d-inline">
+                                <button type="submit" class="dropdown-item">
+                                    <i class="bi bi-pin-angle"></i>
+                                    @(Model.IsPinned ? "حذف پین" : "پین کردن")
+                                </button>
+                            </form>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="/PersonalNotes/Delete?id=@Model.Id">
+                                <i class="bi bi-trash"></i> حذف
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
 
+        <!-- Post Content -->
+        <div class="post-content">
+            <h1 class="post-title">@Model.Title</h1>
+            @if (!string.IsNullOrEmpty(Model.Content))
+            {
+                <div class="post-text">
+                    @Html.Raw(Model.Content.Replace("\n", "<br/>"))
+                </div>
+            }
+        </div>
+
+        <!-- Post Attachments -->
         @if (Model.Attachments != null && Model.Attachments.Any())
         {
-            <hr />
-            <div class="mb-3">
-                <strong>📎 فایل‌های پیوست:</strong>
-                <div class="row mt-3">
-                    @foreach (var att in Model.Attachments)
+            <div class="post-attachments">
+                @foreach (var att in Model.Attachments)
+                {
+                    @if (att.FileType == "Image")
                     {
-                        <div class="col-md-6 mb-3">
-                            <div class="card">
-                                <div class="card-body">
-                                    @if (att.FileType == "Image")
-                                    {
-                                        <div class="mb-2">
-                                            <img src="@att.FilePath" alt="@att.FileName" class="img-fluid rounded" style="max-height: 200px;" />
-                                        </div>
-                                        <span class="badge bg-primary">🖼️ تصویر</span>
-                                    }
-                                    else if (att.FileType == "Audio")
-                                    {
-                                        <div class="mb-2">
-                                            <audio controls class="w-100">
-                                                <source src="@att.FilePath" type="@att.MimeType">
-                                                مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
-                                            </audio>
-                                        </div>
-                                        <span class="badge bg-info">🎵 صوت</span>
-                                    }
-                                    else if (att.FileType == "Document")
-                                    {
-                                        <span class="badge bg-success">📄 سند</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-secondary">📎 فایل</span>
-                                    }
-                                    <a href="@att.FilePath" download="@att.FileName" class="d-block mt-2">@att.FileName</a>
-                                    <small class="text-muted">(@(att.FileSize / 1024) KB)</small>
-                                </div>
+                        <div class="attachment-item attachment-image-full">
+                            <img src="@att.FilePath" alt="@att.FileName" class="attachment-img-full" />
+                            <div class="attachment-info-overlay">
+                                <span class="attachment-name-full">@att.FileName</span>
+                                <a href="@att.FilePath" download="@att.FileName" class="attachment-download-btn">
+                                    <i class="bi bi-download"></i>
+                                </a>
                             </div>
                         </div>
                     }
-                </div>
+                    else if (att.FileType == "Audio")
+                    {
+                        <div class="attachment-item attachment-audio-full">
+                            <div class="audio-wrapper">
+                                <audio controls class="attachment-audio-player-full">
+                                    <source src="@att.FilePath" type="@att.MimeType">
+                                </audio>
+                                <div class="audio-info">
+                                    <span class="audio-name">@att.FileName</span>
+                                    <span class="audio-size">@(Math.Round(att.FileSize / 1024.0, 1)) KB</span>
+                                </div>
+                                <a href="@att.FilePath" download="@att.FileName" class="audio-download">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </div>
+                        </div>
+                    }
+                    else if (att.FileType == "Document")
+                    {
+                        <a href="@att.FilePath" target="_blank" class="attachment-item attachment-document-full">
+                            <div class="attachment-icon-large">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </div>
+                            <div class="attachment-details-full">
+                                <span class="attachment-name-full">@att.FileName</span>
+                                <span class="attachment-size-full">@(Math.Round(att.FileSize / 1024.0, 1)) KB</span>
+                            </div>
+                            <div class="attachment-download-large">
+                                <i class="bi bi-download"></i>
+                            </div>
+                        </a>
+                    }
+                    else
+                    {
+                        <a href="@att.FilePath" target="_blank" class="attachment-item attachment-file-full">
+                            <div class="attachment-icon-large">
+                                <i class="bi bi-file-earmark"></i>
+                            </div>
+                            <div class="attachment-details-full">
+                                <span class="attachment-name-full">@att.FileName</span>
+                                <span class="attachment-size-full">@(Math.Round(att.FileSize / 1024.0, 1)) KB</span>
+                            </div>
+                            <div class="attachment-download-large">
+                                <i class="bi bi-download"></i>
+                            </div>
+                        </a>
+                    }
+                }
             </div>
         }
-    </div>
+
+        <!-- Post Footer -->
+        <div class="post-footer-detail">
+            <div class="post-meta">
+                <span class="meta-item">
+                    <i class="bi bi-paperclip"></i>
+                    <span>@(Model.Attachments?.Count ?? 0) فایل پیوست</span>
+                </span>
+                @if (Model.IsPinned)
+                {
+                    <span class="meta-item">
+                        <i class="bi bi-pin-angle-fill"></i>
+                        <span>پین شده</span>
+                    </span>
+                }
+            </div>
+            <div class="post-actions-detail">
+                <a href="/PersonalNotes/Edit?id=@Model.Id" class="action-btn action-primary">
+                    <i class="bi bi-pencil"></i>
+                    <span>ویرایش</span>
+                </a>
+                <a href="/PersonalNotes/Delete?id=@Model.Id" class="action-btn action-danger">
+                    <i class="bi bi-trash"></i>
+                    <span>حذف</span>
+                </a>
+            </div>
+        </div>
+    </article>
 </div>
 
-<div class="mt-3">
-    <a class="btn btn-warning" asp-action="Edit" asp-route-id="@Model.Id">ویرایش</a>
-    <a class="btn btn-danger" asp-action="Delete" asp-route-id="@Model.Id">حذف</a>
-    <a class="btn btn-secondary" asp-action="Index">بازگشت به لیست</a>
-</div>
+<style>
+    .note-detail-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    /* Back Header */
+    .back-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #3b82f6;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+    }
+
+    .back-btn:hover {
+        background: #f8f9fa;
+        color: #5568d3;
+    }
+
+    /* Alert */
+    .alert-social {
+        border-radius: 12px;
+        border: none;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 500;
+    }
+
+    /* Main Post */
+    .note-detail-post {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border-top: 4px solid #3b82f6;
+    }
+
+    /* Post Header */
+    .post-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        position: relative;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .post-avatar {
+        flex-shrink: 0;
+    }
+
+    .avatar-circle {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .post-author {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .author-name {
+        font-weight: 600;
+        font-size: 1rem;
+        color: #1a1a1a;
+        margin-bottom: 0.5rem;
+    }
+
+    .post-time {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-bottom: 0.25rem;
+    }
+
+    .post-updated {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: #868e96;
+        font-style: italic;
+    }
+
+    .post-actions-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        position: absolute;
+        top: 0;
+        right: 0;
+    }
+
+    .pin-badge {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff3cd;
+        color: #856404;
+        border-radius: 50%;
+        font-size: 1rem;
+    }
+
+    .btn-options {
+        width: 36px;
+        height: 36px;
+        border: none;
+        background: transparent;
+        color: #6c757d;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        padding: 0;
+    }
+
+    .btn-options:hover {
+        background: #f8f9fa;
+        color: #1a1a1a;
+    }
+
+    /* Post Content */
+    .post-content {
+        margin-bottom: 2rem;
+    }
+
+    .post-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0 0 1.5rem 0;
+        line-height: 1.3;
+    }
+
+    .post-text {
+        color: #4a5568;
+        line-height: 1.8;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-size: 1.05rem;
+    }
+
+    /* Attachments */
+    .post-attachments {
+        margin: 2rem 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .attachment-item {
+        border-radius: 12px;
+        overflow: hidden;
+        transition: transform 0.2s ease;
+    }
+
+    .attachment-image-full {
+        position: relative;
+        background: #f8f9fa;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .attachment-img-full {
+        width: 100%;
+        max-height: 600px;
+        object-fit: contain;
+        display: block;
+    }
+
+    .attachment-info-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .attachment-image-full:hover .attachment-info-overlay {
+        opacity: 1;
+    }
+
+    .attachment-name-full {
+        color: white;
+        font-weight: 500;
+    }
+
+    .attachment-download-btn {
+        width: 36px;
+        height: 36px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #3b82f6;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .attachment-download-btn:hover {
+        background: #f8f9fa;
+        transform: scale(1.1);
+    }
+
+    .attachment-audio-full {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 12px;
+    }
+
+    .audio-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .attachment-audio-player-full {
+        flex: 1;
+        height: 40px;
+    }
+
+    .audio-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 150px;
+    }
+
+    .audio-name {
+        font-weight: 500;
+        color: #1a1a1a;
+        font-size: 0.9rem;
+    }
+
+    .audio-size {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    .audio-download {
+        width: 40px;
+        height: 40px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #3b82f6;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .audio-download:hover {
+        background: #e9ecef;
+        transform: scale(1.1);
+    }
+
+    .attachment-document-full,
+    .attachment-file-full {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem;
+        background: #f8f9fa;
+        border-radius: 12px;
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.2s ease;
+    }
+
+    .attachment-document-full:hover,
+    .attachment-file-full:hover {
+        background: #e9ecef;
+        transform: translateX(-4px);
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .attachment-icon-large {
+        width: 56px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border-radius: 12px;
+        font-size: 2rem;
+        flex-shrink: 0;
+    }
+
+    .attachment-details-full {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .attachment-name-full {
+        font-size: 1rem;
+        font-weight: 500;
+        color: #1a1a1a;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .attachment-size-full {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+
+    .attachment-download-large {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #3b82f6;
+        font-size: 1.25rem;
+    }
+
+    /* Post Footer */
+    .post-footer-detail {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e9ecef;
+        margin-top: 1rem;
+    }
+
+    .post-meta {
+        display: flex;
+        gap: 1.5rem;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+
+    .post-actions-detail {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .action-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        font-size: 0.95rem;
+    }
+
+    .action-primary {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .action-primary:hover {
+        background: #5568d3;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .action-danger {
+        background: #ef4444;
+        color: white;
+    }
+
+    .action-danger:hover {
+        background: #dc2626;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .note-detail-container {
+            padding: 1rem 0.5rem;
+        }
+
+        .note-detail-post {
+            padding: 1.5rem;
+        }
+
+        .post-title {
+            font-size: 1.5rem;
+        }
+
+        .audio-wrapper {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .audio-info {
+            min-width: auto;
+        }
+
+        .post-footer-detail {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+        }
+
+        .post-actions-detail {
+            flex-direction: column;
+        }
+
+        .action-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>

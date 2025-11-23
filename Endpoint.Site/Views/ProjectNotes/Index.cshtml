@@ -1,46 +1,45 @@
 @model IEnumerable<ProjectNote>
+@using System.Globalization
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2>📝 یادداشت‌های پروژه: @ViewBag.ProjectName</h2>
-    </div>
-    <div class="d-flex gap-2">
-        <!-- دکمه تغییر نمایش -->
-        <div class="btn-group" role="group">
-            <button type="button" class="btn btn-outline-secondary" id="viewCardBtn" onclick="toggleView('card')">
-                <i class="bi bi-grid-3x3-gap"></i> کارت
-            </button>
-            <button type="button" class="btn btn-outline-secondary" id="viewListBtn" onclick="toggleView('list')">
-                <i class="bi bi-list-ul"></i> لیست
-            </button>
+<div class="social-feed-container">
+    <!-- Header Section -->
+    <div class="feed-header">
+        <div class="header-content">
+            <h1 class="feed-title">
+                <i class="bi bi-journal-text"></i>
+                یادداشت‌های پروژه: @ViewBag.ProjectName
+            </h1>
+            <p class="feed-subtitle">یادداشت‌ها و نکات مربوط به این پروژه</p>
         </div>
-        
-        <a class="btn btn-primary" href="/ProjectNotes/Create?projectId=@ViewBag.ProjectId">
-            <i class="bi bi-plus-circle"></i> افزودن یادداشت
-        </a>
-        <a class="btn btn-outline-secondary" href="/Projects/Details/@ViewBag.ProjectId">
-            <i class="bi bi-arrow-right"></i> بازگشت به پروژه
-        </a>
+        <div class="header-actions">
+            <a class="btn-create-note" href="/ProjectNotes/Create?projectId=@ViewBag.ProjectId">
+                <i class="bi bi-plus-lg"></i>
+                <span>یادداشت جدید</span>
+            </a>
+            <a class="btn-back-project" href="/Projects/Details/@ViewBag.ProjectId">
+                <i class="bi bi-arrow-right"></i>
+                <span>بازگشت به پروژه</span>
+            </a>
+        </div>
     </div>
-</div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        @TempData["Success"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @TempData["Error"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-social" role="alert">
+            <i class="bi bi-check-circle-fill"></i>
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-social" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            @TempData["Error"]
+        </div>
+    }
 
 @if (Model.Any())
 {
