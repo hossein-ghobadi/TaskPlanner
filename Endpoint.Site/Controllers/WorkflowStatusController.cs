@@ -119,10 +119,10 @@ namespace Endpoint.Site.Controllers
                 return Forbid();
             }
 
-            // فقط در حالت Planning می‌توان وضعیت ایجاد کرد
-            if (sprint.Status != SprintStatus.Planning)
+            // در اسپرینت تکمیل‌شده امکان ایجاد وضعیت نیست
+            if (sprint.Status == SprintStatus.Completed)
             {
-                TempData["Error"] = "فقط در حالت برنامه‌ریزی می‌توان وضعیت جدید ایجاد کرد. لطفاً ابتدا اسپرینت را به حالت برنامه‌ریزی برگردانید.";
+                TempData["Error"] = "در اسپرینت تکمیل‌شده نمی‌توان وضعیت جدید ایجاد کرد.";
                 return RedirectToAction(nameof(Index), new { sprintId });
             }
 
@@ -195,10 +195,10 @@ namespace Endpoint.Site.Controllers
                     return Forbid();
                 }
 
-                // فقط در حالت Planning می‌توان وضعیت ایجاد کرد
-                if (sprint.Status != SprintStatus.Planning)
+                // فقط زمانی که اسپرینت تکمیل نشده باشد می‌توان وضعیت ایجاد کرد
+                if (sprint.Status == SprintStatus.Completed)
                 {
-                    TempData["Error"] = "فقط در حالت برنامه‌ریزی می‌توان وضعیت جدید ایجاد کرد.";
+                    TempData["Error"] = "در اسپرینت تکمیل‌شده امکان ایجاد وضعیت جدید وجود ندارد.";
                     return RedirectToAction(nameof(Index), new { sprintId = model.SprintId });
                 }
 
@@ -276,10 +276,10 @@ namespace Endpoint.Site.Controllers
                 return Forbid();
             }
 
-            // فقط در حالت Planning می‌توان وضعیت ویرایش کرد
-            if (status.Sprint.Status != SprintStatus.Planning)
+            // فقط اسپرینت‌های تکمیل‌نشده قابل ویرایش هستند
+            if (status.Sprint.Status == SprintStatus.Completed)
             {
-                TempData["Error"] = "فقط در حالت برنامه‌ریزی می‌توان وضعیت را ویرایش کرد.";
+                TempData["Error"] = "اسپرینت تکمیل‌شده قابل ویرایش نیست.";
                 return RedirectToAction(nameof(Index), new { sprintId = status.SprintId });
             }
 
@@ -333,10 +333,10 @@ namespace Endpoint.Site.Controllers
                     return Forbid();
                 }
 
-                // فقط در حالت Planning می‌توان وضعیت ویرایش کرد
-                if (status.Sprint.Status != SprintStatus.Planning)
+                // فقط اسپرینت‌های تکمیل‌نشده قابل ویرایش هستند
+                if (status.Sprint.Status == SprintStatus.Completed)
                 {
-                    TempData["Error"] = "فقط در حالت برنامه‌ریزی می‌توان وضعیت را ویرایش کرد.";
+                    TempData["Error"] = "اسپرینت تکمیل‌شده قابل ویرایش نیست.";
                     return RedirectToAction(nameof(Index), new { sprintId = status.SprintId });
                 }
 
@@ -422,10 +422,10 @@ namespace Endpoint.Site.Controllers
                 return Forbid();
             }
 
-            // فقط در حالت Planning می‌توان وضعیت حذف کرد
-            if (status.Sprint.Status != SprintStatus.Planning)
+            // در حالت تکمیل‌شده امکان حذف نیست
+            if (status.Sprint.Status == SprintStatus.Completed)
             {
-                TempData["Error"] = "فقط در حالت برنامه‌ریزی می‌توان وضعیت را حذف کرد.";
+                TempData["Error"] = "در اسپرینت تکمیل‌شده امکان حذف وضعیت وجود ندارد.";
                 return RedirectToAction(nameof(Index), new { sprintId = status.SprintId });
             }
 
@@ -576,6 +576,144 @@ namespace Endpoint.Site.Controllers
             return RedirectToAction(nameof(Index), new { sprintId });
         }
 
+        // ایجاد وضعیت جدید به‌صورت AJAX در صفحه برد
+        [HttpPost]
+        public async Task<IActionResult> CreateInline([FromBody] InlineStatusCreateDto dto)
+        {
+            if (dto == null || dto.SprintId <= 0 || string.IsNullOrWhiteSpace(dto.Name))
+            {
+                return BadRequest(new { success = false, message = "اطلاعات وضعیت نامعتبر است" });
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var sprint = await _context.Sprints
+                .Include(s => s.Project)
+                .FirstOrDefaultAsync(s => s.Id == dto.SprintId);
+
+            if (sprint == null)
+            {
+                return NotFound(new { success = false, message = "اسپرینت یافت نشد" });
+            }
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == sprint.ProjectId &&
+                               (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+            if (!hasAccess)
+            {
+                return Forbid();
+            }
+
+            if (sprint.Status == SprintStatus.Completed)
+            {
+                return BadRequest(new { success = false, message = "اسپرینت تکمیل‌شده قابل تغییر نیست" });
+            }
+
+            var statuses = await _context.WorkflowStatuses
+                .Where(s => s.SprintId == sprint.Id)
+                .OrderBy(s => s.Order)
+                .ToListAsync();
+
+            var status = new WorkflowStatus
+            {
+                Name = dto.Name.Trim(),
+                Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(),
+                Color = string.IsNullOrWhiteSpace(dto.Color) ? "#0d6efd" : dto.Color.Trim(),
+                Order = statuses.Any() ? statuses.Max(s => s.Order) + 1 : 1,
+                ProjectId = sprint.ProjectId,
+                SprintId = sprint.Id,
+                Type = WorkflowType.InProgress,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.WorkflowStatuses.Add(status);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = "وضعیت جدید با موفقیت ایجاد شد",
+                status = new
+                {
+                    status.Id,
+                    status.Name,
+                    status.Color,
+                    status.Order
+                }
+            });
+        }
+
+        // حذف وضعیت به‌صورت AJAX (به‌جز شروع و پایان)
+        [HttpPost]
+        public async Task<IActionResult> DeleteInline([FromBody] InlineStatusDeleteDto dto)
+        {
+            if (dto == null || dto.StatusId <= 0)
+            {
+                return BadRequest(new { success = false, message = "شناسه وضعیت نامعتبر است" });
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var status = await _context.WorkflowStatuses
+                .Include(s => s.Sprint)
+                .FirstOrDefaultAsync(s => s.Id == dto.StatusId);
+
+            if (status == null || !status.SprintId.HasValue)
+            {
+                return NotFound(new { success = false, message = "وضعیت یافت نشد" });
+            }
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == status.ProjectId &&
+                               (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+            if (!hasAccess)
+            {
+                return Forbid();
+            }
+
+            if (status.Sprint.Status == SprintStatus.Completed)
+            {
+                return BadRequest(new { success = false, message = "اسپرینت تکمیل‌شده قابل تغییر نیست" });
+            }
+
+            if (status.IsDefault || status.IsFinal || status.Type == WorkflowType.Todo || status.Type == WorkflowType.Done)
+            {
+                return BadRequest(new { success = false, message = "وضعیت‌های شروع و پایان قابل حذف نیستند" });
+            }
+
+            var sprintId = status.SprintId.Value;
+
+            var remainingStatuses = await _context.WorkflowStatuses
+                .Where(s => s.SprintId == sprintId && s.Id != status.Id)
+                .OrderBy(s => s.Order)
+                .ToListAsync();
+
+            if (!remainingStatuses.Any())
+            {
+                return BadRequest(new { success = false, message = "حداقل باید یک وضعیت در اسپرینت باقی بماند" });
+            }
+
+            var defaultStatus = remainingStatuses.FirstOrDefault(s => s.IsDefault) ?? remainingStatuses.First();
+
+            var tasks = await _context.TaskItems
+                .Where(t => (t.WorkflowStatusId == status.Id || t.StatusId == status.Id) && t.SprintId == sprintId)
+                .ToListAsync();
+
+            foreach (var task in tasks)
+            {
+                task.WorkflowStatusId = defaultStatus.Id;
+                task.StatusId = defaultStatus.Id;
+            }
+
+            _context.WorkflowStatuses.Remove(status);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "وضعیت با موفقیت حذف شد" });
+        }
+
         // به‌روزرسانی ترتیب وضعیت‌ها
         [HttpPost]
         public async Task<IActionResult> UpdateOrder([FromBody] UpdateStatusOrderDto dto)
@@ -611,65 +749,34 @@ namespace Endpoint.Site.Controllers
                 return Forbid();
             }
 
-            // فقط در حالت Planning می‌توان ترتیب را تغییر داد
-            if (sprint.Status != SprintStatus.Planning)
+            // فقط اسپرینت‌های تکمیل‌نشده امکان تغییر ترتیب دارند
+            if (sprint.Status == SprintStatus.Completed)
             {
-                return BadRequest(new { success = false, message = "فقط در حالت برنامه‌ریزی می‌توان ترتیب وضعیت‌ها را تغییر داد" });
+                return BadRequest(new { success = false, message = "اسپرینت تکمیل‌شده قابل ویرایش نیست" });
             }
 
             // بررسی اینکه همه وضعیت‌ها به همان اسپرینت تعلق دارند
             var statusIds = dto.StatusOrders.Select(s => s.StatusId).ToList();
             var statuses = await _context.WorkflowStatuses
-                .Where(s => statusIds.Contains(s.Id) && s.SprintId == dto.SprintId.Value)
+                .Where(s => s.SprintId == dto.SprintId.Value)
                 .ToListAsync();
 
-            if (statuses.Count != statusIds.Count)
+            if (statuses.Count != statusIds.Count || dto.StatusOrders.Count != statuses.Count)
             {
-                return BadRequest(new { success = false, message = "برخی وضعیت‌ها یافت نشدند" });
+                return BadRequest(new { success = false, message = "لیست وضعیت‌ها کامل نیست" });
             }
 
-            // یافتن وضعیت Todo (اول) و Done (آخر)
-            var todoStatus = statuses.FirstOrDefault(s => s.Type == WorkflowType.Todo && s.IsDefault);
-            var doneStatus = statuses.FirstOrDefault(s => s.Type == WorkflowType.Done && s.IsFinal);
+            var ordersDictionary = dto.StatusOrders.ToDictionary(s => s.StatusId, s => s.Order);
 
-            // بررسی اینکه Todo همیشه Order=1 و Done همیشه آخرین Order باشد
-            var todoOrderDto = dto.StatusOrders.FirstOrDefault(o => o.StatusId == todoStatus?.Id);
-            if (todoOrderDto != null && todoOrderDto.Order != 1)
+            foreach (var status in statuses)
             {
-                return BadRequest(new { success = false, message = "وضعیت 'باید انجام شود' همیشه باید اولین گام باشد" });
-            }
-
-            if (doneStatus != null)
-            {
-                var doneOrderDto = dto.StatusOrders.FirstOrDefault(o => o.StatusId == doneStatus.Id);
-                var maxOrder = dto.StatusOrders.Max(o => o.Order);
-                if (doneOrderDto != null && doneOrderDto.Order != maxOrder)
+                if (!ordersDictionary.TryGetValue(status.Id, out var newOrder))
                 {
-                    return BadRequest(new { success = false, message = "وضعیت 'انجام شده' همیشه باید آخرین گام باشد" });
+                    return BadRequest(new { success = false, message = "وضعیت نامعتبر در لیست مشاهده شد" });
                 }
-            }
 
-            // به‌روزرسانی ترتیب
-            foreach (var orderDto in dto.StatusOrders)
-            {
-                var status = statuses.FirstOrDefault(s => s.Id == orderDto.StatusId);
-                if (status != null)
-                {
-                    // اطمینان از اینکه Todo همیشه 1 و Done همیشه آخرین است
-                    if (status.Type == WorkflowType.Todo && status.IsDefault)
-                    {
-                        status.Order = 1;
-                    }
-                    else if (status.Type == WorkflowType.Done && status.IsFinal && doneStatus != null)
-                    {
-                        status.Order = dto.StatusOrders.Max(o => o.Order);
-                    }
-                    else
-                    {
-                        status.Order = orderDto.Order;
-                    }
-                    status.UpdatedAt = DateTime.UtcNow;
-                }
+                status.Order = newOrder;
+                status.UpdatedAt = DateTime.UtcNow;
             }
 
             await _context.SaveChangesAsync();
@@ -688,6 +795,19 @@ namespace Endpoint.Site.Controllers
     {
         public int StatusId { get; set; }
         public int Order { get; set; }
+    }
+
+    public class InlineStatusCreateDto
+    {
+        public int SprintId { get; set; }
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public string? Color { get; set; }
+    }
+
+    public class InlineStatusDeleteDto
+    {
+        public int StatusId { get; set; }
     }
 }
 
