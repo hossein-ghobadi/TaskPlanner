@@ -5,9 +5,44 @@
     var sprintId = ViewBag.SprintId as int?;
     var projectId = ViewBag.ProjectId as int?;
     var workflowStatuses = ViewBag.WorkflowStatuses as List<WorkflowStatus> ?? new List<WorkflowStatus>();
+    var defaultStatus = Model.Statuses.FirstOrDefault(s => s.IsDefault) ?? Model.Statuses.FirstOrDefault();
+    var defaultStatusName = defaultStatus?.Name ?? "ستون اول";
+    var finalStatus = Model.Statuses.FirstOrDefault(s => s.IsFinal);
+    var finalStatusName = finalStatus?.Name ?? "Done";
 }
 
 <style>
+    .board-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 4fr) minmax(260px, 1fr);
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+        direction: ltr;
+    }
+    .board-main {
+        background: #fdfdfd;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(15,23,42,0.08);
+        padding: 1.5rem;
+        border: 1px solid #eef0f4;
+        direction: rtl;
+    }
+    .board-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        direction: rtl;
+    }
+    .sidebar-card {
+        background: linear-gradient(160deg, #ffffff 0%, #f0f4ff 120%);
+        border-radius: 18px;
+        padding: 1.25rem;
+        border: 1px solid rgba(148,163,184,0.3);
+        box-shadow: 0 8px 24px rgba(37,99,235,0.08);
+    }
+    .sidebar-card h5 {
+        font-weight: 700;
+    }
     .kanban-board {
         display: flex;
         gap: 1rem;
@@ -20,6 +55,18 @@
         background: #f8f9fa;
         border-radius: 8px;
         border: 1px solid #dee2e6;
+    }
+    .kanban-column.column-dragging {
+        opacity: 0.6;
+    }
+    .kanban-column.column-drop-target {
+        outline: 2px dashed #2196f3;
+        box-shadow: 0 0 0 2px rgba(33,150,243,0.2);
+    }
+    @@media (max-width: 992px) {
+        .board-layout {
+            grid-template-columns: 1fr;
+        }
     }
     @@media (max-width: 768px) {
         .kanban-board {
@@ -94,6 +141,161 @@
         align-items: center;
         justify-content: center;
     }
+    .available-tasks-list {
+        max-height: 70vh;
+        overflow-y: auto;
+        border-radius: 12px;
+    }
+    .available-task-item {
+        border: 1px solid rgba(15,23,42,0.08);
+        border-radius: 14px;
+        padding: 0.9rem;
+        background: #fff;
+        margin-bottom: 0.7rem;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .available-task-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(15,23,42,0.08);
+    }
+    .quick-add-column-btn {
+        border-radius: 999px;
+        border: 1px solid rgba(37,99,235,0.2);
+        padding: 0.15rem 0.5rem;
+        background: rgba(37,99,235,0.08);
+        color: #2563eb;
+        transition: all 0.2s ease;
+    }
+    .quick-add-column-btn:hover {
+        background: #2563eb;
+        color: #fff;
+        box-shadow: 0 6px 16px rgba(37,99,235,0.2);
+    }
+    .quick-task-card {
+        border-radius: 20px;
+        border: none;
+        background: #ffffff;
+        box-shadow: 0 15px 35px rgba(15,23,42,0.08);
+        overflow: hidden;
+    }
+    .quick-task-card .card-header,
+    #quickTaskModal .modal-header {
+        background: linear-gradient(125deg, #2563eb, #4f46e5);
+        color: #fff;
+        padding: 1.25rem 1.5rem;
+        border: none;
+    }
+    .quick-task-card label,
+    #quickTaskModal label {
+        font-weight: 600;
+        color: #0f172a;
+    }
+    .helper-text {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-top: 0.25rem;
+    }
+    .issue-type-chips {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .chip-option {
+        border-radius: 999px;
+        border: 1px solid #cbd5f5;
+        padding: 0.35rem 1rem;
+        background: #fff;
+        color: #2563eb;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .chip-option.active {
+        background: #2563eb;
+        color: #fff;
+        border-color: #1d4ed8;
+        box-shadow: 0 6px 16px rgba(37,99,235,0.25);
+    }
+    .quick-task-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        color: #94a3b8;
+        font-size: 0.85rem;
+    }
+    .board-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 1rem;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 0.9rem 1.2rem;
+        box-shadow: 0 6px 18px rgba(15,23,42,0.05);
+    }
+    .toolbar-input,
+    .toolbar-select {
+        border-radius: 999px;
+        border: 1px solid #cbd5f5;
+        padding: 0.45rem 1rem;
+        min-width: 200px;
+        background: #f8fbff;
+    }
+    .toolbar-input:focus,
+    .toolbar-select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    }
+    .btn-toggle {
+        border-radius: 999px;
+        border: 1px solid #cbd5f5;
+        background: #fff;
+        color: #2563eb;
+        padding: 0.4rem 1rem;
+        transition: all 0.2s;
+    }
+    .btn-toggle.active {
+        background: #2563eb;
+        color: #fff;
+        border-color: #1d4ed8;
+        box-shadow: 0 6px 18px rgba(37,99,235,0.3);
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .stat-card {
+        border-radius: 16px;
+        padding: 1rem;
+        background: linear-gradient(145deg, #eff4ff, #ffffff);
+        border: 1px solid #e0e7ff;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+    .stat-card h6 {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-bottom: 0.4rem;
+    }
+    .stat-card .value {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+    .stat-card small {
+        color: #94a3b8;
+    }
+    .kanban-card[data-due-soon="true"] {
+        border-color: #f97316;
+        box-shadow: 0 0 0 1px rgba(249,115,22,0.2);
+    }
+    .kanban-card.filtered-out {
+        opacity: 0.35;
+        pointer-events: none;
+    }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -116,6 +318,14 @@
                 </button>
             </form>
         }
+        @if (Model.Status != SprintStatus.Completed)
+        {
+            <button type="button"
+                    class="btn btn-outline-success"
+                    onclick="openAddStatusModal()">
+                <i class="bi bi-columns-gap"></i> افزودن وضعیت
+            </button>
+        }
         <a class="btn btn-primary" href="/Projects/Details/@Model.ProjectId">
             <i class="bi bi-folder-open"></i> جزئیات پروژه
         </a>
@@ -125,9 +335,59 @@
     </div>
 </div>
 
+@if (Model.Status != SprintStatus.Completed)
+{
+    <div class="alert alert-info d-flex flex-wrap align-items-center gap-2 mt-3 rounded-pill px-4 py-2 shadow-sm">
+        <i class="bi bi-info-circle fs-5"></i>
+        <span>در طول اسپرینت می‌توانید ستون جدید اضافه کنید و با کشیدن سرستون هر وضعیت، ترتیب ستون‌ها را آزادانه تغییر دهید.</span>
+    </div>
+}
 
-<!-- تخته کانبان -->
-<div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
+
+<div class="board-layout">
+    <div class="board-main">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h6>پیشرفت اسپرینت</h6>
+                <div class="value">@Model.CompletionPercentage.ToString("F1")%</div>
+                <small>از @Model.TotalTasks تسک</small>
+            </div>
+            <div class="stat-card">
+                <h6>انجام شده</h6>
+                <div class="value text-success">@Model.CompletedTasks</div>
+                <small>تسک کامل شده</small>
+            </div>
+            <div class="stat-card">
+                <h6>در حال انجام</h6>
+                <div class="value text-primary">@Model.InProgressTasks</div>
+                <small>تمرکز فعلی تیم</small>
+            </div>
+            <div class="stat-card">
+                <h6>مسدود / معلق</h6>
+                <div class="value text-danger">@Model.BlockedTasks</div>
+                <small>نیازمند پیگیری</small>
+            </div>
+        </div>
+
+        <div class="board-toolbar">
+            <div class="flex-grow-1 d-flex gap-2">
+                <div class="flex-grow-1">
+                    <input type="text" id="boardSearchInput" class="form-control toolbar-input w-100" placeholder="جستجو در عنوان، مسئول یا کلید تسک">
+                </div>
+                <select id="statusFilterSelect" class="form-select toolbar-select">
+                    <option value="all">همه ستون‌ها</option>
+                    @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
+                    {
+                        <option value="@status.Id">@status.Name</option>
+                    }
+                </select>
+            </div>
+            <button type="button" id="dueSoonToggle" class="btn btn-toggle">
+                <i class="bi bi-alarm"></i> موعد نزدیک
+            </button>
+        </div>
+
+        <div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
     @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
     {
         <div class="kanban-column"
@@ -136,15 +396,43 @@
              ondragleave="onDragLeave(event)"
              ondrop="onDropIssue(event, @status.Id)"
              data-status-id="@status.Id">
-            <div class="kanban-column-header" style="background-color: @(status.Color ?? "#6c757d");">
-                @status.Name
-                <span class="badge bg-light text-dark ms-1">
-                    @{
-                        var count = Model.SprintIssues.Count(t =>
-                        (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id);
+            <div class="kanban-column-header d-flex justify-content-between align-items-center gap-2"
+                 style="background-color: @(status.Color ?? "#6c757d");"
+                 draggable="@(Model.Status != SprintStatus.Completed ? "true" : "false")"
+                 ondragstart="onColumnDragStart(event)"
+                 ondragend="onColumnDragEnd(event)">
+                <div class="d-flex align-items-center gap-2">
+                    <span>@status.Name</span>
+                    <span class="badge bg-light text-dark ms-1">
+                        @{
+                            var count = Model.SprintIssues.Count(t =>
+                            (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id);
+                        }
+                        @count
+                    </span>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    @if (Model.Status == SprintStatus.Active)
+                    {
+                        <button type="button"
+                                class="quick-add-column-btn"
+                                data-status-id="@status.Id"
+                                data-status-name="@status.Name"
+                                title="افزودن سریع به این ستون">
+                            <i class="bi bi-magic"></i>
+                        </button>
                     }
-                    @count
-                </span>
+                    @if (Model.Status != SprintStatus.Completed && !status.IsDefault && !status.IsFinal)
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-light text-danger"
+                                data-status-name="@status.Name"
+                                title="حذف وضعیت"
+                                onclick="event.preventDefault(); event.stopPropagation(); deleteStatus(@status.Id, this.dataset.statusName);">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    }
+                </div>
             </div>
             <div class="kanban-column-body drop-zone"
                  data-status-id="@status.Id">
@@ -158,17 +446,35 @@
                 {
                     foreach (var issue in cards)
                     {
+                        var dueDate = issue.DueDate;
+                        var dueSoonFlag = dueDate.HasValue && dueDate.Value >= DateTime.UtcNow && dueDate.Value <= DateTime.UtcNow.AddDays(3);
                         <div class="kanban-card"
                              draggable="true"
                              ondragstart="onDragIssue(event, @issue.Id)"
                              onclick="handleCardClick(event, @issue.Id)"
                              data-issue-id="@issue.Id"
+                             data-status-id="@status.Id"
+                             data-status-name="@status.Name"
+                             data-title="@issue.Title"
+                             data-assignee="@((issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص"))"
+                             data-key="@issue.IssueKey"
+                             data-due="@dueDate?.ToString("o")"
+                             data-due-soon="@dueSoonFlag.ToString().ToLower()"
                              style="cursor: pointer;">
 
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <span class="issue-key">@issue.IssueKey</span>
                                 <div class="d-flex align-items-center gap-1">
                                     <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
+                                    @if (Model.Status == SprintStatus.Active && finalStatus != null && status.Id != finalStatus.Id)
+                                    {
+                                        <button class="btn btn-sm btn-success p-0 px-1 complete-task-btn"
+                                                onclick="event.stopPropagation(); event.preventDefault(); completeTask(@issue.Id);"
+                                                title="خاتمه تسک"
+                                                style="font-size: 0.7rem; line-height: 1;">
+                                            <i class="bi bi-check-lg"></i>
+                                        </button>
+                                    }
                                     @if (Model.Status == SprintStatus.Active && issue.CanHaveChildren)
                                     {
                                         <button class="btn btn-sm btn-outline-primary p-0 px-1"
@@ -273,68 +579,6 @@
         </div>
     }
 </div>
-<!-- تسک‌های موجود برای اضافه شدن به اسپرینت -->
-@if (Model.Status == SprintStatus.Active)
-{
-    <div class="card mt-4">
-        <div class="card-header">
-            <h5 class="mb-0">تسک‌های موجود</h5>
-        </div>
-        <div class="card-body">
-            <div id="availableTasksContainer">
-                <p class="text-muted">در حال بارگذاری...</p>
-            </div>
-        </div>
-    </div>
-}
-
-
-<!-- بخش افزودن تسک سریع -->
-@if (Model.Status == SprintStatus.Active)
-{
-    <div class="card mb-4 border-primary">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">
-                <i class="bi bi-plus-circle"></i> افزودن تسک جدید
-            </h5>
-        </div>
-        <div class="card-body">
-            <form id="quickTaskForm" class="row g-3">
-                <div class="col-md-4">
-                    <label for="quickTaskTitle" class="form-label">عنوان <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="quickTaskTitle" required placeholder="عنوان تسک را وارد کنید">
-                </div>
-                <div class="col-md-2">
-                    <label for="quickTaskType" class="form-label">نوع</label>
-                    <select class="form-select" id="quickTaskType">
-                        <option value="@((int)IssueType.Task)" selected>تسک</option>
-                        <option value="@((int)IssueType.Story)">استوری</option>
-                        <option value="@((int)IssueType.Bug)">باگ</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="quickTaskCategory" class="form-label">دسته‌بندی</label>
-                    <select class="form-select" id="quickTaskCategory">
-                        <option value="">-- بدون دسته --</option>
-                        @{
-                            var categories = ViewBag.Categories as List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory> ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory>();
-                        }
-                        @foreach (var cat in categories)
-                        {
-                            <option value="@cat.Id">@cat.Name</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-plus-circle"></i> افزودن
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-}
-
 <!-- اطلاعات اسپرینت -->
 <div class="card mb-4">
     <div class="card-body">
@@ -386,6 +630,37 @@
             </div>
         </div>
     </div>
+        </div>
+    </div>
+
+    <aside class="board-sidebar">
+        @if (Model.Status == SprintStatus.Active)
+        {
+            <div class="sidebar-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="mb-1">تسک‌های آماده ورود</h5>
+                        <p class="text-muted mb-0 small">افزودن سریع بدون تغییر ستون‌ها</p>
+                    </div>
+                    <span class="badge text-bg-light text-primary fw-bold">
+                        <i class="bi bi-lightning-charge"></i>
+                    </span>
+                </div>
+                <div id="availableTasksContainer" class="available-tasks-list">
+                    <p class="text-muted">در حال بارگذاری...</p>
+                </div>
+            </div>
+        }
+
+        <div class="sidebar-card">
+            <h5 class="mb-3">نکات تمرکز</h5>
+            <ul class="list-unstyled text-muted small mb-0">
+                <li class="mb-2"><i class="bi bi-arrows-move"></i> سرستون‌ها را بکشید تا ترتیب ستون‌ها تغییر کند.</li>
+                <li class="mb-2"><i class="bi bi-columns-gap"></i> ستون‌های تازه را در لحظه با «افزودن وضعیت» بسازید.</li>
+                <li><i class="bi bi-lightbulb"></i> برای نظم بیشتر، تسک‌های آماده را فقط از این لیست اضافه کنید.</li>
+            </ul>
+        </div>
+    </aside>
 </div>
 
 
@@ -430,8 +705,113 @@
         </div>
     </div>
 </div>
+@if (Model.Status != SprintStatus.Completed)
+{
+    <div class="modal fade" id="addStatusModal" tabindex="-1" aria-labelledby="addStatusModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addStatusModalLabel">افزودن وضعیت جدید</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addStatusForm">
+                        <div class="mb-3">
+                            <label for="statusName" class="form-label">نام وضعیت <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="statusName" required placeholder="مثلاً بازبینی">
+                        </div>
+                        <div class="mb-3">
+                            <label for="statusColor" class="form-label">رنگ وضعیت</label>
+                            <input type="color" class="form-control form-control-color" id="statusColor" value="#0d6efd" title="رنگ وضعیت را انتخاب کنید">
+                        </div>
+                        <div class="mb-3">
+                            <label for="statusDescription" class="form-label">توضیحات</label>
+                            <textarea class="form-control" id="statusDescription" rows="3" placeholder="توضیح کوتاه برای این وضعیت"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="button" class="btn btn-primary" id="addStatusSubmitBtn" onclick="submitStatus()">
+                        <i class="bi bi-plus-circle"></i> ایجاد وضعیت
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
-
+@if (Model.Status == SprintStatus.Active)
+{
+    <div class="modal fade" id="quickTaskModal" tabindex="-1" aria-labelledby="quickTaskModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content quick-task-card">
+                <div class="modal-header d-flex flex-wrap gap-3">
+                    <div>
+                        <div class="text-uppercase small opacity-75">Quick Add</div>
+                        <h5 class="modal-title mb-0" id="quickTaskModalLabel">افزودن سریع تسک به اسپرینت</h5>
+                    </div>
+                    <div class="quick-task-meta text-end ms-auto">
+                        <span><i class="bi bi-lightning-charge-fill"></i> در کمتر از ۳۰ ثانیه</span>
+                        <span><i class="bi bi-journal-check"></i> به‌صورت خودکار به ستون شروع می‌رود</span>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-primary d-flex align-items-center gap-2 mb-4">
+                        <i class="bi bi-pin-angle"></i>
+                        <span>افزودن مستقیم به ستون: <strong id="quickTaskTargetDisplay">@defaultStatusName</strong></span>
+                    </div>
+                    <form id="quickTaskForm" class="row g-4 align-items-end">
+                        <div class="col-lg-6">
+                            <label for="quickTaskTitle" class="form-label">عنوان تسک <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-lg" id="quickTaskTitle" required placeholder="مثلاً گزارش خطای صفحه گزارش‌ها">
+                            <div class="helper-text">عنوان واضح بنویسید تا اعضا بدون باز کردن جزئیات متوجه شوند.</div>
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="form-label">نوع تسک</label>
+                            <div class="issue-type-chips" role="group" aria-label="انتخاب نوع تسک">
+                                <button type="button" class="chip-option active" data-issue-type="@((int)IssueType.Task)">
+                                    <i class="bi bi-check2-square me-1"></i> تسک
+                                </button>
+                                <button type="button" class="chip-option" data-issue-type="@((int)IssueType.Story)">
+                                    <i class="bi bi-columns-gap me-1"></i> استوری
+                                </button>
+                                <button type="button" class="chip-option" data-issue-type="@((int)IssueType.Bug)">
+                                    <i class="bi bi-bug me-1"></i> باگ
+                                </button>
+                            </div>
+                            <select class="form-select d-none" id="quickTaskType">
+                                <option value="@((int)IssueType.Task)" selected>تسک</option>
+                                <option value="@((int)IssueType.Story)">استوری</option>
+                                <option value="@((int)IssueType.Bug)">باگ</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-6">
+                            <label for="quickTaskCategory" class="form-label">دسته‌بندی</label>
+                            <select class="form-select form-select-lg" id="quickTaskCategory">
+                                <option value="">دسته‌ای انتخاب نشده است</option>
+                                @{
+                                    var categories = ViewBag.Categories as List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory> ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory>();
+                                }
+                                @foreach (var cat in categories)
+                                {
+                                    <option value="@cat.Id">@cat.Name</option>
+                                }
+                            </select>
+                            <div class="helper-text">بر اساس نوع کار، دسته‌بندی مناسب را انتخاب کنید (اختیاری).</div>
+                        </div>
+                        <div class="col-lg-6 text-lg-end">
+                            <button type="submit" class="btn btn-primary btn-lg px-4">
+                                <i class="bi bi-magic me-1"></i> ساخت و افزودن به اسپرینت
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @section Scripts {
     @Html.AntiForgeryToken()
@@ -441,8 +821,544 @@
         let isDragging = false;
         let mouseDownX = 0;
         let mouseDownY = 0;
+        let isColumnDragging = false;
+        let draggedColumnElement = null;
         const projectId = @(projectId ?? 0);
         const sprintId = @(sprintId ?? 0);
+        const canManageStatuses = @((Model.Status != SprintStatus.Completed).ToString().ToLower());
+        const defaultStatusId = @(defaultStatus?.Id ?? 0);
+        const defaultStatusName = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(defaultStatusName));
+        const finalStatusId = @(finalStatus?.Id ?? 0);
+        const finalStatusName = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(finalStatusName));
+        let quickTaskTargetStatusId = defaultStatusId;
+        let quickTaskTargetStatusName = defaultStatusName;
+        const boardFilters = {
+            text: '',
+            status: 'all',
+            dueSoon: false
+        };
+
+        function showNotification(message, type = 'success') {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const alertHtml = `
+                <div class="alert ${alertClass} alert-dismissible fade show position-fixed top-0 end-0 m-3" role="alert" style="z-index: 9999; min-width: 300px;">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            $('body').append(alertHtml);
+            
+            setTimeout(() => {
+                $('.alert').fadeOut(300, function() {
+                    $(this).remove();
+                });
+            }, 3000);
+        }
+
+        function evaluateDueSoon(card) {
+            const dueValue = card.dataset.due;
+            if (!dueValue) {
+                return false;
+            }
+            const dueDate = new Date(dueValue);
+            if (Number.isNaN(dueDate.getTime())) {
+                return false;
+            }
+            const now = new Date();
+            const diffHours = (dueDate.getTime() - now.getTime()) / 36e5;
+            return diffHours >= 0 && diffHours <= 72;
+        }
+
+        function applyBoardFilters() {
+            const text = boardFilters.text.trim().toLowerCase();
+            const status = boardFilters.status;
+            const dueSoon = boardFilters.dueSoon;
+
+            document.querySelectorAll('.kanban-card').forEach(card => {
+                if (!card.dataset.initializedDue) {
+                    card.dataset.initializedDue = 'true';
+                    card.dataset.dueSoon = card.dataset.dueSoon === 'true' ? 'true' : (evaluateDueSoon(card) ? 'true' : 'false');
+                } else if (dueSoon) {
+                    card.dataset.dueSoon = evaluateDueSoon(card) ? 'true' : 'false';
+                }
+
+                const title = (card.dataset.title || '').toLowerCase();
+                const assignee = (card.dataset.assignee || '').toLowerCase();
+                const key = (card.dataset.key || '').toLowerCase();
+
+                const matchesText = !text || title.includes(text) || assignee.includes(text) || key.includes(text);
+                const matchesStatus = status === 'all' || card.dataset.statusId === status;
+                const matchesDue = !dueSoon || card.dataset.dueSoon === 'true';
+
+                const visible = matchesText && matchesStatus && matchesDue;
+                card.classList.toggle('filtered-out', !visible);
+            });
+        }
+
+        function scrollToStatusColumn(statusId) {
+            if (!statusId || statusId === 'all') {
+                return;
+            }
+            const column = document.querySelector(`.kanban-column[data-status-id="${statusId}"]`);
+            column?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+
+        function registerBoardFilterEvents() {
+            const searchInput = document.getElementById('boardSearchInput');
+            const statusSelect = document.getElementById('statusFilterSelect');
+            const dueToggle = document.getElementById('dueSoonToggle');
+
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    boardFilters.text = e.target.value || '';
+                    applyBoardFilters();
+                });
+            }
+
+            if (statusSelect) {
+                statusSelect.addEventListener('change', (e) => {
+                    boardFilters.status = e.target.value || 'all';
+                    applyBoardFilters();
+                    scrollToStatusColumn(boardFilters.status);
+                });
+            }
+
+            if (dueToggle) {
+                dueToggle.addEventListener('click', () => {
+                    boardFilters.dueSoon = !boardFilters.dueSoon;
+                    dueToggle.classList.toggle('active', boardFilters.dueSoon);
+                    applyBoardFilters();
+                });
+            }
+        }
+
+        function setQuickTaskTarget(statusId, statusName) {
+            quickTaskTargetStatusId = statusId || defaultStatusId;
+            quickTaskTargetStatusName = statusName || defaultStatusName;
+            const targetDisplay = document.getElementById('quickTaskTargetDisplay');
+            if (targetDisplay) {
+                targetDisplay.textContent = quickTaskTargetStatusName;
+            }
+        }
+
+        function openQuickTaskModalForStatus(statusId, statusName) {
+            if (!statusId) {
+                showNotification('ستون انتخاب‌شده معتبر نیست', 'error');
+                return;
+            }
+            setQuickTaskTarget(statusId, statusName);
+            const modalElement = document.getElementById('quickTaskModal');
+            if (!modalElement) {
+                return;
+            }
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+            modalInstance.show();
+        }
+
+        function initQuickAddTypeChips() {
+            const hiddenSelect = document.getElementById('quickTaskType');
+            const chipButtons = document.querySelectorAll('.issue-type-chips .chip-option');
+            if (!hiddenSelect || !chipButtons.length) {
+                return;
+            }
+            chipButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    chipButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    hiddenSelect.value = btn.dataset.issueType;
+                });
+            });
+        }
+
+        function resetQuickTaskTypeChips() {
+            const chipButtons = document.querySelectorAll('.issue-type-chips .chip-option');
+            chipButtons.forEach(btn => {
+                btn.classList.toggle('active', btn === chipButtons[0]);
+            });
+            const hiddenSelect = document.getElementById('quickTaskType');
+            if (hiddenSelect && chipButtons.length) {
+                hiddenSelect.value = chipButtons[0]?.dataset.issueType || hiddenSelect.value;
+            }
+        }
+
+        function appendQuickTaskCard(task) {
+            if (!task || !task.statusId) {
+                return;
+            }
+            const columnBody = document.querySelector(`.kanban-column-body[data-status-id="${task.statusId}"]`);
+            if (!columnBody) {
+                return;
+            }
+
+            const emptyMessage = columnBody.querySelector('.empty-message');
+            if (emptyMessage) {
+                emptyMessage.remove();
+            }
+
+            const card = document.createElement('div');
+            card.className = 'kanban-card';
+            card.draggable = true;
+            card.dataset.issueId = task.id;
+            card.dataset.statusId = task.statusId;
+            card.dataset.statusName = task.statusName || '';
+            card.dataset.title = task.title || '';
+            card.dataset.assignee = 'نامشخص';
+            card.dataset.key = task.issueKey || '';
+            card.dataset.due = '';
+            card.dataset.dueSoon = 'false';
+            card.addEventListener('dragstart', (e) => onDragIssue(e, task.id));
+            card.addEventListener('click', (e) => handleCardClick(e, task.id));
+
+            const safeTitle = escapeHtml(task.title || '');
+            const safeKey = escapeHtml(task.issueKey || 'جدید');
+            const deleteTitleArgument = (task.title || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+            const canComplete = canManageStatuses && finalStatusId && targetStatusId !== finalStatusId;
+            const completeButtonHtml = canComplete ? `
+                <button class="btn btn-sm btn-success p-0 px-1 complete-task-btn"
+                        onclick="event.stopPropagation(); event.preventDefault(); completeTask(${task.id});"
+                        title="خاتمه تسک"
+                        style="font-size: 0.7rem; line-height: 1;">
+                    <i class="bi bi-check-lg"></i>
+                </button>` : '';
+
+            const actionButtons = canManageStatuses ? `
+                ${completeButtonHtml}
+                <button class="btn btn-sm btn-outline-warning p-0 px-1"
+                        onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(${task.id});"
+                        title="خارج کردن از اسپرینت"
+                        style="font-size: 0.7rem; line-height: 1;">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger p-0 px-1"
+                        onclick="event.stopPropagation(); event.preventDefault(); deleteTask(${task.id}, '${deleteTitleArgument}');"
+                        title="حذف تسک"
+                        style="font-size: 0.7rem; line-height: 1;">
+                    <i class="bi bi-trash"></i>
+                </button>` : '';
+
+            card.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="issue-key">${safeKey}</span>
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="issue-type-icon" title="Task">🆕</span>
+                        ${actionButtons}
+                    </div>
+                </div>
+                <div class="issue-title">${safeTitle}</div>
+                <div class="issue-meta">
+                    <div>👤 نامشخص</div>
+                </div>
+            `;
+
+            columnBody.prepend(card);
+            updateIssueCounts();
+        }
+
+        function escapeHtml(value) {
+            return (value ?? '').toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function ensureColumnHasEmptyMessage(columnBody) {
+            if (!columnBody) return;
+            if (columnBody.querySelector('.kanban-card')) {
+                return;
+            }
+            let emptyMessage = columnBody.querySelector('.empty-message');
+            if (!emptyMessage) {
+                emptyMessage = document.createElement('div');
+                emptyMessage.className = 'empty-message text-muted text-center small p-4';
+                emptyMessage.innerHTML = '<i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد';
+                columnBody.appendChild(emptyMessage);
+            } else {
+                emptyMessage.style.display = 'block';
+            }
+        }
+
+        function moveCardToColumn(card, targetStatusId, targetStatusName) {
+            if (!card || !targetStatusId) {
+                return false;
+            }
+            const columnBody = document.querySelector(`.kanban-column-body[data-status-id="${targetStatusId}"]`);
+            if (!columnBody) {
+                return false;
+            }
+
+            const emptyMessage = columnBody.querySelector('.empty-message');
+            if (emptyMessage) {
+                emptyMessage.remove();
+            }
+
+            const sourceColumn = card.closest('.kanban-column-body');
+            columnBody.prepend(card);
+            card.dataset.statusId = targetStatusId;
+            if (targetStatusName) {
+                card.dataset.statusName = targetStatusName;
+            }
+
+            const completeBtn = card.querySelector('.complete-task-btn');
+            if (completeBtn) {
+                if (targetStatusId === finalStatusId) {
+                    completeBtn.remove();
+                }
+            }
+
+            if (sourceColumn && sourceColumn !== columnBody) {
+                ensureColumnHasEmptyMessage(sourceColumn);
+            }
+
+            updateIssueCounts();
+            return true;
+        }
+
+        async function postJson(url, payload) {
+            let res;
+            try {
+                res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: JSON.stringify(payload)
+                });
+            } catch (networkError) {
+                throw new Error('خطا در ارتباط با سرور');
+            }
+
+            const text = await res.text();
+            let data = null;
+
+            if (text) {
+                try {
+                    data = JSON.parse(text);
+                } catch (err) {
+                    data = null;
+                }
+            }
+
+            if (!res.ok || (data && data.success === false)) {
+                throw new Error(data?.message || text || 'خطای ناشناخته');
+            }
+
+            return data || { success: true };
+        }
+
+        function resetDropZoneStyles() {
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.style.backgroundColor = '';
+                zone.style.borderColor = '';
+            });
+        }
+
+        function highlightColumnTarget(column, isActive) {
+            if (!column) return;
+            if (isActive) {
+                column.classList.add('column-drop-target');
+            } else {
+                column.classList.remove('column-drop-target');
+            }
+        }
+
+        function onColumnDragStart(e) {
+            if (!canManageStatuses) {
+                e.preventDefault();
+                return;
+            }
+            if (e.target.closest('button')) {
+                e.preventDefault();
+                return;
+            }
+
+            const column = e.currentTarget.closest('.kanban-column');
+            if (!column) {
+                return;
+            }
+
+            isColumnDragging = true;
+            draggedColumnElement = column;
+            column.classList.add('column-dragging');
+            if (e.dataTransfer) {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', 'column');
+            }
+        }
+
+        function onColumnDragEnd() {
+            if (draggedColumnElement) {
+                draggedColumnElement.classList.remove('column-dragging');
+                draggedColumnElement = null;
+            }
+            isColumnDragging = false;
+            document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('column-drop-target'));
+            resetDropZoneStyles();
+        }
+
+        function handleColumnDrop(targetColumn) {
+            if (!isColumnDragging || !draggedColumnElement || !targetColumn || draggedColumnElement === targetColumn) {
+                onColumnDragEnd();
+                return;
+            }
+
+            const board = document.getElementById('board');
+            if (!board) {
+                onColumnDragEnd();
+                return;
+            }
+
+            const columns = Array.from(board.children);
+            const dragIndex = columns.indexOf(draggedColumnElement);
+            const targetIndex = columns.indexOf(targetColumn);
+
+            if (dragIndex === -1 || targetIndex === -1) {
+                onColumnDragEnd();
+                return;
+            }
+
+            if (targetIndex < dragIndex) {
+                board.insertBefore(draggedColumnElement, targetColumn);
+            } else {
+                board.insertBefore(draggedColumnElement, targetColumn.nextElementSibling);
+            }
+
+            onColumnDragEnd();
+            persistColumnOrder();
+        }
+
+        async function persistColumnOrder() {
+            if (!canManageStatuses) {
+                return;
+            }
+
+            const columns = document.querySelectorAll('.kanban-column');
+            if (!columns.length) {
+                return;
+            }
+
+            const statusOrders = Array.from(columns)
+                .map((column, index) => ({
+                    statusId: parseInt(column.dataset.statusId, 10),
+                    order: index + 1
+                }))
+                .filter(item => !Number.isNaN(item.statusId));
+
+            if (!statusOrders.length) {
+                return;
+            }
+
+            try {
+                const data = await postJson('/WorkflowStatus/UpdateOrder', {
+                    sprintId: sprintId,
+                    statusOrders: statusOrders
+                });
+                showNotification(data.message || 'ترتیب ستون‌ها ذخیره شد', 'success');
+            } catch (error) {
+                showNotification(error.message || 'خطا در ذخیره ترتیب ستون‌ها', 'error');
+            }
+        }
+
+        function openAddStatusModal() {
+            if (!canManageStatuses) {
+                showNotification('اسپرینت تکمیل‌شده قابل ویرایش نیست', 'error');
+                return;
+            }
+
+            const modalElement = document.getElementById('addStatusModal');
+            if (!modalElement) {
+                return;
+            }
+
+            const nameInput = document.getElementById('statusName');
+            const descInput = document.getElementById('statusDescription');
+            const colorInput = document.getElementById('statusColor');
+            if (nameInput) nameInput.value = '';
+            if (descInput) descInput.value = '';
+            if (colorInput) {
+                colorInput.value = '#0d6efd';
+            }
+
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        }
+
+        async function submitStatus() {
+            if (!canManageStatuses) {
+                showNotification('اسپرینت تکمیل‌شده قابل ویرایش نیست', 'error');
+                return;
+            }
+
+            const nameInput = document.getElementById('statusName');
+            const colorInput = document.getElementById('statusColor');
+            const descInput = document.getElementById('statusDescription');
+            if (!nameInput) {
+                return;
+            }
+
+            const name = nameInput.value.trim();
+            if (!name) {
+                showNotification('نام وضعیت الزامی است', 'error');
+                nameInput.focus();
+                return;
+            }
+
+            const payload = {
+                sprintId: sprintId,
+                name: name,
+                color: colorInput?.value,
+                description: descInput?.value?.trim() || null
+            };
+
+            const submitBtn = document.getElementById('addStatusSubmitBtn');
+            const originalText = submitBtn?.innerHTML;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> در حال ثبت...';
+            }
+
+            try {
+                const data = await postJson('/WorkflowStatus/CreateInline', payload);
+                showNotification(data.message || 'وضعیت جدید ایجاد شد', 'success');
+                const modalElement = document.getElementById('addStatusModal');
+                if (modalElement) {
+                    bootstrap.Modal.getInstance(modalElement)?.hide();
+                }
+                setTimeout(() => location.reload(), 1000);
+            } catch (error) {
+                showNotification(error.message || 'خطا در ایجاد وضعیت', 'error');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText || '<i class="bi bi-plus-circle"></i> ایجاد وضعیت';
+                }
+            }
+        }
+
+        async function deleteStatus(statusId, statusName = '') {
+            if (!canManageStatuses) {
+                showNotification('اسپرینت تکمیل‌شده قابل ویرایش نیست', 'error');
+                return;
+            }
+
+            if (!statusId) {
+                return;
+            }
+
+            const confirmed = confirm(`آیا از حذف وضعیت "${statusName || ''}" مطمئن هستید؟\nتمام تسک‌های این وضعیت به وضعیت شروع منتقل می‌شوند.`);
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const data = await postJson('/WorkflowStatus/DeleteInline', { statusId });
+                showNotification(data.message || 'وضعیت حذف شد', 'success');
+                setTimeout(() => location.reload(), 800);
+            } catch (error) {
+                showNotification(error.message || 'خطا در حذف وضعیت', 'error');
+            }
+        }
 
         function onDragIssue(e, issueId) {
             isDragging = true;
@@ -506,6 +1422,10 @@
         }
 
         function onDragOverColumn(e) {
+            if (isColumnDragging) {
+                e.preventDefault();
+                return;
+            }
             e.preventDefault();
         }
 
@@ -523,15 +1443,30 @@
 
         function onDragEnter(e) {
             e.preventDefault();
+            if (isColumnDragging) {
+                highlightColumnTarget(e.currentTarget.closest('.kanban-column'), true);
+                return;
+            }
             highlightDropZone(e.currentTarget, true);
         }
 
         function onDragLeave(e) {
+            if (isColumnDragging) {
+                highlightColumnTarget(e.currentTarget.closest('.kanban-column'), false);
+                return;
+            }
             highlightDropZone(e.currentTarget, false);
         }
 
         async function onDropIssue(e, toStatusId) {
             e.preventDefault();
+            if (isColumnDragging) {
+                const columnElement = e.currentTarget.closest('.kanban-column');
+                highlightColumnTarget(columnElement, false);
+                handleColumnDrop(columnElement);
+                return;
+            }
+
             const dropZone = getDropZoneElement(e.currentTarget);
             if (dropZone) {
                 highlightDropZone(dropZone, false);
@@ -617,6 +1552,44 @@
             }
         }
 
+        async function completeTask(taskId) {
+            if (!taskId) return;
+            if (!finalStatusId) {
+                showNotification('ستون نهایی برای این اسپرینت تعریف نشده است', 'error');
+                return;
+            }
+
+            const card = document.querySelector(`.kanban-card[data-issue-id="${taskId}"]`);
+            const previousOpacity = card ? card.style.opacity : null;
+            if (card) {
+                card.style.opacity = '0.5';
+            }
+
+            try {
+                await postJson('/Tasks/MoveIssue', {
+                    taskId: taskId,
+                    toStatusId: finalStatusId,
+                    reason: 'تکمیل از طریق دکمه'
+                });
+
+                const moved = moveCardToColumn(card, finalStatusId, finalStatusName);
+                if (!moved) {
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    showNotification('تسک با موفقیت خاتمه یافت.', 'success');
+                }
+            } catch (error) {
+                showNotification(error.message || 'خطا در خاتمه تسک', 'error');
+                if (card) {
+                    card.style.opacity = previousOpacity ?? '1';
+                }
+            } finally {
+                if (card) {
+                    card.style.opacity = '1';
+                }
+            }
+        }
+
         function updateIssueCounts() {
             document.querySelectorAll('.kanban-column').forEach(column => {
                 const body = column.querySelector('.kanban-column-body');
@@ -628,37 +1601,77 @@
             });
         }
 
-        document.addEventListener('dragend', function(e) {
+        document.addEventListener('dragend', function() {
+            if (isColumnDragging) {
+                onColumnDragEnd();
+                return;
+            }
             isDragging = false;
             mouseDownX = 0;
             mouseDownY = 0;
-            document.querySelectorAll('.drop-zone').forEach(zone => {
-                zone.style.backgroundColor = '';
-                zone.style.borderColor = '';
-            });
+            resetDropZoneStyles();
+        });
+
+        document.addEventListener('click', function(e) {
+            const quickBtn = e.target.closest('.quick-add-column-btn');
+            if (quickBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const statusId = parseInt(quickBtn.dataset.statusId, 10);
+                openQuickTaskModalForStatus(statusId, quickBtn.dataset.statusName);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            registerBoardFilterEvents();
+            initQuickAddTypeChips();
+            applyBoardFilters();
+            const quickTaskModal = document.getElementById('quickTaskModal');
+            if (quickTaskModal) {
+                quickTaskModal.addEventListener('hidden.bs.modal', () => {
+                    setQuickTaskTarget(defaultStatusId, defaultStatusName);
+                    document.getElementById('quickTaskForm')?.reset();
+                    resetQuickTaskTypeChips();
+                });
+            }
+            
+            // اسکرول به ستون و highlight کارت جدید بعد از reload
+            const scrollToStatusId = sessionStorage.getItem('scrollToStatusAfterReload');
+            const highlightTaskId = sessionStorage.getItem('highlightTaskAfterReload');
+            
+            if (scrollToStatusId) {
+                setTimeout(function() {
+                    const column = document.querySelector(`.kanban-column[data-status-id="${scrollToStatusId}"]`);
+                    if (column) {
+                        column.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                        
+                        // highlight کارت جدید
+                        if (highlightTaskId) {
+                            const taskCard = document.querySelector(`.kanban-card[data-issue-id="${highlightTaskId}"]`);
+                            if (taskCard) {
+                                taskCard.style.transition = 'all 0.3s ease';
+                                taskCard.style.boxShadow = '0 0 20px rgba(37, 99, 235, 0.6)';
+                                taskCard.style.transform = 'scale(1.02)';
+                                
+                                setTimeout(function() {
+                                    taskCard.style.boxShadow = '';
+                                    taskCard.style.transform = '';
+                                }, 2000);
+                            }
+                        }
+                    }
+                    
+                    // پاک کردن sessionStorage
+                    sessionStorage.removeItem('scrollToStatusAfterReload');
+                    sessionStorage.removeItem('highlightTaskAfterReload');
+                }, 300);
+            }
         });
 
         // بارگذاری تسک‌های موجود (فقط برای اسپرینت فعال)
         @if (Model.Status == SprintStatus.Active)
         {
             <text>
-            function showNotification(message, type = 'success') {
-                const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-                const alertHtml = `
-                    <div class="alert ${alertClass} alert-dismissible fade show position-fixed top-0 end-0 m-3" role="alert" style="z-index: 9999; min-width: 300px;">
-                        ${message}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                `;
-                $('body').append(alertHtml);
-                
-                setTimeout(() => {
-                    $('.alert').fadeOut(300, function() {
-                        $(this).remove();
-                    });
-                }, 3000);
-            }
-
             function loadAvailableTasks() {
                 $.ajax({
                     url: '/Sprints/GetProjectTasks',
@@ -681,25 +1694,24 @@
                 const container = $('#availableTasksContainer');
                 
                 if (tasks.length === 0) {
-                    container.html('<p class="text-muted">تسک قابل اضافه شدن وجود ندارد.</p>');
+                    container.html('<p class="text-muted text-center py-3">تسک قابل اضافه شدن وجود ندارد.</p>');
                     return;
                 }
 
-                let html = '<div class="list-group">';
+                let html = '';
                 tasks.forEach(task => {
                     html += `
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">${task.title}</h6>
-                                <small class="text-muted">${task.categoryName} - ${task.assignedUserName}</small>
+                        <div class="available-task-item d-flex justify-content-between align-items-center gap-2">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-semibold">${task.title}</h6>
+                                <small class="text-muted d-block">${task.categoryName ?? 'بدون دسته'} • ${task.assignedUserName ?? 'تخصیص نیافته'}</small>
                             </div>
                             <button class="btn btn-sm btn-success" onclick="addTaskToSprint(${task.id})">
-                                <i class="bi bi-plus"></i> اضافه کردن
+                                <i class="bi bi-plus-lg"></i>
                             </button>
                         </div>
                     `;
                 });
-                html += '</div>';
                 
                 container.html(html);
             }
@@ -931,13 +1943,19 @@
                     return;
                 }
 
+                if (!quickTaskTargetStatusId) {
+                    showNotification('ابتدا ستونی را برای افزودن تسک انتخاب کنید', 'error');
+                    return;
+                }
+
                 const issueType = parseInt($('#quickTaskType').val());
                 const categoryId = $('#quickTaskCategory').val();
                 
                 const data = {
                     sprintId: sprintId,
                     title: title,
-                    issueType: issueType
+                    issueType: issueType,
+                    statusId: quickTaskTargetStatusId
                 };
                 
                 if (categoryId) {
@@ -960,16 +1978,29 @@
                     success: function(response) {
                         if (response.success) {
                             showNotification(response.message, 'success');
-                            // پاک کردن فرم
+                            const modalElement = document.getElementById('quickTaskModal');
+                            if (modalElement) {
+                                bootstrap.Modal.getInstance(modalElement)?.hide();
+                            }
                             $('#quickTaskTitle').val('');
-                            $('#quickTaskType').val('@((int)IssueType.Task)');
                             $('#quickTaskCategory').val('');
-                            // بارگذاری مجدد صفحه برای نمایش تسک جدید
-                            setTimeout(() => location.reload(), 1000);
+                            resetQuickTaskTypeChips();
+                            
+                            // ذخیره اطلاعات برای scroll بعد از reload
+                            const targetStatusId = response.statusId || quickTaskTargetStatusId;
+                            sessionStorage.setItem('scrollToStatusAfterReload', targetStatusId.toString());
+                            sessionStorage.setItem('highlightTaskAfterReload', response.taskId.toString());
+                            
+                            // رفرش بهینه صفحه با تاخیر کوتاه برای نمایش پیام موفقیت
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 800);
                         } else {
                             showNotification('خطا: ' + response.message, 'error');
                             submitBtn.prop('disabled', false).html(originalText);
+                            return;
                         }
+                        submitBtn.prop('disabled', false).html(originalText);
                     },
                     error: function(xhr) {
                         const errorMsg = xhr.responseJSON?.message || 'خطا در ارتباط با سرور';

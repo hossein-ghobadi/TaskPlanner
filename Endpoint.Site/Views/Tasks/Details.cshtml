@@ -7,24 +7,7 @@
         ? "Completed"
         : "Index";
     var pc = new System.Globalization.PersianCalendar();
-    
-    // تبدیل اعداد انگلیسی به فارسی
-    string ToPersianDigits(string englishNumber)
-    {
-        return englishNumber
-            .Replace("0", "۰")
-            .Replace("1", "۱")
-            .Replace("2", "۲")
-            .Replace("3", "۳")
-            .Replace("4", "۴")
-            .Replace("5", "۵")
-            .Replace("6", "۶")
-            .Replace("7", "۷")
-            .Replace("8", "۸")
-            .Replace("9", "۹");
-    }
-    
-    string ToJalali(DateTime d) => ToPersianDigits($"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}");
+    string ToJalali(DateTime d) => $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
     
     // تبدیل اعداد به حروف فارسی
     string ConvertToPersianWords(int number)
@@ -34,6 +17,7 @@
         string[] ones = { "", "یک", "دو", "سه", "چهار", "پنج", "شش", "هفت", "هشت", "نه", "ده", "یازده", "دوازده", "سیزده", "چهارده", "پانزده", "شانزده", "هفده", "هجده", "نوزده" };
         string[] tens = { "", "", "بیست", "سی", "چهل", "پنجاه", "شصت", "هفتاد", "هشتاد", "نود" };
         string[] hundreds = { "", "یکصد", "دویست", "سیصد", "چهارصد", "پانصد", "ششصد", "هفتصد", "هشتصد", "نهصد" };
+        string[] thousands = { "", "هزار", "میلیون", "میلیارد" };
         
         if (number < 20)
             return ones[number];
@@ -60,8 +44,7 @@
         {
             int thousand = number / 1000;
             int remainder = number % 1000;
-            string thousandWord = thousand == 1 ? "یک" : ConvertToPersianWords(thousand);
-            string result = thousandWord + " هزار";
+            string result = (thousand == 1 ? "" : ConvertToPersianWords(thousand) + " ") + thousands[1];
             if (remainder == 0)
                 return result;
             return result + " و " + ConvertToPersianWords(remainder);
@@ -610,7 +593,7 @@
                         <i class="bi bi-calendar-event"></i>
                         تاریخ شروع
                     </span>
-                    <span class="info-item-value">@ToJalali(Model.StartDate)</span>
+                    <span class="info-item-value">@ToJalaliWithWords(Model.StartDate)</span>
                 </div>
                 @if (Model.DueDate.HasValue)
                 {
@@ -619,7 +602,7 @@
                             <i class="bi bi-calendar-check"></i>
                             مهلت انجام
                         </span>
-                        <span class="info-item-value">@ToJalali(Model.DueDate.Value)</span>
+                        <span class="info-item-value">@ToJalaliWithWords(Model.DueDate.Value)</span>
                     </div>
                 }
                 @if (!string.IsNullOrEmpty(Model.AssignedUserId))
@@ -753,20 +736,13 @@
         }
     }
 
-    // تبدیل اعداد انگلیسی به فارسی
-    function toPersianDigits(str) {
-        const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-        return str.toString().replace(/\d/g, (digit) => persianDigits[parseInt(digit)]);
-    }
-
     // ساخت المان کامنت
     function createCommentElement(comment) {
         const div = document.createElement('div');
         div.className = `chat-message ${comment.isCurrentUser ? 'own' : 'other'}`;
         div.id = `comment-${comment.id}`;
         
-        const dateStr = new Date(comment.createdAt).toLocaleString('fa-IR');
-        const date = toPersianDigits(dateStr);
+        const date = new Date(comment.createdAt).toLocaleString('fa-IR');
         
         let attachmentsHtml = '';
         if (comment.attachments && comment.attachments.length > 0) {

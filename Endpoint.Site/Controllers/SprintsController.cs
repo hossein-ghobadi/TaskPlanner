@@ -2,7 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using System;
+using System.Data.Common;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.Security.Claims;
 using System.Text.Json;
 using TaskPlanner.Domain.Entities.Users;
@@ -31,7 +34,7 @@ namespace Endpoint.Site.Controllers
         public async Task<IActionResult> Index(int projectId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            
+
             // Debug: چک کردن userId
             if (string.IsNullOrEmpty(userId))
             {
@@ -41,7 +44,7 @@ namespace Endpoint.Site.Controllers
 
             // بررسی دسترسی به پروژه
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == projectId && 
+                .AnyAsync(p => p.Id == projectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -284,7 +287,7 @@ namespace Endpoint.Site.Controllers
             var hasAccess = await _context.Projects
                 .AnyAsync(p => p.Id == sprint.ProjectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
-            
+
             if (!hasAccess)
             {
                 return Json(new { success = false, message = "شما به این اسپرینت دسترسی ندارید." });
@@ -303,7 +306,7 @@ namespace Endpoint.Site.Controllers
                 {
                     var sprintTask = await _context.SprintTasks
                         .FirstOrDefaultAsync(st => st.SprintId == sprintId && st.TaskId == taskIds[i]);
-                    
+
                     if (sprintTask != null)
                     {
                         sprintTask.SprintPriority = i + 1; // اولویت از 1 شروع می‌شود
@@ -320,19 +323,19 @@ namespace Endpoint.Site.Controllers
             }
         }
 
-        
+
         // 📌 دریافت تسک‌های پروژه برای اضافه کردن به اسپرینت
         [HttpGet]
         public async Task<IActionResult> GetProjectTasks(int projectId, int sprintId)
         {
             Console.WriteLine($"[GetProjectTasks] projectId: {projectId}, sprintId: {sprintId}");
-            
+
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             Console.WriteLine($"[GetProjectTasks] userId: {userId}");
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == projectId && 
+                .AnyAsync(p => p.Id == projectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             Console.WriteLine($"[GetProjectTasks] hasAccess: {hasAccess}");
@@ -352,7 +355,7 @@ namespace Endpoint.Site.Controllers
             Console.WriteLine($"[GetProjectTasks] sprintTaskIds: {string.Join(",", sprintTaskIds)}");
 
             var availableTasks = await _context.TaskItems
-                .Where(t => t.ProjectId == projectId 
+                .Where(t => t.ProjectId == projectId
                     && !sprintTaskIds.Contains(t.Id)
                     && !t.IsCompleted // فقط تسک‌های انجام نشده
                     && t.IssueType != IssueType.Epic
@@ -474,7 +477,7 @@ namespace Endpoint.Site.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var sprint = await _context.Sprints
-                
+
                 .FirstOrDefaultAsync(s => s.Id == sprintId);
 
             if (sprint == null)
@@ -490,7 +493,7 @@ namespace Endpoint.Site.Controllers
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == sprint.ProjectId && 
+                .AnyAsync(p => p.Id == sprint.ProjectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -506,14 +509,14 @@ namespace Endpoint.Site.Controllers
             {
                 return Json(new { success = false, message = "تسک در اسپرینت یافت نشد." });
             }
-            
+
             try
             {
                 // Delete using SQL to avoid Entity Framework tracking issues
                 await _context.Database.ExecuteSqlRawAsync(
                     "DELETE FROM SprintTasks WHERE SprintId = {0} AND TaskId = {1}",
                     sprintId, taskId);
-                
+
                 // بازگشت اطلاعات به‌روز شده
                 var remainingTasks = await _context.SprintTasks
                     .Where(st => st.SprintId == sprintId)
@@ -525,9 +528,10 @@ namespace Endpoint.Site.Controllers
                         status = st.Status.ToString()
                     })
                     .ToListAsync();
-                
-                return Json(new { 
-                    success = true, 
+
+                return Json(new
+                {
+                    success = true,
                     message = "تسک با موفقیت از اسپرینت حذف شد.",
                     remainingTasks = remainingTasks
                 });
@@ -543,7 +547,7 @@ namespace Endpoint.Site.Controllers
         public async Task<IActionResult> CreateQuickTask([FromBody] JsonElement data)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
+            Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     1");
             if (!data.TryGetProperty("sprintId", out var sprintIdProp) || !data.TryGetProperty("title", out var titleProp))
             {
                 return Json(new { success = false, message = "اسپرینت و عنوان الزامی است." });
@@ -565,6 +569,7 @@ namespace Endpoint.Site.Controllers
             {
                 return Json(new { success = false, message = "اسپرینت یافت نشد." });
             }
+            Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     2");
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
@@ -582,112 +587,216 @@ namespace Endpoint.Site.Controllers
                 return Json(new { success = false, message = "فقط اسپرینت فعال می‌تواند تسک جدید داشته باشد." });
             }
 
-            var project = sprint.Project;
-            if (project == null)
+            const int maxRetries = 5;
+            for (int retry = 0; retry < maxRetries; retry++)
             {
-                project = await _context.Projects.FindAsync(sprint.ProjectId);
-            }
-
-            try
-            {
-                // تولید IssueKey
-                if (project != null)
+                await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                try
                 {
-                    _context.Entry(project).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
-                }
-                project = await _context.Projects.FindAsync(sprint.ProjectId);
+                    var projectInfo = await _context.Projects
+                        .Where(p => p.Id == sprint.ProjectId)
+                        .Select(p => new { p.IssueKeyPrefix })
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync();
+                    Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     3 - Retry: {retry}");
 
-                if (project == null)
-                {
-                    return Json(new { success = false, message = "پروژه یافت نشد." });
-                }
+                    if (projectInfo == null)
+                    {
+                        await transaction.RollbackAsync();
+                        return Json(new { success = false, message = "پروژه یافت نشد." });
+                    }
 
-                string generatedIssueKey = project.GenerateNextIssueKey();
-                bool keyExists = await _context.TaskItems
-                    .AnyAsync(t => t.IssueKey == generatedIssueKey);
+                    var connection = _context.Database.GetDbConnection();
+                    if (connection.State != System.Data.ConnectionState.Open)
+                    {
+                        await connection.OpenAsync();
+                    }
 
-                if (keyExists)
-                {
-                    project.LastIssueNumber++;
-                    generatedIssueKey = project.GenerateNextIssueKey();
-                }
+                    await using var command = connection.CreateCommand();
+                    var relationalTransaction = (transaction as IInfrastructure<DbTransaction>)?.Instance;
+                    if (relationalTransaction == null)
+                    {
+                        throw new InvalidOperationException("تراکنش پایگاه داده در دسترس نیست.");
+                    }
+                    command.Transaction = relationalTransaction;
 
-                // دریافت categoryId (اختیاری)
-                int? categoryId = null;
-                if (data.TryGetProperty("categoryId", out var catProp) && catProp.ValueKind == JsonValueKind.Number)
-                {
-                    categoryId = catProp.GetInt32();
-                    if (categoryId <= 0) categoryId = null;
-                }
+                    // پیدا کردن شماره منحصر به فرد با استفاده از loop
+                    int newIssueNumber = 0;
+                    string generatedIssueKey = null;
+                    int maxAttempts = 10; // حداکثر 10 تلاش برای پیدا کردن شماره منحصر به فرد
+                    
+                    for (int attempt = 0; attempt < maxAttempts; attempt++)
+                    {
+                        // دریافت و افزایش LastIssueNumber به صورت atomic
+                        command.CommandText = @"UPDATE Projects SET LastIssueNumber = LastIssueNumber + 1 OUTPUT INSERTED.LastIssueNumber WHERE Id = @projectId;";
+                        command.Parameters.Clear();
+                        var projectIdParam = command.CreateParameter();
+                        projectIdParam.ParameterName = "@projectId";
+                        projectIdParam.Value = sprint.ProjectId;
+                        command.Parameters.Add(projectIdParam);
 
-                // دریافت IssueType (پیش‌فرض: Task)
-                IssueType issueType = IssueType.Task;
-                if (data.TryGetProperty("issueType", out var issueTypeProp) && issueTypeProp.ValueKind == JsonValueKind.Number)
-                {
-                    issueType = (IssueType)issueTypeProp.GetInt32();
-                }
+                        var scalarResult = await command.ExecuteScalarAsync();
+                        if (scalarResult == null || scalarResult == DBNull.Value)
+                        {
+                            throw new InvalidOperationException("امکان تولید IssueKey وجود ندارد.");
+                        }
 
-                // ساخت تسک جدید
-                var newTask = new TaskItem
-                {
-                    Title = title,
-                    Description = data.TryGetProperty("description", out var descProp) ? descProp.GetString() : null,
-                    IssueType = issueType,
-                    IssueKey = generatedIssueKey,
-                    StartDate = DateTime.Today,
-                    DueDate = null,
-                    ProjectId = sprint.ProjectId,
-                    CategoryId = categoryId,
-                    AssignedUserId = data.TryGetProperty("assignedUserId", out var assignedProp) && !string.IsNullOrEmpty(assignedProp.GetString()) ? assignedProp.GetString() : null,
-                    StoryPoints = data.TryGetProperty("storyPoints", out var spProp) && spProp.ValueKind == JsonValueKind.Number ? spProp.GetInt32() : null,
-                    IsCompleted = false,
-                    CreatedByUserId = userId,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
+                        newIssueNumber = Convert.ToInt32(scalarResult);
+                        generatedIssueKey = $"{projectInfo.IssueKeyPrefix}-{newIssueNumber}";
+                        
+                        // بررسی اینکه آیا این IssueKey قبلاً وجود دارد
+                        command.CommandText = @"SELECT COUNT(*) FROM TaskItems WHERE IssueKey = @issueKey;";
+                        command.Parameters.Clear();
+                        var issueKeyParam = command.CreateParameter();
+                        issueKeyParam.ParameterName = "@issueKey";
+                        issueKeyParam.Value = generatedIssueKey;
+                        command.Parameters.Add(issueKeyParam);
 
-                _context.TaskItems.Add(newTask);
-                project.LastIssueNumber = project.LastIssueNumber;
-                _context.Projects.Update(project);
-                await _context.SaveChangesAsync();
+                        var countResult = await command.ExecuteScalarAsync();
+                        var exists = Convert.ToInt32(countResult) > 0;
+                        
+                        if (!exists)
+                        {
+                            // شماره منحصر به فرد پیدا شد
+                            Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     Generated unique IssueKey: {generatedIssueKey} (Retry: {retry}, Attempt: {attempt})");
+                            break;
+                        }
+                        
+                        Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     IssueKey {generatedIssueKey} already exists, trying next number... (Attempt: {attempt})");
+                        
+                        // اگر آخرین تلاش بود و هنوز duplicate بود، خطا بده
+                        if (attempt == maxAttempts - 1)
+                        {
+                            throw new InvalidOperationException($"نمی‌توان شماره منحصر به فرد برای IssueKey پیدا کرد پس از {maxAttempts} تلاش.");
+                        }
+                    }
 
-                // اضافه کردن به اسپرینت
-                var sprintTask = new SprintTask
-                {
-                    SprintId = sprintId,
-                    TaskId = newTask.Id,
-                    AddedAt = DateTime.UtcNow,
-                    AddedByUserId = userId,
-                    Status = SprintTaskStatus.Pending,
-                    SprintPriority = (int)TaskPriority.Medium
-                };
+                    // دریافت categoryId (اختیاری)
+                    int? categoryId = null;
+                    if (data.TryGetProperty("categoryId", out var catProp) && catProp.ValueKind == JsonValueKind.Number)
+                    {
+                        categoryId = catProp.GetInt32();
+                        if (categoryId <= 0) categoryId = null;
+                    }
+                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     4");
 
-                _context.SprintTasks.Add(sprintTask);
-                await _context.SaveChangesAsync();
+                    // دریافت IssueType (پیش‌فرض: Task)
+                    IssueType issueType = IssueType.Task;
+                    if (data.TryGetProperty("issueType", out var issueTypeProp) && issueTypeProp.ValueKind == JsonValueKind.Number)
+                    {
+                        issueType = (IssueType)issueTypeProp.GetInt32();
+                    }
 
-                // تعیین وضعیت پیش‌فرض (اولین وضعیت Todo)
-                var defaultStatus = await _context.WorkflowStatuses
-                    .Where(ws => ws.SprintId == sprintId && ws.IsDefault)
-                    .FirstOrDefaultAsync();
+                    WorkflowStatus? targetStatus = null;
+                    if (data.TryGetProperty("statusId", out var statusProp) && statusProp.ValueKind == JsonValueKind.Number)
+                    {
+                        var requestedStatusId = statusProp.GetInt32();
+                        targetStatus = await _context.WorkflowStatuses
+                            .FirstOrDefaultAsync(ws => ws.Id == requestedStatusId && ws.SprintId == sprintId);
+                    }
+                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     5");
 
-                if (defaultStatus != null)
-                {
-                    newTask.StatusId = defaultStatus.Id;
+                    if (targetStatus == null)
+                    {
+                        targetStatus = await _context.WorkflowStatuses
+                            .Where(ws => ws.SprintId == sprintId)
+                            .OrderBy(ws => ws.IsDefault ? 0 : ws.Order)
+                            .FirstOrDefaultAsync();
+                    }
+
+                    var targetStatusId = targetStatus?.Id;
+                    var targetStatusName = targetStatus?.Name;
+                    var isFinalStatus = targetStatus?.IsFinal == true;
+
+                    var newTask = new TaskItem
+                    {
+                        Title = title,
+                        Description = data.TryGetProperty("description", out var descProp) ? descProp.GetString() : null,
+                        IssueType = issueType,
+                        IssueKey = generatedIssueKey,
+                        StartDate = DateTime.Today,
+                        DueDate = null,
+                        ProjectId = sprint.ProjectId,
+                        CategoryId = categoryId,
+                        AssignedUserId = data.TryGetProperty("assignedUserId", out var assignedProp) && !string.IsNullOrWhiteSpace(assignedProp.GetString()) ? assignedProp.GetString() : null,
+                        StoryPoints = data.TryGetProperty("storyPoints", out var spProp) && spProp.ValueKind == JsonValueKind.Number ? spProp.GetInt32() : null,
+                        StatusId = targetStatusId,
+                        WorkflowStatusId = targetStatusId,
+                        IsCompleted = isFinalStatus,
+                        SprintId = sprintId,
+                        CreatedByUserId = userId,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     6");
+
+                    _context.TaskItems.Add(newTask);
+                    
+                    // ابتدا تسک را ذخیره می‌کنیم تا Id تولید شود
                     await _context.SaveChangesAsync();
-                }
+                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     6.5 - Task saved, Id: " + newTask.Id);
 
-                return Json(new
+                    // حالا که Id تولید شده، SprintTask را می‌سازیم
+                    var sprintTask = new SprintTask
+                    {
+                        SprintId = sprintId,
+                        TaskId = newTask.Id,
+                        AddedAt = DateTime.UtcNow,
+                        AddedByUserId = userId,
+                        Status = isFinalStatus ? SprintTaskStatus.Completed : SprintTaskStatus.Pending,
+                        SprintPriority = (int)TaskPriority.Medium
+                    };
+
+                    _context.SprintTasks.Add(sprintTask);
+                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     7");
+
+                    // ذخیره SprintTask
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     8");
+
+                    return Json(new
+                    {
+                        success = true,
+                        message = "تسک با موفقیت ایجاد و به اسپرینت اضافه شد.",
+                        taskId = newTask.Id,
+                        issueKey = newTask.IssueKey,
+                        statusId = targetStatusId,
+                        statusName = targetStatusName
+                    });
+                }
+                catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx &&
+                                                   sqlEx.Number == 2601 &&
+                                                   retry < maxRetries - 1)
                 {
-                    success = true,
-                    message = "تسک با موفقیت ایجاد و به اسپرینت اضافه شد.",
-                    taskId = newTask.Id,
-                    issueKey = newTask.IssueKey
-                });
+                    Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     Duplicate key error on retry {retry}: {sqlEx.Message}");
+                    await transaction.RollbackAsync();
+                    // افزایش تاخیر برای هر retry
+                    await Task.Delay(100 * (retry + 1));
+                    continue;
+                }
+                catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx &&
+                                                   sqlEx.Number == 2601)
+                {
+                    // آخرین retry و هنوز duplicate key
+                    await transaction.RollbackAsync();
+                    Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     Final duplicate key error: {sqlEx.Message}");
+                    return Json(new { success = false, message = "خطا در ایجاد تسک: کلید تکراری. لطفاً دوباره امتحان کنید." });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     General error: {ex.Message}");
+                    if (ex.InnerException != null)
+                    {
+                        Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     Inner exception: {ex.InnerException.Message}");
+                    }
+                    var detailedMessage = ex.InnerException?.Message ?? ex.Message;
+                    return Json(new { success = false, message = "خطا در ایجاد تسک: " + detailedMessage });
+                }
             }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = "خطا در ایجاد تسک: " + ex.Message });
-            }
+
+            return Json(new { success = false, message = "خطا در ایجاد تسک پس از چندین تلاش. لطفاً دوباره امتحان کنید." });
         }
 
         // 📌 تغییر وضعیت تسک در اسپرینت
@@ -707,7 +816,7 @@ namespace Endpoint.Site.Controllers
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == sprint.ProjectId && 
+                .AnyAsync(p => p.Id == sprint.ProjectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -728,7 +837,7 @@ namespace Endpoint.Site.Controllers
             {
                 // Update using SQL to avoid Entity Framework tracking issues
                 var completedAt = status == SprintTaskStatus.Completed ? DateTime.UtcNow : (DateTime?)null;
-                
+
                 if (completedAt.HasValue)
                 {
                     await _context.Database.ExecuteSqlRawAsync(
@@ -758,7 +867,7 @@ namespace Endpoint.Site.Controllers
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == projectId && 
+                .AnyAsync(p => p.Id == projectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -786,11 +895,11 @@ namespace Endpoint.Site.Controllers
         {
             Console.WriteLine($"[Create POST] Received - Name: {vm.Name}, ProjectId: {vm.ProjectId}");
             Console.WriteLine($"[Create POST] StartDate (initial): {vm.StartDate}, EndDate (initial): {vm.EndDate}");
-            
+
             // بررسی اینکه آیا اسپرینت فعال وجود دارد
             var hasActiveSprint = await _context.Sprints
-                .AnyAsync(s => s.ProjectId == vm.ProjectId && (s.Status == SprintStatus.Active|| s.Status == SprintStatus.Planning));
-            
+                .AnyAsync(s => s.ProjectId == vm.ProjectId && (s.Status == SprintStatus.Active || s.Status == SprintStatus.Planning));
+
             if (hasActiveSprint)
             {
                 Console.WriteLine("[Create POST] Active sprint exists");
@@ -802,7 +911,7 @@ namespace Endpoint.Site.Controllers
             bool startDateParsed = false;
             string? startDateFormValue = Request.Form["StartDate"].ToString();
             Console.WriteLine($"[Create POST] StartDate from form: '{startDateFormValue}'");
-            
+
             if (Request.Form.ContainsKey("StartDate") && !string.IsNullOrWhiteSpace(startDateFormValue))
             {
                 // Try to parse as Gregorian date first (format: YYYY-MM-DD from Persian datepicker altFormat)
@@ -835,7 +944,7 @@ namespace Endpoint.Site.Controllers
             {
                 Console.WriteLine("[Create POST] StartDate field not found or empty in form");
             }
-            
+
             if (startDateParsed)
             {
                 ModelState.Remove("StartDate");
@@ -848,7 +957,7 @@ namespace Endpoint.Site.Controllers
             bool endDateParsed = false;
             string? endDateFormValue = Request.Form["EndDate"].ToString();
             Console.WriteLine($"[Create POST] EndDate from form: '{endDateFormValue}'");
-            
+
             if (Request.Form.ContainsKey("EndDate") && !string.IsNullOrWhiteSpace(endDateFormValue))
             {
                 // Try to parse as Gregorian date first
@@ -881,7 +990,7 @@ namespace Endpoint.Site.Controllers
             {
                 Console.WriteLine("[Create POST] EndDate field not found or empty in form");
             }
-            
+
             if (endDateParsed)
             {
                 ModelState.Remove("EndDate");
@@ -918,7 +1027,7 @@ namespace Endpoint.Site.Controllers
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == vm.ProjectId && 
+                .AnyAsync(p => p.Id == vm.ProjectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -948,34 +1057,34 @@ namespace Endpoint.Site.Controllers
 
                 Console.WriteLine($"[Create POST] Sprint object created. Adding to context...");
                 _context.Sprints.Add(sprint);
-                
+
                 Console.WriteLine($"[Create POST] Saving changes...");
                 await _context.SaveChangesAsync();
-                
+
                 Console.WriteLine($"[Create POST] Sprint created successfully with Id: {sprint.Id}");
 
                 // ایجاد وضعیت‌های پیش‌فرض برای اسپرینت
                 var defaultStatuses = new[]
                 {
-                    new WorkflowStatus 
-                    { 
-                        Name = "باید انجام شود", 
-                        Type = WorkflowType.Todo, 
-                        Order = 1, 
-                        Color = "#6c757d", 
-                        ProjectId = sprint.ProjectId, 
-                        SprintId = sprint.Id, 
+                    new WorkflowStatus
+                    {
+                        Name = "باید انجام شود",
+                        Type = WorkflowType.Todo,
+                        Order = 1,
+                        Color = "#6c757d",
+                        ProjectId = sprint.ProjectId,
+                        SprintId = sprint.Id,
                         IsDefault = true,
                         CreatedAt = DateTime.UtcNow
                     },
-                    new WorkflowStatus 
-                    { 
-                        Name = "انجام شده", 
-                        Type = WorkflowType.Done, 
-                        Order = 2, 
-                        Color = "#198754", 
-                        ProjectId = sprint.ProjectId, 
-                        SprintId = sprint.Id, 
+                    new WorkflowStatus
+                    {
+                        Name = "انجام شده",
+                        Type = WorkflowType.Done,
+                        Order = 2,
+                        Color = "#198754",
+                        ProjectId = sprint.ProjectId,
+                        SprintId = sprint.Id,
                         IsFinal = true,
                         CreatedAt = DateTime.UtcNow
                     }
@@ -995,12 +1104,12 @@ namespace Endpoint.Site.Controllers
                 Console.WriteLine($"[Create POST] ERROR creating sprint: {ex.Message}");
                 Console.WriteLine($"[Create POST] ERROR Type: {ex.GetType().Name}");
                 Console.WriteLine($"[Create POST] ERROR Stack trace: {ex.StackTrace}");
-                
+
                 if (ex.InnerException != null)
                 {
                     Console.WriteLine($"[Create POST] ERROR InnerException: {ex.InnerException.Message}");
                 }
-                
+
                 TempData["Error"] = $"خطا در ایجاد اسپرینت: {ex.Message}";
                 var project = await _context.Projects.FindAsync(vm.ProjectId);
                 ViewBag.ProjectName = project?.Name;
@@ -1026,7 +1135,7 @@ namespace Endpoint.Site.Controllers
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == sprint.ProjectId && 
+                .AnyAsync(p => p.Id == sprint.ProjectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -1129,7 +1238,7 @@ namespace Endpoint.Site.Controllers
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == sprint.ProjectId && 
+                .AnyAsync(p => p.Id == sprint.ProjectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -1172,7 +1281,7 @@ namespace Endpoint.Site.Controllers
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == sprint.ProjectId && 
+                .AnyAsync(p => p.Id == sprint.ProjectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -1202,7 +1311,7 @@ namespace Endpoint.Site.Controllers
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == sprint.ProjectId && 
+                .AnyAsync(p => p.Id == sprint.ProjectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -1228,7 +1337,7 @@ namespace Endpoint.Site.Controllers
 
             // حذف تسک‌های اسپرینت
             _context.SprintTasks.RemoveRange(sprint.SprintTasks);
-            
+
             // حذف اسپرینت
             _context.Sprints.Remove(sprint);
             await _context.SaveChangesAsync();
@@ -1256,7 +1365,7 @@ namespace Endpoint.Site.Controllers
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == sprint.ProjectId && 
+                .AnyAsync(p => p.Id == sprint.ProjectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -1272,8 +1381,8 @@ namespace Endpoint.Site.Controllers
                 {
                     // بررسی اینکه آیا قبلاً اسپرینت فعالی در این پروژه وجود دارد
                     var hasActiveSprint = await _context.Sprints
-                        .AnyAsync(s => s.ProjectId == sprint.ProjectId 
-                            && s.Id != id 
+                        .AnyAsync(s => s.ProjectId == sprint.ProjectId
+                            && s.Id != id
                             && s.Status == SprintStatus.Active);
 
                     if (hasActiveSprint)
