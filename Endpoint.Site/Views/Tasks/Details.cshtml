@@ -593,7 +593,7 @@
                         <i class="bi bi-calendar-event"></i>
                         تاریخ شروع
                     </span>
-                    <span class="info-item-value">@ToJalaliWithWords(Model.StartDate)</span>
+                    <span class="info-item-value">@ToJalali(Model.StartDate)</span>
                 </div>
                 @if (Model.DueDate.HasValue)
                 {
@@ -602,7 +602,7 @@
                             <i class="bi bi-calendar-check"></i>
                             مهلت انجام
                         </span>
-                        <span class="info-item-value">@ToJalaliWithWords(Model.DueDate.Value)</span>
+                        <span class="info-item-value">@ToJalali(Model.DueDate.Value)</span>
                     </div>
                 }
                 @if (!string.IsNullOrEmpty(Model.AssignedUserId))

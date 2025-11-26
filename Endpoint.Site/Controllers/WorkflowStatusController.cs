@@ -698,20 +698,60 @@ namespace Endpoint.Site.Controllers
 
             var defaultStatus = remainingStatuses.FirstOrDefault(s => s.IsDefault) ?? remainingStatuses.First();
 
-            var tasks = await _context.TaskItems
-                .Where(t => (t.WorkflowStatusId == status.Id || t.StatusId == status.Id) && t.SprintId == sprintId)
-                .ToListAsync();
-
-            foreach (var task in tasks)
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                task.WorkflowStatusId = defaultStatus.Id;
-                task.StatusId = defaultStatus.Id;
+                var affectedTasks = await _context.TaskItems
+                    .Include(t => t.SprintTasks)
+                    .Where(t =>
+                        t.SprintId == sprintId &&
+                        (t.WorkflowStatusId == status.Id || t.StatusId == status.Id))
+                    .ToListAsync();
+
+                if (affectedTasks.Any())
+                {
+                    // خارج کردن تسک‌ها از اسپرینت و حذف ارتباط آن‌ها با SprintTasks
+                    var taskIds = affectedTasks.Select(t => t.Id).ToList();
+
+                    var sprintTasks = await _context.SprintTasks
+                        .Where(st => st.SprintId == sprintId && taskIds.Contains(st.TaskId))
+                        .ToListAsync();
+
+                    _context.SprintTasks.RemoveRange(sprintTasks);
+
+                    foreach (var task in affectedTasks)
+                    {
+                        task.SprintId = null;
+                        task.WorkflowStatusId = null;
+                        task.StatusId = null;
+                    }
+                }
+
+                // حذف تاریخچه‌هایی که به این وضعیت اشاره دارند تا محدودیت FK نقض نشود
+                var histories = await _context.IssueStatusHistories
+                    .Where(h => h.FromStatusId == status.Id || h.ToStatusId == status.Id)
+                    .ToListAsync();
+
+                if (histories.Any())
+                {
+                    _context.IssueStatusHistories.RemoveRange(histories);
+                }
+
+                _context.WorkflowStatuses.Remove(status);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                var responseMessage = affectedTasks.Any()
+                    ? "وضعیت حذف شد و تسک‌های مرتبط از اسپرینت خارج شدند."
+                    : "وضعیت با موفقیت حذف شد.";
+
+                return Ok(new { success = true, message = responseMessage });
             }
-
-            _context.WorkflowStatuses.Remove(status);
-            await _context.SaveChangesAsync();
-
-            return Ok(new { success = true, message = "وضعیت با موفقیت حذف شد" });
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { success = false, message = "خطا در حذف وضعیت: " + ex.Message });
+            }
         }
 
         // به‌روزرسانی ترتیب وضعیت‌ها
