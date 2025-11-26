@@ -12,7 +12,7 @@ namespace TaskPlanner.Application.Services.TaskPlanner
         private readonly ILogger<VoiceUploader> _logger;
         private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
-        private const string UploadUrl = "https://shidatis.ir/api/upload/voice"; // URL مخصوص فایل‌های صوتی
+        private const string UploadUrl = "https://shidatis.com/api/upload/voice"; // URL مخصوص فایل‌های صوتی
 
         public VoiceUploader(IHttpClientFactory httpClientFactory, ILogger<VoiceUploader> logger)
         {

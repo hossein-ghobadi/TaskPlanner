@@ -12,7 +12,7 @@ namespace TaskPlanner.Application.Services.TaskPlanner
         private readonly ILogger<ImageUploader> _logger;
         private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
-        private const string UploadUrl = "https://shidatis.ir/api/upload/image";
+        private const string UploadUrl = "https://shidatis.com/api/upload/image";
         //private const string UploadUrl = "https://tabloradin.com//api/image-upload?type=TryOn";// URL مخصوص تصاویر
 
         public ImageUploader(IHttpClientFactory httpClientFactory, ILogger<ImageUploader> logger)

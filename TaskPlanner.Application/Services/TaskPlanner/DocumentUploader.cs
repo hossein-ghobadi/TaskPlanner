@@ -12,7 +12,7 @@ namespace TaskPlanner.Application.Services.TaskPlanner
         private readonly ILogger<DocumentUploader> _logger;
         private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
-        private const string UploadUrl = "https://shidatis.ir/api/upload/file"; // URL مخصوص اسناد
+        private const string UploadUrl = "https://shidatis.com/api/upload/file"; // URL مخصوص اسناد
 
         public DocumentUploader(IHttpClientFactory httpClientFactory, ILogger<DocumentUploader> logger)
         {
