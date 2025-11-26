@@ -33,6 +33,7 @@ namespace TaskPlanner.Application.Interfaces.Contexts
         DbSet<WorkflowTransition> WorkflowTransitions { get; set; }
         DbSet<IssueStatusHistory> IssueStatusHistories { get; set; }
         DbSet<Notification> Notifications { get; set; }
+        DbSet<ProjectIssueType> ProjectIssueTypes { get; set; }
 
 
         void MarkAsModified<T>(T entity) where T : class;

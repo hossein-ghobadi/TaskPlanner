@@ -24,6 +24,87 @@ namespace TaskPlanner.Application.Services.ProjectService
             _notificationService = notificationService;
         }
 
+        private async Task EnsureDefaultIssueTypesAsync(Project project, string creatorUserId)
+        {
+            if (project == null)
+            {
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            var existingBaseTypes = await _context.ProjectIssueTypes
+                .Where(p => p.ProjectId == project.Id && !p.IsCustom)
+                .Select(p => p.BaseType)
+                .ToListAsync();
+
+            var defaults = new List<ProjectIssueType>();
+
+            if (!existingBaseTypes.Contains(IssueType.Story))
+            {
+                defaults.Add(new ProjectIssueType
+                {
+                    ProjectId = project.Id,
+                    Name = "استوری",
+                    Description = "نوع پیش‌فرض استوری",
+                    Icon = "📝",
+                    Color = "#10B981",
+                    Order = 1,
+                    BaseType = IssueType.Story,
+                    IsCustom = false,
+                    CanAddToSprint = true,
+                    CanHaveChildren = true,
+                    IncludeInReports = true,
+                    CreatedByUserId = creatorUserId,
+                    CreatedAt = now
+                });
+            }
+
+            if (!existingBaseTypes.Contains(IssueType.Task))
+            {
+                defaults.Add(new ProjectIssueType
+                {
+                    ProjectId = project.Id,
+                    Name = "تسک",
+                    Description = "نوع پیش‌فرض تسک",
+                    Icon = "✅",
+                    Color = "#3B82F6",
+                    Order = 2,
+                    BaseType = IssueType.Task,
+                    IsCustom = false,
+                    CanAddToSprint = true,
+                    CanHaveChildren = true,
+                    IncludeInReports = true,
+                    CreatedByUserId = creatorUserId,
+                    CreatedAt = now
+                });
+            }
+
+            if (!existingBaseTypes.Contains(IssueType.Bug))
+            {
+                defaults.Add(new ProjectIssueType
+                {
+                    ProjectId = project.Id,
+                    Name = "باگ",
+                    Description = "نوع پیش‌فرض باگ",
+                    Icon = "🐛",
+                    Color = "#EF4444",
+                    Order = 3,
+                    BaseType = IssueType.Bug,
+                    IsCustom = false,
+                    CanAddToSprint = true,
+                    CanHaveChildren = true,
+                    IncludeInReports = true,
+                    CreatedByUserId = creatorUserId,
+                    CreatedAt = now
+                });
+            }
+
+            if (defaults.Any())
+            {
+                _context.ProjectIssueTypes.AddRange(defaults);
+                await _context.SaveChangesAsync();
+            }
+        }
         /// <summary>
         /// ایجاد پروژه جدید
         /// </summary>
@@ -39,6 +120,8 @@ namespace TaskPlanner.Application.Services.ProjectService
 
             _context.Projects.Add(project);
             await _context.SaveChangesAsync();
+
+            await EnsureDefaultIssueTypesAsync(project, creatorUserId);
             
             // Seed کردن Workflow پیش‌فرض برای پروژه‌های جدید
             var hasAnyStatuses = await _context.WorkflowStatuses.AnyAsync(ws => ws.ProjectId == project.Id);

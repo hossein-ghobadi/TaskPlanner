@@ -58,6 +58,11 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public ICollection<TaskCategory> Categories { get; set; } = new List<TaskCategory>();
 
         /// <summary>
+        /// IssueType های سفارشی پروژه
+        /// </summary>
+        public ICollection<ProjectIssueType> IssueTypes { get; set; } = new List<ProjectIssueType>();
+
+        /// <summary>
         /// Generate کردن IssueKey بعدی برای این پروژه
         /// مثلاً: PROJ-1, PROJ-2, ...
         /// </summary>

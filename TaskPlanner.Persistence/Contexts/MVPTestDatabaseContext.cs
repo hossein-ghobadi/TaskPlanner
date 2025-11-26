@@ -40,6 +40,7 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<WorkflowStatus> WorkflowStatuses { get; set; }
         public DbSet<WorkflowTransition> WorkflowTransitions { get; set; }
         public DbSet<IssueStatusHistory> IssueStatusHistories { get; set; }
+        public DbSet<ProjectIssueType> ProjectIssueTypes { get; set; }
         public DbSet<Notification> Notifications { get; set; }
 
 
@@ -97,6 +98,23 @@ namespace TaskPlanner.Persistence.Contexts
                 .WithMany()
                 .HasForeignKey(t => t.CategoryId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // IssueType پروژه (Story-level)
+                        modelBuilder.Entity<ProjectIssueType>()
+                            .HasOne(pit => pit.Project)
+                            .WithMany(p => p.IssueTypes)
+                            .HasForeignKey(pit => pit.ProjectId)
+                            .OnDelete(DeleteBehavior.Cascade);
+
+                        modelBuilder.Entity<ProjectIssueType>()
+                            .HasIndex(pit => new { pit.ProjectId, pit.Name })
+                            .IsUnique();
+
+                        modelBuilder.Entity<TaskItem>()
+                            .HasOne(t => t.ProjectIssueType)
+                            .WithMany(pit => pit.Tasks)
+                            .HasForeignKey(t => t.ProjectIssueTypeId)
+                            .OnDelete(DeleteBehavior.Restrict);
 
             // Default value برای IssueType
             modelBuilder.Entity<TaskItem>()

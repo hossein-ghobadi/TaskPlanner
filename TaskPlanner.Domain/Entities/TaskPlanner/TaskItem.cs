@@ -97,6 +97,12 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public WorkflowStatus? WorkflowStatus { get; set; }
 
         /// <summary>
+        /// IssueType پروژه (برای Story-level سفارشی)
+        /// </summary>
+        public int? ProjectIssueTypeId { get; set; }
+        public ProjectIssueType? ProjectIssueType { get; set; }
+
+        /// <summary>
         /// Parent Issue (برای سلسله مراتب)
         /// - Story می‌تونه Parent Epic داشته باشه
         /// - Subtask باید Parent (Story/Task/Bug) داشته باشه
@@ -124,21 +130,21 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public string WorkflowStatusColor => WorkflowStatus?.Color ?? "#6c757d";
         public string DueDatePersian => DueDate?.ToShortPersianDateString() ?? "تعیین نشده";
         public string AssignedUserName => AssignedUser?.UserName ?? "تخصیص نیافته";
-        public string IssueTypeName => IssueType.GetDisplayName();
-        public string IssueTypeIcon => IssueType.GetIcon();
+        public string IssueTypeName => ProjectIssueType?.Name ?? IssueType.GetDisplayName();
+        public string IssueTypeIcon => string.IsNullOrWhiteSpace(ProjectIssueType?.Icon) ? IssueType.GetIcon() : ProjectIssueType!.Icon!;
         public string CategoryName => Category?.Name ?? "بدون دسته";
 
         /// <summary>
         /// آیا این Issue می‌تونه child داشته باشه؟
         /// فقط Subtask نمی‌تونه child داشته باشه
         /// </summary>
-        public bool CanHaveChildren => IssueType != IssueType.Subtask;
+        public bool CanHaveChildren => ProjectIssueType?.CanHaveChildren ?? (IssueType != IssueType.Subtask);
 
         /// <summary>
         /// آیا این Issue می‌تونه به Sprint اضافه بشه؟
         /// تنها Story / Task / Bug قابل افزودن به Sprint هستند.
         /// </summary>
-        public bool CanAddToSprint => IssueType == IssueType.Story || IssueType == IssueType.Task || IssueType == IssueType.Bug;
+        public bool CanAddToSprint => ProjectIssueType?.CanAddToSprint ?? (IssueType == IssueType.Story || IssueType == IssueType.Task || IssueType == IssueType.Bug);
 
         /// <summary>
         /// Progress بر اساس Child Issues (برای Epic/Story)
