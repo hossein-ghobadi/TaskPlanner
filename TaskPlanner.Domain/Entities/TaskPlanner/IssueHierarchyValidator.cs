@@ -77,6 +77,48 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         }
 
         /// <summary>
+        /// بررسی صحت Parent-Child relationship بر اساس Level
+        /// </summary>
+        public static ValidationResult ValidateParentChildByLevel(IssueTypeLevel childLevel, IssueTypeLevel? parentLevel, string childName, string? parentName = null)
+        {
+            // Epic نمی‌تواند parent داشته باشد
+            if (childLevel == IssueTypeLevel.Epic)
+            {
+                if (parentLevel != null)
+                {
+                    return ValidationResult.Failure($"{childName} نمی‌تواند parent داشته باشد.");
+                }
+                return ValidationResult.Success();
+            }
+
+            // Subtask باید حتماً parent داشته باشد (Story-level)
+            if (childLevel == IssueTypeLevel.Subtask)
+            {
+                if (parentLevel == null)
+                {
+                    return ValidationResult.Failure($"{childName} باید حتماً parent داشته باشد.");
+                }
+                if (parentLevel != IssueTypeLevel.StoryLevel)
+                {
+                    return ValidationResult.Failure($"{childName} فقط می‌تواند زیرمجموعه انواع Story-level باشد.");
+                }
+                return ValidationResult.Success();
+            }
+
+            // Story-level types می‌توانند زیر Epic باشند (اختیاری)
+            if (childLevel == IssueTypeLevel.StoryLevel)
+            {
+                if (parentLevel != null && parentLevel != IssueTypeLevel.Epic)
+                {
+                    return ValidationResult.Failure($"{childName} فقط می‌تواند زیرمجموعه اپیک باشد.");
+                }
+                return ValidationResult.Success();
+            }
+
+            return ValidationResult.Success();
+        }
+
+        /// <summary>
         /// بررسی اینکه آیا Issue می‌تونه به Sprint اضافه بشه
         /// </summary>
         public static ValidationResult ValidateAddToSprint(TaskItem issue)

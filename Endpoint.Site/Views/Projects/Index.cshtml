@@ -105,9 +105,7 @@
                                     <span class="badge bg-primary">
                                         @{
                                             var filteredTaskCount = p.Tasks?
-                                                .Count(t => t.IssueType == IssueType.Story
-                                                         || t.IssueType == IssueType.Task
-                                                         || t.IssueType == IssueType.Bug) ?? 0;
+                                                .Count(t => t.CanAddToSprint) ?? 0;
                                         }
                                         @filteredTaskCount تسک
                                     </span>

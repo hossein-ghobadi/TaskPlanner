@@ -28,6 +28,7 @@ namespace TaskPlanner.Application.Services.ProjectService
         {
             return await _context.Projects
                 .Include(p => p.Tasks)
+                    .ThenInclude(t => t.ProjectIssueType)
                 .Include(p => p.Members)
                 .Where(p =>
                     p.CreatorUserId == userId ||            // خودش سازنده پروژه باشد

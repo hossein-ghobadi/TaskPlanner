@@ -71,6 +71,11 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public bool IncludeInReports { get; set; } = true;
 
         /// <summary>
+        /// سطح Type (Epic, StoryLevel, Subtask)
+        /// </summary>
+        public IssueTypeLevel Level { get; set; } = IssueTypeLevel.StoryLevel;
+
+        /// <summary>
         /// کاربری که این نوع را ساخته
         /// </summary>
         [StringLength(450)]
@@ -79,6 +84,13 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
+    }
+
+    public enum IssueTypeLevel
+    {
+        Epic = 1,
+        StoryLevel = 2,
+        Subtask = 3
     }
 }
 

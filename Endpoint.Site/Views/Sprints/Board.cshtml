@@ -9,6 +9,53 @@
     var defaultStatusName = defaultStatus?.Name ?? "ستون اول";
     var finalStatus = Model.Statuses.FirstOrDefault(s => s.IsFinal);
     var finalStatusName = finalStatus?.Name ?? "Done";
+    
+    // دریافت ProjectIssueTypes برای Quick Task form
+    var viewBagValue = ViewBag.ProjectIssueTypes;
+    var projectIssueTypes = viewBagValue as List<ProjectIssueType> ?? new List<ProjectIssueType>();
+    
+    // Debug: بررسی ViewBag
+    var viewBagType = viewBagValue?.GetType().Name ?? "null";
+    var viewBagIsList = viewBagValue is List<ProjectIssueType>;
+    var viewBagCount = (viewBagValue as List<ProjectIssueType>)?.Count ?? 0;
+    
+    // Debug: نمایش اطلاعات ProjectIssueTypes
+    var debugInfo = new
+    {
+        ViewBagType = viewBagType,
+        ViewBagIsList = viewBagIsList,
+        ViewBagCount = viewBagCount,
+        TotalProjectIssueTypes = projectIssueTypes.Count,
+        StoryLevelTypes = projectIssueTypes.Where(pit => pit.Level == IssueTypeLevel.StoryLevel).Count(),
+        CanAddToSprintTypes = projectIssueTypes.Where(pit => pit.CanAddToSprint).Count(),
+        AllTypes = projectIssueTypes.Select(pit => new { 
+            Name = pit.Name, 
+            Level = pit.Level.ToString(), 
+            CanAddToSprint = pit.CanAddToSprint,
+            BaseType = pit.BaseType.ToString()
+        }).ToList()
+    };
+    
+    // فقط انواعی که می‌توانند به Sprint اضافه شوند (Story-level types)
+    // اول از CanAddToSprint استفاده می‌کنیم، اگر خالی بود از Level استفاده می‌کنیم
+    var availableIssueTypes = projectIssueTypes
+        .Where(pit => pit.Level == IssueTypeLevel.StoryLevel)
+        .Where(pit => pit.CanAddToSprint)
+        .OrderBy(pit => pit.Order)
+        .ToList();
+    
+    // اگر هنوز خالی بود، از همه Story-level types استفاده کن (برای پروژه‌های قدیمی)
+    if (!availableIssueTypes.Any())
+    {
+        availableIssueTypes = projectIssueTypes
+            .Where(pit => pit.Level == IssueTypeLevel.StoryLevel)
+            .OrderBy(pit => pit.Order)
+            .ToList();
+    }
+    
+    // نوع پیش‌فرض: Task یا اولین گزینه موجود
+    var defaultIssueType = availableIssueTypes.FirstOrDefault(pit => pit.BaseType == IssueType.Task && !pit.IsCustom) 
+                           ?? availableIssueTypes.FirstOrDefault();
 }
 
 <style>
@@ -770,22 +817,76 @@
                         </div>
                         <div class="col-lg-6">
                             <label class="form-label">نوع تسک</label>
+                            @* Debug: نمایش اطلاعات ProjectIssueTypes *@
+                            <div class="alert alert-info alert-dismissible fade show mb-2" role="alert" style="font-size: 0.85rem; padding: 0.5rem;">
+                                <strong>Debug Info:</strong><br>
+                                ViewBag Type: <strong>@debugInfo.ViewBagType</strong><br>
+                                ViewBag Is List: <strong>@debugInfo.ViewBagIsList</strong><br>
+                                ViewBag Count: <strong>@debugInfo.ViewBagCount</strong><br>
+                                Total ProjectIssueTypes: <strong>@debugInfo.TotalProjectIssueTypes</strong><br>
+                                Story-Level Types: <strong>@debugInfo.StoryLevelTypes</strong><br>
+                                CanAddToSprint Types: <strong>@debugInfo.CanAddToSprintTypes</strong><br>
+                                Available Issue Types: <strong>@availableIssueTypes.Count</strong><br>
+                                @if (debugInfo.AllTypes.Any())
+                                {
+                                    <details class="mt-2">
+                                        <summary style="cursor: pointer; font-size: 0.8rem;">جزئیات انواع (کلیک کنید)</summary>
+                                        <ul class="mb-0 mt-1" style="font-size: 0.75rem;">
+                                            @foreach (var type in debugInfo.AllTypes)
+                                            {
+                                                <li>@type.Name - Level: @type.Level - CanAddToSprint: @type.CanAddToSprint - BaseType: @type.BaseType</li>
+                                            }
+                                        </ul>
+                                    </details>
+                                }
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="font-size: 0.7rem;"></button>
+                            </div>
                             <div class="issue-type-chips" role="group" aria-label="انتخاب نوع تسک">
-                                <button type="button" class="chip-option active" data-issue-type="@((int)IssueType.Task)">
-                                    <i class="bi bi-check2-square me-1"></i> تسک
-                                </button>
-                                <button type="button" class="chip-option" data-issue-type="@((int)IssueType.Story)">
-                                    <i class="bi bi-columns-gap me-1"></i> استوری
-                                </button>
-                                <button type="button" class="chip-option" data-issue-type="@((int)IssueType.Bug)">
-                                    <i class="bi bi-bug me-1"></i> باگ
-                                </button>
+                                @if (availableIssueTypes.Any())
+                                {
+                                    foreach (var pit in availableIssueTypes)
+                                    {
+                                        var isActive = defaultIssueType != null && pit.Id == defaultIssueType.Id;
+                                        <button type="button" class="chip-option @(isActive ? "active" : "")" 
+                                                data-issue-type="@((int)pit.BaseType)" 
+                                                data-project-issue-type-id="@pit.Id">
+                                            <span class="me-1">@pit.Icon</span> @pit.Name
+                                        </button>
+                                    }
+                                }
+                                else
+                                {
+                                    @* Fallback: اگر ProjectIssueTypes وجود ندارد، از enum استفاده کن *@
+                                    <button type="button" class="chip-option active" data-issue-type="@((int)IssueType.Task)" data-project-issue-type-id="">
+                                        <span class="me-1">✅</span> تسک
+                                    </button>
+                                    <button type="button" class="chip-option" data-issue-type="@((int)IssueType.Story)" data-project-issue-type-id="">
+                                        <span class="me-1">📋</span> استوری
+                                    </button>
+                                    <button type="button" class="chip-option" data-issue-type="@((int)IssueType.Bug)" data-project-issue-type-id="">
+                                        <span class="me-1">🐛</span> باگ
+                                    </button>
+                                }
                             </div>
                             <select class="form-select d-none" id="quickTaskType">
-                                <option value="@((int)IssueType.Task)" selected>تسک</option>
-                                <option value="@((int)IssueType.Story)">استوری</option>
-                                <option value="@((int)IssueType.Bug)">باگ</option>
+                                @if (availableIssueTypes.Any())
+                                {
+                                    foreach (var pit in availableIssueTypes)
+                                    {
+                                        var isSelected = defaultIssueType != null && pit.Id == defaultIssueType.Id;
+                                        <option value="@((int)pit.BaseType)" 
+                                                data-project-issue-type-id="@pit.Id" 
+                                                selected="@isSelected">@pit.Icon @pit.Name</option>
+                                    }
+                                }
+                                else
+                                {
+                                    <option value="@((int)IssueType.Task)" selected data-project-issue-type-id="">✅ تسک</option>
+                                    <option value="@((int)IssueType.Story)" data-project-issue-type-id="">📋 استوری</option>
+                                    <option value="@((int)IssueType.Bug)" data-project-issue-type-id="">🐛 باگ</option>
+                                }
                             </select>
+                            <input type="hidden" id="quickTaskProjectIssueTypeId" value="@(defaultIssueType?.Id ?? 0)" />
                         </div>
                         <div class="col-lg-6">
                             <label for="quickTaskCategory" class="form-label">دسته‌بندی</label>
@@ -957,6 +1058,7 @@
 
         function initQuickAddTypeChips() {
             const hiddenSelect = document.getElementById('quickTaskType');
+            const projectIssueTypeIdInput = document.getElementById('quickTaskProjectIssueTypeId');
             const chipButtons = document.querySelectorAll('.issue-type-chips .chip-option');
             if (!hiddenSelect || !chipButtons.length) {
                 return;
@@ -966,18 +1068,47 @@
                     chipButtons.forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     hiddenSelect.value = btn.dataset.issueType;
+                    
+                    // تنظیم projectIssueTypeId
+                    if (projectIssueTypeIdInput && btn.dataset.projectIssueTypeId) {
+                        projectIssueTypeIdInput.value = btn.dataset.projectIssueTypeId;
+                    } else if (projectIssueTypeIdInput) {
+                        projectIssueTypeIdInput.value = '';
+                    }
                 });
             });
+            
+            // تنظیم مقدار اولیه از input hidden که از سرور آمده
+            if (projectIssueTypeIdInput && projectIssueTypeIdInput.value) {
+                // مقدار از سرور تنظیم شده است
+            } else {
+                // اگر مقدار تنظیم نشده، از اولین گزینه active استفاده کن
+                const firstActive = document.querySelector('.issue-type-chips .chip-option.active');
+                if (firstActive && projectIssueTypeIdInput) {
+                    const projectIssueTypeId = firstActive.dataset.projectIssueTypeId;
+                    if (projectIssueTypeId) {
+                        projectIssueTypeIdInput.value = projectIssueTypeId;
+                    }
+                }
+            }
         }
 
         function resetQuickTaskTypeChips() {
             const chipButtons = document.querySelectorAll('.issue-type-chips .chip-option');
+            const projectIssueTypeIdInput = document.getElementById('quickTaskProjectIssueTypeId');
             chipButtons.forEach(btn => {
                 btn.classList.toggle('active', btn === chipButtons[0]);
             });
             const hiddenSelect = document.getElementById('quickTaskType');
             if (hiddenSelect && chipButtons.length) {
                 hiddenSelect.value = chipButtons[0]?.dataset.issueType || hiddenSelect.value;
+                
+                // تنظیم projectIssueTypeId برای اولین گزینه
+                if (projectIssueTypeIdInput && chipButtons[0]?.dataset.projectIssueTypeId) {
+                    projectIssueTypeIdInput.value = chipButtons[0].dataset.projectIssueTypeId;
+                } else if (projectIssueTypeIdInput) {
+                    projectIssueTypeIdInput.value = '';
+                }
             }
         }
 
@@ -1950,6 +2081,7 @@
 
                 const issueType = parseInt($('#quickTaskType').val());
                 const categoryId = $('#quickTaskCategory').val();
+                const projectIssueTypeId = $('#quickTaskProjectIssueTypeId').val();
                 
                 const data = {
                     sprintId: sprintId,
@@ -1957,6 +2089,10 @@
                     issueType: issueType,
                     statusId: quickTaskTargetStatusId
                 };
+                
+                if (projectIssueTypeId) {
+                    data.projectIssueTypeId = parseInt(projectIssueTypeId);
+                }
                 
                 if (categoryId) {
                     data.categoryId = parseInt(categoryId);

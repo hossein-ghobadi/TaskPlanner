@@ -13,6 +13,7 @@ using TaskPlanner.Persistence.Contexts;
 using Endpoint.Site.Models;
 using DNTPersianUtils.Core;
 using TaskPlanner.Domain.Entities.TaskPlanner;
+using TaskPlanner.Application.Services.ProjectService;
 
 namespace Endpoint.Site.Controllers
 {
@@ -22,11 +23,16 @@ namespace Endpoint.Site.Controllers
     {
         private readonly MVPTestDatabaseContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IProjectCommandService _projectCommandService;
 
-        public SprintsController(MVPTestDatabaseContext context, UserManager<User> userManager)
+        public SprintsController(
+            MVPTestDatabaseContext context, 
+            UserManager<User> userManager,
+            IProjectCommandService projectCommandService)
         {
             _context = context;
             _userManager = userManager;
+            _projectCommandService = projectCommandService;
         }
 
         // 📌 لیست اسپرینت‌های پروژه
@@ -102,7 +108,7 @@ namespace Endpoint.Site.Controllers
         }
 
         // 📌 برد (Kanban) اسپرینت مانند Jira
-        [HttpGet("{id}")]
+        [HttpGet("Board/{id}")]
         public async Task<IActionResult> Board(int id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -195,7 +201,7 @@ namespace Endpoint.Site.Controllers
         }
 
         // 📅 Sprint Planning: صفحه برنامه‌ریزی اسپرینت (مثل Jira)
-        [HttpGet("{id}")]
+        [HttpGet("Planning/{id}")]
         public async Task<IActionResult> Planning(int id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -243,9 +249,11 @@ namespace Endpoint.Site.Controllers
             var backlogIssues = await _context.TaskItems
                 .Include(t => t.AssignedUser)
                 .Include(t => t.Category)
+                .Include(t => t.ProjectIssueType)
                 .Where(t => t.ProjectId == sprint.ProjectId
                             && !t.IsCompleted
-                            && (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task)
+                            && (t.ProjectIssueType != null ? t.ProjectIssueType.CanAddToSprint : 
+                                (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug)) // منطق CanAddToSprint
                             && !tasksInOpenSprints.Contains(t.Id))
                 .OrderByDescending(t => t.Priority)
                 .ThenBy(t => t.DueDate)
@@ -264,6 +272,160 @@ namespace Endpoint.Site.Controllers
             ViewBag.BacklogIssues = backlogIssues;
             ViewBag.SprintStatus = sprint.Status;
             ViewBag.HasActiveSprint = sprint.Status == SprintStatus.Active;
+            
+            // اضافه کردن ProjectIssueTypes برای استفاده در Quick Task form
+            Console.WriteLine($"[Board] ===== START Loading ProjectIssueTypes =====");
+            Console.WriteLine($"[Board] SprintId: {sprint.Id}, ProjectId: {sprint.ProjectId}");
+            
+            // بررسی اینکه آیا ProjectIssueTypes در دیتابیس وجود دارد
+            var allProjectIssueTypes = await _context.ProjectIssueTypes.ToListAsync();
+            Console.WriteLine($"[Board] Total ProjectIssueTypes in database: {allProjectIssueTypes.Count}");
+            var projectIssueTypesForThisProject = allProjectIssueTypes.Where(pit => pit.ProjectId == sprint.ProjectId).ToList();
+            Console.WriteLine($"[Board] ProjectIssueTypes for ProjectId {sprint.ProjectId}: {projectIssueTypesForThisProject.Count}");
+            foreach (var pit in projectIssueTypesForThisProject)
+            {
+                Console.WriteLine($"[Board]   - {pit.Name} (Id: {pit.Id}, ProjectId: {pit.ProjectId})");
+            }
+            
+            var projectIssueTypes = await _context.ProjectIssueTypes
+                .Where(pit => pit.ProjectId == sprint.ProjectId)
+                .OrderBy(pit => pit.Order)
+                .ToListAsync();
+            
+            Console.WriteLine($"[Board] Query result: {projectIssueTypes.Count} ProjectIssueTypes");
+            if (projectIssueTypes.Any())
+            {
+                foreach (var pit in projectIssueTypes)
+                {
+                    Console.WriteLine($"[Board] - {pit.Name} (Id: {pit.Id}, Level: {pit.Level}, CanAddToSprint: {pit.CanAddToSprint})");
+                }
+            }
+            
+            // اگر ProjectIssueTypes وجود ندارد، آن‌ها را ایجاد کن
+            if (!projectIssueTypes.Any())
+            {
+                try
+                {
+                    // بررسی مجدد برای جلوگیری از race condition
+                    var hasAnyIssueType = await _context.ProjectIssueTypes
+                        .AnyAsync(pit => pit.ProjectId == sprint.ProjectId);
+                    
+                    if (!hasAnyIssueType)
+                    {
+                        // اطمینان از اینکه Project به درستی لود شده است
+                        if (sprint.Project == null)
+                        {
+                            sprint.Project = await _context.Projects
+                                .FirstOrDefaultAsync(p => p.Id == sprint.ProjectId);
+                        }
+                        
+                        if (sprint.Project != null)
+                        {
+                            // ایجاد ProjectIssueTypes پیش‌فرض برای این پروژه
+                            var now = DateTime.UtcNow;
+                            var creatorUserId = sprint.Project.CreatorUserId ?? userId; // Fallback به userId فعلی
+                            
+                            var defaults = new List<ProjectIssueType>
+                            {
+                                new ProjectIssueType
+                                {
+                                    ProjectId = sprint.ProjectId,
+                                    Name = "اپیک",
+                                    Description = "نوع پیش‌فرض اپیک",
+                                    Icon = "📦",
+                                    Color = "#8B5CF6",
+                                    Order = 0,
+                                    BaseType = IssueType.Epic,
+                                    IsCustom = false,
+                                    CanAddToSprint = false,
+                                    CanHaveChildren = true,
+                                    IncludeInReports = true,
+                                    Level = IssueTypeLevel.Epic,
+                                    CreatedByUserId = creatorUserId,
+                                    CreatedAt = now
+                                },
+                                new ProjectIssueType
+                                {
+                                    ProjectId = sprint.ProjectId,
+                                    Name = "تسک",
+                                    Description = "نوع پیش‌فرض تسک",
+                                    Icon = "✅",
+                                    Color = "#3B82F6",
+                                    Order = 1,
+                                    BaseType = IssueType.Task,
+                                    IsCustom = false,
+                                    CanAddToSprint = true,
+                                    CanHaveChildren = true,
+                                    IncludeInReports = true,
+                                    Level = IssueTypeLevel.StoryLevel,
+                                    CreatedByUserId = creatorUserId,
+                                    CreatedAt = now
+                                },
+                                new ProjectIssueType
+                                {
+                                    ProjectId = sprint.ProjectId,
+                                    Name = "زیرتسک",
+                                    Description = "نوع پیش‌فرض زیرتسک",
+                                    Icon = "🔹",
+                                    Color = "#06B6D4",
+                                    Order = 2,
+                                    BaseType = IssueType.Subtask,
+                                    IsCustom = false,
+                                    CanAddToSprint = false,
+                                    CanHaveChildren = false,
+                                    IncludeInReports = true,
+                                    Level = IssueTypeLevel.Subtask,
+                                    CreatedByUserId = creatorUserId,
+                                    CreatedAt = now
+                                }
+                            };
+                            
+                            _context.ProjectIssueTypes.AddRange(defaults);
+                            await _context.SaveChangesAsync();
+                            
+                            // بارگذاری مجدد برای اطمینان
+                            projectIssueTypes = await _context.ProjectIssueTypes
+                                .Where(pit => pit.ProjectId == sprint.ProjectId)
+                                .OrderBy(pit => pit.Order)
+                                .ToListAsync();
+                            
+                            Console.WriteLine($"[Board] Created {projectIssueTypes.Count} ProjectIssueTypes for Project {sprint.ProjectId}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[Board] ERROR: Project {sprint.ProjectId} not found!");
+                        }
+                    }
+                    else
+                    {
+                        // اگر در بررسی مجدد پیدا شد، بارگذاری کن
+                        projectIssueTypes = await _context.ProjectIssueTypes
+                            .Where(pit => pit.ProjectId == sprint.ProjectId)
+                            .OrderBy(pit => pit.Order)
+                            .ToListAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Board] ERROR creating ProjectIssueTypes: {ex.Message}");
+                    Console.WriteLine($"[Board] StackTrace: {ex.StackTrace}");
+                    // در صورت خطا، projectIssueTypes خالی باقی می‌ماند
+                }
+            }
+            
+            ViewBag.ProjectIssueTypes = projectIssueTypes;
+            Console.WriteLine($"[Board] Final ProjectIssueTypes count: {projectIssueTypes.Count} for Project {sprint.ProjectId}");
+            Console.WriteLine($"[Board] ViewBag.ProjectIssueTypes set: {ViewBag.ProjectIssueTypes != null}");
+            
+            // Debug: بررسی اینکه آیا ViewBag به درستی تنظیم شده است
+            if (ViewBag.ProjectIssueTypes is List<ProjectIssueType> viewBagTypes)
+            {
+                Console.WriteLine($"[Board] ViewBag contains {viewBagTypes.Count} items");
+            }
+            else
+            {
+                Console.WriteLine($"[Board] WARNING: ViewBag.ProjectIssueTypes is not List<ProjectIssueType>! Type: {ViewBag.ProjectIssueTypes?.GetType().Name ?? "null"}");
+            }
 
             return View(vm);
         }
@@ -358,16 +520,17 @@ namespace Endpoint.Site.Controllers
                 .Where(t => t.ProjectId == projectId
                     && !sprintTaskIds.Contains(t.Id)
                     && !t.IsCompleted // فقط تسک‌های انجام نشده
-                    && t.IssueType != IssueType.Epic
-                    && t.IssueType != IssueType.Subtask) // Epic/Subtask قابل افزودن به اسپرینت نیستند
+                    && (t.ProjectIssueType != null ? t.ProjectIssueType.CanAddToSprint : 
+                        (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug))) // منطق CanAddToSprint
                 .Include(t => t.Category)
                 .Include(t => t.AssignedUser)
+                .Include(t => t.ProjectIssueType)
                 .Select(t => new
                 {
                     id = t.Id,
                     title = t.Title,
                     description = t.Description,
-                    categoryName = t.Category.Name,
+                    categoryName = t.Category != null ? t.Category.Name : "بدون دسته",
                     assignedUserName = t.AssignedUser != null ? (t.AssignedUser.FullName ?? t.AssignedUser.UserName) : "تخصیص نیافته",
                     dueDate = t.DueDate,
                     priority = t.Priority.ToString(),
@@ -411,16 +574,18 @@ namespace Endpoint.Site.Controllers
                 return Json(new { success = false, message = "شما به این اسپرینت دسترسی ندارید." });
             }
 
-            var task = await _context.TaskItems.FindAsync(taskId);
+            var task = await _context.TaskItems
+                .Include(t => t.ProjectIssueType)
+                .FirstOrDefaultAsync(t => t.Id == taskId);
             if (task == null)
             {
                 return Json(new { success = false, message = "تسک یافت نشد." });
             }
 
-            // Epic/Subtask قابل افزودن به اسپرینت نیستند
-            if (task.IssueType == IssueType.Epic || task.IssueType == IssueType.Subtask)
+            // بررسی اینکه آیا این Issue می‌تواند به Sprint اضافه شود
+            if (!task.CanAddToSprint)
             {
-                return Json(new { success = false, message = "فقط Story/Task/Bug قابل اضافه شدن به اسپرینت هستند." });
+                return Json(new { success = false, message = "این نوع Issue قابل اضافه شدن به اسپرینت نیست. فقط Story-level types قابل اضافه شدن هستند." });
             }
 
             // تسک‌های انجام شده یا لغو شده قابل اضافه شدن نیستند
@@ -708,11 +873,27 @@ namespace Endpoint.Site.Controllers
                     var targetStatusName = targetStatus?.Name;
                     var isFinalStatus = targetStatus?.IsFinal == true;
 
+                    // دریافت ProjectIssueTypeId اگر ارسال شده باشد
+                    int? projectIssueTypeId = null;
+                    if (data.TryGetProperty("projectIssueTypeId", out var pitProp) && pitProp.ValueKind == JsonValueKind.Number)
+                    {
+                        var pitId = pitProp.GetInt32();
+                        var projectIssueType = await _context.ProjectIssueTypes
+                            .FirstOrDefaultAsync(pit => pit.Id == pitId && pit.ProjectId == sprint.ProjectId);
+                        
+                        if (projectIssueType != null)
+                        {
+                            projectIssueTypeId = projectIssueType.Id;
+                            issueType = projectIssueType.BaseType; // به‌روزرسانی IssueType بر اساس ProjectIssueType
+                        }
+                    }
+
                     var newTask = new TaskItem
                     {
                         Title = title,
                         Description = data.TryGetProperty("description", out var descProp) ? descProp.GetString() : null,
                         IssueType = issueType,
+                        ProjectIssueTypeId = projectIssueTypeId,
                         IssueKey = generatedIssueKey,
                         StartDate = DateTime.Today,
                         DueDate = null,

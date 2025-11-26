@@ -36,6 +36,11 @@ namespace Endpoint.Site.Models
         public string? AssignedUserId { get; set; }
 
         /// <summary>
+        /// شناسه IssueType سفارشی پروژه (برای Story-level)
+        /// </summary>
+        public int? ProjectIssueTypeId { get; set; }
+
+        /// <summary>
         /// Story Points (فقط برای Story و Task)
         /// </summary>
         public int? StoryPoints { get; set; }

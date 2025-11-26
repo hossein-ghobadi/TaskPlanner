@@ -62,8 +62,11 @@ namespace Endpoint.Site.Controllers
                 .Include(t => t.Category)
                 .Include(t => t.Sprint)
                 .Include(t => t.WorkflowStatus)
+                .Include(t => t.ProjectIssueType)
                 .Include(t => t.ChildIssues)
-                .ThenInclude(st => st.ChildIssues)
+                    .ThenInclude(st => st.ProjectIssueType)
+                .Include(t => t.ChildIssues)
+                    .ThenInclude(st => st.ChildIssues)
                 .Where(t => userProjectIds.Contains(t.ProjectId) || t.AssignedUserId == userId)
                 .OrderBy(t => t.StartDate)
                 .ToListAsync();
@@ -86,6 +89,23 @@ namespace Endpoint.Site.Controllers
                 .Where(c => userProjectIds.Contains(c.ProjectId))
                 .OrderBy(c => c.Name)
                 .ToListAsync();
+
+            // اضافه کردن ProjectIssueTypes برای استفاده در مودال
+            if (projectId.HasValue)
+            {
+                ViewBag.ProjectIssueTypes = await _context.ProjectIssueTypes
+                    .Where(pit => pit.ProjectId == projectId.Value)
+                    .OrderBy(pit => pit.Order)
+                    .ToListAsync();
+            }
+            else
+            {
+                // اگر projectId مشخص نیست، همه ProjectIssueTypes را بگیر
+                ViewBag.ProjectIssueTypes = await _context.ProjectIssueTypes
+                    .Where(pit => userProjectIds.Contains(pit.ProjectId))
+                    .OrderBy(pit => pit.Order)
+                    .ToListAsync();
+            }
 
             return View(tasks);
         }
@@ -114,8 +134,11 @@ namespace Endpoint.Site.Controllers
                 .Include(t => t.Category)
                 .Include(t => t.Sprint)
                 .Include(t => t.WorkflowStatus)
+                .Include(t => t.ProjectIssueType)
                 .Include(t => t.ChildIssues)
-                .ThenInclude(st => st.ChildIssues)
+                    .ThenInclude(st => st.ProjectIssueType)
+                .Include(t => t.ChildIssues)
+                    .ThenInclude(st => st.ChildIssues)
                 .Where(t => (userProjectIds.Contains(t.ProjectId) || t.AssignedUserId == userId) && t.IsCompleted)
                 .OrderBy(t => t.StartDate)
                 .ToListAsync();
@@ -338,9 +361,10 @@ namespace Endpoint.Site.Controllers
             if (string.IsNullOrWhiteSpace(title))
                 return BadRequest("عنوان الزامی است.");
 
-            // 🔍 دریافت Parent Issue
+            // 🔍 دریافت Parent Issue با ProjectIssueType
             var parent = await _context.TaskItems
                 .Include(t => t.Project)
+                .Include(t => t.ProjectIssueType)
                 .FirstOrDefaultAsync(t => t.Id == parentId);
 
             if (parent == null)
@@ -358,37 +382,96 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
-            // 🎯 Smart Logic: تعیین IssueType بر اساس Parent
+            // 🎯 Smart Logic: تعیین IssueType بر اساس Parent Level
             IssueType finalIssueType;
+            int? projectIssueTypeId = null;
+            var parentLevel = parent.ProjectIssueType?.Level ?? 
+                (parent.IssueType == IssueType.Epic ? IssueTypeLevel.Epic :
+                 parent.IssueType == IssueType.Subtask ? IssueTypeLevel.Subtask :
+                 IssueTypeLevel.StoryLevel);
 
-            if (parent.IssueType == IssueType.Epic)
+            if (parentLevel == IssueTypeLevel.Epic)
             {
-                // اگه Parent = Epic → باید IssueType مشخص شده باشد
+                // اگه Parent = Epic → باید Story-level type مشخص شده باشد
                 if (!issueType.HasValue)
                 {
-                    return BadRequest("برای افزودن Issue به Epic، باید نوع Issue (Story/Task/Bug) مشخص شود.");
+                    return BadRequest("برای افزودن Issue به Epic، باید نوع Issue (Story-level) مشخص شود.");
                 }
 
-                // فقط Story, Task, Bug مجاز هستن
-                if (issueType.Value != IssueType.Story && 
-                    issueType.Value != IssueType.Task && 
-                    issueType.Value != IssueType.Bug)
+                // باید Story-level type باشد (Task یا انواع سفارشی)
+                // پیدا کردن ProjectIssueType مربوطه
+                if (data.TryGetProperty("projectIssueTypeId", out var pitProp) && pitProp.ValueKind == JsonValueKind.Number)
                 {
-                    return BadRequest("Epic فقط می‌تواند Story، Task یا Bug داشته باشد.");
+                    var pitId = pitProp.GetInt32();
+                    var projectIssueType = await _context.ProjectIssueTypes
+                        .FirstOrDefaultAsync(pit => pit.Id == pitId && 
+                            pit.ProjectId == parent.ProjectId && 
+                            pit.Level == IssueTypeLevel.StoryLevel);
+                    
+                    if (projectIssueType != null)
+                    {
+                        projectIssueTypeId = projectIssueType.Id;
+                        finalIssueType = projectIssueType.BaseType;
+                    }
+                    else
+                    {
+                        // اگر ProjectIssueType پیدا نشد، از IssueType استفاده کن
+                        finalIssueType = issueType.Value;
+                    }
+                }
+                else
+                {
+                    // اگر ProjectIssueTypeId ارسال نشد، از IssueType استفاده کن
+                    finalIssueType = issueType.Value;
+                    
+                    // پیدا کردن ProjectIssueType مربوطه بر اساس BaseType
+                    var projectIssueType = await _context.ProjectIssueTypes
+                        .FirstOrDefaultAsync(pit => pit.ProjectId == parent.ProjectId && 
+                            pit.BaseType == finalIssueType && 
+                            pit.Level == IssueTypeLevel.StoryLevel);
+                    
+                    if (projectIssueType != null)
+                    {
+                        projectIssueTypeId = projectIssueType.Id;
+                    }
                 }
 
-                finalIssueType = issueType.Value;
+                // بررسی اینکه نوع انتخاب شده Story-level است
+                if (finalIssueType == IssueType.Epic || finalIssueType == IssueType.Subtask)
+                {
+                    return BadRequest("Epic فقط می‌تواند Story-level types (Task یا انواع سفارشی) داشته باشد.");
+                }
+            }
+            else if (parentLevel == IssueTypeLevel.StoryLevel)
+            {
+                // اگه Parent = Story-level → خودکار Subtask
+                finalIssueType = IssueType.Subtask;
+                
+                // پیدا کردن ProjectIssueType برای Subtask
+                var subtaskType = await _context.ProjectIssueTypes
+                    .FirstOrDefaultAsync(pit => pit.ProjectId == parent.ProjectId && 
+                        pit.Level == IssueTypeLevel.Subtask);
+                
+                if (subtaskType != null)
+                {
+                    projectIssueTypeId = subtaskType.Id;
+                }
             }
             else
             {
-                // اگه Parent = Story/Task/Bug → خودکار Subtask
-                finalIssueType = IssueType.Subtask;
+                return BadRequest("نمی‌توان به این نوع Issue، child اضافه کرد.");
             }
 
-            // 🔒 Validation: بررسی سلسله مراتبی Jira
-            var validationResult = IssueHierarchyValidator.ValidateParentChild(
-                finalIssueType,
-                parent.IssueType
+            // 🔒 Validation: بررسی سلسله مراتبی بر اساس Level
+            var childLevel = finalIssueType == IssueType.Subtask ? IssueTypeLevel.Subtask :
+                            projectIssueTypeId.HasValue ? IssueTypeLevel.StoryLevel :
+                            IssueTypeLevel.StoryLevel;
+            
+            var validationResult = IssueHierarchyValidator.ValidateParentChildByLevel(
+                childLevel,
+                parentLevel,
+                finalIssueType.GetDisplayName(),
+                parent.IssueTypeName
             );
 
             if (!validationResult.IsValid)
@@ -447,6 +530,7 @@ namespace Endpoint.Site.Controllers
                         Title = title,
                         Description = null,
                         IssueType = finalIssueType,
+                        ProjectIssueTypeId = projectIssueTypeId,
                         IssueKey = generatedIssueKey,
                         StartDate = DateTime.Today,
                         DueDate = parent.DueDate, // وراثت DueDate از parent
@@ -454,7 +538,7 @@ namespace Endpoint.Site.Controllers
                         CategoryId = selectedCategory?.Id ?? parent.CategoryId,
                         ParentTaskId = parent.Id,
                         AssignedUserId = parent.AssignedUserId, // وراثت مسئول از parent
-                        StoryPoints = storyPoints, // فقط برای Story/Task
+                        StoryPoints = storyPoints, // فقط برای Story-level types
                         IsCompleted = false,
                         CreatedByUserId = userId,
                         CreatedAt = DateTime.UtcNow,
@@ -931,6 +1015,12 @@ namespace Endpoint.Site.Controllers
                 .Where(t => t.ProjectId == projectId.Value)
                 .ToListAsync();
 
+            var projectIssueTypes = await _context.ProjectIssueTypes
+                .Where(pit => pit.ProjectId == project.Id)
+                .OrderBy(pit => pit.Order)
+                .ToListAsync();
+            ViewBag.ProjectIssueTypes = projectIssueTypes;
+
             // 👤 کاربران قابل انتخاب برای AssignedUserId (فقط اعضای این پروژه)
             var assignedUsers = new List<dynamic>();
             
@@ -986,8 +1076,16 @@ namespace Endpoint.Site.Controllers
             // 📦 مدل اولیه
             var model = new TaskCreateVm
             {
-                ProjectId = projectId.Value
+                ProjectId = projectId.Value,
+                IssueType = IssueType.Task
             };
+
+            var defaultProjectIssueType = projectIssueTypes.FirstOrDefault();
+            if (defaultProjectIssueType != null)
+            {
+                model.ProjectIssueTypeId = defaultProjectIssueType.Id;
+                model.IssueType = defaultProjectIssueType.BaseType;
+            }
 
             return View(model);
         }
@@ -1025,6 +1123,22 @@ namespace Endpoint.Site.Controllers
                     await FillListsForCreate(vm.ProjectId);
                     return View(vm);
                 }
+            }
+
+            ProjectIssueType? selectedProjectIssueType = null;
+            if (vm.ProjectIssueTypeId.HasValue)
+            {
+                selectedProjectIssueType = await _context.ProjectIssueTypes
+                    .FirstOrDefaultAsync(pit => pit.Id == vm.ProjectIssueTypeId.Value && pit.ProjectId == vm.ProjectId);
+
+                if (selectedProjectIssueType == null)
+                {
+                    ModelState.AddModelError(nameof(vm.ProjectIssueTypeId), "نوع کار انتخاب‌شده معتبر نیست.");
+                    await FillListsForCreate(vm.ProjectId);
+                    return View(vm);
+                }
+
+                vm.IssueType = selectedProjectIssueType.BaseType;
             }
 
             // ✅ اگر AssignedUserId ست شده، حتماً عضو پروژه یا سازنده پروژه باشد
@@ -1151,7 +1265,8 @@ namespace Endpoint.Site.Controllers
                         IsCompleted = false,
                         CreatedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier),
                         CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
+                        UpdatedAt = DateTime.UtcNow,
+                        ProjectIssueTypeId = selectedProjectIssueType?.Id
                     };
 
                     // اضافه کردن به context
@@ -1257,6 +1372,11 @@ namespace Endpoint.Site.Controllers
                 .Where(t => t.ProjectId == projectId)
                 .ToListAsync();
 
+            ViewBag.ProjectIssueTypes = await _context.ProjectIssueTypes
+                .Where(pit => pit.ProjectId == projectId)
+                .OrderBy(pit => pit.Order)
+                .ToListAsync();
+
             ViewBag.Projects = project != null
                 ? new List<Project> { project }
                 : new List<Project>();
@@ -1337,6 +1457,7 @@ namespace Endpoint.Site.Controllers
             var task = await _context.TaskItems
                 .Include(t => t.Project)
                 .Include(t => t.Category)
+                .Include(t => t.ProjectIssueType)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (task == null) return NotFound();
@@ -1368,12 +1489,18 @@ namespace Endpoint.Site.Controllers
                 StartDateSh = ToJalali(task.StartDate),
                 DueDateSh = task.DueDate.HasValue ? ToJalali(task.DueDate.Value) : null,
                 AssignedUserId = task.AssignedUserId,
-                IssueType = task.IssueType
+                IssueType = task.IssueType,
+                ProjectIssueTypeId = task.ProjectIssueTypeId
             };
 
             ViewBag.Categories = await _context.TaskCategories
                 .Where(c => c.ProjectId == task.ProjectId)
                 .OrderBy(c => c.Name)
+                .ToListAsync();
+
+            ViewBag.ProjectIssueTypes = await _context.ProjectIssueTypes
+                .Where(pit => pit.ProjectId == task.ProjectId)
+                .OrderBy(pit => pit.Order)
                 .ToListAsync();
 
             ViewBag.ParentTaskTitle = await GetParentTaskTitleAsync(task.ParentTaskId);
@@ -1435,6 +1562,12 @@ namespace Endpoint.Site.Controllers
                         .OrderBy(c => c.Name)
                         .ToListAsync()
                     : new List<TaskCategory>();
+                ViewBag.ProjectIssueTypes = taskForError != null
+                    ? await _context.ProjectIssueTypes
+                        .Where(pit => pit.ProjectId == taskForError.ProjectId)
+                        .OrderBy(pit => pit.Order)
+                        .ToListAsync()
+                    : new List<ProjectIssueType>();
                 ViewBag.ParentTaskTitle = taskForError != null
                     ? await GetParentTaskTitleAsync(taskForError.ParentTaskId)
                     : null;
@@ -1506,6 +1639,10 @@ namespace Endpoint.Site.Controllers
                 ViewBag.Categories = await _context.TaskCategories
                     .Where(c => c.ProjectId == task.ProjectId)
                     .OrderBy(c => c.Name)
+                    .ToListAsync();
+                ViewBag.ProjectIssueTypes = await _context.ProjectIssueTypes
+                    .Where(pit => pit.ProjectId == task.ProjectId)
+                    .OrderBy(pit => pit.Order)
                     .ToListAsync();
                 ViewBag.ParentTaskTitle = await GetParentTaskTitleAsync(task.ParentTaskId);
                 ViewBag.Projects = new List<Project> { task.Project };
@@ -1683,11 +1820,40 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
+            // بررسی و به‌روزرسانی ProjectIssueType
+            ProjectIssueType? selectedProjectIssueType = null;
+            if (vm.ProjectIssueTypeId.HasValue)
+            {
+                selectedProjectIssueType = await _context.ProjectIssueTypes
+                    .FirstOrDefaultAsync(pit => pit.Id == vm.ProjectIssueTypeId.Value && pit.ProjectId == task.ProjectId);
+
+                if (selectedProjectIssueType == null)
+                {
+                    ModelState.AddModelError(nameof(vm.ProjectIssueTypeId), "نوع کار انتخاب‌شده معتبر نیست.");
+                    ViewBag.Categories = await _context.TaskCategories
+                        .Where(c => c.ProjectId == task.ProjectId)
+                        .OrderBy(c => c.Name)
+                        .ToListAsync();
+                    ViewBag.ProjectIssueTypes = await _context.ProjectIssueTypes
+                        .Where(pit => pit.ProjectId == task.ProjectId)
+                        .OrderBy(pit => pit.Order)
+                        .ToListAsync();
+                    ViewBag.ParentTaskTitle = await GetParentTaskTitleAsync(task.ParentTaskId);
+                    ViewBag.Projects = task.Project != null ? new List<Project> { task.Project } : new List<Project>();
+                    // ... (بارگذاری مجدد کاربران)
+                    return View(vm);
+                }
+
+                vm.IssueType = selectedProjectIssueType.BaseType;
+            }
+
             var previousAssignee = task.AssignedUserId;
             task.Title = vm.Title;
             task.Description = vm.Description;
             task.CategoryId = vm.CategoryId;
             task.ParentTaskId = vm.ParentId;
+            task.IssueType = vm.IssueType;
+            task.ProjectIssueTypeId = selectedProjectIssueType?.Id;
             // 🔒 ProjectId تغییر نمی‌کند - همیشه همان پروژه اصلی تسک باقی می‌ماند
             // task.ProjectId = vm.ProjectId; // ❌ حذف شد - پروژه قابل تغییر نیست
             task.StartDate = vm.StartDateSh.ToGregorianDateTime()!.Value;

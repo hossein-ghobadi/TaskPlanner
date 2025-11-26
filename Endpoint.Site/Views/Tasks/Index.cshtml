@@ -10,7 +10,7 @@
     var soonThreshold = today.AddDays(3);
 
     bool IsTrackable(TaskPlanner.Domain.Entities.TaskPlanner.TaskItem t) =>
-        t.IssueType is IssueType.Story or IssueType.Task or IssueType.Bug;
+        t.CanAddToSprint; // استفاده از property که از ProjectIssueType استفاده می‌کند
 
     var allTasks = Model?.ToList() ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.TaskItem>();
     var rootTasks = allTasks.Where(t => t.ParentTaskId == null).ToList();
@@ -334,7 +334,7 @@ else
                 var titleKey = $"{parent.Title} {(parent.IssueKey ?? string.Empty)} {parent.Project?.Name ?? string.Empty}";
                 var assigneeKey = (parent.AssignedUserId ?? "none").ToLowerInvariant();
                 var nodeDueState = dueState(parent);
-                var isTrackableNode = parent.IssueType is IssueType.Story or IssueType.Task or IssueType.Bug;
+                var isTrackableNode = parent.CanAddToSprint; // استفاده از property که از ProjectIssueType استفاده می‌کند
                 <div class="task-node" data-title="@titleKey.ToLowerInvariant()"
                      data-issuetype="@((int)parent.IssueType)"
                      data-assignee="@assigneeKey"
@@ -497,12 +497,11 @@ else
                 
                 // Listen برای تغییر IssueType → نمایش StoryPoints
                 childIssueTypeSelect.onchange = function() {
-                    const selectedType = parseInt(this.value);
-                    // Story(2) یا Task(3) → نمایش StoryPoints
-                    storyPointsField.style.display = (selectedType === 2 || selectedType === 3) ? 'block' : 'none';
+                    // همه Story-level types می‌توانند Story Points داشته باشند
+                    storyPointsField.style.display = 'block';
                 };
                 
-                // Default: Task selected → show StoryPoints
+                // Default: Story-level types می‌توانند Story Points داشته باشند
                 storyPointsField.style.display = 'block';
             } 
             // اگه Parent = Story/Task/Bug → مخفی کردن IssueType (خودکار Subtask)
@@ -544,7 +543,16 @@ else
             
             // اگه IssueType field نمایش داده شده → یعنی Parent = Epic
             if (issueTypeField.style.display !== 'none') {
-                payload.issueType = parseInt(document.getElementById('childIssueType').value);
+                const childIssueTypeSelect = document.getElementById('childIssueType');
+                const selectedOption = childIssueTypeSelect.options[childIssueTypeSelect.selectedIndex];
+                payload.issueType = parseInt(childIssueTypeSelect.value);
+                
+                // ارسال projectIssueTypeId اگر وجود دارد
+                const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
+                if (projectIssueTypeId) {
+                    payload.projectIssueTypeId = parseInt(projectIssueTypeId);
+                }
+                
                 if (storyPoints) {
                     payload.storyPoints = parseInt(storyPoints);
                 }
@@ -651,11 +659,34 @@ else
                 <div class="mb-3" id="issueTypeField" style="display:none;">
                     <label for="childIssueType" class="form-label">نوع Issue</label>
                     <select class="form-select" id="childIssueType">
-                        <option value="2">📝 Story</option>
-                        <option value="3" selected>✅ Task</option>
-                        <option value="5">🐛 Bug</option>
+                        @{
+                            var projectIssueTypes = ViewBag.ProjectIssueTypes as List<ProjectIssueType> ?? new List<ProjectIssueType>();
+                            var storyLevelTypes = projectIssueTypes
+                                .Where(pit => pit.Level == IssueTypeLevel.StoryLevel)
+                                .OrderBy(pit => pit.Order)
+                                .ToList();
+                            
+                            // اگر ProjectIssueTypes وجود ندارد، از انواع پیش‌فرض استفاده کن
+                            if (!storyLevelTypes.Any())
+                            {
+                                <option value="2">📝 Story</option>
+                                <option value="3" selected>✅ Task</option>
+                                <option value="5">🐛 Bug</option>
+                            }
+                            else
+                            {
+                                var defaultTask = storyLevelTypes.FirstOrDefault(pit => pit.BaseType == IssueType.Task && !pit.IsCustom);
+                                var isFirst = true;
+                                foreach (var pit in storyLevelTypes)
+                                {
+                                    var selected = (isFirst && defaultTask == null) || (defaultTask != null && pit.Id == defaultTask.Id) ? "selected" : "";
+                                    <option value="@((int)pit.BaseType)" data-project-issue-type-id="@pit.Id" @@selected>@pit.Icon @pit.Name</option>
+                                    isFirst = false;
+                                }
+                            }
+                        }
                     </select>
-                    <small class="text-muted">Epic فقط می‌تواند Story، Task یا Bug داشته باشد</small>
+                    <small class="text-muted">Epic فقط می‌تواند Story-level types (تسک یا انواع سفارشی) داشته باشد</small>
                 </div>
 
                 <div class="mb-3">

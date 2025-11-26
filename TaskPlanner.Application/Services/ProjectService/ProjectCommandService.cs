@@ -32,34 +32,39 @@ namespace TaskPlanner.Application.Services.ProjectService
             }
 
             var now = DateTime.UtcNow;
-            var existingBaseTypes = await _context.ProjectIssueTypes
+            var existingLevels = await _context.ProjectIssueTypes
                 .Where(p => p.ProjectId == project.Id && !p.IsCustom)
-                .Select(p => p.BaseType)
+                .Select(p => new { p.Level, p.BaseType })
                 .ToListAsync();
 
             var defaults = new List<ProjectIssueType>();
 
-            if (!existingBaseTypes.Contains(IssueType.Story))
+            // Epic - همیشه باید وجود داشته باشد (Level = Epic)
+            var hasEpic = existingLevels.Any(e => e.Level == IssueTypeLevel.Epic);
+            if (!hasEpic)
             {
                 defaults.Add(new ProjectIssueType
                 {
                     ProjectId = project.Id,
-                    Name = "استوری",
-                    Description = "نوع پیش‌فرض استوری",
-                    Icon = "📝",
-                    Color = "#10B981",
-                    Order = 1,
-                    BaseType = IssueType.Story,
+                    Name = "اپیک",
+                    Description = "نوع پیش‌فرض اپیک",
+                    Icon = "📦",
+                    Color = "#8B5CF6",
+                    Order = 0,
+                    BaseType = IssueType.Epic,
                     IsCustom = false,
-                    CanAddToSprint = true,
+                    CanAddToSprint = false,
                     CanHaveChildren = true,
                     IncludeInReports = true,
+                    Level = IssueTypeLevel.Epic,
                     CreatedByUserId = creatorUserId,
                     CreatedAt = now
                 });
             }
 
-            if (!existingBaseTypes.Contains(IssueType.Task))
+            // Task - همیشه باید وجود داشته باشد (Level = StoryLevel)
+            var hasTask = existingLevels.Any(e => e.Level == IssueTypeLevel.StoryLevel && e.BaseType == IssueType.Task);
+            if (!hasTask)
             {
                 defaults.Add(new ProjectIssueType
                 {
@@ -68,32 +73,36 @@ namespace TaskPlanner.Application.Services.ProjectService
                     Description = "نوع پیش‌فرض تسک",
                     Icon = "✅",
                     Color = "#3B82F6",
-                    Order = 2,
+                    Order = 1,
                     BaseType = IssueType.Task,
                     IsCustom = false,
                     CanAddToSprint = true,
                     CanHaveChildren = true,
                     IncludeInReports = true,
+                    Level = IssueTypeLevel.StoryLevel,
                     CreatedByUserId = creatorUserId,
                     CreatedAt = now
                 });
             }
 
-            if (!existingBaseTypes.Contains(IssueType.Bug))
+            // Subtask - همیشه باید وجود داشته باشد (Level = Subtask)
+            var hasSubtask = existingLevels.Any(e => e.Level == IssueTypeLevel.Subtask);
+            if (!hasSubtask)
             {
                 defaults.Add(new ProjectIssueType
                 {
                     ProjectId = project.Id,
-                    Name = "باگ",
-                    Description = "نوع پیش‌فرض باگ",
-                    Icon = "🐛",
-                    Color = "#EF4444",
-                    Order = 3,
-                    BaseType = IssueType.Bug,
+                    Name = "زیرتسک",
+                    Description = "نوع پیش‌فرض زیرتسک",
+                    Icon = "🔹",
+                    Color = "#06B6D4",
+                    Order = 2,
+                    BaseType = IssueType.Subtask,
                     IsCustom = false,
-                    CanAddToSprint = true,
-                    CanHaveChildren = true,
+                    CanAddToSprint = false,
+                    CanHaveChildren = false,
                     IncludeInReports = true,
+                    Level = IssueTypeLevel.Subtask,
                     CreatedByUserId = creatorUserId,
                     CreatedAt = now
                 });
