@@ -267,7 +267,7 @@
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="team-tab" data-bs-toggle="tab" data-bs-target="#team" type="button" role="tab">
-            <i class="bi bi-people me-2"></i>تیم (@(Model.MemberUserNames?.Count ?? 0))
+            <i class="bi bi-people me-2"></i>تیم (@(Model.Members?.Count ?? 0))
         </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -345,27 +345,27 @@
                         <i class="bi bi-people-fill me-2"></i>اعضای تیم
                     </div>
                     <div class="card-body">
-                        @if (Model.MemberUserNames?.Any() == true)
+                        @if (Model.Members?.Any() == true)
                         {
                             <div class="d-flex flex-wrap gap-3">
-                                @foreach (var member in Model.MemberUserNames.Take(6))
+                                @foreach (var member in Model.Members.Take(6))
                                 {
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="member-avatar">
-                                            @(member.Substring(0, 1).ToUpper())
+                                            @(member.DisplayName.Substring(0, 1).ToUpper())
                                         </div>
                                         <div>
-                                            <small class="d-block fw-bold">@member</small>
+                                            <small class="d-block fw-bold">@member.DisplayName</small>
                                             <small class="text-muted">عضو</small>
                                         </div>
                                     </div>
                                 }
                             </div>
-                            @if (Model.MemberUserNames.Count > 6)
+                            @if (Model.Members.Count > 6)
                             {
                                 <div class="text-center mt-3">
                                     <a href="#team" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('team-tab').click()">
-                                        مشاهده همه (@Model.MemberUserNames.Count)
+                                        مشاهده همه (@Model.Members.Count)
                                     </a>
                                 </div>
                             }
@@ -573,23 +573,40 @@
                         <i class="bi bi-people-fill me-2"></i>اعضای پروژه
                     </div>
                     <div class="card-body">
-                        @if (Model.MemberUserNames?.Any() == true)
+                        @if (Model.Members?.Any() == true)
                         {
                             <div class="row g-3">
-                                @foreach (var member in Model.MemberUserNames)
+                                @foreach (var member in Model.Members)
                                 {
                                     <div class="col-md-6">
                                         <div class="d-flex align-items-center gap-3 p-3" style="background: #f8f9fa; border-radius: 10px;">
                                             <div class="member-avatar">
-                                                @(member.Substring(0, 1).ToUpper())
+                                                @(member.DisplayName.Substring(0, 1).ToUpper())
                                             </div>
                                             <div class="flex-grow-1">
-                                                <h6 class="mb-0">@member</h6>
+                                                <h6 class="mb-0">@member.DisplayName</h6>
                                                 <small class="text-muted">عضو فعال</small>
                                             </div>
-                                            <span class="badge bg-success">
-                                                <i class="bi bi-check-circle me-1"></i>آنلاین
-                                            </span>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-check-circle me-1"></i>آنلاین
+                                                </span>
+                                                @if (isCreator && member.UserId != Model.CreatorUserId)
+                                                {
+                                                    <form asp-controller="Projects"
+                                                          asp-action="RemoveMember"
+                                                          method="post"
+                                                          onsubmit="return confirm('آیا از حذف این عضو از پروژه اطمینان دارید؟ تمام تسک‌های مرتبط با این فرد بدون مسئول خواهند شد.');"
+                                                          style="display: inline;">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="projectId" value="@Model.Id" />
+                                                        <input type="hidden" name="memberUserId" value="@member.UserId" />
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف از پروژه">
+                                                            <i class="bi bi-person-x"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                            </div>
                                         </div>
                                     </div>
                                 }

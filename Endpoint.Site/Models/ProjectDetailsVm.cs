@@ -14,6 +14,7 @@ namespace Endpoint.Site.Models
 
         // اعضای پروژه
         public List<string> MemberUserNames { get; set; } = new();
+        public List<ProjectMemberInfo> Members { get; set; } = new();
 
         // تسک‌ها
         public List<TaskItem> Tasks { get; set; } = new();
@@ -32,6 +33,15 @@ namespace Endpoint.Site.Models
         public int ProgressPercentage { get; set; }
         public Dictionary<int, int> CategoryTaskCounts { get; set; } = new();
 
+    }
+
+    /// <summary>
+    /// اطلاعات عضو پروژه
+    /// </summary>
+    public class ProjectMemberInfo
+    {
+        public string UserId { get; set; } = null!;
+        public string DisplayName { get; set; } = null!;
     }
 
 }

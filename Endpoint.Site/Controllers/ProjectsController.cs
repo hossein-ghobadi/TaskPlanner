@@ -116,6 +116,11 @@ namespace Endpoint.Site.Controllers
                     CreatorUserId = dto.CreatorUserId,
                     CreatorUserName = dto.CreatorUserName,
                     MemberUserNames = dto.MemberUserNames,
+                    Members = dto.Members.Select(m => new ProjectMemberInfo
+                    {
+                        UserId = m.UserId,
+                        DisplayName = m.DisplayName
+                    }).ToList(),
                     Tasks = tasks,
                     Invitations = dto.Invitations.Select(i => new ProjectInvitationVm
                     {
@@ -503,6 +508,40 @@ namespace Endpoint.Site.Controllers
 
             TempData["InviteSuccess"] = "دعوت با موفقیت حذف شد.";
             return RedirectToAction("Details", new { id = projectId });
+        }
+
+        /// <summary>
+        /// حذف عضو از پروژه
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveMember(int projectId, string memberUserId)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(memberUserId))
+            {
+                TempData["Error"] = "شناسه کاربر نامعتبر است.";
+                return RedirectToAction("Details", new { id = projectId });
+            }
+
+            try
+            {
+                await _projectCommandService.RemoveMemberFromProjectAsync(projectId, memberUserId, currentUserId);
+                
+                TempData["Success"] = "عضو با موفقیت از پروژه حذف شد و تسک‌های مرتبط بدون مسئول شدند.";
+                return RedirectToAction("Details", new { id = projectId });
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["Error"] = ex.Message;
+                return RedirectToAction("Details", new { id = projectId });
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"خطا در حذف عضو: {ex.Message}";
+                return RedirectToAction("Details", new { id = projectId });
+            }
         }
 
         // 📋 مدیریت انواع تسک (ProjectIssueTypes)
@@ -929,7 +968,7 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("IssueTypes", new { projectId });
             }
 
-            // پیدا کردن نوع پیش‌فرض "تسک" برای جایگزینی
+            // پیدا کردن نوع پیش‌فرض "کار" برای جایگزینی
             var defaultTaskType = await _context.ProjectIssueTypes
                 .FirstOrDefaultAsync(pit => pit.ProjectId == projectId && 
                                             !pit.IsCustom && 
@@ -938,7 +977,7 @@ namespace Endpoint.Site.Controllers
 
             if (defaultTaskType == null)
             {
-                TempData["Error"] = "نوع پیش‌فرض تسک یافت نشد. امکان حذف وجود ندارد.";
+                TempData["Error"] = "نوع پیش‌فرض کار یافت نشد. امکان حذف وجود ندارد.";
                 return RedirectToAction("IssueTypes", new { projectId });
             }
 
@@ -1032,6 +1071,130 @@ namespace Endpoint.Site.Controllers
             await _context.SaveChangesAsync();
 
             return Json(new { success = true, message = "ترتیب با موفقیت به‌روزرسانی شد." });
+        }
+
+        // 🔄 Migration: به‌روزرسانی نام‌های پیش‌فرض Issue Types
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MigrateIssueTypeNames(int? projectId = null)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            try
+            {
+                // پیدا کردن تمام انواع پیش‌فرض با نام‌های قدیمی
+                var epicTypes = await _context.ProjectIssueTypes
+                    .Where(pit => !pit.IsCustom && 
+                                 pit.BaseType == IssueType.Epic && 
+                                 pit.Name == "اپیک")
+                    .ToListAsync();
+
+                var taskTypes = await _context.ProjectIssueTypes
+                    .Where(pit => !pit.IsCustom && 
+                                 pit.BaseType == IssueType.Task && 
+                                 pit.Level == IssueTypeLevel.StoryLevel &&
+                                 pit.Name == "تسک")
+                    .ToListAsync();
+
+                var subtaskTypes = await _context.ProjectIssueTypes
+                    .Where(pit => !pit.IsCustom && 
+                                 pit.BaseType == IssueType.Subtask && 
+                                 pit.Name == "زیرتسک")
+                    .ToListAsync();
+
+                int updatedCount = 0;
+
+                // به‌روزرسانی نام Epic
+                foreach (var epicType in epicTypes)
+                {
+                    epicType.Name = "ویژگی";
+                    epicType.Description = "نوع پیش‌فرض ویژگی";
+                    updatedCount++;
+                }
+
+                // به‌روزرسانی نام Task
+                foreach (var taskType in taskTypes)
+                {
+                    taskType.Name = "کار";
+                    taskType.Description = "نوع پیش‌فرض کار";
+                    updatedCount++;
+                }
+
+                // به‌روزرسانی نام Subtask
+                foreach (var subtaskType in subtaskTypes)
+                {
+                    subtaskType.Name = "کارک";
+                    subtaskType.Description = "نوع پیش‌فرض کارک";
+                    updatedCount++;
+                }
+
+                if (updatedCount > 0)
+                {
+                    await _context.SaveChangesAsync();
+                    
+                    // پیدا کردن projectId از اولین رکورد به‌روزرسانی شده
+                    int? foundProjectId = null;
+                    if (epicTypes.Any())
+                        foundProjectId = epicTypes.First().ProjectId;
+                    else if (taskTypes.Any())
+                        foundProjectId = taskTypes.First().ProjectId;
+                    else if (subtaskTypes.Any())
+                        foundProjectId = subtaskTypes.First().ProjectId;
+                    
+                    var message = $"{updatedCount} نوع تسک پیش‌فرض با موفقیت به‌روزرسانی شدند.";
+                    if (epicTypes.Any() || taskTypes.Any() || subtaskTypes.Any())
+                    {
+                        message += $" (ویژگی: {epicTypes.Count}, کار: {taskTypes.Count}, کارک: {subtaskTypes.Count})";
+                    }
+                    
+                    TempData["Success"] = message;
+                    
+                    // استفاده از projectId ارسال شده یا projectId از رکوردهای به‌روزرسانی شده
+                    int redirectProjectId = projectId ?? foundProjectId ?? 0;
+                    if (redirectProjectId > 0)
+                    {
+                        return RedirectToAction("IssueTypes", new { projectId = redirectProjectId });
+                    }
+                    else
+                    {
+                        return RedirectToAction("Index");
+                    }
+                }
+                else
+                {
+                    TempData["Info"] = "هیچ نوع تسک پیش‌فرضی با نام‌های قدیمی یافت نشد. همه به‌روزرسانی شده‌اند.";
+                    
+                    if (projectId.HasValue && projectId.Value > 0)
+                    {
+                        return RedirectToAction("IssueTypes", new { projectId = projectId.Value });
+                    }
+                    
+                    // پیدا کردن projectId از یک پروژه موجود
+                    var anyProject = await _context.Projects.FirstOrDefaultAsync();
+                    if (anyProject != null)
+                    {
+                        return RedirectToAction("IssueTypes", new { projectId = anyProject.Id });
+                    }
+                    return RedirectToAction("Index");
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"خطا در به‌روزرسانی نام‌ها: {ex.Message}";
+                
+                if (projectId.HasValue && projectId.Value > 0)
+                {
+                    return RedirectToAction("IssueTypes", new { projectId = projectId.Value });
+                }
+                
+                // پیدا کردن projectId از یک پروژه موجود
+                var anyProject = await _context.Projects.FirstOrDefaultAsync();
+                if (anyProject != null)
+                {
+                    return RedirectToAction("IssueTypes", new { projectId = anyProject.Id });
+                }
+                return RedirectToAction("Index");
+            }
         }
 
         // DTO برای به‌روزرسانی ترتیب

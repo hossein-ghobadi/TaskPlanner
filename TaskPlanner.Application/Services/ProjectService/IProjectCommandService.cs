@@ -24,6 +24,11 @@ namespace TaskPlanner.Application.Services.ProjectService
         /// دعوت کاربر به پروژه
         /// </summary>
         Task InviteUserToProjectAsync(int projectId, string phone, string inviterId);
+
+        /// <summary>
+        /// حذف عضو از پروژه و تبدیل تسک‌های مرتبط به بدون مسئول
+        /// </summary>
+        Task RemoveMemberFromProjectAsync(int projectId, string memberUserId, string requesterUserId);
     }
 }
 

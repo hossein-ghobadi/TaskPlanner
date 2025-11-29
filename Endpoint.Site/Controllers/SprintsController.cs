@@ -330,8 +330,8 @@ namespace Endpoint.Site.Controllers
                                 new ProjectIssueType
                                 {
                                     ProjectId = sprint.ProjectId,
-                                    Name = "اپیک",
-                                    Description = "نوع پیش‌فرض اپیک",
+                                    Name = "ویژگی",
+                                    Description = "نوع پیش‌فرض ویژگی",
                                     Icon = "📦",
                                     Color = "#8B5CF6",
                                     Order = 0,
@@ -347,8 +347,8 @@ namespace Endpoint.Site.Controllers
                                 new ProjectIssueType
                                 {
                                     ProjectId = sprint.ProjectId,
-                                    Name = "تسک",
-                                    Description = "نوع پیش‌فرض تسک",
+                                    Name = "کار",
+                                    Description = "نوع پیش‌فرض کار",
                                     Icon = "✅",
                                     Color = "#3B82F6",
                                     Order = 1,
@@ -364,8 +364,8 @@ namespace Endpoint.Site.Controllers
                                 new ProjectIssueType
                                 {
                                     ProjectId = sprint.ProjectId,
-                                    Name = "زیرتسک",
-                                    Description = "نوع پیش‌فرض زیرتسک",
+                                    Name = "کارک",
+                                    Description = "نوع پیش‌فرض کارک",
                                     Icon = "🔹",
                                     Color = "#06B6D4",
                                     Order = 2,
@@ -595,8 +595,8 @@ namespace Endpoint.Site.Controllers
                             new ProjectIssueType
                             {
                                 ProjectId = projectId,
-                                Name = "اپیک",
-                                Description = "نوع پیش‌فرض اپیک",
+                                Name = "ویژگی",
+                                Description = "نوع پیش‌فرض ویژگی",
                                 Icon = "📦",
                                 Color = "#8B5CF6",
                                 Order = 0,
@@ -612,8 +612,8 @@ namespace Endpoint.Site.Controllers
                             new ProjectIssueType
                             {
                                 ProjectId = projectId,
-                                Name = "تسک",
-                                Description = "نوع پیش‌فرض تسک",
+                                Name = "کار",
+                                Description = "نوع پیش‌فرض کار",
                                 Icon = "✅",
                                 Color = "#3B82F6",
                                 Order = 1,
@@ -629,8 +629,8 @@ namespace Endpoint.Site.Controllers
                             new ProjectIssueType
                             {
                                 ProjectId = projectId,
-                                Name = "زیرتسک",
-                                Description = "نوع پیش‌فرض زیرتسک",
+                                Name = "کارک",
+                                Description = "نوع پیش‌فرض کارک",
                                 Icon = "🔹",
                                 Color = "#06B6D4",
                                 Order = 2,

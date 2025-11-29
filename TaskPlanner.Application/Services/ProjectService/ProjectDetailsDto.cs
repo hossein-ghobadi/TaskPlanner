@@ -14,6 +14,7 @@ namespace TaskPlanner.Application.Services.ProjectService
         public string CreatorUserId { get; set; } = null!;
         public string CreatorUserName { get; set; } = null!;
         public List<string> MemberUserNames { get; set; } = new();
+        public List<ProjectMemberDto> Members { get; set; } = new();
         public List<TaskItem> Tasks { get; set; } = new();
         public List<ProjectInvitationDto> Invitations { get; set; } = new();
         public List<TaskCategory> Categories { get; set; } = new();
@@ -34,6 +35,15 @@ namespace TaskPlanner.Application.Services.ProjectService
         public string InviteePhone { get; set; } = null!;
         public InvitationStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }
+    }
+
+    /// <summary>
+    /// DTO برای اعضای پروژه
+    /// </summary>
+    public class ProjectMemberDto
+    {
+        public string UserId { get; set; } = null!;
+        public string DisplayName { get; set; } = null!;
     }
 }
 

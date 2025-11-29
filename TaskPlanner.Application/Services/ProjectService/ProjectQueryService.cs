@@ -85,13 +85,23 @@ namespace TaskPlanner.Application.Services.ProjectService
 
             // 👥 اعضای پروژه
             var memberUsernames = new List<string>();
+            var members = new List<ProjectMemberDto>();
             foreach (var member in project.Members)
             {
                 var userInfo = await _userManager.FindByIdAsync(member.UserId);
                 if (userInfo != null)
-                    memberUsernames.Add($"{userInfo.FullName ?? "بدون نام"} ({userInfo.Phone})");
+                {
+                    var displayName = $"{userInfo.FullName ?? "بدون نام"} ({userInfo.Phone})";
+                    memberUsernames.Add(displayName);
+                    members.Add(new ProjectMemberDto
+                    {
+                        UserId = member.UserId,
+                        DisplayName = displayName
+                    });
+                }
             }
             dto.MemberUserNames = memberUsernames;
+            dto.Members = members;
 
             // 📋 تسک‌های نمایش‌پذیر در بخش پروژه (بدون Epic)
             dto.Tasks = await _context.TaskItems

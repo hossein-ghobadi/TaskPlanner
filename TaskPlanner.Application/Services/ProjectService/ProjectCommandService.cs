@@ -396,6 +396,49 @@ namespace TaskPlanner.Application.Services.ProjectService
                 })
             });
         }
+
+        /// <summary>
+        /// حذف عضو از پروژه و تبدیل تسک‌های مرتبط به بدون مسئول
+        /// </summary>
+        public async Task RemoveMemberFromProjectAsync(int projectId, string memberUserId, string requesterUserId)
+        {
+            var project = await _context.Projects
+                .FirstOrDefaultAsync(p => p.Id == projectId);
+
+            if (project == null)
+                throw new InvalidOperationException("پروژه یافت نشد.");
+
+            // بررسی اینکه فقط سازنده پروژه می‌تواند عضو را حذف کند
+            if (project.CreatorUserId != requesterUserId)
+                throw new InvalidOperationException("فقط سازنده پروژه می‌تواند اعضا را حذف کند.");
+
+            // بررسی اینکه کاربر نمی‌تواند خودش را حذف کند
+            if (memberUserId == requesterUserId)
+                throw new InvalidOperationException("نمی‌توانید خودتان را از پروژه حذف کنید.");
+
+            // بررسی اینکه عضو واقعاً در پروژه است
+            var member = await _context.ProjectMembers
+                .FirstOrDefaultAsync(m => m.ProjectId == projectId && m.UserId == memberUserId);
+
+            if (member == null)
+                throw new InvalidOperationException("این کاربر عضو این پروژه نیست.");
+
+            // پیدا کردن تمام تسک‌های پروژه که به این کاربر اختصاص داده شده‌اند
+            var assignedTasks = await _context.TaskItems
+                .Where(t => t.ProjectId == projectId && t.AssignedUserId == memberUserId)
+                .ToListAsync();
+
+            // تبدیل تسک‌ها به بدون مسئول
+            foreach (var task in assignedTasks)
+            {
+                task.AssignedUserId = null;
+            }
+
+            // حذف عضو از پروژه
+            _context.ProjectMembers.Remove(member);
+
+            await _context.SaveChangesAsync();
+        }
     }
 }
 

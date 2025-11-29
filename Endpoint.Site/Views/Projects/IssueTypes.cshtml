@@ -76,9 +76,14 @@
                 </a>
             </p>
         </div>
-        <a href="/Projects/CreateIssueType/@projectId" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-2"></i>افزودن نوع جدید
-        </a>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-warning" onclick="migrateIssueTypeNames()">
+                <i class="bi bi-arrow-repeat me-2"></i>به‌روزرسانی نام‌های پیش‌فرض
+            </button>
+            <a href="/Projects/CreateIssueType/@projectId" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>افزودن نوع جدید
+            </a>
+        </div>
     </div>
 
     @if (TempData["Success"] != null)
@@ -93,6 +98,14 @@
     {
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="bi bi-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["Info"] != null)
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="bi bi-info-circle me-2"></i>@TempData["Info"]
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
@@ -305,7 +318,44 @@
                 if (alert) {
                     alert.remove();
                 }
-            }, 3000);
+            }, 5000);
+        }
+
+        function migrateIssueTypeNames() {
+            if (!confirm('آیا مطمئن هستید که می‌خواهید نام‌های پیش‌فرض را به‌روزرسانی کنید؟\n\nاین عمل نام‌های "اپیک"، "تسک" و "زیرتسک" را به ترتیب به "ویژگی"، "کار" و "کارک" تغییر می‌دهد.')) {
+                return;
+            }
+
+            const token = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (!token) {
+                showNotification('خطا: توکن امنیتی یافت نشد', 'error');
+                return;
+            }
+
+            const projectId = @projectId;
+            
+            // استفاده از form برای ارسال صحیح AntiForgeryToken
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/Projects/MigrateIssueTypeNames';
+            
+            const tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = '__RequestVerificationToken';
+            tokenInput.value = token.value;
+            form.appendChild(tokenInput);
+
+            // اضافه کردن projectId به form
+            if (projectId) {
+                const projectIdInput = document.createElement('input');
+                projectIdInput.type = 'hidden';
+                projectIdInput.name = 'projectId';
+                projectIdInput.value = projectId;
+                form.appendChild(projectIdInput);
+            }
+
+            document.body.appendChild(form);
+            form.submit();
         }
     </script>
 }
