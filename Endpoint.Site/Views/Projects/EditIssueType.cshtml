@@ -1,0 +1,256 @@
+@model TaskPlanner.Domain.Entities.TaskPlanner.ProjectIssueType
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var projectId = ViewBag.ProjectId as int?;
+    var projectName = ViewBag.ProjectName as string ?? "پروژه";
+    var isDefault = ViewBag.IsDefault as bool? ?? false;
+}
+
+<style>
+    .form-section {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .form-section h5 {
+        color: #2563eb;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    .icon-preview {
+        font-size: 3rem;
+        text-align: center;
+        padding: 1rem;
+        background: #fff;
+        border-radius: 8px;
+        border: 2px dashed #dee2e6;
+        margin-bottom: 1rem;
+    }
+    .color-preview {
+        width: 50px;
+        height: 50px;
+        border-radius: 8px;
+        border: 2px solid #dee2e6;
+        display: inline-block;
+        margin-right: 0.5rem;
+    }
+</style>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-pencil me-2"></i>ویرایش نوع تسک
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        <a href="/Projects/IssueTypes/@projectId" class="text-decoration-none">
+                            <i class="bi bi-arrow-right"></i> بازگشت به لیست انواع تسک
+                        </a>
+                        <span class="mx-2">|</span>
+                        <a href="/Projects/Details/@projectId" class="text-decoration-none">
+                            <i class="bi bi-arrow-right"></i> بازگشت به پروژه: <strong>@projectName</strong>
+                        </a>
+                    </p>
+
+                    @if (isDefault)
+                    {
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            <strong>نوع پیش‌فرض:</strong> این نوع تسک یک نوع پیش‌فرض سیستم است. تغییرات شما بر روی تمام پروژه‌ها تأثیر می‌گذارد.
+                        </div>
+                    }
+
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-circle me-2"></i>@TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <form asp-action="EditIssueType" asp-route-id="@Model.Id" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div class="form-section">
+                            <h5><i class="bi bi-info-circle me-2"></i>اطلاعات پایه</h5>
+                            
+                            <div class="mb-3">
+                                <label asp-for="Name" class="form-label">نام نوع تسک <span class="text-danger">*</span></label>
+                                <input asp-for="Name" class="form-control" placeholder="مثلاً: Feature, Enhancement, Technical Debt" required />
+                                <span asp-validation-for="Name" class="text-danger"></span>
+                                <small class="form-text text-muted">نامی واضح و قابل فهم انتخاب کنید.</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Description" class="form-label">توضیحات</label>
+                                <textarea asp-for="Description" class="form-control" rows="3" placeholder="توضیح کوتاه درباره این نوع تسک">@Model.Description</textarea>
+                                <span asp-validation-for="Description" class="text-danger"></span>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="Icon" class="form-label">آیکون (Emoji)</label>
+                                    <input asp-for="Icon" class="form-control" placeholder="مثلاً: 🚀, ⚡, 🎯" maxlength="32" value="@Model.Icon" />
+                                    <span asp-validation-for="Icon" class="text-danger"></span>
+                                    <small class="form-text text-muted">یک emoji برای نمایش در رابط کاربری</small>
+                                    @if (!string.IsNullOrEmpty(Model.Icon))
+                                    {
+                                        <div class="icon-preview mt-2">@Model.Icon</div>
+                                    }
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="Color" class="form-label">رنگ (Hex)</label>
+                                    <div class="input-group">
+                                        <input type="color" class="form-control form-control-color" id="colorPicker" value="@(Model.Color ?? "#3B82F6")" title="انتخاب رنگ">
+                                        <input asp-for="Color" class="form-control" placeholder="#3B82F6" maxlength="32" id="colorInput" value="@Model.Color" />
+                                    </div>
+                                    <span asp-validation-for="Color" class="text-danger"></span>
+                                    <small class="form-text text-muted">رنگ برای نمایش در رابط کاربری</small>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Order" class="form-label">ترتیب نمایش</label>
+                                <input asp-for="Order" type="number" class="form-control" value="@Model.Order" min="0" />
+                                <span asp-validation-for="Order" class="text-danger"></span>
+                                <small class="form-text text-muted">اعداد کمتر در ابتدای لیست نمایش داده می‌شوند.</small>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h5><i class="bi bi-gear me-2"></i>تنظیمات پیشرفته</h5>
+
+                            <div class="mb-3">
+                                <label asp-for="BaseType" class="form-label">نوع پایه</label>
+                                @if (Model.IsCustom)
+                                {
+                                    <input type="hidden" asp-for="BaseType" value="@TaskPlanner.Domain.Entities.TaskPlanner.IssueType.Task" />
+                                    <input type="text" class="form-control" value="Task - همه انواع سفارشی هم‌ارز با Task هستند" readonly disabled style="background-color: #e9ecef;" />
+                                    <small class="form-text text-muted">
+                                        انواع سفارشی به صورت خودکار معادل <code>Task</code> در نظر گرفته می‌شوند.
+                                    </small>
+                                }
+                                else
+                                {
+                                    <input type="hidden" asp-for="BaseType" value="@Model.BaseType" />
+                                    <input type="text" class="form-control" value="@Model.BaseType - نوع پیش‌فرض (غیرقابل تغییر)" readonly disabled style="background-color: #e9ecef;" />
+                                    <small class="form-text text-muted">
+                                        نوع پایه برای انواع پیش‌فرض (Epic, Task, Subtask) قابل تغییر نیست.
+                                    </small>
+                                }
+                            </div>
+
+                            <div class="mb-3">
+                                <label asp-for="Level" class="form-label">سطح نوع تسک <span class="text-danger">*</span></label>
+                                <input type="hidden" asp-for="Level" value="@TaskPlanner.Domain.Entities.TaskPlanner.IssueTypeLevel.StoryLevel" />
+                                <input type="text" class="form-control" value="StoryLevel - برای تسک‌های قابل افزودن به Sprint" readonly disabled style="background-color: #e9ecef;" />
+                                <span asp-validation-for="Level" class="text-danger"></span>
+                                <small class="form-text text-muted">
+                                    <strong>مهم:</strong> سطح نوع تسک قابل تغییر نیست. فقط انواعی با سطح <code>StoryLevel</code> قابل ویرایش هستند.
+                                </small>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="CanAddToSprint" class="form-check-input" type="checkbox" checked="@Model.CanAddToSprint" />
+                                        <label asp-for="CanAddToSprint" class="form-check-label">
+                                            قابل افزودن به Sprint
+                                        </label>
+                                    </div>
+                                    <small class="form-text text-muted">آیا این نوع تسک می‌تواند به Sprint اضافه شود؟</small>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="CanHaveChildren" class="form-check-input" type="checkbox" checked="@Model.CanHaveChildren" />
+                                        <label asp-for="CanHaveChildren" class="form-check-label">
+                                            قابل داشتن زیرتسک
+                                        </label>
+                                    </div>
+                                    <small class="form-text text-muted">آیا این نوع تسک می‌تواند زیرتسک داشته باشد؟</small>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="IncludeInReports" class="form-check-input" type="checkbox" checked="@Model.IncludeInReports" />
+                                        <label asp-for="IncludeInReports" class="form-check-label">
+                                            در گزارش‌ها لحاظ شود
+                                        </label>
+                                    </div>
+                                    <small class="form-text text-muted">آیا این نوع در گزارش‌ها و Velocity محاسبه شود؟</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="/Projects/IssueTypes/@projectId" class="btn btn-secondary">
+                                <i class="bi bi-x-circle me-2"></i>انصراف
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-2"></i>ذخیره تغییرات
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // همگام‌سازی color picker با input
+        document.addEventListener('DOMContentLoaded', function() {
+            const colorPicker = document.getElementById('colorPicker');
+            const colorInput = document.getElementById('colorInput');
+            const iconInput = document.querySelector('input[name="Icon"]');
+
+            if (colorPicker && colorInput) {
+                colorPicker.addEventListener('input', function() {
+                    colorInput.value = colorPicker.value;
+                });
+
+                colorInput.addEventListener('input', function() {
+                    if (/^#[0-9A-F]{6}$/i.test(colorInput.value)) {
+                        colorPicker.value = colorInput.value;
+                    }
+                });
+            }
+
+            // نمایش پیش‌نمایش آیکون
+            if (iconInput) {
+                iconInput.addEventListener('input', function() {
+                    updateIconPreview(this.value);
+                });
+                
+                // نمایش اولیه
+                if (iconInput.value) {
+                    updateIconPreview(iconInput.value);
+                }
+            }
+        });
+
+        function updateIconPreview(icon) {
+            let preview = document.querySelector('.icon-preview');
+            if (!preview && icon) {
+                const iconInput = document.querySelector('input[name="Icon"]');
+                if (iconInput) {
+                    preview = document.createElement('div');
+                    preview.className = 'icon-preview mt-2';
+                    iconInput.parentElement.appendChild(preview);
+                }
+            }
+            if (preview) {
+                preview.textContent = icon || '📝';
+            }
+        }
+    </script>
+}
+

@@ -679,8 +679,15 @@ else
                                 var isFirst = true;
                                 foreach (var pit in storyLevelTypes)
                                 {
-                                    var selected = (isFirst && defaultTask == null) || (defaultTask != null && pit.Id == defaultTask.Id) ? "selected" : "";
-                                    <option value="@((int)pit.BaseType)" data-project-issue-type-id="@pit.Id" @@selected>@pit.Icon @pit.Name</option>
+                                    var isSelected = (isFirst && defaultTask == null) || (defaultTask != null && pit.Id == defaultTask.Id);
+                                    if (isSelected)
+                                    {
+                                        <option value="@((int)pit.BaseType)" data-project-issue-type-id="@pit.Id" selected>@pit.Icon @pit.Name</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@((int)pit.BaseType)" data-project-issue-type-id="@pit.Id">@pit.Icon @pit.Name</option>
+                                    }
                                     isFirst = false;
                                 }
                             }

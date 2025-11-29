@@ -235,7 +235,7 @@
         </a>
         @if (Model.ActiveSprintId != null)
         {
-            <a class="btn btn-light action-btn-modern" href="/Sprints/Board/@Model.ActiveSprintId">
+            <a class="btn btn-light action-btn-modern" href="/Sprints/Board/Board/@Model.ActiveSprintId">
                 <i class="bi bi-kanban me-2"></i>تخته کانبان
             </a>
         }
@@ -269,6 +269,11 @@
         <button class="nav-link" id="team-tab" data-bs-toggle="tab" data-bs-target="#team" type="button" role="tab">
             <i class="bi bi-people me-2"></i>تیم (@(Model.MemberUserNames?.Count ?? 0))
         </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link" href="/Projects/IssueTypes/@Model.Id" role="tab">
+            <i class="bi bi-tags-fill me-2"></i>انواع تسک
+        </a>
     </li>
 </ul>
 

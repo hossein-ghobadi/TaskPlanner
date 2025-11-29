@@ -543,6 +543,141 @@ namespace Endpoint.Site.Controllers
             return Json(new { success = true, tasks = availableTasks });
         }
 
+        // 📋 دریافت ProjectIssueTypes به صورت داینامیک
+        [HttpGet]
+        public async Task<IActionResult> GetProjectIssueTypes(int projectId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // بررسی دسترسی
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == projectId &&
+                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+            if (!hasAccess)
+            {
+                return Json(new { success = false, message = "شما به این پروژه دسترسی ندارید." });
+            }
+
+            // دریافت ProjectIssueTypes برای این پروژه
+            var projectIssueTypes = await _context.ProjectIssueTypes
+                .Where(pit => pit.ProjectId == projectId)
+                .OrderBy(pit => pit.Order)
+                .Select(pit => new
+                {
+                    id = pit.Id,
+                    name = pit.Name,
+                    icon = pit.Icon,
+                    color = pit.Color,
+                    baseType = pit.BaseType.ToString(),
+                    level = pit.Level.ToString(),
+                    canAddToSprint = pit.CanAddToSprint,
+                    canHaveChildren = pit.CanHaveChildren,
+                    isCustom = pit.IsCustom,
+                    order = pit.Order
+                })
+                .ToListAsync();
+
+            // اگر ProjectIssueTypes وجود ندارد، آن‌ها را ایجاد کن
+            if (!projectIssueTypes.Any())
+            {
+                try
+                {
+                    var project = await _context.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
+                    if (project != null)
+                    {
+                        var now = DateTime.UtcNow;
+                        var creatorUserId = project.CreatorUserId ?? userId;
+
+                        // فقط سه نوع اولیه: Epic, Task, Subtask
+                        var defaults = new List<ProjectIssueType>
+                        {
+                            new ProjectIssueType
+                            {
+                                ProjectId = projectId,
+                                Name = "اپیک",
+                                Description = "نوع پیش‌فرض اپیک",
+                                Icon = "📦",
+                                Color = "#8B5CF6",
+                                Order = 0,
+                                BaseType = IssueType.Epic,
+                                IsCustom = false,
+                                CanAddToSprint = false,
+                                CanHaveChildren = true,
+                                IncludeInReports = true,
+                                Level = IssueTypeLevel.Epic,
+                                CreatedByUserId = creatorUserId,
+                                CreatedAt = now
+                            },
+                            new ProjectIssueType
+                            {
+                                ProjectId = projectId,
+                                Name = "تسک",
+                                Description = "نوع پیش‌فرض تسک",
+                                Icon = "✅",
+                                Color = "#3B82F6",
+                                Order = 1,
+                                BaseType = IssueType.Task,
+                                IsCustom = false,
+                                CanAddToSprint = true,
+                                CanHaveChildren = true,
+                                IncludeInReports = true,
+                                Level = IssueTypeLevel.StoryLevel,
+                                CreatedByUserId = creatorUserId,
+                                CreatedAt = now
+                            },
+                            new ProjectIssueType
+                            {
+                                ProjectId = projectId,
+                                Name = "زیرتسک",
+                                Description = "نوع پیش‌فرض زیرتسک",
+                                Icon = "🔹",
+                                Color = "#06B6D4",
+                                Order = 2,
+                                BaseType = IssueType.Subtask,
+                                IsCustom = false,
+                                CanAddToSprint = false,
+                                CanHaveChildren = false,
+                                IncludeInReports = true,
+                                Level = IssueTypeLevel.Subtask,
+                                CreatedByUserId = creatorUserId,
+                                CreatedAt = now
+                            }
+                        };
+
+                        _context.ProjectIssueTypes.AddRange(defaults);
+                        await _context.SaveChangesAsync();
+
+                        // بارگذاری مجدد
+                        projectIssueTypes = await _context.ProjectIssueTypes
+                            .Where(pit => pit.ProjectId == projectId)
+                            .OrderBy(pit => pit.Order)
+                            .Select(pit => new
+                            {
+                                id = pit.Id,
+                                name = pit.Name,
+                                icon = pit.Icon,
+                                color = pit.Color,
+                                baseType = pit.BaseType.ToString(),
+                                level = pit.Level.ToString(),
+                                canAddToSprint = pit.CanAddToSprint,
+                                canHaveChildren = pit.CanHaveChildren,
+                                isCustom = pit.IsCustom,
+                                order = pit.Order
+                            })
+                            .ToListAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[GetProjectIssueTypes] ERROR: {ex.Message}");
+                    return Json(new { success = false, message = "خطا در دریافت انواع تسک: " + ex.Message });
+                }
+            }
+
+            return Json(new { success = true, issueTypes = projectIssueTypes });
+        }
+
         // 📌 اضافه کردن تسک به اسپرینت
         [HttpPost]
         public async Task<IActionResult> AddTaskToSprint(int sprintId, int taskId)

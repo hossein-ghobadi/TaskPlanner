@@ -1,0 +1,312 @@
+@model List<TaskPlanner.Domain.Entities.TaskPlanner.ProjectIssueType>
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var projectId = ViewBag.ProjectId as int?;
+    var projectName = ViewBag.ProjectName as string ?? "پروژه";
+    var isCreator = ViewBag.IsCreator as bool? ?? false;
+}
+
+@Html.AntiForgeryToken()
+
+<style>
+    .issue-type-card {
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        background: #fff;
+    }
+    .issue-type-card:hover {
+        border-color: #2563eb;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+        transform: translateY(-2px);
+    }
+    .issue-type-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    .issue-type-icon {
+        font-size: 2rem;
+        margin-left: 0.75rem;
+    }
+    .issue-type-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .badge-story-level {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    .badge-epic {
+        background: #f3e8ff;
+        color: #6b21a8;
+    }
+    .badge-subtask {
+        background: #e0f2fe;
+        color: #0c4a6e;
+    }
+    .badge-default {
+        background: #f1f5f9;
+        color: #475569;
+    }
+    .sortable-handle {
+        cursor: move;
+        color: #94a3b8;
+        font-size: 1.2rem;
+    }
+    .sortable-handle:hover {
+        color: #2563eb;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-tags-fill me-2"></i>مدیریت انواع تسک
+            </h2>
+            <p class="text-muted mb-0">
+                <a href="/Projects/Details/@projectId" class="text-decoration-none">
+                    <i class="bi bi-arrow-right"></i> بازگشت به پروژه: <strong>@projectName</strong>
+                </a>
+            </p>
+        </div>
+        <a href="/Projects/CreateIssueType/@projectId" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>افزودن نوع جدید
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="alert alert-info d-flex align-items-center gap-2">
+        <i class="bi bi-info-circle"></i>
+        <div>
+            <strong>نکته:</strong> در این صفحه فقط انواع تسک با سطح <code>StoryLevel</code> نمایش داده می‌شوند و قابل مدیریت هستند. انواع Epic و Subtask قابل ایجاد، ویرایش یا حذف نیستند.
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center py-5">
+            <i class="bi bi-inbox" style="font-size: 4rem; color: #cbd5e1;"></i>
+            <p class="text-muted mt-3">هنوز نوع تسکی تعریف نشده است.</p>
+            <a href="/Projects/CreateIssueType/@projectId" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>افزودن اولین نوع تسک
+            </a>
+        </div>
+    }
+    else
+    {
+        <div id="issueTypesList" class="row">
+            @foreach (var issueType in Model)
+            {
+                <div class="col-md-6 col-lg-4 mb-3" data-issue-type-id="@issueType.Id">
+                    <div class="issue-type-card">
+                        <div class="issue-type-header">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-grip-vertical sortable-handle me-2"></i>
+                                <span class="issue-type-icon">@(issueType.Icon ?? "📝")</span>
+                                <div>
+                                    <h5 class="mb-0">@issueType.Name</h5>
+                                    @if (!string.IsNullOrEmpty(issueType.Description))
+                                    {
+                                        <small class="text-muted">@issueType.Description</small>
+                                    }
+                                </div>
+                            </div>
+                            <div>
+                                @{
+                                    var badgeClass = issueType.Level switch
+                                    {
+                                        TaskPlanner.Domain.Entities.TaskPlanner.IssueTypeLevel.StoryLevel => "badge-story-level",
+                                        TaskPlanner.Domain.Entities.TaskPlanner.IssueTypeLevel.Epic => "badge-epic",
+                                        TaskPlanner.Domain.Entities.TaskPlanner.IssueTypeLevel.Subtask => "badge-subtask",
+                                        _ => "badge-default"
+                                    };
+                                }
+                                <span class="issue-type-badge @badgeClass">
+                                    @issueType.Level.ToString()
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                @if (issueType.CanAddToSprint)
+                                {
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle me-1"></i>قابل افزودن به Sprint
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-x-circle me-1"></i>غیرقابل افزودن به Sprint
+                                    </span>
+                                }
+
+                                @if (issueType.CanHaveChildren)
+                                {
+                                    <span class="badge bg-info">
+                                        <i class="bi bi-diagram-3 me-1"></i>قابل داشتن زیرتسک
+                                    </span>
+                                }
+
+                                @if (issueType.IncludeInReports)
+                                {
+                                    <span class="badge bg-primary">
+                                        <i class="bi bi-graph-up me-1"></i>در گزارش‌ها
+                                    </span>
+                                }
+
+                                @if (!issueType.IsCustom)
+                                {
+                                    <span class="badge bg-warning">
+                                        <i class="bi bi-shield-check me-1"></i>پیش‌فرض
+                                    </span>
+                                }
+                            </div>
+
+                            <div class="small text-muted mb-2">
+                                <div><strong>Base Type:</strong> @issueType.BaseType</div>
+                                <div><strong>Order:</strong> @issueType.Order</div>
+                                @if (!string.IsNullOrEmpty(issueType.Color))
+                                {
+                                    <div>
+                                        <strong>Color:</strong> 
+                                        <span class="badge" style="background-color: @issueType.Color;">@issueType.Color</span>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="d-flex gap-2 mt-3">
+                                <a href="/Projects/EditIssueType/@issueType.Id" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pencil me-1"></i>ویرایش
+                                </a>
+                                @if (issueType.IsCustom || isCreator)
+                                {
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-danger" 
+                                            onclick="deleteIssueType(@issueType.Id, '@issueType.Name')">
+                                        <i class="bi bi-trash me-1"></i>حذف
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script>
+        let sortableInstance = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const list = document.getElementById('issueTypesList');
+            if (list) {
+                sortableInstance = new Sortable(list, {
+                    handle: '.sortable-handle',
+                    animation: 150,
+                    onEnd: function(evt) {
+                        updateOrder();
+                    }
+                });
+            }
+        });
+
+        function updateOrder() {
+            const items = document.querySelectorAll('[data-issue-type-id]');
+            const orders = Array.from(items).map((item, index) => ({
+                Id: parseInt(item.dataset.issueTypeId),
+                Order: index + 1
+            }));
+
+            fetch('/Projects/UpdateIssueTypeOrder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                },
+                body: JSON.stringify(orders)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message || 'ترتیب با موفقیت به‌روزرسانی شد', 'success');
+                } else {
+                    showNotification(data.message || 'خطا در به‌روزرسانی ترتیب', 'error');
+                    location.reload(); // در صورت خطا، صفحه را reload کن
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('خطا در ارتباط با سرور', 'error');
+                location.reload();
+            });
+        }
+
+        function deleteIssueType(id, name) {
+            if (!confirm(`آیا مطمئن هستید که می‌خواهید نوع تسک "${name}" را حذف کنید؟\n\nاین عمل قابل بازگشت نیست.`)) {
+                return;
+            }
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/Projects/DeleteIssueType/${id}`;
+            
+            const token = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (token) {
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '__RequestVerificationToken';
+                tokenInput.value = token.value;
+                form.appendChild(tokenInput);
+            }
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        function showNotification(message, type) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const alertHtml = `
+                <div class="alert ${alertClass} alert-dismissible fade show position-fixed top-0 end-0 m-3" role="alert" style="z-index: 9999; min-width: 300px;">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', alertHtml);
+            
+            setTimeout(() => {
+                const alert = document.querySelector('.alert');
+                if (alert) {
+                    alert.remove();
+                }
+            }, 3000);
+        }
+    </script>
+}
+
