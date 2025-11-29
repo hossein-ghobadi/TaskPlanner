@@ -126,55 +126,60 @@
             <div class="d-flex flex-wrap gap-2 action-group">
                 @if (!Model.IsCompleted)
                 {
-                    <a class="btn btn-sm btn-outline-warning d-flex align-items-center gap-1"
+                    <a class="btn btn-sm btn-outline-warning d-flex align-items-center justify-content-center"
                        asp-controller="Tasks"
                        asp-action="Edit"
-                       asp-route-id="@Model.Id">
-                        <i class="bi bi-pencil-square"></i> ویرایش
+                       asp-route-id="@Model.Id"
+                       title="ویرایش">
+                        <i class="bi bi-pencil-square"></i>
                     </a>
                 }
 
-                <a class="btn btn-sm btn-outline-info d-flex align-items-center gap-1"
+                <a class="btn btn-sm btn-outline-info d-flex align-items-center justify-content-center"
                    asp-controller="Tasks"
                    asp-action="Details"
-                   asp-route-id="@Model.Id">
-                    <i class="bi bi-chat-dots"></i> گفتگو
+                   asp-route-id="@Model.Id"
+                   title="گفتگو">
+                    <i class="bi bi-chat-dots"></i>
                 </a>
 
                 @if (!Model.IsCompleted)
                 {
-                    <button class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
-                            onclick="completeTask(@Model.Id)">
-                        <i class="bi bi-check-lg"></i> خاتمه
+                    <button class="btn btn-sm btn-outline-success d-flex align-items-center justify-content-center"
+                            onclick="completeTask(@Model.Id)"
+                            title="خاتمه">
+                        <i class="bi bi-check-lg"></i>
                     </button>
                 }
 
                 @if (!Model.IsCompleted && Model.CanHaveChildren)
                 {
-                    <button class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+                    <button class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
                             onclick="openChildIssueModal(@Model.Id, '@Model.IssueType')"
                             title="افزودن @(Model.ProjectIssueType?.Level == IssueTypeLevel.Epic ? "Story-level types" : Model.ProjectIssueType?.Level == IssueTypeLevel.StoryLevel ? "Subtask" : Model.IssueType == IssueType.Epic ? "Story-level types" : "Subtask")">
-                        <i class="bi bi-plus-circle"></i> زیرتسک
+                        <i class="bi bi-plus-circle"></i>
                     </button>
                 }
 
                 @if (!Model.IsCompleted)
                 {
-                    <button class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
-                            onclick="deleteTask(@Model.Id)">
-                        <i class="bi bi-trash"></i> حذف
+                    <button class="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center"
+                            onclick="deleteTask(@Model.Id)"
+                            title="حذف">
+                        <i class="bi bi-trash"></i>
                     </button>
                 }
 
                 @if (hasSubs)
                 {
-                    <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                    <button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center"
                             type="button"
                             data-bs-toggle="collapse"
                             data-bs-target="#@collapseId"
                             aria-expanded="false"
-                            aria-controls="@collapseId">
-                        <i class="bi bi-diagram-3"></i> زیرتسک‌ها
+                            aria-controls="@collapseId"
+                            title="زیرتسک‌ها">
+                        <i class="bi bi-diagram-3"></i>
                     </button>
                 }
             </div>

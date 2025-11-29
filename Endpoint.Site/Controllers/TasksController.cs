@@ -1904,9 +1904,12 @@ namespace Endpoint.Site.Controllers
 
             var task = await _context.TaskItems
                 .Include(t => t.Category)
+                .Include(t => t.ProjectIssueType)
                 .Include(t => t.ChildIssues)
                 .Include(t => t.ParentTask)
                 .Include(t => t.Project)
+                .Include(t => t.AssignedUser)
+                .Include(t => t.WorkflowStatus)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (task == null) return NotFound();

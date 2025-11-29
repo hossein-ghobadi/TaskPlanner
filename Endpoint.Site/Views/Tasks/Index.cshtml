@@ -276,7 +276,7 @@
             </div>
             <div class="d-flex flex-wrap gap-3">
                 <div>
-                    <label class="form-label small text-muted mb-1" for="issueTypeFilter">نوع تسک</label>
+                    <label class="form-label small text-muted mb-1" for="issueTypeFilter">نوع فعالیت</label>
                     <select id="issueTypeFilter" class="form-select">
                         <option value="all">همه</option>
                         @foreach (var type in issueTypeOptions)
@@ -594,7 +594,7 @@ else
 
         // حذف تسک
         async function deleteTask(taskId) {
-            if (!confirm("آیا از حذف این تسک و زیر‌تسک‌هایش مطمئن هستید؟")) return;
+            if (!confirm("آیا از حذف این آیتم و زیر‌مجموعه هایش مطمئن هستید؟")) return;
 
             const response = await fetch("/Tasks/DeleteTask", {
                 method: "POST",
@@ -603,10 +603,10 @@ else
             });
 
             if (response.ok) {
-                showToast("تسک با موفقیت حذف شد 🗑️");
+                showToast(" با موفقیت حذف شد 🗑️");
                 setTimeout(() => location.reload(), 1000);
             } else {
-                showToast("خطا در حذف تسک ❌", true);
+                showToast("خطا در حذف  ❌", true);
             }
         }
 
@@ -630,14 +630,14 @@ else
 
                 if (response.ok) {
                     const result = await response.json();
-                    showToast(result.message || "تسک با موفقیت خاتمه یافت ✅");
+                    showToast(result.message || " با موفقیت خاتمه یافت ✅");
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     const error = await response.text();
-                    showToast(error || "خطا در خاتمه تسک ❌", true);
+                    showToast(error || "خطا در خاتمه  ❌", true);
                 }
             } catch (err) {
-                showToast("خطا در خاتمه تسک ❌", true);
+                showToast("خطا در خاتمه  ❌", true);
             } finally {
                 completingTasks.delete(taskId);
             }

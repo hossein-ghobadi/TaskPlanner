@@ -1092,16 +1092,16 @@
             initQuickAddTypeChips();
         }
 
-        // تبدیل نام baseType به مقدار enum
+        // تبدیل نام baseType به مقدار enum (مطابق با IssueType enum در C#)
         function getIssueTypeEnumValue(baseType) {
             const enumMap = {
-                'Epic': 0,
-                'Story': 1,
-                'Task': 2,
-                'Bug': 3,
-                'Subtask': 4
+                'Epic': 1,
+                'Story': 2,
+                'Task': 3,
+                'Subtask': 4,
+                'Bug': 5
             };
-            return enumMap[baseType] !== undefined ? enumMap[baseType] : 2; // default: Task
+            return enumMap[baseType] !== undefined ? enumMap[baseType] : 3; // default: Task
         }
 
         function initQuickAddTypeChips() {
@@ -1119,7 +1119,9 @@
                 btn.parentNode.replaceChild(newBtn, btn);
                 
                 newBtn.addEventListener('click', () => {
-                    chipButtons.forEach(b => b.classList.remove('active'));
+                    // دریافت دوباره همه دکمه‌ها از DOM (نه از متغیر قدیمی)
+                    const allChipButtons = document.querySelectorAll('.issue-type-chips .chip-option');
+                    allChipButtons.forEach(b => b.classList.remove('active'));
                     newBtn.classList.add('active');
                     hiddenSelect.value = newBtn.dataset.issueType;
                     

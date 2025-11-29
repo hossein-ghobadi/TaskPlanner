@@ -131,7 +131,7 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public string DueDatePersian => DueDate?.ToShortPersianDateString() ?? "تعیین نشده";
         public string AssignedUserName => AssignedUser?.UserName ?? "تخصیص نیافته";
         public string IssueTypeName => ProjectIssueType?.Name ?? IssueType.GetDisplayName();
-        public string IssueTypeIcon => string.IsNullOrWhiteSpace(ProjectIssueType?.Icon) ? IssueType.GetIcon() : ProjectIssueType!.Icon!;
+        public string IssueTypeIcon => ProjectIssueType != null && !string.IsNullOrWhiteSpace(ProjectIssueType.Icon) ? ProjectIssueType.Icon : IssueType.GetIcon();
         public string CategoryName => Category?.Name ?? "بدون دسته";
 
         /// <summary>
