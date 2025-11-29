@@ -13,76 +13,8 @@
     <p class="text-muted">تمام ابزارهای مدیریت کار و پروژه شما در یک مکان</p>
 </div>
 
-<!-- کارت‌های دسترسی سریع -->
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
-    <!-- برنامه هفتگی -->
-    <div class="col">
-        <a href="/Tasks/Weekly" class="text-decoration-none">
-            <div class="quick-access-card">
-                <div class="icon-wrapper bg-gradient-primary">
-                    <i class="bi bi-calendar-week"></i>
-                </div>
-                <h5 class="card-title">برنامه هفتگی</h5>
-                <p class="card-text">مشاهده و مدیریت برنامه هفتگی خود</p>
-            </div>
-        </a>
-    </div>
-
-    <!-- لیست کارها -->
-    <div class="col">
-        <a href="/Tasks/Index" class="text-decoration-none">
-            <div class="quick-access-card">
-                <div class="icon-wrapper bg-gradient-warning">
-                    <i class="bi bi-list-task"></i>
-                </div>
-                <h5 class="card-title">لیست کارها</h5>
-                <p class="card-text">مشاهده و مدیریت تمام کارهای خود</p>
-            </div>
-        </a>
-    </div>
-
-    <!-- یادداشت‌های شخصی -->
-    <div class="col">
-        <a href="/PersonalNotes/Index" class="text-decoration-none">
-            <div class="quick-access-card">
-                <div class="icon-wrapper bg-gradient-info">
-                    <i class="bi bi-journal-text"></i>
-                </div>
-                <h5 class="card-title">یادداشت‌های شخصی</h5>
-                <p class="card-text">یادداشت‌ها و نکات مهم خود را ثبت کنید</p>
-            </div>
-        </a>
-    </div>
-
-    <!-- دعوت کاربران -->
-    <div class="col">
-        <a href="/Invitations/MyInvitations" class="text-decoration-none">
-            <div class="quick-access-card">
-                <div class="icon-wrapper bg-gradient-danger">
-                    <i class="bi bi-envelope"></i>
-                </div>
-                <h5 class="card-title">دعوت‌ها</h5>
-                <p class="card-text">مدیریت دعوت‌نامه‌های پروژه</p>
-            </div>
-        </a>
-    </div>
-
-    <!-- ایجاد پروژه جدید -->
-    <div class="col">
-        <a href="/Projects/Create" class="text-decoration-none">
-            <div class="quick-access-card">
-                <div class="icon-wrapper bg-gradient-purple">
-                    <i class="bi bi-plus-circle"></i>
-                </div>
-                <h5 class="card-title">پروژه جدید</h5>
-                <p class="card-text">ایجاد یک پروژه جدید</p>
-            </div>
-        </a>
-    </div>
-</div>
-
 <!-- بخش پروژه‌ها -->
-<div class="projects-section">
+<div class="projects-section mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="section-title">
             <i class="bi bi-briefcase me-2"></i>
@@ -91,9 +23,24 @@
        
     </div>
 
-    @if (Model != null && Model.Any())
-    {
-        <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
+        <!-- کارت افزودن پروژه جدید -->
+        <div class="col">
+            <a href="/Projects/Create" class="text-decoration-none">
+                <div class="project-card project-card-add">
+                    <div class="card-body d-flex flex-column align-items-center justify-content-center" style="min-height: 200px;">
+                        <div class="add-project-icon mb-3">
+                            <i class="bi bi-plus-circle"></i>
+                        </div>
+                        <h5 class="card-title fw-bold mb-2">پروژه جدید</h5>
+                        <p class="card-text text-muted text-center mb-0">ایجاد یک پروژه جدید</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        @if (Model != null && Model.Any())
+        {
             @foreach (var p in Model)
             {
                 <div class="col">
@@ -152,9 +99,10 @@
                     </div>
                 </div>
             }
-        </div>
-    }
-    else
+        }
+    </div>
+    
+    @if (Model == null || !Model.Any())
     {
         <div class="empty-state text-center py-5">
             <i class="bi bi-inbox display-1 text-muted mb-3"></i>
@@ -166,6 +114,61 @@
             </a>
         </div>
     }
+</div>
+
+<!-- کارت‌های دسترسی سریع -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
+    <!-- برنامه هفتگی -->
+    <div class="col">
+        <a href="/Tasks/Weekly" class="text-decoration-none">
+            <div class="quick-access-card">
+                <div class="icon-wrapper bg-gradient-primary">
+                    <i class="bi bi-calendar-week"></i>
+                </div>
+                <h5 class="card-title">برنامه هفتگی</h5>
+                <p class="card-text">مشاهده و مدیریت برنامه هفتگی خود</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- لیست کارها -->
+    <div class="col">
+        <a href="/Tasks/Index" class="text-decoration-none">
+            <div class="quick-access-card">
+                <div class="icon-wrapper bg-gradient-warning">
+                    <i class="bi bi-list-task"></i>
+                </div>
+                <h5 class="card-title">لیست کارها</h5>
+                <p class="card-text">مشاهده و مدیریت تمام کارهای خود</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- یادداشت‌های شخصی -->
+    <div class="col">
+        <a href="/PersonalNotes/Index" class="text-decoration-none">
+            <div class="quick-access-card">
+                <div class="icon-wrapper bg-gradient-info">
+                    <i class="bi bi-journal-text"></i>
+                </div>
+                <h5 class="card-title">یادداشت‌های شخصی</h5>
+                <p class="card-text">یادداشت‌ها و نکات مهم خود را ثبت کنید</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- دعوت کاربران -->
+    <div class="col">
+        <a href="/Invitations/MyInvitations" class="text-decoration-none">
+            <div class="quick-access-card">
+                <div class="icon-wrapper bg-gradient-danger">
+                    <i class="bi bi-envelope"></i>
+                </div>
+                <h5 class="card-title">دعوت‌ها</h5>
+                <p class="card-text">مدیریت دعوت‌نامه‌های پروژه</p>
+            </div>
+        </a>
+    </div>
 </div>
 
 <style>
@@ -251,7 +254,7 @@
 
     /* بخش پروژه‌ها */
     .projects-section {
-        margin-top: 3rem;
+        margin-top: 0;
     }
 
     .section-title {
@@ -321,6 +324,38 @@
         padding: 0.4rem 0.8rem;
         border-radius: 8px;
         font-weight: 500;
+    }
+
+    /* کارت افزودن پروژه */
+    .project-card-add {
+        border: 2px dashed #d1d5db;
+        background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+        cursor: pointer;
+    }
+
+    .project-card-add:hover {
+        border-color: #6366f1;
+        background: linear-gradient(135deg, #f0f0ff 0%, #ffffff 100%);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(99, 102, 241, 0.15);
+    }
+
+    .add-project-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .project-card-add:hover .add-project-icon {
+        transform: scale(1.1);
+        box-shadow: 0 8px 16px rgba(139, 92, 246, 0.3);
     }
 
     /* حالت خالی */
