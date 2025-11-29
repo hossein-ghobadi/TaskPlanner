@@ -100,7 +100,7 @@
     <div class="alert alert-info d-flex align-items-center gap-2">
         <i class="bi bi-info-circle"></i>
         <div>
-            <strong>نکته:</strong> در این صفحه فقط انواع تسک با سطح <code>StoryLevel</code> نمایش داده می‌شوند و قابل مدیریت هستند. انواع Epic و Subtask قابل ایجاد، ویرایش یا حذف نیستند.
+            <strong>نکته:</strong> در این صفحه همه انواع تسک (Epic، StoryLevel، Subtask) نمایش داده می‌شوند. همه قابل ویرایش هستند اما فقط انواع سفارشی (کاستوم) قابل حذف هستند.
         </div>
     </div>
 
@@ -202,7 +202,7 @@
                                 <a href="/Projects/EditIssueType/@issueType.Id" class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-pencil me-1"></i>ویرایش
                                 </a>
-                                @if (issueType.IsCustom || isCreator)
+                                @if (issueType.IsCustom)
                                 {
                                     <button type="button" 
                                             class="btn btn-sm btn-outline-danger" 

@@ -35,6 +35,39 @@
         display: inline-block;
         margin-right: 0.5rem;
     }
+    .icon-picker-grid {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        padding: 0.75rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+    }
+    .icon-picker-btn {
+        background: white;
+        border: 2px solid #dee2e6;
+        border-radius: 6px;
+        padding: 0.5rem;
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 45px;
+    }
+    .icon-picker-btn:hover {
+        background: #e9ecef;
+        border-color: #2563eb;
+        transform: scale(1.1);
+    }
+    .icon-picker-btn.selected {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: white;
+    }
 </style>
 
 <div class="container py-4">
@@ -75,6 +108,11 @@
 
                     <form asp-action="EditIssueType" asp-route-id="@Model.Id" method="post">
                         @Html.AntiForgeryToken()
+                        
+                        <input type="hidden" asp-for="Id" />
+                        <input type="hidden" asp-for="ProjectId" />
+
+                        <div asp-validation-summary="All" class="alert alert-danger mb-3 validation-summary" role="alert"></div>
 
                         <div class="form-section">
                             <h5><i class="bi bi-info-circle me-2"></i>اطلاعات پایه</h5>
@@ -95,13 +133,42 @@
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label asp-for="Icon" class="form-label">آیکون (Emoji)</label>
-                                    <input asp-for="Icon" class="form-control" placeholder="مثلاً: 🚀, ⚡, 🎯" maxlength="32" value="@Model.Icon" />
+                                    <input asp-for="Icon" class="form-control" id="iconInput" placeholder="مثلاً: 🚀, ⚡, 🎯" maxlength="32" value="@Model.Icon" />
                                     <span asp-validation-for="Icon" class="text-danger"></span>
                                     <small class="form-text text-muted">یک emoji برای نمایش در رابط کاربری</small>
-                                    @if (!string.IsNullOrEmpty(Model.Icon))
-                                    {
-                                        <div class="icon-preview mt-2">@Model.Icon</div>
-                                    }
+                                    <div id="iconPreview" class="icon-preview mt-2" style="@(string.IsNullOrEmpty(Model.Icon) ? "display: none;" : "")">@Model.Icon</div>
+                                    
+                                    <!-- لیست آیکون‌های قابل انتخاب -->
+                                    <div class="mt-3">
+                                        <label class="form-label small">انتخاب از لیست:</label>
+                                        <div class="icon-picker-grid">
+                                            <button type="button" class="icon-picker-btn" data-icon="📦">📦</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="✅">✅</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🔹">🔹</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🚀">🚀</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="⚡">⚡</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🎯">🎯</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🔥">🔥</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="💡">💡</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="⭐">⭐</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🎨">🎨</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🔧">🔧</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="📝">📝</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🐛">🐛</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🔒">🔒</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="📊">📊</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🎪">🎪</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🏆">🏆</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🎁">🎁</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="📱">📱</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="💻">💻</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🌐">🌐</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🔐">🔐</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="📈">📈</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🎬">🎬</button>
+                                            <button type="button" class="icon-picker-btn" data-icon="🎮">🎮</button>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="col-md-6 mb-3">
@@ -115,79 +182,26 @@
                                 </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label asp-for="Order" class="form-label">ترتیب نمایش</label>
-                                <input asp-for="Order" type="number" class="form-control" value="@Model.Order" min="0" />
-                                <span asp-validation-for="Order" class="text-danger"></span>
-                                <small class="form-text text-muted">اعداد کمتر در ابتدای لیست نمایش داده می‌شوند.</small>
-                            </div>
                         </div>
 
-                        <div class="form-section">
-                            <h5><i class="bi bi-gear me-2"></i>تنظیمات پیشرفته</h5>
-
-                            <div class="mb-3">
-                                <label asp-for="BaseType" class="form-label">نوع پایه</label>
-                                @if (Model.IsCustom)
-                                {
-                                    <input type="hidden" asp-for="BaseType" value="@TaskPlanner.Domain.Entities.TaskPlanner.IssueType.Task" />
-                                    <input type="text" class="form-control" value="Task - همه انواع سفارشی هم‌ارز با Task هستند" readonly disabled style="background-color: #e9ecef;" />
-                                    <small class="form-text text-muted">
-                                        انواع سفارشی به صورت خودکار معادل <code>Task</code> در نظر گرفته می‌شوند.
-                                    </small>
-                                }
-                                else
-                                {
-                                    <input type="hidden" asp-for="BaseType" value="@Model.BaseType" />
-                                    <input type="text" class="form-control" value="@Model.BaseType - نوع پیش‌فرض (غیرقابل تغییر)" readonly disabled style="background-color: #e9ecef;" />
-                                    <small class="form-text text-muted">
-                                        نوع پایه برای انواع پیش‌فرض (Epic, Task, Subtask) قابل تغییر نیست.
-                                    </small>
-                                }
-                            </div>
-
-                            <div class="mb-3">
-                                <label asp-for="Level" class="form-label">سطح نوع تسک <span class="text-danger">*</span></label>
-                                <input type="hidden" asp-for="Level" value="@TaskPlanner.Domain.Entities.TaskPlanner.IssueTypeLevel.StoryLevel" />
-                                <input type="text" class="form-control" value="StoryLevel - برای تسک‌های قابل افزودن به Sprint" readonly disabled style="background-color: #e9ecef;" />
-                                <span asp-validation-for="Level" class="text-danger"></span>
-                                <small class="form-text text-muted">
-                                    <strong>مهم:</strong> سطح نوع تسک قابل تغییر نیست. فقط انواعی با سطح <code>StoryLevel</code> قابل ویرایش هستند.
-                                </small>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <div class="form-check form-switch">
-                                        <input asp-for="CanAddToSprint" class="form-check-input" type="checkbox" checked="@Model.CanAddToSprint" />
-                                        <label asp-for="CanAddToSprint" class="form-check-label">
-                                            قابل افزودن به Sprint
-                                        </label>
-                                    </div>
-                                    <small class="form-text text-muted">آیا این نوع تسک می‌تواند به Sprint اضافه شود؟</small>
-                                </div>
-
-                                <div class="col-md-4 mb-3">
-                                    <div class="form-check form-switch">
-                                        <input asp-for="CanHaveChildren" class="form-check-input" type="checkbox" checked="@Model.CanHaveChildren" />
-                                        <label asp-for="CanHaveChildren" class="form-check-label">
-                                            قابل داشتن زیرتسک
-                                        </label>
-                                    </div>
-                                    <small class="form-text text-muted">آیا این نوع تسک می‌تواند زیرتسک داشته باشد؟</small>
-                                </div>
-
-                                <div class="col-md-4 mb-3">
-                                    <div class="form-check form-switch">
-                                        <input asp-for="IncludeInReports" class="form-check-input" type="checkbox" checked="@Model.IncludeInReports" />
-                                        <label asp-for="IncludeInReports" class="form-check-label">
-                                            در گزارش‌ها لحاظ شود
-                                        </label>
-                                    </div>
-                                    <small class="form-text text-muted">آیا این نوع در گزارش‌ها و Velocity محاسبه شود؟</small>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- تنظیمات پیشرفته - فقط hidden input‌ها -->
+                        @if (Model.IsCustom)
+                        {
+                            <input type="hidden" asp-for="BaseType" value="@TaskPlanner.Domain.Entities.TaskPlanner.IssueType.Task" />
+                        }
+                        else
+                        {
+                            <input type="hidden" asp-for="BaseType" value="@Model.BaseType" />
+                        }
+                        <input type="hidden" asp-for="Level" value="@Model.Level" />
+                        @{
+                            // تنظیمات بر اساس Level
+                            bool canAddToSprint = Model.Level == TaskPlanner.Domain.Entities.TaskPlanner.IssueTypeLevel.StoryLevel;
+                            bool canHaveChildren = Model.Level != TaskPlanner.Domain.Entities.TaskPlanner.IssueTypeLevel.Subtask;
+                        }
+                        <input type="hidden" asp-for="CanAddToSprint" value="@canAddToSprint.ToString().ToLower()" />
+                        <input type="hidden" asp-for="CanHaveChildren" value="@canHaveChildren.ToString().ToLower()" />
+                        <input type="hidden" asp-for="IncludeInReports" value="true" />
 
                         <div class="d-flex justify-content-between mt-4">
                             <a href="/Projects/IssueTypes/@projectId" class="btn btn-secondary">
@@ -235,20 +249,43 @@
                     updateIconPreview(iconInput.value);
                 }
             }
+
+            // مدیریت انتخاب آیکون از لیست
+            const iconPickerButtons = document.querySelectorAll('.icon-picker-btn');
+            iconPickerButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const selectedIcon = this.getAttribute('data-icon');
+                    if (iconInput) {
+                        iconInput.value = selectedIcon;
+                        updateIconPreview(selectedIcon);
+                    }
+                    
+                    // حذف selected از همه دکمه‌ها
+                    iconPickerButtons.forEach(b => b.classList.remove('selected'));
+                    // اضافه کردن selected به دکمه انتخاب شده
+                    this.classList.add('selected');
+                });
+            });
+
+            // علامت‌گذاری آیکون انتخاب شده فعلی
+            if (iconInput && iconInput.value) {
+                iconPickerButtons.forEach(btn => {
+                    if (btn.getAttribute('data-icon') === iconInput.value) {
+                        btn.classList.add('selected');
+                    }
+                });
+            }
         });
 
         function updateIconPreview(icon) {
-            let preview = document.querySelector('.icon-preview');
-            if (!preview && icon) {
-                const iconInput = document.querySelector('input[name="Icon"]');
-                if (iconInput) {
-                    preview = document.createElement('div');
-                    preview.className = 'icon-preview mt-2';
-                    iconInput.parentElement.appendChild(preview);
-                }
-            }
+            const preview = document.getElementById('iconPreview');
             if (preview) {
-                preview.textContent = icon || '📝';
+                if (icon && icon.trim()) {
+                    preview.textContent = icon;
+                    preview.style.display = 'block';
+                } else {
+                    preview.style.display = 'none';
+                }
             }
         }
     </script>

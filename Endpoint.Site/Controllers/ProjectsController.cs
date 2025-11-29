@@ -533,10 +533,11 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index");
             }
 
-            // فقط StoryLevel ها را نمایش بده
+            // نمایش همه issue type ها
             var issueTypes = await _context.ProjectIssueTypes
-                .Where(pit => pit.ProjectId == projectId && pit.Level == IssueTypeLevel.StoryLevel)
-                .OrderBy(pit => pit.Order)
+                .Where(pit => pit.ProjectId == projectId)
+                .OrderBy(pit => pit.Level)
+                .ThenBy(pit => pit.Order)
                 .ThenBy(pit => pit.Name)
                 .ToListAsync();
 
@@ -575,16 +576,8 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index");
             }
 
-            // پیدا کردن آخرین Order برای قرار دادن در انتها
-            var lastOrder = await _context.ProjectIssueTypes
-                .Where(pit => pit.ProjectId == projectId)
-                .OrderByDescending(pit => pit.Order)
-                .Select(pit => pit.Order)
-                .FirstOrDefaultAsync();
-
             ViewBag.ProjectId = projectId;
             ViewBag.ProjectName = project.Name;
-            ViewBag.DefaultOrder = lastOrder + 1;
 
             return View();
         }
@@ -617,46 +610,88 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index");
             }
 
+            // تنظیم خودکار ProjectId و Project برای جلوگیری از خطای validation
+            model.ProjectId = projectId;
+            model.Project = project;
+            
+            // حذف Project از ModelState validation چون navigation property است و به صورت دستی تنظیم می‌شود
+            ModelState.Remove("Project");
+
             if (ModelState.IsValid)
             {
-                // بررسی تکراری نبودن نام
-                var exists = await _context.ProjectIssueTypes
-                    .AnyAsync(pit => pit.ProjectId == projectId && 
-                                    pit.Name == model.Name);
-
-                if (exists)
+                try
                 {
-                    ModelState.AddModelError("Name", "این نام قبلاً استفاده شده است.");
+                    // بررسی تکراری نبودن نام
+                    var exists = await _context.ProjectIssueTypes
+                        .AnyAsync(pit => pit.ProjectId == projectId && 
+                                        pit.Name == model.Name);
+
+                    if (exists)
+                    {
+                        ModelState.AddModelError("Name", "این نام قبلاً استفاده شده است.");
+                        ViewBag.ProjectId = projectId;
+                        ViewBag.ProjectName = project.Name;
+                        ViewBag.DefaultOrder = model.Order;
+                        return View(model);
+                    }
+
+                    model.ProjectId = projectId;
+                    model.Project = project;
+                    model.IsCustom = true;
+                    model.CreatedByUserId = userId;
+                    model.CreatedAt = DateTime.UtcNow;
+
+                    // فقط StoryLevel قابل ایجاد است
+                    model.Level = IssueTypeLevel.StoryLevel;
+                    
+                    // همه انواع سفارشی هم‌ارز با Task هستند
+                    model.BaseType = IssueType.Task;
+                    
+                    // همه StoryLevel ها باید این تنظیمات را داشته باشند
+                    model.CanAddToSprint = true;
+                    model.CanHaveChildren = true;
+                    model.IncludeInReports = true;
+                    
+                    // Order برای customها همیشه 1 است
+                    model.Order = 1;
+
+                    _context.ProjectIssueTypes.Add(model);
+                    await _context.SaveChangesAsync();
+
+                    TempData["Success"] = "نوع تسک با موفقیت ایجاد شد.";
+                    return RedirectToAction("IssueTypes", new { projectId });
+                }
+                catch (DbUpdateException ex)
+                {
+                    ModelState.AddModelError("", "خطا در ایجاد نوع تسک در پایگاه داده. لطفاً دوباره تلاش کنید.");
+                    if (ex.InnerException != null)
+                    {
+                        ModelState.AddModelError("", $"جزئیات خطا: {ex.InnerException.Message}");
+                    }
                     ViewBag.ProjectId = projectId;
                     ViewBag.ProjectName = project.Name;
                     return View(model);
                 }
-
-                model.ProjectId = projectId;
-                model.IsCustom = true;
-                model.CreatedByUserId = userId;
-                model.CreatedAt = DateTime.UtcNow;
-
-                // فقط StoryLevel قابل ایجاد است
-                model.Level = IssueTypeLevel.StoryLevel;
-                
-                // همه انواع سفارشی هم‌ارز با Task هستند
-                model.BaseType = IssueType.Task;
-
-                _context.ProjectIssueTypes.Add(model);
-                await _context.SaveChangesAsync();
-
-                TempData["Success"] = "نوع تسک با موفقیت ایجاد شد.";
-                return RedirectToAction("IssueTypes", new { projectId });
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", $"خطای غیرمنتظره: {ex.Message}");
+                    ViewBag.ProjectId = projectId;
+                    ViewBag.ProjectName = project.Name;
+                    return View(model);
+                }
             }
 
+            // تنظیم Project برای model در صورت وجود خطای validation
+            model.ProjectId = projectId;
+            model.Project = project;
+            ModelState.Remove("Project");
             ViewBag.ProjectId = projectId;
             ViewBag.ProjectName = project.Name;
             return View(model);
         }
 
         // ✏️ ویرایش نوع تسک
-        [HttpGet("EditIssueType/{id}")]
+        [HttpGet("{id}")]
         public async Task<IActionResult> EditIssueType(int id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -684,13 +719,6 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index");
             }
 
-            // فقط StoryLevel ها قابل ویرایش هستند
-            if (issueType.Level != IssueTypeLevel.StoryLevel)
-            {
-                TempData["Error"] = "فقط انواع تسک با سطح StoryLevel قابل ویرایش هستند.";
-                return RedirectToAction("IssueTypes", new { projectId = issueType.ProjectId });
-            }
-
             // بررسی اینکه آیا می‌تواند ویرایش شود (نوع‌های پیش‌فرض فقط توسط سازنده)
             if (!issueType.IsCustom && issueType.Project.CreatorUserId != userId)
             {
@@ -705,7 +733,7 @@ namespace Endpoint.Site.Controllers
             return View(issueType);
         }
 
-        [HttpPost("EditIssueType/{id}")]
+        [HttpPost("{id}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditIssueType(int id, ProjectIssueType model)
         {
@@ -734,13 +762,6 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index");
             }
 
-            // فقط StoryLevel ها قابل ویرایش هستند
-            if (issueType.Level != IssueTypeLevel.StoryLevel)
-            {
-                TempData["Error"] = "فقط انواع تسک با سطح StoryLevel قابل ویرایش هستند.";
-                return RedirectToAction("IssueTypes", new { projectId = issueType.ProjectId });
-            }
-
             // بررسی اینکه آیا می‌تواند ویرایش شود
             if (!issueType.IsCustom && issueType.Project.CreatorUserId != userId)
             {
@@ -748,29 +769,47 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("IssueTypes", new { projectId = issueType.ProjectId });
             }
 
+            // تنظیم خودکار ProjectId و Project برای جلوگیری از خطای validation
+            model.ProjectId = issueType.ProjectId;
+            model.Project = issueType.Project;
+            
+            // حذف Project از ModelState validation چون navigation property است و به صورت دستی تنظیم می‌شود
+            ModelState.Remove("Project");
+
             if (ModelState.IsValid)
             {
-                // بررسی تکراری نبودن نام (به جز خودش)
-                var exists = await _context.ProjectIssueTypes
-                    .AnyAsync(pit => pit.ProjectId == issueType.ProjectId && 
-                                    pit.Name == model.Name && 
-                                    pit.Id != id);
-
-                if (exists)
+                try
                 {
-                    ModelState.AddModelError("Name", "این نام قبلاً استفاده شده است.");
-                    ViewBag.ProjectId = issueType.ProjectId;
-                    ViewBag.ProjectName = issueType.Project.Name;
-                    ViewBag.IsDefault = !issueType.IsCustom;
-                    return View(model);
-                }
+                    // بررسی تکراری نبودن نام (به جز خودش)
+                    var exists = await _context.ProjectIssueTypes
+                        .AnyAsync(pit => pit.ProjectId == issueType.ProjectId && 
+                                        pit.Name == model.Name && 
+                                        pit.Id != id);
+
+                    if (exists)
+                    {
+                        ModelState.AddModelError("Name", "این نام قبلاً استفاده شده است.");
+                        ViewBag.ProjectId = issueType.ProjectId;
+                        ViewBag.ProjectName = issueType.Project.Name;
+                        ViewBag.IsDefault = !issueType.IsCustom;
+                        return View(model);
+                    }
 
                 // به‌روزرسانی فیلدها (Level و BaseType همیشه ثابت می‌مانند)
                 issueType.Name = model.Name;
                 issueType.Description = model.Description;
                 issueType.Icon = model.Icon;
                 issueType.Color = model.Color;
-                issueType.Order = model.Order;
+                // Order برای customها همیشه 1 است
+                if (issueType.IsCustom)
+                {
+                    issueType.Order = 1;
+                }
+                else
+                {
+                    issueType.Order = model.Order;
+                }
+                
                 // BaseType را تغییر نده - انواع سفارشی همیشه Task هستند
                 if (issueType.IsCustom)
                 {
@@ -781,18 +820,70 @@ namespace Endpoint.Site.Controllers
                     // برای انواع پیش‌فرض، BaseType را حفظ کن
                     issueType.BaseType = model.BaseType;
                 }
-                issueType.CanAddToSprint = model.CanAddToSprint;
-                issueType.CanHaveChildren = model.CanHaveChildren;
-                issueType.IncludeInReports = model.IncludeInReports;
-                // Level را تغییر نده - همیشه StoryLevel باقی می‌ماند
-                issueType.Level = IssueTypeLevel.StoryLevel;
+                
+                // تنظیمات بر اساس Level
+                // Level را تغییر نده - Level اصلی را حفظ کن
+                if (issueType.Level == IssueTypeLevel.StoryLevel)
+                {
+                    // StoryLevel: قابل افزودن به Sprint، قابل داشتن زیرتسک
+                    issueType.CanAddToSprint = true;
+                    issueType.CanHaveChildren = true;
+                    issueType.IncludeInReports = true;
+                }
+                else if (issueType.Level == IssueTypeLevel.Epic)
+                {
+                    // Epic: غیرقابل افزودن به Sprint، قابل داشتن زیرتسک
+                    issueType.CanAddToSprint = false;
+                    issueType.CanHaveChildren = true;
+                    issueType.IncludeInReports = true;
+                }
+                else if (issueType.Level == IssueTypeLevel.Subtask)
+                {
+                    // Subtask: غیرقابل افزودن به Sprint، غیرقابل داشتن زیرتسک
+                    issueType.CanAddToSprint = false;
+                    issueType.CanHaveChildren = false;
+                    issueType.IncludeInReports = true;
+                }
 
-                await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync();
 
-                TempData["Success"] = "نوع تسک با موفقیت به‌روزرسانی شد.";
-                return RedirectToAction("IssueTypes", new { projectId = issueType.ProjectId });
+                    TempData["Success"] = "نوع تسک با موفقیت به‌روزرسانی شد.";
+                    return RedirectToAction("IssueTypes", new { projectId = issueType.ProjectId });
+                }
+                catch (DbUpdateException ex)
+                {
+                    ModelState.AddModelError("", "خطا در به‌روزرسانی نوع تسک در پایگاه داده. لطفاً دوباره تلاش کنید.");
+                    if (ex.InnerException != null)
+                    {
+                        ModelState.AddModelError("", $"جزئیات خطا: {ex.InnerException.Message}");
+                    }
+                    // تنظیم Project برای model
+                    model.ProjectId = issueType.ProjectId;
+                    model.Project = issueType.Project;
+                    ModelState.Remove("Project");
+                    ViewBag.ProjectId = issueType.ProjectId;
+                    ViewBag.ProjectName = issueType.Project.Name;
+                    ViewBag.IsDefault = !issueType.IsCustom;
+                    return View(model);
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", $"خطای غیرمنتظره: {ex.Message}");
+                    // تنظیم Project برای model
+                    model.ProjectId = issueType.ProjectId;
+                    model.Project = issueType.Project;
+                    ModelState.Remove("Project");
+                    ViewBag.ProjectId = issueType.ProjectId;
+                    ViewBag.ProjectName = issueType.Project.Name;
+                    ViewBag.IsDefault = !issueType.IsCustom;
+                    return View(model);
+                }
             }
 
+            // تنظیم Project برای model در صورت وجود خطای validation
+            model.ProjectId = issueType.ProjectId;
+            model.Project = issueType.Project;
+            ModelState.Remove("Project");
             ViewBag.ProjectId = issueType.ProjectId;
             ViewBag.ProjectName = issueType.Project.Name;
             ViewBag.IsDefault = !issueType.IsCustom;
@@ -800,7 +891,7 @@ namespace Endpoint.Site.Controllers
         }
 
         // 🗑️ حذف نوع تسک
-        [HttpPost("DeleteIssueType/{id}")]
+        [HttpPost("{id}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteIssueType(int id)
         {
@@ -812,8 +903,11 @@ namespace Endpoint.Site.Controllers
 
             if (issueType == null)
             {
-                return Json(new { success = false, message = "نوع تسک یافت نشد." });
+                TempData["Error"] = "نوع تسک یافت نشد.";
+                return RedirectToAction("Index");
             }
+
+            var projectId = issueType.ProjectId;
 
             // بررسی دسترسی
             var hasAccess = issueType.Project.CreatorUserId == userId || 
@@ -824,34 +918,54 @@ namespace Endpoint.Site.Controllers
 
             if (!hasAccess)
             {
-                return Json(new { success = false, message = "شما به این پروژه دسترسی ندارید." });
+                TempData["Error"] = "شما به این پروژه دسترسی ندارید.";
+                return RedirectToAction("IssueTypes", new { projectId });
             }
 
-            // فقط StoryLevel ها قابل حذف هستند
-            if (issueType.Level != IssueTypeLevel.StoryLevel)
+            // فقط کاستوم‌ها قابل حذف هستند
+            if (!issueType.IsCustom)
             {
-                return Json(new { success = false, message = "فقط انواع تسک با سطح StoryLevel قابل حذف هستند." });
+                TempData["Error"] = "فقط انواع تسک سفارشی قابل حذف هستند.";
+                return RedirectToAction("IssueTypes", new { projectId });
             }
 
-            // بررسی اینکه آیا می‌تواند حذف شود (نوع‌های پیش‌فرض فقط توسط سازنده)
-            if (!issueType.IsCustom && issueType.Project.CreatorUserId != userId)
+            // پیدا کردن نوع پیش‌فرض "تسک" برای جایگزینی
+            var defaultTaskType = await _context.ProjectIssueTypes
+                .FirstOrDefaultAsync(pit => pit.ProjectId == projectId && 
+                                            !pit.IsCustom && 
+                                            pit.BaseType == IssueType.Task &&
+                                            pit.Level == IssueTypeLevel.StoryLevel);
+
+            if (defaultTaskType == null)
             {
-                return Json(new { success = false, message = "فقط سازنده پروژه می‌تواند انواع پیش‌فرض را حذف کند." });
+                TempData["Error"] = "نوع پیش‌فرض تسک یافت نشد. امکان حذف وجود ندارد.";
+                return RedirectToAction("IssueTypes", new { projectId });
             }
 
-            // بررسی اینکه آیا تسکی از این نوع استفاده می‌کند
-            var hasTasks = await _context.TaskItems
-                .AnyAsync(t => t.ProjectIssueTypeId == id);
+            // پیدا کردن تمام تسک‌هایی که از این نوع استفاده می‌کنند
+            var tasksWithThisType = await _context.TaskItems
+                .Where(t => t.ProjectIssueTypeId == id)
+                .ToListAsync();
 
-            if (hasTasks)
+            // تغییر نوع تسک‌های مرتبط به نوع پیش‌فرض
+            foreach (var task in tasksWithThisType)
             {
-                return Json(new { success = false, message = "این نوع تسک در حال استفاده است و نمی‌تواند حذف شود." });
+                task.ProjectIssueTypeId = defaultTaskType.Id;
+                task.IssueType = defaultTaskType.BaseType;
             }
 
             _context.ProjectIssueTypes.Remove(issueType);
             await _context.SaveChangesAsync();
 
-            return Json(new { success = true, message = "نوع تسک با موفقیت حذف شد." });
+            if (tasksWithThisType.Any())
+            {
+                TempData["Success"] = $"نوع تسک با موفقیت حذف شد. {tasksWithThisType.Count} تسک مرتبط به نوع پیش‌فرض \"{defaultTaskType.Name}\" تغییر وضعیت دادند.";
+            }
+            else
+            {
+                TempData["Success"] = "نوع تسک با موفقیت حذف شد.";
+            }
+            return RedirectToAction("IssueTypes", new { projectId });
         }
 
         // 🔄 به‌روزرسانی ترتیب انواع تسک
@@ -902,7 +1016,16 @@ namespace Endpoint.Site.Controllers
                 var issueType = issueTypes.FirstOrDefault(it => it.Id == order.Id);
                 if (issueType != null)
                 {
-                    issueType.Order = order.Order;
+                    // فقط برای customها Order را به‌روزرسانی کن (همیشه 1)
+                    // برای انواع پیش‌فرض، Order را حفظ کن
+                    if (issueType.IsCustom)
+                    {
+                        issueType.Order = 1;
+                    }
+                    else
+                    {
+                        issueType.Order = order.Order;
+                    }
                 }
             }
 
