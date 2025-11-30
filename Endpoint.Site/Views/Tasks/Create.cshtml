@@ -12,117 +12,337 @@
         .ToList();
 }
 
-<h2>🎯 افزودن کار</h2>
-
-<form asp-action="Create" method="post">
-    <div asp-validation-summary="All" class="text-danger mb-3"></div>
-
-    <!-- نوع Issue -->
-    <div class="mb-3">
-        <label asp-for="IssueType" class="form-label">
-            <strong>نوع کار</strong> 
-            <span class="text-danger">*</span>
-        </label>
-        <select asp-for="IssueType" class="form-control" id="issueTypeSelect">
-            @foreach (var issueType in availableIssueTypes)
-            {
-                var isSelected = Model?.ProjectIssueTypeId == issueType.Id;
-                <option value="@((int)issueType.BaseType)" 
-                        data-project-issue-type-id="@issueType.Id" 
-                        data-level="@((int)issueType.Level)" 
-                        selected="@isSelected">
-                    @issueType.Icon @issueType.Name
-                </option>
-            }
-        </select>
-        <small class="form-text text-muted">
-            <strong>راهنما:</strong> اپیک بزرگ‌ترین واحد است. کار و انواع سفارشی برای کارهای اصلی استفاده می‌شوند. زیرکار فقط از داخل خود کارها قابل ایجاد است.
-        </small>
-        <span asp-validation-for="IssueType" class="text-danger"></span>
-    </div>
+<style>
+    .task-form-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 0;
+    }
     
-    <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
-
-    <div class="mb-3">
-        <label asp-for="Title" class="form-label">
-            <strong>عنوان</strong>
-            <span class="text-danger">*</span>
-        </label>
-        <input asp-for="Title" class="form-control" placeholder="مثلاً: پیاده‌سازی سیستم لاگین" />
-        <span asp-validation-for="Title" class="text-danger"></span>
-    </div>
-
-    <div class="mb-3">
-        <label asp-for="Description" class="form-label">توضیحات</label>
-        <textarea asp-for="Description" class="form-control" rows="4" 
-                  placeholder="توضیحات کامل درباره این Issue..."></textarea>
-    </div>
-
-    <div class="mb-3">
-        <label>تاریخ شروع</label>
-        <input type="text" id="StartDateDisplay" class="form-control" autocomplete="off" />
-        <input type="hidden" asp-for="StartDateSh" id="StartDate" />
-        <span asp-validation-for="StartDateSh" class="text-danger"></span>
-    </div>
-
-    <div class="mb-3">
-        <label>تاریخ پایان</label>
-        <input type="text" id="DueDateDisplay" class="form-control" autocomplete="off" />
-        <input type="hidden" asp-for="DueDateSh" id="DueDate" />
-        <span asp-validation-for="DueDateSh" class="text-danger"></span>
-    </div>
+    .form-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3);
+    }
     
-    <!-- پروژه (فقط نمایشی - غیرقابل تغییر) -->
-    <div class="mb-3">
-        <label class="form-label">
-            <strong>پروژه</strong>
-            <span class="text-danger">*</span>
-        </label>
-        <input type="text" class="form-control" value="@ViewBag.ProjectName" readonly disabled style="background-color: #e9ecef; cursor: not-allowed;" />
+    .form-header h2 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .form-header .icon {
+        font-size: 2.5rem;
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid #f0f0f0;
+        transition: all 0.3s ease;
+    }
+    
+    .form-card:hover {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+    
+    .form-card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #f3f4f6;
+    }
+    
+    .form-card-title i {
+        color: #2563eb;
+        font-size: 1.3rem;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .form-label i {
+        color: #2563eb;
+        font-size: 1rem;
+    }
+    
+    .form-control, .form-select {
+        border: 2px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        outline: none;
+    }
+    
+    .form-control:disabled {
+        background-color: #f9fafb;
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+    
+    .help-text {
+        background: #eff6ff;
+        border-right: 4px solid #2563eb;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 0.75rem;
+        font-size: 0.9rem;
+        color: #1e40af;
+    }
+    
+    .btn-modern {
+        border-radius: 12px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: none;
+    }
+    
+    .btn-modern-primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    }
+    
+    .btn-modern-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+        color: white;
+    }
+    
+    .btn-modern-secondary {
+        background: #f3f4f6;
+        color: #374151;
+    }
+    
+    .btn-modern-secondary:hover {
+        background: #e5e7eb;
+        transform: translateY(-2px);
+        color: #374151;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 2px solid #f3f4f6;
+    }
+    
+    .field-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    @@media (max-width: 768px) {
+        .form-header {
+            padding: 1.5rem;
+        }
+        
+        .form-header h2 {
+            font-size: 1.5rem;
+        }
+        
+        .form-card {
+            padding: 1.5rem;
+        }
+        
+        .field-group {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="task-form-container">
+    <div class="form-header">
+        <h2>
+            <span class="icon">🎯</span>
+            افزودن کار جدید
+        </h2>
+    </div>
+
+    <form asp-action="Create" method="post">
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+        }
+
+        <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
         <input type="hidden" asp-for="ProjectId" id="projectSelect" />
-        <small class="form-text text-muted">کار فقط در این پروژه ایجاد می‌شود</small>
-        <span asp-validation-for="ProjectId" class="text-danger"></span>
-    </div>
 
-    <div class="mb-3">
-        <label asp-for="CategoryId" class="form-label">دسته‌بندی (Component) - اختیاری</label>
-        <select asp-for="CategoryId" class="form-control"
-                asp-items="@(new SelectList(ViewBag.Categories, "Id", "Name"))">
-            <option value="">-- بدون دسته‌بندی --</option>
-        </select>
-        <small class="form-text text-muted">مثل Component در Jira - می‌توانید خالی بگذارید</small>
-    </div>
-    <div class="mb-3">
-        <label asp-for="AssignedUserId" class="form-label">مسئول کار</label>
-        <select asp-for="AssignedUserId" class="form-control" id="assignedUserSelect"
-                asp-items="@(new SelectList(ViewBag.AssignedUsers, "Id", "Name", Model?.AssignedUserId))">
-            <option value="">-- انتخاب کاربر --</option>
-        </select>
-        <span asp-validation-for="AssignedUserId" class="text-danger"></span>
-    </div>
+        <!-- اطلاعات اصلی -->
+        <div class="form-card">
+            <div class="form-card-title">
+                <i class="bi bi-info-circle"></i>
+                اطلاعات اصلی
+            </div>
+            
+            <div class="mb-4">
+                <label asp-for="IssueType" class="form-label">
+                    <i class="bi bi-tag"></i>
+                    نوع کار
+                    <span class="text-danger">*</span>
+                </label>
+                <select asp-for="IssueType" class="form-select" id="issueTypeSelect">
+                    @foreach (var issueType in availableIssueTypes)
+                    {
+                        var isSelected = Model?.ProjectIssueTypeId == issueType.Id;
+                        <option value="@((int)issueType.BaseType)" 
+                                data-project-issue-type-id="@issueType.Id" 
+                                data-level="@((int)issueType.Level)" 
+                                selected="@isSelected">
+                            @issueType.Icon @issueType.Name
+                        </option>
+                    }
+                </select>
+                <span asp-validation-for="IssueType" class="text-danger small"></span>
+            </div>
 
-    <!-- Story Points (فقط برای Story و Task) -->
-    <div class="mb-3" id="storyPointsDiv" style="display:none">
-        <label asp-for="StoryPoints" class="form-label">
-            <strong>امتیاز کار</strong>
-        </label>
-        <input asp-for="StoryPoints" type="number" min="0" max="100" class="form-control" 
-               placeholder="مثلاً: 5" />
-        <small class="form-text text-muted">
-            برای تخمین پیچیدگی و حجم کار (معمولاً اعداد Fibonacci: 1, 2, 3, 5, 8, 13...)
-        </small>
-        <span asp-validation-for="StoryPoints" class="text-danger"></span>
-    </div>
+            <div class="mb-4">
+                <label asp-for="Title" class="form-label">
+                    <i class="bi bi-card-heading"></i>
+                    عنوان کار
+                    <span class="text-danger">*</span>
+                </label>
+                <input asp-for="Title" class="form-control" placeholder="مثلاً: پیاده‌سازی سیستم لاگین" />
+                <span asp-validation-for="Title" class="text-danger small"></span>
+            </div>
 
-    <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-success">
-            <i class="bi bi-check-circle"></i> ثبت Issue
-        </button>
-        <a asp-action="Index" asp-route-projectId="@Model.ProjectId" class="btn btn-secondary">
-            <i class="bi bi-x-circle"></i> انصراف
-        </a>
-    </div>
-</form>
+            <div class="mb-0">
+                <label asp-for="Description" class="form-label">
+                    <i class="bi bi-file-text"></i>
+                    توضیحات
+                </label>
+                <textarea asp-for="Description" class="form-control" rows="4" 
+                          placeholder="توضیحات کامل درباره این کار..."></textarea>
+            </div>
+        </div>
+
+        <!-- جزئیات تکمیلی -->
+        <div class="form-card">
+            <div class="form-card-title">
+                <i class="bi bi-calendar3"></i>
+                جزئیات تکمیلی
+            </div>
+            
+            <div class="field-group">
+                <div>
+                    <label class="form-label">
+                        <i class="bi bi-calendar-event"></i>
+                        تاریخ شروع
+                    </label>
+                    <input type="text" id="StartDateDisplay" class="form-control" autocomplete="off" />
+                    <input type="hidden" asp-for="StartDateSh" id="StartDate" />
+                    <span asp-validation-for="StartDateSh" class="text-danger small"></span>
+                </div>
+
+                <div>
+                    <label class="form-label">
+                        <i class="bi bi-calendar-check"></i>
+                        تاریخ پایان
+                    </label>
+                    <input type="text" id="DueDateDisplay" class="form-control" autocomplete="off" />
+                    <input type="hidden" asp-for="DueDateSh" id="DueDate" />
+                    <span asp-validation-for="DueDateSh" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <div class="field-group mt-4">
+                <div>
+                    <label class="form-label">
+                        <i class="bi bi-folder"></i>
+                        پروژه
+                        <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" class="form-control" value="@ViewBag.ProjectName" readonly disabled />
+                    <small class="text-muted small">کار فقط در این پروژه ایجاد می‌شود</small>
+                    <span asp-validation-for="ProjectId" class="text-danger small"></span>
+                </div>
+
+                <div>
+                    <label asp-for="CategoryId" class="form-label">
+                        <i class="bi bi-collection"></i>
+                        دسته‌بندی (اختیاری)
+                    </label>
+                    <select asp-for="CategoryId" class="form-select"
+                            asp-items="@(new SelectList(ViewBag.Categories, "Id", "Name"))">
+                        <option value="">-- بدون دسته‌بندی --</option>
+                    </select>
+                    <small class="text-muted small">مثل Component در Jira</small>
+                </div>
+            </div>
+
+            <div class="field-group mt-4">
+                <div>
+                    <label asp-for="AssignedUserId" class="form-label">
+                        <i class="bi bi-person"></i>
+                        مسئول کار
+                    </label>
+                    <select asp-for="AssignedUserId" class="form-select" id="assignedUserSelect"
+                            asp-items="@(new SelectList(ViewBag.AssignedUsers, "Id", "Name", Model?.AssignedUserId))">
+                        <option value="">-- انتخاب کاربر --</option>
+                    </select>
+                    <span asp-validation-for="AssignedUserId" class="text-danger small"></span>
+                </div>
+
+                <div id="storyPointsDiv" style="display:none">
+                    <label asp-for="StoryPoints" class="form-label">
+                        <i class="bi bi-star"></i>
+                        امتیاز کار
+                    </label>
+                    <input asp-for="StoryPoints" type="number" min="0" max="100" class="form-control" 
+                           placeholder="مثلاً: 5" />
+                    <small class="text-muted small">اعداد Fibonacci: 1, 2, 3, 5, 8, 13...</small>
+                    <span asp-validation-for="StoryPoints" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- دکمه‌های عملیات -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-modern btn-modern-primary">
+                <i class="bi bi-check-circle"></i>
+                ثبت کار
+            </button>
+            <a asp-action="Index" asp-route-projectId="@Model.ProjectId" class="btn btn-modern btn-modern-secondary">
+                <i class="bi bi-x-circle"></i>
+                انصراف
+            </a>
+        </div>
+    </form>
+</div>
+
 @section Scripts {
     <script>
         // تاریخ شروع

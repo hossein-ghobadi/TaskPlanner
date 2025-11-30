@@ -12,108 +12,329 @@
         .ToList();
 }
 
-<h2>ویرایش کار</h2>
+<style>
+    .task-form-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 0;
+    }
+    
+    .form-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: 0 10px 40px rgba(37, 99, 235, 0.3);
+    }
+    
+    .form-header h2 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .form-header .icon {
+        font-size: 2.5rem;
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid #f0f0f0;
+        transition: all 0.3s ease;
+    }
+    
+    .form-card:hover {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+    
+    .form-card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #f3f4f6;
+    }
+    
+    .form-card-title i {
+        color: #2563eb;
+        font-size: 1.3rem;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .form-label i {
+        color: #2563eb;
+        font-size: 1rem;
+    }
+    
+    .form-control, .form-select {
+        border: 2px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        outline: none;
+    }
+    
+    .form-control:disabled {
+        background-color: #f9fafb;
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+    
+    .help-text {
+        background: #eff6ff;
+        border-right: 4px solid #2563eb;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 0.75rem;
+        font-size: 0.9rem;
+        color: #1e40af;
+    }
+    
+    .btn-modern {
+        border-radius: 12px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: none;
+    }
+    
+    .btn-modern-warning {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+    }
+    
+    .btn-modern-warning:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(30, 64, 175, 0.5);
+        color: white;
+    }
+    
+    .btn-modern-secondary {
+        background: #f3f4f6;
+        color: #374151;
+    }
+    
+    .btn-modern-secondary:hover {
+        background: #e5e7eb;
+        transform: translateY(-2px);
+        color: #374151;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 2px solid #f3f4f6;
+    }
+    
+    .field-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    @@media (max-width: 768px) {
+        .form-header {
+            padding: 1.5rem;
+        }
+        
+        .form-header h2 {
+            font-size: 1.5rem;
+        }
+        
+        .form-card {
+            padding: 1.5rem;
+        }
+        
+        .field-group {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 
-<form asp-action="Edit" method="post">
-    @Html.HiddenFor(m => m.Id)
+<div class="task-form-container">
+    <div class="form-header">
+        <h2>
+            <span class="icon">✏️</span>
+            ویرایش کار
+        </h2>
+    </div>
 
-    <div asp-validation-summary="All" class="text-danger"></div>
+    <form asp-action="Edit" method="post">
+        @Html.HiddenFor(m => m.Id)
+        <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
+        @Html.HiddenFor(m => m.ProjectId)
 
-    <!-- نوع Issue -->
-    <div class="mb-3">
-        <label asp-for="IssueType" class="form-label">
-            <strong>نوع کار</strong> 
-            <span class="text-danger">*</span>
-        </label>
-        <select asp-for="IssueType" class="form-control" id="issueTypeSelect">
-            @foreach (var issueType in availableIssueTypes)
-            {
-                // انتخاب بر اساس ProjectIssueTypeId یا تطبیق IssueType
-                var isSelected = Model.ProjectIssueTypeId == issueType.Id || 
-                                (Model.ProjectIssueTypeId == null && Model.IssueType == issueType.BaseType);
-                <option value="@((int)issueType.BaseType)" 
-                        data-project-issue-type-id="@issueType.Id" 
-                        data-level="@((int)issueType.Level)" 
-                        selected="@isSelected">
-                    @issueType.Icon @issueType.Name
-                </option>
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+        }
+
+        <!-- اطلاعات اصلی -->
+        <div class="form-card">
+            <div class="form-card-title">
+                <i class="bi bi-info-circle"></i>
+                اطلاعات اصلی
+            </div>
+            
+            <div class="mb-4">
+                <label asp-for="IssueType" class="form-label">
+                    <i class="bi bi-tag"></i>
+                    نوع کار
+                    <span class="text-danger">*</span>
+                </label>
+                <select asp-for="IssueType" class="form-select" id="issueTypeSelect">
+                    @foreach (var issueType in availableIssueTypes)
+                    {
+                        var isSelected = Model.ProjectIssueTypeId == issueType.Id || 
+                                        (Model.ProjectIssueTypeId == null && Model.IssueType == issueType.BaseType);
+                        <option value="@((int)issueType.BaseType)" 
+                                data-project-issue-type-id="@issueType.Id" 
+                                data-level="@((int)issueType.Level)" 
+                                selected="@isSelected">
+                            @issueType.Icon @issueType.Name
+                        </option>
             }
         </select>
-        <small class="form-text text-muted">
-            <strong>راهنما:</strong> اپیک بزرگ‌ترین واحد است. کار و انواع سفارشی برای کارهای اصلی استفاده می‌شوند.
-        </small>
-        <span asp-validation-for="IssueType" class="text-danger"></span>
+                <span asp-validation-for="IssueType" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-4">
+                <label asp-for="Title" class="form-label">
+                    <i class="bi bi-card-heading"></i>
+                    عنوان کار
+                </label>
+                <input asp-for="Title" class="form-control" />
+                <span asp-validation-for="Title" class="text-danger small"></span>
     </div>
     
-    <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
+            <div class="mb-0">
+                <label asp-for="Description" class="form-label">
+                    <i class="bi bi-file-text"></i>
+                    توضیحات
+            </label>
+                <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+            </div>
+        </div>
 
-    <!-- عنوان -->
-    <div class="mb-3">
-        <label asp-for="Title" class="form-label"></label>
-        <input asp-for="Title" class="form-control" />
-        <span asp-validation-for="Title" class="text-danger"></span>
+        <!-- جزئیات تکمیلی -->
+        <div class="form-card">
+            <div class="form-card-title">
+                <i class="bi bi-calendar3"></i>
+                جزئیات تکمیلی
     </div>
 
-    <!-- توضیحات -->
-    <div class="mb-3">
-        <label asp-for="Description" class="form-label"></label>
-        <textarea asp-for="Description" class="form-control"></textarea>
-    </div>
-
-    <!-- تاریخ شروع -->
-    <div class="mb-3">
-        <label class="form-label">تاریخ شروع</label>
+            <div class="field-group">
+                <div>
+                    <label class="form-label">
+                        <i class="bi bi-calendar-event"></i>
+                        تاریخ شروع
+                    </label>
         <input type="text" id="StartDateDisplay" class="form-control" autocomplete="off"
                value="@Model.StartDateSh" />
         <input type="hidden" asp-for="StartDateSh" id="StartDate" value="@Model.StartDateSh" />
-        <span asp-validation-for="StartDateSh" class="text-danger"></span>
+                    <span asp-validation-for="StartDateSh" class="text-danger small"></span>
     </div>
 
-    <!-- تاریخ پایان -->
-    <div class="mb-3">
-        <label class="form-label">تاریخ پایان</label>
+                <div>
+                    <label class="form-label">
+                        <i class="bi bi-calendar-check"></i>
+                        تاریخ پایان
+                    </label>
         <input type="text" id="DueDateDisplay" class="form-control" autocomplete="off"
                value="@Model.DueDateSh" />
         <input type="hidden" asp-for="DueDateSh" id="DueDate" value="@Model.DueDateSh" />
-        <span asp-validation-for="DueDateSh" class="text-danger"></span>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">پروژه</label>
-        <select asp-for="ProjectId" class="form-control" disabled
-                asp-items="@(new SelectList(ViewBag.Projects, "Id", "Name", Model.ProjectId))">
-        </select>
-        @Html.HiddenFor(m => m.ProjectId)
-        <small class="form-text text-muted">پروژه قابل تغییر نیست</small>
-        <span asp-validation-for="ProjectId" class="text-danger"></span>
-    </div>
-    <div class="mb-3">
-        <label asp-for="AssignedUserId" class="form-label">مسئول کار</label>
-        <select asp-for="AssignedUserId" class="form-control"
-                asp-items="@(new SelectList(ViewBag.AssignedUsers, "Id", "Name", Model.AssignedUserId))">
-            <option value="">-- انتخاب کاربر --</option>
-        </select>
-        <span asp-validation-for="AssignedUserId" class="text-danger"></span>
+                    <span asp-validation-for="DueDateSh" class="text-danger small"></span>
+                </div>
     </div>
 
-    <!-- دسته‌بندی -->
-    <div class="mb-3">
-        <label asp-for="CategoryId" class="form-label">دسته‌بندی (Component) - اختیاری</label>
-        <select asp-for="CategoryId" class="form-control"
+            <div class="field-group mt-4">
+                <div>
+                    <label class="form-label">
+                        <i class="bi bi-folder"></i>
+                        پروژه
+                    </label>
+                    <select asp-for="ProjectId" class="form-select" disabled
+                asp-items="@(new SelectList(ViewBag.Projects, "Id", "Name", Model.ProjectId))">
+        </select>
+                    <small class="text-muted small">پروژه قابل تغییر نیست</small>
+                    <span asp-validation-for="ProjectId" class="text-danger small"></span>
+    </div>
+
+                <div>
+                    <label asp-for="CategoryId" class="form-label">
+                        <i class="bi bi-collection"></i>
+                        دسته‌بندی (اختیاری)
+                    </label>
+                    <select asp-for="CategoryId" class="form-select"
                 asp-items="@(new SelectList(ViewBag.Categories, "Id", "Name"))">
             <option value="">-- بدون دسته‌بندی --</option>
         </select>
-        <small class="form-text text-muted">مثل Component در Jira - می‌توانید خالی بگذارید</small>
+                    <small class="text-muted small">مثل Component در Jira</small>
+                </div>
     </div>
 
-    <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-warning">
-            <i class="bi bi-check-circle"></i> ذخیره تغییرات
+            <div class="field-group mt-4">
+                <div>
+                    <label asp-for="AssignedUserId" class="form-label">
+                        <i class="bi bi-person"></i>
+                        مسئول کار
+                    </label>
+                    <select asp-for="AssignedUserId" class="form-select"
+                            asp-items="@(new SelectList(ViewBag.AssignedUsers, "Id", "Name", Model.AssignedUserId))">
+                        <option value="">-- انتخاب کاربر --</option>
+                    </select>
+                    <span asp-validation-for="AssignedUserId" class="text-danger small"></span>
+                </div>
+            </div>
+    </div>
+
+        <!-- دکمه‌های عملیات -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-modern btn-modern-warning">
+                <i class="bi bi-check-circle"></i>
+                ذخیره تغییرات
         </button>
-        <a asp-action="Index" asp-route-projectId="@Model.ProjectId" class="btn btn-secondary">
-            <i class="bi bi-x-circle"></i> انصراف
+            <a asp-action="Index" asp-route-projectId="@Model.ProjectId" class="btn btn-modern btn-modern-secondary">
+                <i class="bi bi-x-circle"></i>
+                انصراف
         </a>
     </div>
 </form>
+</div>
+
 @section Scripts {
     <script>
         // اطمینان از مقداردهی درست ورودی‌ها و مقدارهای پنهان بعد از لود کامل DOM
