@@ -59,177 +59,282 @@
 }
 
 <style>
+    .board-container {
+        direction: rtl;
+    }
+    .board-header {
+        margin-bottom: 1.5rem;
+    }
+    .board-header h2 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    .board-header .meta {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    .stats-compact {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+    .stat-compact {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+    .stat-compact .label {
+        color: #6c757d;
+    }
+    .stat-compact .value {
+        font-weight: 600;
+        color: #212529;
+    }
+    .board-toolbar {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+    .toolbar-input,
+    .toolbar-select {
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+    }
+    .toolbar-input:focus,
+    .toolbar-select:focus {
+        border-color: #0d6efd;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(13,110,253,0.1);
+    }
+    .btn-toggle {
+        border: 1px solid #dee2e6;
+        background: #fff;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+    .btn-toggle.active {
+        background: #0d6efd;
+        color: #fff;
+        border-color: #0d6efd;
+    }
     .board-layout {
         display: grid;
-        grid-template-columns: minmax(0, 4fr) minmax(260px, 1fr);
-        gap: 1.5rem;
-        margin-top: 1.5rem;
+        grid-template-columns: 1fr 280px;
+        gap: 1rem;
         direction: ltr;
-    }
-    .board-main {
-        background: #fdfdfd;
-        border-radius: 20px;
-        box-shadow: 0 10px 40px rgba(15,23,42,0.08);
-        padding: 1.5rem;
-        border: 1px solid #eef0f4;
-        direction: rtl;
-    }
-    .board-sidebar {
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-        direction: rtl;
-    }
-    .sidebar-card {
-        background: linear-gradient(160deg, #ffffff 0%, #f0f4ff 120%);
-        border-radius: 18px;
-        padding: 1.25rem;
-        border: 1px solid rgba(148,163,184,0.3);
-        box-shadow: 0 8px 24px rgba(37,99,235,0.08);
-    }
-    .sidebar-card h5 {
-        font-weight: 700;
     }
     .kanban-board {
         display: flex;
-        gap: 1rem;
-        padding: 1rem 0;
-        width: 100%;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+        overflow-x: auto;
     }
     .kanban-column {
         flex: 1;
-        min-width: 250px;
+        min-width: 240px;
         background: #f8f9fa;
         border-radius: 8px;
         border: 1px solid #dee2e6;
+        display: flex;
+        flex-direction: column;
     }
     .kanban-column.column-dragging {
         opacity: 0.6;
     }
     .kanban-column.column-drop-target {
-        outline: 2px dashed #2196f3;
-        box-shadow: 0 0 0 2px rgba(33,150,243,0.2);
-    }
-    @@media (max-width: 992px) {
-        .board-layout {
-            grid-template-columns: 1fr;
-        }
-    }
-    @@media (max-width: 768px) {
-        .kanban-board {
-            overflow-x: auto;
-        }
-        .kanban-column {
-            min-width: 280px;
-            flex: 0 0 280px;
-        }
+        outline: 2px dashed #0d6efd;
     }
     .kanban-column-header {
-        padding: 12px;
-        font-weight: bold;
+        padding: 0.75rem;
+        font-weight: 600;
         color: white;
         border-radius: 8px 8px 0 0;
-        text-align: center;
-        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9rem;
     }
     .kanban-column-body {
-        padding: 8px;
-        min-height: 400px;
-        max-height: 70vh;
+        padding: 0.5rem;
+        flex: 1;
+        min-height: 300px;
+        max-height: calc(100vh - 350px);
         overflow-y: auto;
     }
-    .kanban-card {
+    .task-card {
         background: white;
         border: 1px solid #dee2e6;
         border-radius: 6px;
-        padding: 10px;
-        margin-bottom: 8px;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
         cursor: grab;
         transition: all 0.2s;
     }
-    .kanban-card:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        transform: translateY(-2px);
+    .task-card:hover {
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        transform: translateY(-1px);
     }
-    .kanban-card:active {
+    .task-card:active {
         cursor: grabbing;
     }
-    .kanban-card.dragging {
+    .task-card.dragging {
         opacity: 0.5;
     }
-    .issue-key {
-        font-weight: bold;
+    .task-card[data-due-soon="true"] {
+        border-left: 3px solid #f97316;
+    }
+    .task-card.filtered-out {
+        opacity: 0.3;
+        pointer-events: none;
+    }
+    .task-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 0.5rem;
+    }
+    .task-key {
+        font-weight: 600;
         font-size: 0.85rem;
         color: #495057;
     }
-    .issue-title {
-        font-size: 0.9rem;
-        margin: 6px 0;
-        color: #212529;
+    .task-actions {
+        display: flex;
+        gap: 0.25rem;
+        align-items: center;
     }
-    .issue-meta {
+    .task-actions .btn {
+        padding: 0.25rem 0.4rem;
+        font-size: 0.75rem;
+        line-height: 1;
+    }
+    .task-title {
+        font-size: 0.9rem;
+        color: #212529;
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
+    }
+    .task-meta {
         font-size: 0.75rem;
         color: #6c757d;
-        margin-top: 6px;
-    }
-    .issue-type-icon {
-        font-size: 1.2rem;
-    }
-    .drop-zone {
-        min-height: 400px;
         display: flex;
         flex-direction: column;
-        pointer-events: auto;
+        gap: 0.25rem;
     }
-    .drop-zone .empty-message {
-        pointer-events: none;
+    .available-tasks-column {
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 200px);
+    }
+    .available-tasks-header {
+        padding: 0.75rem;
+        background: #e9ecef;
+        border-bottom: 1px solid #dee2e6;
+        border-radius: 8px 8px 0 0;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .available-tasks-body {
+        padding: 0.5rem;
+        overflow-y: auto;
+        flex: 1;
+    }
+    .available-task-item {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .available-task-item:hover {
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        transform: translateY(-1px);
+    }
+    .available-task-item.selected {
+        background: #e7f3ff;
+        border-color: #0d6efd;
+        border-width: 2px;
+    }
+    .available-task-item.selected .available-task-title::after {
+        content: " ✓ انتخاب شده";
+        color: #0d6efd;
+        font-weight: bold;
+        margin-right: 0.5rem;
+    }
+    .available-task-item.selected .available-task-meta::after {
+        content: " (دوبار کلیک کنید برای افزودن)";
+        color: #0d6efd;
+        font-weight: 600;
+    }
+    .available-task-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+        color: #212529;
+    }
+    .available-task-meta {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+    .drop-zone {
+        min-height: 300px;
+        display: flex;
+        flex-direction: column;
+    }
+    .empty-message {
         flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-    }
-    .available-tasks-list {
-        max-height: 70vh;
-        overflow-y: auto;
-        border-radius: 12px;
-    }
-    .available-task-item {
-        border: 1px solid rgba(15,23,42,0.08);
-        border-radius: 14px;
-        padding: 0.9rem;
-        background: #fff;
-        margin-bottom: 0.7rem;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-    .available-task-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(15,23,42,0.08);
+        color: #6c757d;
+        font-size: 0.85rem;
+        text-align: center;
+        padding: 2rem;
     }
     .quick-add-column-btn {
-        border-radius: 999px;
-        border: 1px solid rgba(37,99,235,0.2);
-        padding: 0.15rem 0.5rem;
-        background: rgba(37,99,235,0.08);
-        color: #2563eb;
-        transition: all 0.2s ease;
+        background: rgba(13,110,253,0.1);
+        border: 1px solid rgba(13,110,253,0.2);
+        color: #0d6efd;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        transition: all 0.2s;
     }
     .quick-add-column-btn:hover {
-        background: #2563eb;
+        background: #0d6efd;
         color: #fff;
-        box-shadow: 0 6px 16px rgba(37,99,235,0.2);
+    }
+    .issue-type-icon {
+        font-size: 1rem;
     }
     .quick-task-card {
-        border-radius: 20px;
-        border: none;
-        background: #ffffff;
-        box-shadow: 0 15px 35px rgba(15,23,42,0.08);
-        overflow: hidden;
+        border-radius: 12px;
     }
     .quick-task-card .card-header,
     #quickTaskModal .modal-header {
         background: linear-gradient(125deg, #2563eb, #4f46e5);
         color: #fff;
-        padding: 1.25rem 1.5rem;
+        padding: 1rem 1.5rem;
         border: none;
     }
     .quick-task-card label,
@@ -248,7 +353,7 @@
         flex-wrap: wrap;
     }
     .chip-option {
-        border-radius: 999px;
+        border-radius: 6px;
         border: 1px solid #cbd5f5;
         padding: 0.35rem 1rem;
         background: #fff;
@@ -256,12 +361,12 @@
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
+        font-size: 0.85rem;
     }
     .chip-option.active {
         background: #2563eb;
         color: #fff;
         border-color: #1d4ed8;
-        box-shadow: 0 6px 16px rgba(37,99,235,0.25);
     }
     .quick-task-meta {
         display: flex;
@@ -270,444 +375,305 @@
         color: #94a3b8;
         font-size: 0.85rem;
     }
-    .board-toolbar {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        align-items: center;
-        margin-bottom: 1rem;
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 0.9rem 1.2rem;
-        box-shadow: 0 6px 18px rgba(15,23,42,0.05);
+    @@media (max-width: 992px) {
+        .board-layout {
+            grid-template-columns: 1fr;
+        }
+        .available-tasks-column {
+            max-height: 400px;
+        }
     }
-    .toolbar-input,
-    .toolbar-select {
-        border-radius: 999px;
-        border: 1px solid #cbd5f5;
-        padding: 0.45rem 1rem;
-        min-width: 200px;
-        background: #f8fbff;
-    }
-    .toolbar-input:focus,
-    .toolbar-select:focus {
-        border-color: #2563eb;
-        box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
-    }
-    .btn-toggle {
-        border-radius: 999px;
-        border: 1px solid #cbd5f5;
-        background: #fff;
-        color: #2563eb;
-        padding: 0.4rem 1rem;
-        transition: all 0.2s;
-    }
-    .btn-toggle.active {
-        background: #2563eb;
-        color: #fff;
-        border-color: #1d4ed8;
-        box-shadow: 0 6px 18px rgba(37,99,235,0.3);
-    }
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-    }
-    .stat-card {
-        border-radius: 16px;
-        padding: 1rem;
-        background: linear-gradient(145deg, #eff4ff, #ffffff);
-        border: 1px solid #e0e7ff;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-    }
-    .stat-card h6 {
-        font-size: 0.85rem;
-        color: #64748b;
-        margin-bottom: 0.4rem;
-    }
-    .stat-card .value {
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: #1e293b;
-    }
-    .stat-card small {
-        color: #94a3b8;
-    }
-    .kanban-card[data-due-soon="true"] {
-        border-color: #f97316;
-        box-shadow: 0 0 0 1px rgba(249,115,22,0.2);
-    }
-    .kanban-card.filtered-out {
-        opacity: 0.35;
-        pointer-events: none;
+    @@media (max-width: 768px) {
+        .kanban-board {
+            overflow-x: auto;
+        }
+        .kanban-column {
+            min-width: 260px;
+            flex: 0 0 260px;
+        }
+        .stats-compact {
+            font-size: 0.85rem;
+        }
     }
 </style>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="mb-1">📋 تخته کانبان</h2>
-        <p class="text-muted mb-0">
-            <strong>اسپرینت:</strong> @Model.SprintName | 
-            <strong>پروژه:</strong> <a href="/Projects/Details/@Model.ProjectId">@Model.ProjectName</a>
-        </p>
-    </div>
-    <div class="d-flex gap-2">
-        @if (Model.Status == SprintStatus.Active)
-        {
-            <form method="post" action="/Sprints/ChangeStatus" class="d-inline" id="completeSprintForm">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="id" value="@Model.SprintId" />
-                <input type="hidden" name="status" value="@((int)SprintStatus.Completed)" />
-                <button type="button" class="btn btn-danger" onclick="completeSprint()">
-                    <i class="bi bi-check-circle"></i> خاتمه اسپرینت
-                </button>
-            </form>
-        }
-        @if (Model.Status != SprintStatus.Completed)
-        {
-            <button type="button"
-                    class="btn btn-outline-success"
-                    onclick="openAddStatusModal()">
-                <i class="bi bi-columns-gap"></i> افزودن وضعیت
-            </button>
-        }
-        <a class="btn btn-primary" href="/Projects/Details/@Model.ProjectId">
-            <i class="bi bi-folder-open"></i> جزئیات پروژه
-        </a>
-        <a class="btn btn-outline-primary" href="/Projects/Index">
-            <i class="bi bi-grid-3x3-gap"></i> پروژه‌ها
-        </a>
-    </div>
-</div>
-
-@if (Model.Status != SprintStatus.Completed)
-{
-    <div class="alert alert-info d-flex flex-wrap align-items-center gap-2 mt-3 rounded-pill px-4 py-2 shadow-sm">
-        <i class="bi bi-info-circle fs-5"></i>
-        <span>در طول اسپرینت می‌توانید ستون جدید اضافه کنید و با کشیدن سرستون هر وضعیت، ترتیب ستون‌ها را آزادانه تغییر دهید.</span>
-    </div>
-}
-
-
-<div class="board-layout">
-    <div class="board-main">
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h6>پیشرفت اسپرینت</h6>
-                <div class="value">@Model.CompletionPercentage.ToString("F1")%</div>
-                <small>از @Model.TotalTasks تسک</small>
+<div class="board-container">
+    <div class="board-header">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <h2>تخته کانبان</h2>
+                <div class="meta">
+                    <span>اسپرینت: <strong>@Model.SprintName</strong></span>
+                    <span class="mx-2">|</span>
+                    <span>پروژه: <a href="/Projects/Details/@Model.ProjectId">@Model.ProjectName</a></span>
+                </div>
             </div>
-            <div class="stat-card">
-                <h6>انجام شده</h6>
-                <div class="value text-success">@Model.CompletedTasks</div>
-                <small>تسک کامل شده</small>
+            <div class="d-flex gap-2">
+                @if (Model.Status == SprintStatus.Active)
+                {
+                    <form method="post" action="/Sprints/ChangeStatus" class="d-inline" id="completeSprintForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.SprintId" />
+                        <input type="hidden" name="status" value="@((int)SprintStatus.Completed)" />
+                        <button type="button" class="btn btn-sm btn-danger" onclick="completeSprint()">
+                            <i class="bi bi-check-circle"></i> خاتمه اسپرینت
+                        </button>
+                    </form>
+                }
+                @if (Model.Status != SprintStatus.Completed)
+                {
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="openAddStatusModal()">
+                        <i class="bi bi-plus-circle"></i> افزودن وضعیت
+                    </button>
+                }
+                <a class="btn btn-sm btn-outline-primary" href="/Projects/Details/@Model.ProjectId">
+                    <i class="bi bi-folder-open"></i> جزئیات پروژه
+                </a>
             </div>
-            <div class="stat-card">
-                <h6>در حال انجام</h6>
-                <div class="value text-primary">@Model.InProgressTasks</div>
-                <small>تمرکز فعلی تیم</small>
+        </div>
+
+        <div class="stats-compact">
+            <div class="stat-compact">
+                <span class="label">پیشرفت:</span>
+                <span class="value">@Model.CompletionPercentage.ToString("F1")%</span>
             </div>
-            <div class="stat-card">
-                <h6>مسدود / معلق</h6>
-                <div class="value text-danger">@Model.BlockedTasks</div>
-                <small>نیازمند پیگیری</small>
+            <div class="stat-compact">
+                <span class="label">کل:</span>
+                <span class="value">@Model.TotalTasks</span>
+            </div>
+            <div class="stat-compact">
+                <span class="label">انجام شده:</span>
+                <span class="value text-success">@Model.CompletedTasks</span>
+            </div>
+            <div class="stat-compact">
+                <span class="label">در حال انجام:</span>
+                <span class="value text-primary">@Model.InProgressTasks</span>
+            </div>
+            <div class="stat-compact">
+                <span class="label">مسدود:</span>
+                <span class="value text-danger">@Model.BlockedTasks</span>
             </div>
         </div>
 
         <div class="board-toolbar">
-            <div class="flex-grow-1 d-flex gap-2">
-                <div class="flex-grow-1">
-                    <input type="text" id="boardSearchInput" class="form-control toolbar-input w-100" placeholder="جستجو در عنوان، مسئول یا کلید تسک">
-                </div>
-                <select id="statusFilterSelect" class="form-select toolbar-select">
-                    <option value="all">همه ستون‌ها</option>
-                    @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
-                    {
-                        <option value="@status.Id">@status.Name</option>
-                    }
-                </select>
-            </div>
+            <input type="text" id="boardSearchInput" class="form-control toolbar-input" placeholder="جستجو..." style="min-width: 200px;">
+            <select id="statusFilterSelect" class="form-select toolbar-select" style="min-width: 150px;">
+                <option value="all">همه ستون‌ها</option>
+                @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
+                {
+                    <option value="@status.Id">@status.Name</option>
+                }
+            </select>
             <button type="button" id="dueSoonToggle" class="btn btn-toggle">
                 <i class="bi bi-alarm"></i> موعد نزدیک
             </button>
         </div>
+    </div>
 
-        <div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
-    @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
-    {
-        <div class="kanban-column"
-             ondragover="onDragOverColumn(event)"
-             ondragenter="onDragEnter(event)"
-             ondragleave="onDragLeave(event)"
-             ondrop="onDropIssue(event, @status.Id)"
-             data-status-id="@status.Id">
-            <div class="kanban-column-header d-flex justify-content-between align-items-center gap-2"
-                 style="background-color: @(status.Color ?? "#6c757d");"
-                 draggable="@(Model.Status != SprintStatus.Completed ? "true" : "false")"
-                 ondragstart="onColumnDragStart(event)"
-                 ondragend="onColumnDragEnd(event)">
-                <div class="d-flex align-items-center gap-2">
-                    <span>@status.Name</span>
-                    <span class="badge bg-light text-dark ms-1">
-                        @{
-                            var count = Model.SprintIssues.Count(t =>
-                            (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id);
-                        }
-                        @count
-                    </span>
-                </div>
-                <div class="d-flex align-items-center gap-1">
-                    @if (Model.Status == SprintStatus.Active)
-                    {
-                        <button type="button"
-                                class="quick-add-column-btn"
-                                data-status-id="@status.Id"
-                                data-status-name="@status.Name"
-                                title="افزودن سریع به این ستون">
-                            <i class="bi bi-magic"></i>
-                        </button>
-                    }
-                    @if (Model.Status != SprintStatus.Completed && !status.IsDefault && !status.IsFinal)
-                    {
-                        <button type="button"
-                                class="btn btn-sm btn-light text-danger"
-                                data-status-name="@status.Name"
-                                title="حذف وضعیت"
-                                onclick="event.preventDefault(); event.stopPropagation(); deleteStatus(@status.Id, this.dataset.statusName);">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    }
-                </div>
-            </div>
-            <div class="kanban-column-body drop-zone"
-                 data-status-id="@status.Id">
-                @{
-                    var cards = Model.SprintIssues
-                    .Where(t => (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id)
-                    .OrderBy(t => t.Priority)
-                    .ToList();
-                }
-                @if (cards.Any())
+    <div class="board-layout">
+        <div class="kanban-board-container">
+
+            <div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
+                @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
                 {
-                    foreach (var issue in cards)
-                    {
-                        var dueDate = issue.DueDate;
-                        var dueSoonFlag = dueDate.HasValue && dueDate.Value >= DateTime.UtcNow && dueDate.Value <= DateTime.UtcNow.AddDays(3);
-                        <div class="kanban-card"
-                             draggable="true"
-                             ondragstart="onDragIssue(event, @issue.Id)"
-                             onclick="handleCardClick(event, @issue.Id)"
-                             data-issue-id="@issue.Id"
-                             data-status-id="@status.Id"
-                             data-status-name="@status.Name"
-                             data-title="@issue.Title"
-                             data-assignee="@((issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص"))"
-                             data-key="@issue.IssueKey"
-                             data-due="@dueDate?.ToString("o")"
-                             data-due-soon="@dueSoonFlag.ToString().ToLower()"
-                             style="cursor: pointer;">
-
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <span class="issue-key">@issue.IssueKey</span>
-                                <div class="d-flex align-items-center gap-1">
-                                    <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
-                                    @if (Model.Status == SprintStatus.Active && finalStatus != null && status.Id != finalStatus.Id)
-                                    {
-                                        <button class="btn btn-sm btn-success p-0 px-1 complete-task-btn"
-                                                onclick="event.stopPropagation(); event.preventDefault(); completeTask(@issue.Id);"
-                                                title="خاتمه تسک"
-                                                style="font-size: 0.7rem; line-height: 1;">
-                                            <i class="bi bi-check-lg"></i>
-                                        </button>
+                    <div class="kanban-column"
+                         ondragover="onDragOverColumn(event)"
+                         ondragenter="onDragEnter(event)"
+                         ondragleave="onDragLeave(event)"
+                         ondrop="onDropIssue(event, @status.Id)"
+                         data-status-id="@status.Id">
+                        <div class="kanban-column-header"
+                             style="background-color: @(status.Color ?? "#6c757d");"
+                             draggable="@(Model.Status != SprintStatus.Completed ? "true" : "false")"
+                             ondragstart="onColumnDragStart(event)"
+                             ondragend="onColumnDragEnd(event)">
+                            <div>
+                                <span>@status.Name</span>
+                                <span class="badge bg-light text-dark ms-1">
+                                    @{
+                                        var count = Model.SprintIssues.Count(t =>
+                                        (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id);
                                     }
-                                    @if (Model.Status == SprintStatus.Active && issue.CanHaveChildren)
-                                    {
-                                        <button class="btn btn-sm btn-outline-primary p-0 px-1"
-                                                onclick="event.stopPropagation(); event.preventDefault(); openAddSubtaskModal(@issue.Id, '@issue.IssueKey');"
-                                                title="افزودن زیرتسک"
-                                                style="font-size: 0.7rem; line-height: 1;">
-                                            <i class="bi bi-plus-circle"></i>
-                                        </button>
-                                    }
-                                    @if (Model.Status == SprintStatus.Active)
-                                    {
-                                        <button class="btn btn-sm btn-outline-warning p-0 px-1"
-                                                onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(@issue.Id);"
-                                                title="خارج کردن از اسپرینت"
-                                                style="font-size: 0.7rem; line-height: 1;">
-                                            <i class="bi bi-x-circle"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger p-0 px-1"
-                                                onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@issue.Id, '@issue.Title');"
-                                                title="حذف تسک"
-                                                style="font-size: 0.7rem; line-height: 1;">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    }
-                                </div>
+                                    @count
+                                </span>
                             </div>
-
-                            <div class="issue-title">@issue.Title</div>
-
-                            <div class="issue-meta">
-                                <div>👤 @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص")</div>
-                                @if (issue.DueDatePersian != "تعیین نشده")
+                            <div class="d-flex align-items-center gap-1">
+                                @if (Model.Status == SprintStatus.Active)
                                 {
-                                    <div>🗓️ @issue.DueDatePersian</div>
+                                    <button type="button"
+                                            class="quick-add-column-btn"
+                                            data-status-id="@status.Id"
+                                            data-status-name="@status.Name"
+                                            title="افزودن سریع">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
                                 }
-                                @if (issue.StoryPoints.HasValue && issue.StoryPoints > 0)
+                                @if (Model.Status != SprintStatus.Completed && !status.IsDefault && !status.IsFinal)
                                 {
-                                    <div>⚡ @issue.StoryPoints SP</div>
-                                }
-                                @if (issue.ChildIssues != null && issue.ChildIssues.Any())
-                                {
-                                    <div class="d-flex justify-content-between align-items-center mt-2">
-                                        <button class="btn btn-sm btn-outline-secondary p-0 px-2"
-                                                onclick="event.stopPropagation(); event.preventDefault(); toggleSubtasks(@issue.Id);"
-                                                style="font-size: 0.7rem;">
-                                            <i class="bi bi-chevron-down" id="subtask-icon-@issue.Id"></i>
-                                            @issue.ChildIssues.Count زیرتسک
-                                        </button>
-                                    </div>
+                                    <button type="button"
+                                            class="btn btn-sm p-0 px-1 text-white"
+                                            data-status-name="@status.Name"
+                                            title="حذف وضعیت"
+                                            onclick="event.preventDefault(); event.stopPropagation(); deleteStatus(@status.Id, this.dataset.statusName);"
+                                            style="background: transparent; border: none; opacity: 0.8;">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 }
                             </div>
-
-                            @* نمایش زیرتسک‌ها *@
-                            @if (issue.ChildIssues != null && issue.ChildIssues.Any())
+                        </div>
+                        <div class="kanban-column-body drop-zone" data-status-id="@status.Id">
+                            @{
+                                var cards = Model.SprintIssues
+                                .Where(t => (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id)
+                                .OrderBy(t => t.Priority)
+                                .ToList();
+                            }
+                            @if (cards.Any())
                             {
-                                <div class="subtasks-container mt-2" id="subtasks-@issue.Id" style="display: none; border-top: 1px solid #dee2e6; padding-top: 8px;">
-                                    @foreach (var subtask in issue.ChildIssues.OrderBy(c => c.CreatedAt))
-                                    {
-                                        <div class="subtask-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded" style="font-size: 0.85rem;">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <span class="issue-type-icon" style="font-size: 0.9rem;">@subtask.IssueTypeIcon</span>
-                                                <div>
-                                                    <div class="fw-bold">@subtask.IssueKey: @subtask.Title</div>
-                                                    @if (!string.IsNullOrEmpty(subtask.Description))
-                                                    {
-                                                        <small class="text-muted">@(subtask.Description.Length > 50 ? subtask.Description.Substring(0, 50) + "..." : subtask.Description)</small>
-                                                    }
-                                                </div>
-                                            </div>
-                                            <div class="d-flex gap-1">
-                                                <a href="/Tasks/Details/@subtask.Id" class="btn btn-sm btn-outline-info p-0 px-1"
-                                                   onclick="event.stopPropagation();"
-                                                   title="جزئیات"
-                                                   style="font-size: 0.7rem;">
-                                                    <i class="bi bi-eye"></i>
-                                                </a>
+                                foreach (var issue in cards)
+                                {
+                                    var dueDate = issue.DueDate;
+                                    var dueSoonFlag = dueDate.HasValue && dueDate.Value >= DateTime.UtcNow && dueDate.Value <= DateTime.UtcNow.AddDays(3);
+                                    <div class="task-card"
+                                         draggable="true"
+                                         ondragstart="onDragIssue(event, @issue.Id)"
+                                         onclick="handleCardClick(event, @issue.Id)"
+                                         data-issue-id="@issue.Id"
+                                         data-status-id="@status.Id"
+                                         data-status-name="@status.Name"
+                                         data-title="@issue.Title"
+                                         data-assignee="@((issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص"))"
+                                         data-key="@issue.IssueKey"
+                                         data-due="@dueDate?.ToString("o")"
+                                         data-due-soon="@dueSoonFlag.ToString().ToLower()">
+
+                                        <div class="task-card-header">
+                                            <span class="task-key">@issue.IssueKey</span>
+                                            <div class="task-actions">
+                                                <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
+                                                @if (Model.Status == SprintStatus.Active && finalStatus != null && status.Id != finalStatus.Id)
+                                                {
+                                                    <button class="btn btn-sm btn-success complete-task-btn"
+                                                            onclick="event.stopPropagation(); event.preventDefault(); completeTask(@issue.Id);"
+                                                            title="خاتمه تسک">
+                                                        <i class="bi bi-check-lg"></i>
+                                                    </button>
+                                                }
+                                                @if (Model.Status == SprintStatus.Active && issue.CanHaveChildren)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-primary"
+                                                            onclick="event.stopPropagation(); event.preventDefault(); openAddSubtaskModal(@issue.Id, '@issue.IssueKey');"
+                                                            title="افزودن زیرتسک">
+                                                        <i class="bi bi-plus-circle"></i>
+                                                    </button>
+                                                }
                                                 @if (Model.Status == SprintStatus.Active)
                                                 {
-                                                    <button class="btn btn-sm btn-outline-danger p-0 px-1"
-                                                            onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@subtask.Id, '@subtask.Title');"
-                                                            title="حذف زیرتسک"
-                                                            style="font-size: 0.7rem;">
+                                                    <button class="btn btn-sm btn-outline-warning"
+                                                            onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(@issue.Id);"
+                                                            title="خارج کردن از اسپرینت">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger"
+                                                            onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@issue.Id, '@issue.Title');"
+                                                            title="حذف تسک">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 }
                                             </div>
                                         </div>
-                                    }
+
+                                        <div class="task-title">@issue.Title</div>
+
+                                        <div class="task-meta">
+                                            <div>👤 @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص")</div>
+                                            @if (issue.DueDatePersian != "تعیین نشده")
+                                            {
+                                                <div>🗓️ @issue.DueDatePersian</div>
+                                            }
+                                            @if (issue.StoryPoints.HasValue && issue.StoryPoints > 0)
+                                            {
+                                                <div>⚡ @issue.StoryPoints SP</div>
+                                            }
+                                            @if (issue.ChildIssues != null && issue.ChildIssues.Any())
+                                            {
+                                                <div class="mt-1">
+                                                    <button class="btn btn-sm btn-outline-secondary p-0 px-2"
+                                                            onclick="event.stopPropagation(); event.preventDefault(); toggleSubtasks(@issue.Id);"
+                                                            style="font-size: 0.7rem;">
+                                                        <i class="bi bi-chevron-down" id="subtask-icon-@issue.Id"></i>
+                                                        @issue.ChildIssues.Count زیرتسک
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        @if (issue.ChildIssues != null && issue.ChildIssues.Any())
+                                        {
+                                            <div class="subtasks-container mt-2" id="subtasks-@issue.Id" style="display: none; border-top: 1px solid #dee2e6; padding-top: 8px;">
+                                                @foreach (var subtask in issue.ChildIssues.OrderBy(c => c.CreatedAt))
+                                                {
+                                                    <div class="subtask-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded" style="font-size: 0.85rem;">
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <span class="issue-type-icon" style="font-size: 0.9rem;">@subtask.IssueTypeIcon</span>
+                                                            <div>
+                                                                <div class="fw-bold">@subtask.IssueKey: @subtask.Title</div>
+                                                                @if (!string.IsNullOrEmpty(subtask.Description))
+                                                                {
+                                                                    <small class="text-muted">@(subtask.Description.Length > 50 ? subtask.Description.Substring(0, 50) + "..." : subtask.Description)</small>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                        <div class="d-flex gap-1">
+                                                            <a href="/Tasks/Details/@subtask.Id" class="btn btn-sm btn-outline-info p-0 px-1"
+                                                               onclick="event.stopPropagation();"
+                                                               title="جزئیات"
+                                                               style="font-size: 0.7rem;">
+                                                                <i class="bi bi-eye"></i>
+                                                            </a>
+                                                            @if (Model.Status == SprintStatus.Active)
+                                                            {
+                                                                <button class="btn btn-sm btn-outline-danger p-0 px-1"
+                                                                        onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@subtask.Id, '@subtask.Title');"
+                                                                        title="حذف زیرتسک"
+                                                                        style="font-size: 0.7rem;">
+                                                                    <i class="bi bi-trash"></i>
+                                                                </button>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="empty-message">
+                                    <i class="bi bi-inbox"></i><br>
+                                    خالی
                                 </div>
                             }
                         </div>
-                    }
-                }
-                else
-                {
-                    <div class="empty-message text-muted text-center small p-4">
-                        <i class="bi bi-inbox"></i><br>
-                        هیچ آیتمی وجود ندارد
                     </div>
                 }
             </div>
         </div>
-    }
-</div>
-<!-- اطلاعات اسپرینت -->
-<div class="card mb-4">
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <h5>اطلاعات اسپرینت</h5>
-                <p><strong>نام:</strong> @Model.SprintName</p>
-                @if (!string.IsNullOrEmpty(Model.Description))
-                {
-                    <p><strong>توضیحات:</strong> @Model.Description</p>
-                }
-                @if (!string.IsNullOrEmpty(Model.Goal))
-                {
-                    <p><strong>هدف:</strong> @Model.Goal</p>
-                }
-                <p><strong>تاریخ شروع:</strong> @Model.StartDatePersian</p>
-                <p><strong>تاریخ پایان:</strong> @Model.EndDatePersian</p>
-                <p>
-                    <strong>وضعیت:</strong> 
-                    <span class="badge @(Model.Status == SprintStatus.Active ? "bg-success" : Model.Status == SprintStatus.Completed ? "bg-secondary" : "bg-warning")">
-                        @(Model.Status == SprintStatus.Active ? "فعال" : Model.Status == SprintStatus.Completed ? "خاتمه یافته" : "در حال برنامه‌ریزی")
-                    </span>
-                </p>
-            </div>
-            <div class="col-md-6">
-                <h5>آمار</h5>
-                <div class="mb-3">
-                    <h6>پیشرفت کلی</h6>
-                    <div class="progress">
-                        <div class="progress-bar bg-success" role="progressbar" style="width: @Model.CompletionPercentage%" aria-valuenow="@Model.CompletionPercentage" aria-valuemin="0" aria-valuemax="100">
-                            @Model.CompletionPercentage.ToString("F1")%
-                        </div>
-                    </div>
-                </div>
-                <ul class="list-group">
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        کل تسک‌ها
-                        <span class="badge bg-primary rounded-pill">@Model.TotalTasks</span>
-                    </li>
-                    @foreach (var status in workflowStatuses)
-                    {
-                        var taskCountForStatus = Model.SprintIssues.Count(t => t.StatusId == status.Id);
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span style="color: @status.Color;">@status.Name</span>
-                            <span class="badge rounded-pill" style="background-color: @status.Color;">@taskCountForStatus</span>
-                        </li>
-                    }
-                </ul>
-            </div>
-        </div>
-    </div>
-        </div>
-    </div>
 
-    <aside class="board-sidebar">
         @if (Model.Status == SprintStatus.Active)
         {
-            <div class="sidebar-card">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <h5 class="mb-1">تسک‌های آماده ورود</h5>
-                        <p class="text-muted mb-0 small">افزودن سریع بدون تغییر ستون‌ها</p>
-                    </div>
-                    <span class="badge text-bg-light text-primary fw-bold">
-                        <i class="bi bi-lightning-charge"></i>
-                    </span>
+            <div class="available-tasks-column">
+                <div class="available-tasks-header">
+                    <span>تسک‌های آماده</span>
+                    <span class="badge bg-primary">@Model.TotalTasks</span>
                 </div>
-                <div id="availableTasksContainer" class="available-tasks-list">
-                    <p class="text-muted">در حال بارگذاری...</p>
+                <div id="availableTasksContainer" class="available-tasks-body">
+                    <p class="text-muted text-center py-3">در حال بارگذاری...</p>
                 </div>
             </div>
         }
-
-        <div class="sidebar-card">
-            <h5 class="mb-3">نکات تمرکز</h5>
-            <ul class="list-unstyled text-muted small mb-0">
-                <li class="mb-2"><i class="bi bi-arrows-move"></i> سرستون‌ها را بکشید تا ترتیب ستون‌ها تغییر کند.</li>
-                <li class="mb-2"><i class="bi bi-columns-gap"></i> ستون‌های تازه را در لحظه با «افزودن وضعیت» بسازید.</li>
-                <li><i class="bi bi-lightbulb"></i> برای نظم بیشتر، تسک‌های آماده را فقط از این لیست اضافه کنید.</li>
-            </ul>
-        </div>
-    </aside>
+    </div>
 </div>
 
 
@@ -910,7 +876,7 @@
             const status = boardFilters.status;
             const dueSoon = boardFilters.dueSoon;
 
-            document.querySelectorAll('.kanban-card').forEach(card => {
+            document.querySelectorAll('.task-card').forEach(card => {
                 if (!card.dataset.initializedDue) {
                     card.dataset.initializedDue = 'true';
                     card.dataset.dueSoon = card.dataset.dueSoon === 'true' ? 'true' : (evaluateDueSoon(card) ? 'true' : 'false');
@@ -1171,7 +1137,7 @@
             }
 
             const card = document.createElement('div');
-            card.className = 'kanban-card';
+            card.className = 'task-card';
             card.draggable = true;
             card.dataset.issueId = task.id;
             card.dataset.statusId = task.statusId;
@@ -1188,40 +1154,37 @@
             const safeKey = escapeHtml(task.issueKey || 'جدید');
             const deleteTitleArgument = (task.title || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
-            const canComplete = canManageStatuses && finalStatusId && targetStatusId !== finalStatusId;
+            const canComplete = canManageStatuses && finalStatusId && task.statusId !== finalStatusId;
             const completeButtonHtml = canComplete ? `
-                <button class="btn btn-sm btn-success p-0 px-1 complete-task-btn"
+                <button class="btn btn-sm btn-success complete-task-btn"
                         onclick="event.stopPropagation(); event.preventDefault(); completeTask(${task.id});"
-                        title="خاتمه تسک"
-                        style="font-size: 0.7rem; line-height: 1;">
+                        title="خاتمه تسک">
                     <i class="bi bi-check-lg"></i>
                 </button>` : '';
 
             const actionButtons = canManageStatuses ? `
                 ${completeButtonHtml}
-                <button class="btn btn-sm btn-outline-warning p-0 px-1"
+                <button class="btn btn-sm btn-outline-warning"
                         onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(${task.id});"
-                        title="خارج کردن از اسپرینت"
-                        style="font-size: 0.7rem; line-height: 1;">
+                        title="خارج کردن از اسپرینت">
                     <i class="bi bi-x-circle"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger p-0 px-1"
+                <button class="btn btn-sm btn-outline-danger"
                         onclick="event.stopPropagation(); event.preventDefault(); deleteTask(${task.id}, '${deleteTitleArgument}');"
-                        title="حذف تسک"
-                        style="font-size: 0.7rem; line-height: 1;">
+                        title="حذف تسک">
                     <i class="bi bi-trash"></i>
                 </button>` : '';
 
             card.innerHTML = `
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="issue-key">${safeKey}</span>
-                    <div class="d-flex align-items-center gap-1">
+                <div class="task-card-header">
+                    <span class="task-key">${safeKey}</span>
+                    <div class="task-actions">
                         <span class="issue-type-icon" title="Task">🆕</span>
                         ${actionButtons}
                     </div>
                 </div>
-                <div class="issue-title">${safeTitle}</div>
-                <div class="issue-meta">
+                <div class="task-title">${safeTitle}</div>
+                <div class="task-meta">
                     <div>👤 نامشخص</div>
                 </div>
             `;
@@ -1239,7 +1202,7 @@
 
         function ensureColumnHasEmptyMessage(columnBody) {
             if (!columnBody) return;
-            if (columnBody.querySelector('.kanban-card')) {
+            if (columnBody.querySelector('.task-card')) {
                 return;
             }
             let emptyMessage = columnBody.querySelector('.empty-message');
@@ -1563,7 +1526,7 @@
 
         // ثبت موقعیت mouse down برای تشخیص drag vs click
         document.addEventListener('mousedown', function(e) {
-            if (e.target.closest('.kanban-card')) {
+            if (e.target.closest('.task-card')) {
                 mouseDownX = e.clientX;
                 mouseDownY = e.clientY;
             }
@@ -1696,7 +1659,7 @@
                     }
                     
                     if (sourceColumn && sourceColumn !== dropZone) {
-                        const sourceCards = sourceColumn.querySelectorAll('.kanban-card');
+                        const sourceCards = sourceColumn.querySelectorAll('.task-card');
                         if (sourceCards.length === 0) {
                             const sourceEmptyMessage = sourceColumn.querySelector('.empty-message');
                             if (sourceEmptyMessage) {
@@ -1734,7 +1697,7 @@
                 return;
             }
 
-            const card = document.querySelector(`.kanban-card[data-issue-id="${taskId}"]`);
+            const card = document.querySelector(`.task-card[data-issue-id="${taskId}"]`);
             const previousOpacity = card ? card.style.opacity : null;
             if (card) {
                 card.style.opacity = '0.5';
@@ -1768,7 +1731,7 @@
         function updateIssueCounts() {
             document.querySelectorAll('.kanban-column').forEach(column => {
                 const body = column.querySelector('.kanban-column-body');
-                const count = body ? body.querySelectorAll('.kanban-card').length : 0;
+                const count = body ? body.querySelectorAll('.task-card').length : 0;
                 const badge = column.querySelector('.kanban-column-header .badge');
                 if (badge) {
                     badge.textContent = count;
@@ -1834,7 +1797,7 @@
                         
                         // highlight کارت جدید
                         if (highlightTaskId) {
-                            const taskCard = document.querySelector(`.kanban-card[data-issue-id="${highlightTaskId}"]`);
+                            const taskCard = document.querySelector(`.task-card[data-issue-id="${highlightTaskId}"]`);
                             if (taskCard) {
                                 taskCard.style.transition = 'all 0.3s ease';
                                 taskCard.style.boxShadow = '0 0 20px rgba(37, 99, 235, 0.6)';
@@ -1877,33 +1840,73 @@
                 });
             }
 
+            let selectedTaskId = null;
+            let clickTimeout = null;
+
             function displayAvailableTasks(tasks) {
                 const container = $('#availableTasksContainer');
                 
                 if (tasks.length === 0) {
-                    container.html('<p class="text-muted text-center py-3">تسک قابل اضافه شدن وجود ندارد.</p>');
+                    container.html('<div class="empty-message"><i class="bi bi-inbox"></i><br>تسک قابل اضافه شدن وجود ندارد</div>');
                     return;
                 }
 
                 let html = '';
                 tasks.forEach(task => {
                     html += `
-                        <div class="available-task-item d-flex justify-content-between align-items-center gap-2">
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1 fw-semibold">${task.title}</h6>
-                                <small class="text-muted d-block">${task.categoryName ?? 'بدون دسته'} • ${task.assignedUserName ?? 'تخصیص نیافته'}</small>
-                            </div>
-                            <button class="btn btn-sm btn-success" onclick="addTaskToSprint(${task.id})">
-                                <i class="bi bi-plus-lg"></i>
-                            </button>
+                        <div class="available-task-item" data-task-id="${task.id}">
+                            <div class="available-task-title">${escapeHtml(task.title || 'بدون عنوان')}</div>
+                            <div class="available-task-meta">${escapeHtml(task.categoryName ?? 'بدون دسته')} • ${escapeHtml(task.assignedUserName ?? 'تخصیص نیافته')}</div>
                         </div>
                     `;
                 });
                 
                 container.html(html);
+                
+                // اضافه کردن event listener برای انتخاب با یک کلیک
+                container.off('click', '.available-task-item').on('click', '.available-task-item', function(e) {
+                    e.stopPropagation();
+                    const taskId = $(this).data('task-id');
+                    if (!taskId) return;
+                    
+                    const taskItem = $(this);
+                    
+                    // اگر همان تسک قبلی انتخاب شده بود، با دوبار کلیک اضافه کن
+                    if (selectedTaskId === taskId) {
+                        clearTimeout(clickTimeout);
+                        addTaskToSprint(taskId);
+                        selectedTaskId = null;
+                        $('.available-task-item').removeClass('selected');
+                    } else {
+                        // انتخاب تسک جدید
+                        clearTimeout(clickTimeout);
+                        $('.available-task-item').removeClass('selected');
+                        taskItem.addClass('selected');
+                        selectedTaskId = taskId;
+                        
+                        // اگر بعد از 2 ثانیه کلیک دیگری نشد، انتخاب را لغو کن
+                        clickTimeout = setTimeout(() => {
+                            $('.available-task-item').removeClass('selected');
+                            selectedTaskId = null;
+                        }, 2000);
+                    }
+                });
             }
 
+            let addingTaskInProgress = false;
+            
             function addTaskToSprint(taskId) {
+                // جلوگیری از دوبار کلیک
+                if (addingTaskInProgress) {
+                    return;
+                }
+                
+                addingTaskInProgress = true;
+                
+                // غیرفعال کردن کارت در حال اضافه شدن
+                const taskItem = $(`.available-task-item[data-task-id="${taskId}"]`);
+                taskItem.css('opacity', '0.5').css('pointer-events', 'none');
+                
                 $.ajax({
                     url: '/Sprints/AddTaskToSprint',
                     type: 'POST',
@@ -1912,16 +1915,22 @@
                         'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
                     },
                     success: function(response) {
+                        addingTaskInProgress = false;
                         if (response.success) {
                             showNotification('تسک با موفقیت به اسپرینت اضافه شد', 'success');
+                            selectedTaskId = null;
+                            $('.available-task-item').removeClass('selected');
                             loadAvailableTasks();
                             setTimeout(() => location.reload(), 1000);
                         } else {
                             showNotification('خطا: ' + response.message, 'error');
+                            taskItem.css('opacity', '1').css('pointer-events', 'auto');
                         }
                     },
                     error: function() {
+                        addingTaskInProgress = false;
                         showNotification('خطا در ارتباط با سرور', 'error');
+                        taskItem.css('opacity', '1').css('pointer-events', 'auto');
                     }
                 });
             }
@@ -1942,7 +1951,7 @@
                         if (response.success) {
                             showNotification('تسک با موفقیت از اسپرینت خارج شد', 'success');
                             // حذف کارت از صفحه
-                            const card = document.querySelector(`.kanban-card[data-issue-id="${taskId}"]`);
+                            const card = document.querySelector(`.task-card[data-issue-id="${taskId}"]`);
                             if (card) {
                                 card.style.transition = 'opacity 0.3s';
                                 card.style.opacity = '0';
@@ -1952,7 +1961,7 @@
                                     updateIssueCounts();
                                     
                                     // نمایش پیام خالی اگر ستون خالی شد
-                                    const remainingCards = column.querySelectorAll('.kanban-card');
+                                    const remainingCards = column.querySelectorAll('.task-card');
                                     if (remainingCards.length === 0) {
                                         const emptyMsg = document.createElement('div');
                                         emptyMsg.className = 'empty-message text-muted text-center small p-4';
@@ -2081,7 +2090,7 @@
                             return;
                         }
                         // حذف کارت از صفحه
-                        const card = document.querySelector(`.kanban-card[data-issue-id="${taskId}"]`);
+                        const card = document.querySelector(`.task-card[data-issue-id="${taskId}"]`);
                         const subtaskItem = document.querySelector(`.subtask-item`);
                         
                         if (card) {
@@ -2092,7 +2101,7 @@
                                 card.remove();
                                 updateIssueCounts();
                                 
-                                const remainingCards = column.querySelectorAll('.kanban-card');
+                                const remainingCards = column.querySelectorAll('.task-card');
                                 if (remainingCards.length === 0) {
                                     const emptyMsg = document.createElement('div');
                                     emptyMsg.className = 'empty-message text-muted text-center small p-4';
