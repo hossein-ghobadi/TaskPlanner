@@ -68,7 +68,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="mb-1">
-                <i class="bi bi-tags-fill me-2"></i>مدیریت انواع تسک
+                <i class="bi bi-tags-fill me-2"></i>مدیریت انواع کار
             </h2>
             <p class="text-muted mb-0">
                 <a href="/Projects/Details/@projectId" class="text-decoration-none">
@@ -113,7 +113,7 @@
     <div class="alert alert-info d-flex align-items-center gap-2">
         <i class="bi bi-info-circle"></i>
         <div>
-            <strong>نکته:</strong> در این صفحه همه انواع تسک (Epic، StoryLevel، Subtask) نمایش داده می‌شوند. همه قابل ویرایش هستند اما فقط انواع سفارشی (کاستوم) قابل حذف هستند.
+            <strong>نکته:</strong> در این صفحه همه انواع کار (Epic، StoryLevel، Subtask) نمایش داده می‌شوند. همه قابل ویرایش هستند اما فقط انواع سفارشی (کاستوم) قابل حذف هستند.
         </div>
     </div>
 
@@ -121,110 +121,67 @@
     {
         <div class="text-center py-5">
             <i class="bi bi-inbox" style="font-size: 4rem; color: #cbd5e1;"></i>
-            <p class="text-muted mt-3">هنوز نوع تسکی تعریف نشده است.</p>
+            <p class="text-muted mt-3">هنوز نوع کاری تعریف نشده است.</p>
             <a href="/Projects/CreateIssueType/@projectId" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-2"></i>افزودن اولین نوع تسک
+                <i class="bi bi-plus-circle me-2"></i>افزودن اولین نوع کار
             </a>
         </div>
     }
     else
     {
-        <div id="issueTypesList" class="row">
-            @foreach (var issueType in Model)
+        // گروه‌بندی بر اساس Level
+        var epicTypes = Model.Where(x => x.Level == TaskPlanner.Domain.Entities.TaskPlanner.IssueTypeLevel.Epic).OrderBy(x => x.Order).ToList();
+        var storyLevelTypes = Model.Where(x => x.Level == TaskPlanner.Domain.Entities.TaskPlanner.IssueTypeLevel.StoryLevel).OrderBy(x => x.Order).ToList();
+        var subtaskTypes = Model.Where(x => x.Level == TaskPlanner.Domain.Entities.TaskPlanner.IssueTypeLevel.Subtask).OrderBy(x => x.Order).ToList();
+        
+        <div id="issueTypesList">
+            @if (epicTypes.Any())
             {
-                <div class="col-md-6 col-lg-4 mb-3" data-issue-type-id="@issueType.Id">
-                    <div class="issue-type-card">
-                        <div class="issue-type-header">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-grip-vertical sortable-handle me-2"></i>
-                                <span class="issue-type-icon">@(issueType.Icon ?? "📝")</span>
-                                <div>
-                                    <h5 class="mb-0">@issueType.Name</h5>
-                                    @if (!string.IsNullOrEmpty(issueType.Description))
-                                    {
-                                        <small class="text-muted">@issueType.Description</small>
-                                    }
-                                </div>
+                <div class="mb-4">
+                    <h5 class="mb-3 text-muted">
+                        <i class="bi bi-box-seam me-2"></i>انواع Epic
+                    </h5>
+                    <div class="row">
+                        @foreach (var issueType in epicTypes)
+                        {
+                            <div class="col-md-6 col-lg-4 mb-3" data-issue-type-id="@issueType.Id">
+                                @Html.Partial("_IssueTypeCard", issueType)
                             </div>
-                            <div>
-                                @{
-                                    var badgeClass = issueType.Level switch
-                                    {
-                                        TaskPlanner.Domain.Entities.TaskPlanner.IssueTypeLevel.StoryLevel => "badge-story-level",
-                                        TaskPlanner.Domain.Entities.TaskPlanner.IssueTypeLevel.Epic => "badge-epic",
-                                        TaskPlanner.Domain.Entities.TaskPlanner.IssueTypeLevel.Subtask => "badge-subtask",
-                                        _ => "badge-default"
-                                    };
-                                }
-                                <span class="issue-type-badge @badgeClass">
-                                    @issueType.Level.ToString()
-                                </span>
+                        }
+                    </div>
+                </div>
+            }
+            
+            @if (storyLevelTypes.Any())
+            {
+                <div class="mb-4">
+                    <h5 class="mb-3 text-muted">
+                        <i class="bi bi-list-task me-2"></i>انواع Story-Level (کار و انواع سفارشی)
+                    </h5>
+                    <div class="row">
+                        @foreach (var issueType in storyLevelTypes)
+                        {
+                            <div class="col-md-6 col-lg-4 mb-3" data-issue-type-id="@issueType.Id">
+                                @Html.Partial("_IssueTypeCard", issueType)
                             </div>
-                        </div>
-
-                        <div class="mt-3">
-                            <div class="d-flex flex-wrap gap-2 mb-2">
-                                @if (issueType.CanAddToSprint)
-                                {
-                                    <span class="badge bg-success">
-                                        <i class="bi bi-check-circle me-1"></i>قابل افزودن به Sprint
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">
-                                        <i class="bi bi-x-circle me-1"></i>غیرقابل افزودن به Sprint
-                                    </span>
-                                }
-
-                                @if (issueType.CanHaveChildren)
-                                {
-                                    <span class="badge bg-info">
-                                        <i class="bi bi-diagram-3 me-1"></i>قابل داشتن زیرتسک
-                                    </span>
-                                }
-
-                                @if (issueType.IncludeInReports)
-                                {
-                                    <span class="badge bg-primary">
-                                        <i class="bi bi-graph-up me-1"></i>در گزارش‌ها
-                                    </span>
-                                }
-
-                                @if (!issueType.IsCustom)
-                                {
-                                    <span class="badge bg-warning">
-                                        <i class="bi bi-shield-check me-1"></i>پیش‌فرض
-                                    </span>
-                                }
+                        }
+                    </div>
+                </div>
+            }
+            
+            @if (subtaskTypes.Any())
+            {
+                <div class="mb-4">
+                    <h5 class="mb-3 text-muted">
+                        <i class="bi bi-diagram-3 me-2"></i>انواع Subtask
+                    </h5>
+                    <div class="row">
+                        @foreach (var issueType in subtaskTypes)
+                        {
+                            <div class="col-md-6 col-lg-4 mb-3" data-issue-type-id="@issueType.Id">
+                                @Html.Partial("_IssueTypeCard", issueType)
                             </div>
-
-                            <div class="small text-muted mb-2">
-                                <div><strong>Base Type:</strong> @issueType.BaseType</div>
-                                <div><strong>Order:</strong> @issueType.Order</div>
-                                @if (!string.IsNullOrEmpty(issueType.Color))
-                                {
-                                    <div>
-                                        <strong>Color:</strong> 
-                                        <span class="badge" style="background-color: @issueType.Color;">@issueType.Color</span>
-                                    </div>
-                                }
-                            </div>
-
-                            <div class="d-flex gap-2 mt-3">
-                                <a href="/Projects/EditIssueType/@issueType.Id" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-pencil me-1"></i>ویرایش
-                                </a>
-                                @if (issueType.IsCustom)
-                                {
-                                    <button type="button" 
-                                            class="btn btn-sm btn-outline-danger" 
-                                            onclick="deleteIssueType(@issueType.Id, '@issueType.Name')">
-                                        <i class="bi bi-trash me-1"></i>حذف
-                                    </button>
-                                }
-                            </div>
-                        </div>
+                        }
                     </div>
                 </div>
             }
@@ -238,16 +195,23 @@
         let sortableInstance = null;
 
         document.addEventListener('DOMContentLoaded', function() {
-            const list = document.getElementById('issueTypesList');
-            if (list) {
-                sortableInstance = new Sortable(list, {
+            // ایجاد Sortable برای هر گروه (Epic, StoryLevel, Subtask) - فقط در همان گروه قابل جابجایی
+            const allRows = document.querySelectorAll('#issueTypesList .row');
+            
+            allRows.forEach((row) => {
+                new Sortable(row, {
                     handle: '.sortable-handle',
                     animation: 150,
+                    group: {
+                        name: 'issueTypes',
+                        pull: false, // جلوگیری از جابجایی بین گروه‌ها
+                        put: false    // جلوگیری از اضافه کردن به گروه‌های دیگر
+                    },
                     onEnd: function(evt) {
                         updateOrder();
                     }
                 });
-            }
+            });
         });
 
         function updateOrder() {
@@ -282,7 +246,7 @@
         }
 
         function deleteIssueType(id, name) {
-            if (!confirm(`آیا مطمئن هستید که می‌خواهید نوع تسک "${name}" را حذف کنید؟\n\nاین عمل قابل بازگشت نیست.`)) {
+            if (!confirm(`آیا مطمئن هستید که می‌خواهید نوع کار "${name}" را حذف کنید؟\n\nاین عمل قابل بازگشت نیست.`)) {
                 return;
             }
 
@@ -322,7 +286,7 @@
         }
 
         function migrateIssueTypeNames() {
-            if (!confirm('آیا مطمئن هستید که می‌خواهید نام‌های پیش‌فرض را به‌روزرسانی کنید؟\n\nاین عمل نام‌های "اپیک"، "تسک" و "زیرتسک" را به ترتیب به "ویژگی"، "کار" و "کارک" تغییر می‌دهد.')) {
+            if (!confirm('آیا مطمئن هستید که می‌خواهید نام‌های پیش‌فرض را به‌روزرسانی کنید؟\n\nاین عمل نام‌های "اپیک"، "کار" و "زیرکار" را به ترتیب به "ویژگی"، "کار" و "کارک" تغییر می‌دهد.')) {
                 return;
             }
 

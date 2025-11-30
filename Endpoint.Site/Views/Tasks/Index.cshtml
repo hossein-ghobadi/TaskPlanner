@@ -166,7 +166,7 @@
     <div class="p-4 p-md-5">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
             <div>
-                <span class="badge bg-light text-primary mb-2">داشبورد تسک‌ها</span>
+                <span class="badge bg-light text-primary mb-2">داشبورد کارها</span>
                 <h2 class="fw-bold mb-2">🗂️ @headerTitle</h2>
                 <p class="mb-0 opacity-75">پیگیری، مدیریت و برنامه‌ریزی هوشمند کارها با فیلترهای پویا و نمای درختی چند سطحی.</p>
             </div>
@@ -205,7 +205,7 @@
                 <span class="badge bg-danger-subtle text-danger">⏰</span>
             </div>
             <h3 class="fw-bold mb-0 text-danger">@overdueTasks</h3>
-            <small class="text-muted">تسک‌های نیازمند توجه فوری</small>
+                <small class="text-muted">کارهای نیازمند توجه فوری</small>
         </div>
     </div>
     <div class="col-6 col-md-3">
@@ -592,7 +592,7 @@ else
             }
         }
 
-        // حذف تسک
+        // حذف کار
         async function deleteTask(taskId) {
             if (!confirm("آیا از حذف این آیتم و زیر‌مجموعه هایش مطمئن هستید؟")) return;
 
@@ -693,7 +693,7 @@ else
                             }
                         }
                     </select>
-                    <small class="text-muted">Epic فقط می‌تواند Story-level types (تسک یا انواع سفارشی) داشته باشد</small>
+                    <small class="text-muted">Epic فقط می‌تواند Story-level types (کار یا انواع سفارشی) داشته باشد</small>
                 </div>
 
                 <div class="mb-3">

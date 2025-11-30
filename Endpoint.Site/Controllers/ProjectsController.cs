@@ -616,11 +616,11 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index");
             }
 
-            // نمایش همه issue type ها
+            // نمایش همه issue type ها - مرتب بر اساس Order
             var issueTypes = await _context.ProjectIssueTypes
                 .Where(pit => pit.ProjectId == projectId)
-                .OrderBy(pit => pit.Level)
-                .ThenBy(pit => pit.Order)
+                .OrderBy(pit => pit.Order)
+                .ThenBy(pit => pit.Level)
                 .ThenBy(pit => pit.Name)
                 .ToListAsync();
 

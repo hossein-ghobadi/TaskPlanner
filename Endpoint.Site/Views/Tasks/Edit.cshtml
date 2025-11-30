@@ -2,15 +2,14 @@
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
-    var parentTitle = ViewBag.ParentTaskTitle as string;
     var projectIssueTypes = ViewBag.ProjectIssueTypes as List<ProjectIssueType> ?? new List<ProjectIssueType>();
     
-    // جدا کردن انواع پیش‌فرض (Epic, Task, Subtask) و انواع سفارشی (Story-level)
-    var epicType = projectIssueTypes.FirstOrDefault(pit => pit.Level == IssueTypeLevel.Epic);
-    var taskType = projectIssueTypes.FirstOrDefault(pit => pit.Level == IssueTypeLevel.StoryLevel && pit.BaseType == IssueType.Task);
-    var customStoryLevelTypes = projectIssueTypes.Where(pit => pit.Level == IssueTypeLevel.StoryLevel && pit.IsCustom).OrderBy(pit => pit.Order).ToList();
-    
-    var hasCustomTypes = customStoryLevelTypes.Any();
+    // دریافت همه انواع به جز Subtask (کارک) - مرتب بر اساس Order
+    var availableIssueTypes = projectIssueTypes
+        .Where(pit => pit.Level != IssueTypeLevel.Subtask)
+        .OrderBy(pit => pit.Order)
+        .ThenBy(pit => pit.Level)
+        .ToList();
 }
 
 <h2>ویرایش کار</h2>
@@ -27,74 +26,26 @@
             <span class="text-danger">*</span>
         </label>
         <select asp-for="IssueType" class="form-control" id="issueTypeSelect">
-            @if (epicType != null)
+            @foreach (var issueType in availableIssueTypes)
             {
-                var isEpicSelected = Model.IssueType == IssueType.Epic;
-                <option value="@((int)IssueType.Epic)" data-project-issue-type-id="@epicType.Id" data-level="@((int)IssueTypeLevel.Epic)" selected="@isEpicSelected">@epicType.Icon @epicType.Name</option>
-            }
-            else
-            {
-                var isEpicSelected = Model.IssueType == IssueType.Epic;
-                <option value="@((int)IssueType.Epic)" data-level="@((int)IssueTypeLevel.Epic)" selected="@isEpicSelected">📦 اپیک</option>
-            }
-            
-            @if (taskType != null)
-            {
-                var isTaskSelected = Model.IssueType == IssueType.Task && Model.ProjectIssueTypeId == taskType.Id;
-                <option value="@((int)IssueType.Task)" data-project-issue-type-id="@taskType.Id" data-level="@((int)IssueTypeLevel.StoryLevel)" selected="@isTaskSelected">@taskType.Icon @taskType.Name</option>
-            }
-            else
-            {
-                var isTaskSelected = Model.IssueType == IssueType.Task && !Model.ProjectIssueTypeId.HasValue;
-                <option value="@((int)IssueType.Task)" data-level="@((int)IssueTypeLevel.StoryLevel)" selected="@isTaskSelected">✅ تسک</option>
-            }
-            
-            @foreach (var customType in customStoryLevelTypes)
-            {
-                var isSelected = Model.ProjectIssueTypeId == customType.Id;
-                <option value="@((int)customType.BaseType)" data-project-issue-type-id="@customType.Id" data-level="@((int)IssueTypeLevel.StoryLevel)" selected="@isSelected">@customType.Icon @customType.Name</option>
+                // انتخاب بر اساس ProjectIssueTypeId یا تطبیق IssueType
+                var isSelected = Model.ProjectIssueTypeId == issueType.Id || 
+                                (Model.ProjectIssueTypeId == null && Model.IssueType == issueType.BaseType);
+                <option value="@((int)issueType.BaseType)" 
+                        data-project-issue-type-id="@issueType.Id" 
+                        data-level="@((int)issueType.Level)" 
+                        selected="@isSelected">
+                    @issueType.Icon @issueType.Name
+                </option>
             }
         </select>
         <small class="form-text text-muted">
-            <strong>راهنما:</strong> اپیک بزرگ‌ترین واحد است. تسک و انواع سفارشی برای کارهای اصلی استفاده می‌شوند.
+            <strong>راهنما:</strong> اپیک بزرگ‌ترین واحد است. کار و انواع سفارشی برای کارهای اصلی استفاده می‌شوند.
         </small>
         <span asp-validation-for="IssueType" class="text-danger"></span>
     </div>
     
-    @if (hasCustomTypes)
-    {
-        <div class="mb-3">
-            <label class="form-label">
-                <strong>انواع سفارشی پروژه (Story-level)</strong>
-            </label>
-            <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
-            <div class="d-flex flex-wrap gap-2" id="projectIssueTypeChips">
-                @foreach (var pit in customStoryLevelTypes)
-                {
-                    var active = Model?.ProjectIssueTypeId == pit.Id ? "active" : string.Empty;
-                    <button type="button"
-                            class="btn btn-outline-primary issue-type-chip @active"
-                            data-id="@pit.Id"
-                            data-base="@((int)pit.BaseType)"
-                            data-level="@((int)IssueTypeLevel.StoryLevel)">
-                        <span class="me-1">@pit.Icon</span>
-                        @pit.Name
-                    </button>
-                }
-                <button type="button"
-                        class="btn btn-light issue-type-chip-clear @(Model?.ProjectIssueTypeId == null || (Model?.ProjectIssueTypeId == taskType?.Id) ? "active" : string.Empty)">
-                    استفاده از تسک پیش‌فرض
-                </button>
-            </div>
-            <small class="form-text text-muted">
-                انواع سفارشی شما که هم‌سطح با تسک هستند و می‌توانند در اسپرینت قرار بگیرند، زیرتسک داشته باشند و بخشی از اپیک باشند.
-            </small>
-        </div>
-    }
-    else
-    {
-        <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
-    }
+    <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
 
     <!-- عنوان -->
     <div class="mb-3">
@@ -136,7 +87,7 @@
         <span asp-validation-for="ProjectId" class="text-danger"></span>
     </div>
     <div class="mb-3">
-        <label asp-for="AssignedUserId" class="form-label">مسئول تسک</label>
+        <label asp-for="AssignedUserId" class="form-label">مسئول کار</label>
         <select asp-for="AssignedUserId" class="form-control"
                 asp-items="@(new SelectList(ViewBag.AssignedUsers, "Id", "Name", Model.AssignedUserId))">
             <option value="">-- انتخاب کاربر --</option>
@@ -152,17 +103,6 @@
             <option value="">-- بدون دسته‌بندی --</option>
         </select>
         <small class="form-text text-muted">مثل Component در Jira - می‌توانید خالی بگذارید</small>
-    </div>
-
-    <!-- تسک والد -->
-    <div class="mb-3">
-        <label asp-for="ParentId" class="form-label">زیرمجموعه‌ی کدام کار باشد؟</label>
-        <input type="text"
-               class="form-control"
-               value="@(Model.ParentId.HasValue ? (parentTitle ?? "نامشخص") : "بدون والد")"
-               readonly />
-        @Html.HiddenFor(m => m.ParentId)
-        <small class="form-text text-muted">والد کار پس از ایجاد قابل تغییر نیست.</small>
     </div>
 
     <div class="d-flex gap-2">
@@ -211,107 +151,30 @@
             $("#DueDate").val($("#DueDateDisplay").val() || "");
 
             // 🎯 مدیریت IssueType و ProjectIssueType
-            const IssueTypeLevels = {
-                Epic: 1,
-                StoryLevel: 2,
-                Subtask: 3
-            };
-
             const projectIssueTypeInput = document.getElementById('projectIssueTypeId');
-            const issueTypeChips = document.querySelectorAll('.issue-type-chip');
-            const clearIssueTypeChip = document.querySelector('.issue-type-chip-clear');
-
-            function setActiveProjectIssueChip(targetButton) {
-                issueTypeChips.forEach(btn => btn.classList.remove('active'));
-                if (clearIssueTypeChip) {
-                    clearIssueTypeChip.classList.remove('active');
-                }
-
-                if (targetButton) {
-                    targetButton.classList.add('active');
-                }
-            }
-
-            issueTypeChips.forEach(btn => {
-                btn.addEventListener('click', function () {
-                    const id = this.dataset.id;
-                    if (projectIssueTypeInput) {
-                        projectIssueTypeInput.value = id;
-                    }
-
-                    const select = document.getElementById('issueTypeSelect');
-                    if (select) {
-                        const optionToSelect = select.querySelector(`option[data-project-issue-type-id="${id}"]`);
-                        if (optionToSelect) {
-                            select.value = optionToSelect.value;
-                        }
-                        $('#issueTypeSelect').trigger('change');
-                    }
-
-                    setActiveProjectIssueChip(this);
-                });
-            });
-
-            if (clearIssueTypeChip) {
-                clearIssueTypeChip.addEventListener('click', function () {
-                    if (projectIssueTypeInput) {
-                        projectIssueTypeInput.value = '';
-                    }
-                    const select = document.getElementById('issueTypeSelect');
-                    if (select) {
-                        const taskOption = select.querySelector('option[value="@((int)IssueType.Task)"][data-level="@((int)IssueTypeLevel.StoryLevel)"]');
-                        if (taskOption && !taskOption.hasAttribute('data-project-issue-type-id')) {
-                            select.value = taskOption.value;
-                        } else {
-                            const taskWithId = select.querySelector('option[value="@((int)IssueType.Task)"]');
-                            if (taskWithId) {
-                                select.value = taskWithId.value;
-                                const taskId = taskWithId.getAttribute('data-project-issue-type-id');
-                                if (taskId && projectIssueTypeInput) {
-                                    projectIssueTypeInput.value = taskId;
-                                }
-                            }
-                        }
-                        $('#issueTypeSelect').trigger('change');
-                    }
-                    setActiveProjectIssueChip(this);
-                });
-            }
-
-            const preselectedProjectIssueTypeId = projectIssueTypeInput ? projectIssueTypeInput.value : '';
-            if (preselectedProjectIssueTypeId) {
-                const activeButton = document.querySelector(`.issue-type-chip[data-id="${preselectedProjectIssueTypeId}"]`);
-                if (activeButton) {
-                    setActiveProjectIssueChip(activeButton);
-                }
-            } else if (clearIssueTypeChip) {
-                setActiveProjectIssueChip(clearIssueTypeChip);
-            }
-
+            
+            // مدیریت تغییر نوع کار و تنظیم ProjectIssueTypeId
             const selectElement = document.getElementById('issueTypeSelect');
             if (selectElement) {
                 selectElement.addEventListener('change', function () {
                     const selectedOption = this.options[this.selectedIndex];
                     const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
-                    const level = parseInt(selectedOption.getAttribute('data-level') || '0');
                     
                     if (projectIssueTypeId && projectIssueTypeInput) {
                         projectIssueTypeInput.value = projectIssueTypeId;
-                        const chip = document.querySelector(`.issue-type-chip[data-id="${projectIssueTypeId}"]`);
-                        if (chip) {
-                            setActiveProjectIssueChip(chip);
-                        } else if (clearIssueTypeChip && level === IssueTypeLevels.StoryLevel) {
-                            setActiveProjectIssueChip(clearIssueTypeChip);
-                        }
                     } else if (projectIssueTypeInput) {
                         projectIssueTypeInput.value = '';
-                        if (clearIssueTypeChip && (level === IssueTypeLevels.StoryLevel || level === 0)) {
-                            setActiveProjectIssueChip(clearIssueTypeChip);
-                        } else {
-                            setActiveProjectIssueChip(null);
-                        }
                     }
                 });
+                
+                // تنظیم مقدار اولیه
+                const selectedOption = selectElement.options[selectElement.selectedIndex];
+                if (selectedOption) {
+                    const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
+                    if (projectIssueTypeId && projectIssueTypeInput) {
+                        projectIssueTypeInput.value = projectIssueTypeId;
+                    }
+                }
             }
         });
     </script>

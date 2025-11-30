@@ -75,13 +75,13 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <h4 class="mb-0">
-                        <i class="bi bi-plus-circle me-2"></i>افزودن نوع تسک جدید
+                        <i class="bi bi-plus-circle me-2"></i>افزودن نوع کار جدید
                     </h4>
                 </div>
                 <div class="card-body">
                     <p class="text-muted mb-4">
                         <a href="/Projects/IssueTypes/@projectId" class="text-decoration-none">
-                            <i class="bi bi-arrow-right"></i> بازگشت به لیست انواع تسک
+                            <i class="bi bi-arrow-right"></i> بازگشت به لیست انواع کار
                         </a>
                         <span class="mx-2">|</span>
                         <a href="/Projects/Details/@projectId" class="text-decoration-none">
@@ -108,7 +108,7 @@
                             <h5><i class="bi bi-info-circle me-2"></i>اطلاعات پایه</h5>
                             
                             <div class="mb-3">
-                                <label asp-for="Name" class="form-label">نام نوع تسک <span class="text-danger">*</span></label>
+                                <label asp-for="Name" class="form-label">نام نوع کار <span class="text-danger">*</span></label>
                                 <input asp-for="Name" class="form-control" placeholder="مثلاً: Feature, Enhancement, Technical Debt" required />
                                 <span asp-validation-for="Name" class="text-danger"></span>
                                 <small class="form-text text-muted">نامی واضح و قابل فهم انتخاب کنید.</small>
@@ -116,7 +116,7 @@
 
                             <div class="mb-3">
                                 <label asp-for="Description" class="form-label">توضیحات</label>
-                                <textarea asp-for="Description" class="form-control" rows="3" placeholder="توضیح کوتاه درباره این نوع تسک"></textarea>
+                                <textarea asp-for="Description" class="form-control" rows="3" placeholder="توضیح کوتاه درباره این نوع کار"></textarea>
                                 <span asp-validation-for="Description" class="text-danger"></span>
                             </div>
 
@@ -186,7 +186,7 @@
                                 <i class="bi bi-x-circle me-2"></i>انصراف
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-circle me-2"></i>ایجاد نوع تسک
+                                <i class="bi bi-check-circle me-2"></i>ایجاد نوع کار
                             </button>
                         </div>
                     </form>

@@ -39,14 +39,14 @@
             <dt class="col-sm-3">ترتیب:</dt>
             <dd class="col-sm-9">@Model.Order</dd>
 
-            <dt class="col-sm-3">تعداد تسک‌ها:</dt>
+            <dt class="col-sm-3">تعداد کارها:</dt>
             <dd class="col-sm-9">@Model.Tasks.Count</dd>
         </dl>
 
         @if (Model.Tasks.Any())
         {
             <div class="alert alert-warning">
-                <strong>توجه:</strong> این وضعیت دارای @Model.Tasks.Count تسک است. با حذف این وضعیت، تسک‌ها بدون وضعیت می‌شوند.
+                <strong>توجه:</strong> این وضعیت دارای @Model.Tasks.Count کار است. با حذف این وضعیت، کارها بدون وضعیت می‌شوند.
             </div>
         }
 

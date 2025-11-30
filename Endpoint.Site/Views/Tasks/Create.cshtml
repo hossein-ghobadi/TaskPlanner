@@ -4,28 +4,15 @@
     Layout = "/Views/Shared/_Layout.cshtml";
     var projectIssueTypes = ViewBag.ProjectIssueTypes as List<ProjectIssueType> ?? new List<ProjectIssueType>();
     
-    // جدا کردن انواع پیش‌فرض (Epic, Task, Subtask) و انواع سفارشی (Story-level)
-    var epicType = projectIssueTypes.FirstOrDefault(pit => pit.Level == IssueTypeLevel.Epic);
-    var taskType = projectIssueTypes.FirstOrDefault(pit => pit.Level == IssueTypeLevel.StoryLevel && pit.BaseType == IssueType.Task);
-    var subtaskType = projectIssueTypes.FirstOrDefault(pit => pit.Level == IssueTypeLevel.Subtask);
-    var customStoryLevelTypes = projectIssueTypes.Where(pit => pit.Level == IssueTypeLevel.StoryLevel && pit.IsCustom).OrderBy(pit => pit.Order).ToList();
-    
-    var hasCustomTypes = customStoryLevelTypes.Any();
+    // دریافت همه انواع به جز Subtask (کارک) - مرتب بر اساس Order
+    var availableIssueTypes = projectIssueTypes
+        .Where(pit => pit.Level != IssueTypeLevel.Subtask)
+        .OrderBy(pit => pit.Order)
+        .ThenBy(pit => pit.Level)
+        .ToList();
 }
 
 <h2>🎯 افزودن کار</h2>
-<style>
-    .issue-type-chip.active {
-        background-color: #2563eb;
-        color: #fff;
-        border-color: #2563eb;
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
-    }
-    .issue-type-chip,
-    .issue-type-chip-clear {
-        transition: all 0.2s ease;
-    }
-</style>
 
 <form asp-action="Create" method="post">
     <div asp-validation-summary="All" class="text-danger mb-3"></div>
@@ -37,70 +24,24 @@
             <span class="text-danger">*</span>
         </label>
         <select asp-for="IssueType" class="form-control" id="issueTypeSelect">
-            @if (epicType != null)
+            @foreach (var issueType in availableIssueTypes)
             {
-                <option value="@((int)IssueType.Epic)" data-project-issue-type-id="@epicType.Id" data-level="@((int)IssueTypeLevel.Epic)">@epicType.Icon @epicType.Name</option>
-            }
-            else
-            {
-                <option value="@((int)IssueType.Epic)" data-level="@((int)IssueTypeLevel.Epic)">📦 اپیک</option>
-            }
-            
-            @if (taskType != null)
-            {
-                <option value="@((int)IssueType.Task)" data-project-issue-type-id="@taskType.Id" data-level="@((int)IssueTypeLevel.StoryLevel)">@taskType.Icon @taskType.Name</option>
-            }
-            else
-            {
-                <option value="@((int)IssueType.Task)" data-level="@((int)IssueTypeLevel.StoryLevel)">✅ تسک</option>
-            }
-            
-            @foreach (var customType in customStoryLevelTypes)
-            {
-                var isSelected = Model?.ProjectIssueTypeId == customType.Id;
-                <option value="@((int)customType.BaseType)" data-project-issue-type-id="@customType.Id" data-level="@((int)IssueTypeLevel.StoryLevel)" selected="@isSelected">@customType.Icon @customType.Name</option>
+                var isSelected = Model?.ProjectIssueTypeId == issueType.Id;
+                <option value="@((int)issueType.BaseType)" 
+                        data-project-issue-type-id="@issueType.Id" 
+                        data-level="@((int)issueType.Level)" 
+                        selected="@isSelected">
+                    @issueType.Icon @issueType.Name
+                </option>
             }
         </select>
         <small class="form-text text-muted">
-            <strong>راهنما:</strong> اپیک بزرگ‌ترین واحد است. تسک و انواع سفارشی برای کارهای اصلی استفاده می‌شوند. زیرتسک فقط از داخل خود تسک‌ها قابل ایجاد است.
+            <strong>راهنما:</strong> اپیک بزرگ‌ترین واحد است. کار و انواع سفارشی برای کارهای اصلی استفاده می‌شوند. زیرکار فقط از داخل خود کارها قابل ایجاد است.
         </small>
         <span asp-validation-for="IssueType" class="text-danger"></span>
     </div>
     
-    @if (hasCustomTypes)
-    {
-        <div class="mb-3">
-            <label class="form-label">
-                <strong>انواع سفارشی پروژه (Story-level)</strong>
-            </label>
-            <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
-            <div class="d-flex flex-wrap gap-2" id="projectIssueTypeChips">
-                @foreach (var pit in customStoryLevelTypes)
-                {
-                    var active = Model?.ProjectIssueTypeId == pit.Id ? "active" : string.Empty;
-                    <button type="button"
-                            class="btn btn-outline-primary issue-type-chip @active"
-                            data-id="@pit.Id"
-                            data-base="@((int)pit.BaseType)"
-                            data-level="@((int)IssueTypeLevel.StoryLevel)">
-                        <span class="me-1">@pit.Icon</span>
-                        @pit.Name
-                    </button>
-                }
-                <button type="button"
-                        class="btn btn-light issue-type-chip-clear @(Model?.ProjectIssueTypeId == null || (Model?.ProjectIssueTypeId == taskType?.Id) ? "active" : string.Empty)">
-                    استفاده از تسک پیش‌فرض
-                </button>
-            </div>
-            <small class="form-text text-muted">
-                انواع سفارشی شما که هم‌سطح با تسک هستند و می‌توانند در اسپرینت قرار بگیرند، زیرتسک داشته باشند و بخشی از اپیک باشند.
-            </small>
-        </div>
-    }
-    else
-    {
-        <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
-    }
+    <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
 
     <div class="mb-3">
         <label asp-for="Title" class="form-label">
@@ -152,33 +93,12 @@
         <small class="form-text text-muted">مثل Component در Jira - می‌توانید خالی بگذارید</small>
     </div>
     <div class="mb-3">
-        <label asp-for="AssignedUserId" class="form-label">مسئول تسک</label>
+        <label asp-for="AssignedUserId" class="form-label">مسئول کار</label>
         <select asp-for="AssignedUserId" class="form-control" id="assignedUserSelect"
                 asp-items="@(new SelectList(ViewBag.AssignedUsers, "Id", "Name", Model?.AssignedUserId))">
             <option value="">-- انتخاب کاربر --</option>
         </select>
         <span asp-validation-for="AssignedUserId" class="text-danger"></span>
-    </div>
-    <!-- Parent Issue (فقط برای Subtask الزامی است) -->
-    <div class="mb-3" id="parentIssueDiv">
-        <label asp-for="ParentId" class="form-label">
-            <strong>والد کار</strong>
-            <span id="parentRequired" class="text-danger" style="display:none">*</span>
-        </label>
-        <select asp-for="ParentId" class="form-control" id="parentIssueSelect">
-            <option value="">-- بدون والد --</option>
-            @if (ViewBag.Tasks != null)
-            {
-                @foreach (var task in ViewBag.Tasks)
-                {
-                    <option value="@task.Id" data-issue-type="@((int)task.IssueType)">@task.Title</option>
-                }
-            }
-        </select>
-        <small class="form-text text-muted" id="parentHelp">
-            Story می‌تونه زیر Epic باشه، Subtask باید زیر Task/Story/Bug باشه
-        </small>
-        <span asp-validation-for="ParentId" class="text-danger"></span>
     </div>
 
     <!-- Story Points (فقط برای Story و Task) -->
@@ -241,111 +161,35 @@
         };
 
         const projectIssueTypeInput = document.getElementById('projectIssueTypeId');
-        const issueTypeChips = document.querySelectorAll('.issue-type-chip');
-        const clearIssueTypeChip = document.querySelector('.issue-type-chip-clear');
-
-        function setActiveProjectIssueChip(targetButton) {
-            issueTypeChips.forEach(btn => btn.classList.remove('active'));
-            if (clearIssueTypeChip) {
-                clearIssueTypeChip.classList.remove('active');
-            }
-
-            if (targetButton) {
-                targetButton.classList.add('active');
-            }
-        }
-
-        issueTypeChips.forEach(btn => {
-            btn.addEventListener('click', function () {
-                const baseType = this.dataset.base;
-                const id = this.dataset.id;
-                if (projectIssueTypeInput) {
-                    projectIssueTypeInput.value = id;
-                }
-
-                const select = document.getElementById('issueTypeSelect');
-                if (select) {
-                    const optionToSelect = select.querySelector(`option[data-project-issue-type-id="${id}"]`);
-                    if (optionToSelect) {
-                        select.value = optionToSelect.value;
-                    }
-                    $('#issueTypeSelect').trigger('change');
-                }
-
-                setActiveProjectIssueChip(this);
-            });
-        });
-
-        if (clearIssueTypeChip) {
-            clearIssueTypeChip.addEventListener('click', function () {
-                if (projectIssueTypeInput) {
-                    projectIssueTypeInput.value = '';
-                }
-                // انتخاب تسک پیش‌فرض
-                const select = document.getElementById('issueTypeSelect');
-                if (select) {
-                    const taskOption = select.querySelector('option[value="@((int)IssueType.Task)"][data-level="@((int)IssueTypeLevel.StoryLevel)"]');
-                    if (taskOption && !taskOption.hasAttribute('data-project-issue-type-id')) {
-                        select.value = taskOption.value;
-                    } else {
-                        const taskWithId = select.querySelector('option[value="@((int)IssueType.Task)"]');
-                        if (taskWithId) {
-                            select.value = taskWithId.value;
-                            const taskId = taskWithId.getAttribute('data-project-issue-type-id');
-                            if (taskId && projectIssueTypeInput) {
-                                projectIssueTypeInput.value = taskId;
-                            }
-                        }
-                    }
-                    $('#issueTypeSelect').trigger('change');
-                }
-                setActiveProjectIssueChip(this);
-            });
-        }
-
-        const preselectedProjectIssueTypeId = projectIssueTypeInput ? projectIssueTypeInput.value : '';
-        if (preselectedProjectIssueTypeId) {
-            const activeButton = document.querySelector(`.issue-type-chip[data-id="${preselectedProjectIssueTypeId}"]`);
-            if (activeButton) {
-                setActiveProjectIssueChip(activeButton);
-            }
-        } else if (clearIssueTypeChip) {
-            setActiveProjectIssueChip(clearIssueTypeChip);
-        }
-
+        
+        // مدیریت تغییر نوع کار و تنظیم ProjectIssueTypeId
         const selectElement = document.getElementById('issueTypeSelect');
         if (selectElement) {
             selectElement.addEventListener('change', function () {
                 const selectedOption = this.options[this.selectedIndex];
                 const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
-                const level = parseInt(selectedOption.getAttribute('data-level') || '0');
                 
                 if (projectIssueTypeId && projectIssueTypeInput) {
                     projectIssueTypeInput.value = projectIssueTypeId;
-                    const chip = document.querySelector(`.issue-type-chip[data-id="${projectIssueTypeId}"]`);
-                    if (chip) {
-                        setActiveProjectIssueChip(chip);
-                    } else if (clearIssueTypeChip && level === IssueTypeLevels.StoryLevel) {
-                        // اگر نوع Story-level است اما chip سفارشی نیست، clear را فعال کن
-                        setActiveProjectIssueChip(clearIssueTypeChip);
-                    }
                 } else if (projectIssueTypeInput) {
                     projectIssueTypeInput.value = '';
-                    if (clearIssueTypeChip && (level === IssueTypeLevels.StoryLevel || level === 0)) {
-                        setActiveProjectIssueChip(clearIssueTypeChip);
-                    } else {
-                        setActiveProjectIssueChip(null);
-                    }
                 }
             });
+            
+            // تنظیم مقدار اولیه
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            if (selectedOption) {
+                const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
+                if (projectIssueTypeId && projectIssueTypeInput) {
+                    projectIssueTypeInput.value = projectIssueTypeId;
+                }
+            }
         }
 
         function updateFieldsBasedOnIssueType() {
             const select = document.getElementById('issueTypeSelect');
             const selectedOption = select.options[select.selectedIndex];
-            const selectedType = parseInt(select.value);
             const level = parseInt(selectedOption.getAttribute('data-level') || '0');
-            const parentSelect = $('#parentIssueSelect');
             
             // Story Points: فقط برای Story-level types (Task و انواع سفارشی)
             if (level === IssueTypeLevels.StoryLevel) {
@@ -353,77 +197,6 @@
             } else {
                 $('#storyPointsDiv').hide();
                 $('#StoryPoints').val(''); // پاک کردن مقدار
-            }
-
-            // Parent Issue: 
-            // - برای Subtask الزامی است (باید Story-level type باشد)
-            // - برای Story-level types اختیاری (فقط می‌تونه زیر Epic باشه)
-            // - برای Epic غیرفعال (نمی‌تونه parent داشته باشه)
-            if (level === IssueTypeLevels.Subtask) {
-                $('#parentIssueDiv').show();
-                $('#parentRequired').show();
-                $('#parentHelp').text('زیرتسک باید حتماً Parent داشته باشد (تسک یا انواع Story-level)');
-                parentSelect.prop('required', true);
-                
-                // ذخیره مقدار فعلی
-                const currentValue = parentSelect.val();
-                
-                // نمایش فقط Story-level types (Task و انواع سفارشی)
-                parentSelect.find('option').each(function() {
-                    const $option = $(this);
-                    const issueType = parseInt($option.data('issue-type'));
-                    if ($option.val() === '') {
-                        // گزینه "بدون Parent" مخفی شود چون برای Subtask الزامی است
-                        $option.hide();
-                    } else if (issueType === IssueTypes.Task || 
-                               issueType === IssueTypes.Story || 
-                               issueType === IssueTypes.Bug) {
-                        // فقط Story-level types نمایش داده شوند
-                        $option.show();
-                    } else {
-                        // Epic و Subtask مخفی شوند
-                        $option.hide();
-                        // اگر مقدار فعلی یکی از اینها باشد، آن را پاک کن
-                        if ($option.val() === currentValue) {
-                            parentSelect.val('');
-                        }
-                    }
-                });
-            } 
-            else if (level === IssueTypeLevels.StoryLevel) {
-                $('#parentIssueDiv').show();
-                $('#parentRequired').hide();
-                $('#parentHelp').text('این نوع می‌تواند زیر اپیک قرار بگیرد (اختیاری) - فقط اپیک قابل انتخاب است');
-                parentSelect.prop('required', false);
-                
-                // ذخیره مقدار فعلی (اگر Epic انتخاب شده باشد)
-                const currentValue = parentSelect.val();
-                
-                // مخفی کردن همه گزینه‌ها به جز Epic
-                parentSelect.find('option').each(function() {
-                    const $option = $(this);
-                    const issueType = parseInt($option.data('issue-type'));
-                    if ($option.val() === '') {
-                        // گزینه "بدون Parent" همیشه نمایش داده شود
-                        $option.show();
-                    } else if (issueType === IssueTypes.Epic) {
-                        // فقط Epic نمایش داده شود
-                        $option.show();
-                    } else {
-                        // سایر انواع مخفی شوند
-                        $option.hide();
-                        // اگر مقدار فعلی یکی از اینها باشد، آن را پاک کن
-                        if ($option.val() === currentValue) {
-                            parentSelect.val('');
-                        }
-                    }
-                });
-            }
-            else {
-                // Epic نمی‌تونه parent داشته باشه
-                $('#parentIssueDiv').hide();
-                parentSelect.val(''); // پاک کردن انتخاب
-                parentSelect.prop('required', false);
             }
         }
 
@@ -433,18 +206,6 @@
         // تغییر IssueType
         $('#issueTypeSelect').on('change', function() {
             updateFieldsBasedOnIssueType();
-            const selectedOption = this.options[this.selectedIndex];
-            const level = parseInt(selectedOption.getAttribute('data-level') || '0');
-            if (level === IssueTypeLevels.Epic || level === IssueTypeLevels.Subtask) {
-                if (projectIssueTypeInput) {
-                    projectIssueTypeInput.value = '';
-                }
-                if (clearIssueTypeChip) {
-                    setActiveProjectIssueChip(clearIssueTypeChip);
-                } else {
-                    setActiveProjectIssueChip(null);
-                }
-            }
         });
 
         document.addEventListener('DOMContentLoaded', function () {

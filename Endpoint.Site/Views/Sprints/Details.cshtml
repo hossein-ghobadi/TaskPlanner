@@ -109,7 +109,7 @@
                 
                 <ul class="list-group">
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        کل تسک‌ها
+                        کل کارها
                         <span class="badge bg-primary rounded-pill">@Model.TotalTasks</span>
                     </li>
 
@@ -147,12 +147,12 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">تسک‌های اسپرینت</h5>
+                <h5 class="mb-0">کارهای اسپرینت</h5>
             </div>
             <div class="card-body">
                 @if (!Model.Tasks.Any())
                 {
-                    <p class="text-muted">هیچ تسکی به این اسپرینت اضافه نشده است.</p>
+                    <p class="text-muted">هیچ کاری به این اسپرینت اضافه نشده است.</p>
                 }
                 else
                 {
@@ -226,14 +226,14 @@
         <div class="col-md-4">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">تسک‌های موجود</h5>
+                    <h5 class="mb-0">کارهای موجود</h5>
                     <button class="btn btn-primary btn-sm" onclick="loadAvailableTasks()">
                         <i class="fas fa-refresh"></i> بارگذاری
                     </button>
                 </div>
                 <div class="card-body">
                     <div id="availableTasksContainer">
-                        <p class="text-muted">برای مشاهده تسک‌های موجود، روی "بارگذاری" کلیک کنید.</p>
+                        <p class="text-muted">برای مشاهده کارهای موجود، روی "بارگذاری" کلیک کنید.</p>
                     </div>
                 </div>
             </div>
@@ -265,7 +265,7 @@
             }, 3000);
         }
 
-        // بارگذاری تسک‌های موجود
+        // بارگذاری کارهای موجود
         function loadAvailableTasks() {
             console.log('Loading tasks for projectId:', projectId, 'sprintId:', sprintId);
             
@@ -278,7 +278,7 @@
                     if (response.success) {
                         displayAvailableTasks(response.tasks);
                     } else {
-                        alert('خطا در بارگذاری تسک‌ها: ' + response.message);
+                        alert('خطا در بارگذاری کارها: ' + response.message);
                     }
                 },
                 error: function(xhr, status, error) {
@@ -288,12 +288,12 @@
             });
         }
 
-        // نمایش تسک‌های موجود
+        // نمایش کارهای موجود
         function displayAvailableTasks(tasks) {
             const container = $('#availableTasksContainer');
             
             if (tasks.length === 0) {
-                container.html('<p class="text-muted">تسک قابل اضافه شدن وجود ندارد.</p>');
+                container.html('<p class="text-muted">کار قابل اضافه شدن وجود ندارد.</p>');
                 return;
             }
 
@@ -316,7 +316,7 @@
             container.html(html);
         }
 
-        // اضافه کردن تسک به اسپرینت
+        // اضافه کردن کار به اسپرینت
         function addTaskToSprint(taskId) {
             $.ajax({
                 url: '@Url.Action("AddTaskToSprint", "Sprints")',
@@ -325,10 +325,10 @@
                 success: function(response) {
                     if (response.success) {
                         // نمایش پیام موفقیت
-                        showNotification('تسک با موفقیت به اسپرینت اضافه شد', 'success');
-                        // بارگذاری مجدد تسک‌های موجود
+                        showNotification('کار با موفقیت به اسپرینت اضافه شد', 'success');
+                        // بارگذاری مجدد کارهای موجود
                         loadAvailableTasks();
-                        // بارگذاری مجدد صفحه برای نمایش تسک جدید
+                        // بارگذاری مجدد صفحه برای نمایش کار جدید
                         setTimeout(() => location.reload(), 1000);
                     } else {
                         showNotification('خطا: ' + response.message, 'error');
@@ -340,11 +340,11 @@
             });
         }
 
-        // حذف تسک از اسپرینت
+        // حذف کار از اسپرینت
         function removeTaskFromSprint(taskId) {
             console.log('removeTaskFromSprint called with taskId:', taskId, 'sprintId:', sprintId);
             
-            if (!confirm('آیا مطمئن هستید که می‌خواهید این تسک را از اسپرینت حذف کنید؟')) {
+            if (!confirm('آیا مطمئن هستید که می‌خواهید این کار را از اسپرینت حذف کنید؟')) {
                 console.log('User cancelled deletion');
                 return;
             }
@@ -359,12 +359,12 @@
                     console.log('Remove response:', response);
                     if (response.success) {
                         // نمایش پیام موفقیت
-                        showNotification('تسک با موفقیت از اسپرینت حذف شد', 'success');
-                        // حذف ردیف تسک از جدول
+                        showNotification('کار با موفقیت از اسپرینت حذف شد', 'success');
+                        // حذف ردیف کار از جدول
                         $('tr[data-task-id="' + taskId + '"]').fadeOut(300, function() {
                             $(this).remove();
                         });
-                        // بارگذاری مجدد تسک‌های موجود
+                        // بارگذاری مجدد کارهای موجود
                         loadAvailableTasks();
                     } else {
                         showNotification('خطا: ' + response.message, 'error');
@@ -377,7 +377,7 @@
             });
         }
 
-        // تغییر وضعیت تسک (استفاده از WorkflowStatus)
+        // تغییر وضعیت کار (استفاده از WorkflowStatus)
         $(document).on('change', '.task-status', function() {
             const taskId = $(this).data('task-id');
             const toStatusId = $(this).val();
@@ -399,7 +399,7 @@
                 }),
                 success: function(response) {
                     if (response.success) {
-                        showNotification('وضعیت تسک با موفقیت تغییر کرد', 'success');
+                        showNotification('وضعیت کار با موفقیت تغییر کرد', 'success');
                         // بارگذاری مجدد صفحه برای نمایش آمار به‌روز شده
                         setTimeout(() => location.reload(), 1000);
                     } else {
@@ -415,7 +415,7 @@
             });
         });
 
-        // بارگذاری خودکار تسک‌های موجود وقتی صفحه لود می‌شود (فقط برای اسپرینت فعال)
+        // بارگذاری خودکار کارهای موجود وقتی صفحه لود می‌شود (فقط برای اسپرینت فعال)
         $(document).ready(function() {
             @if (Model.Status == SprintStatus.Active)
             {
