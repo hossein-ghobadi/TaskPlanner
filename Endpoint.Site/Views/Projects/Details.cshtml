@@ -5,716 +5,594 @@
     Layout = "/Views/Shared/_Layout.cshtml";
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
     var isCreator = currentUserId == Model.CreatorUserId;
-    // استفاده از مقادیر از پیش محاسبه شده برای بهینه‌سازی
     var totalTasks = Model.TotalTasks;
     var completedTasks = Model.CompletedTasks;
     var progressPercentage = Model.ProgressPercentage;
 }
 
 <style>
-    .project-header {
+    /* هدر مدرن */
+    .project-header-modern {
         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        border-radius: 15px;
-        padding: 2rem;
+        border-radius: 20px;
+        padding: 2.5rem;
         color: white;
         margin-bottom: 2rem;
-        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
-    }
-    
-    .stat-card {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        border-radius: 12px;
-        padding: 1.5rem;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        transition: transform 0.3s ease;
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-5px);
-        background: rgba(255, 255, 255, 0.25);
-    }
-    
-    .stat-number {
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin: 0;
-    }
-    
-    .stat-label {
-        font-size: 0.9rem;
-        opacity: 0.9;
-        margin: 0;
-    }
-    
-    .modern-card {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s ease;
-        margin-bottom: 1.5rem;
+        box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3);
+        position: relative;
         overflow: hidden;
     }
     
-    .modern-card:hover {
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    .project-header-modern::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: pulse 8s ease-in-out infinite;
+    }
+    
+    @@keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+    
+    .project-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .project-description {
+        font-size: 1.1rem;
+        opacity: 0.95;
+        margin-bottom: 1.5rem;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .stat-badge {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 1rem 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .stat-badge:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-3px);
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    
+    .stat-label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        margin-top: 0.5rem;
+    }
+    
+    /* Progress Bar */
+    .progress-modern {
+        height: 12px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.2);
+        overflow: hidden;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .progress-bar-modern {
+        background: linear-gradient(90deg, #fff 0%, #f0f0f0 100%);
+        border-radius: 10px;
+        transition: width 0.6s ease;
+        box-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
+    }
+    
+    /* کارت‌های مدرن */
+    .card-modern {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+    }
+    
+    .card-modern:hover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
         transform: translateY(-2px);
     }
     
     .card-header-modern {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        border: none;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 1px solid #e5e7eb;
         padding: 1.25rem 1.5rem;
         font-weight: 600;
-        font-size: 1.1rem;
+        font-size: 1.05rem;
+        color: #1f2937;
     }
     
-    .category-card {
-        border: 2px solid #e9ecef;
+    .card-body-modern {
+        padding: 1.5rem;
+    }
+    
+    /* تب‌های مدرن */
+    .nav-tabs-redesign {
+        border: none;
+        margin-bottom: 2rem;
+        background: white;
         border-radius: 12px;
+        padding: 0.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+    
+    .nav-tabs-redesign .nav-link {
+        border: none;
+        border-radius: 8px;
+        color: #6b7280;
+        font-weight: 500;
+        padding: 0.75rem 1.5rem;
         transition: all 0.3s ease;
-        overflow: hidden;
+        margin: 0 0.25rem;
     }
     
-    .category-card:hover {
-        border-color: #3b82f6;
-        box-shadow: 0 5px 15px rgba(59, 130, 246, 0.2);
-        transform: translateY(-3px);
+    .nav-tabs-redesign .nav-link:hover {
+        background: #f3f4f6;
+        color: #3b82f6;
     }
     
-    .task-row {
+    .nav-tabs-redesign .nav-link.active {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    /* لیست تسک‌ها */
+    .task-item {
+        padding: 1.25rem;
+        border-bottom: 1px solid #f3f4f6;
         transition: all 0.2s ease;
         border-left: 4px solid transparent;
     }
     
-    .task-row:hover {
-        background-color: #f8f9fa;
+    .task-item:hover {
+        background: #f9fafb;
         border-left-color: #3b82f6;
+        transform: translateX(-4px);
     }
     
-    .progress-ring {
-        width: 80px;
-        height: 80px;
+    .task-item:last-child {
+        border-bottom: none;
     }
     
-    .nav-tabs-modern {
-        border-bottom: 2px solid #e9ecef;
-        margin-bottom: 2rem;
+    .task-title {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #1f2937;
+        text-decoration: none;
+        transition: color 0.2s ease;
     }
     
-    .nav-tabs-modern .nav-link {
-        border: none;
-        border-bottom: 3px solid transparent;
-        color: #6c757d;
-        font-weight: 500;
-        padding: 1rem 1.5rem;
-        transition: all 0.3s ease;
-    }
-    
-    .nav-tabs-modern .nav-link:hover {
+    .task-title:hover {
         color: #3b82f6;
-        border-bottom-color: #3b82f6;
     }
     
-    .nav-tabs-modern .nav-link.active {
-        color: #3b82f6;
-        border-bottom-color: #3b82f6;
-        background: transparent;
+    /* سایدبار */
+    .sidebar-modern {
+        position: sticky;
+        top: 2rem;
+    }
+    
+    .sidebar-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    
+    .sidebar-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #1f2937;
+    }
+    
+    .sidebar-body {
+        padding: 1.25rem;
+    }
+    
+    .member-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: #f9fafb;
+        border-radius: 10px;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s ease;
+    }
+    
+    .member-item:hover {
+        background: #f3f4f6;
+        transform: translateX(-2px);
     }
     
     .member-avatar {
-        width: 45px;
-        height: 45px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
-        font-weight: bold;
-        font-size: 1.1rem;
+        font-weight: 700;
+        font-size: 0.95rem;
+        flex-shrink: 0;
     }
     
-    .action-btn-modern {
-        border-radius: 8px;
-        padding: 0.5rem 1rem;
+    .invite-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: #f9fafb;
+        border-radius: 10px;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* دسته‌بندی‌ها */
+    .category-card-modern {
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    
+    .category-card-modern:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15);
+        transform: translateY(-4px);
+    }
+    
+    /* دکمه‌ها */
+    .btn-modern {
+        border-radius: 10px;
+        padding: 0.625rem 1.25rem;
         font-weight: 500;
         transition: all 0.3s ease;
         border: none;
     }
     
-    .action-btn-modern:hover {
+    .btn-modern:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+    
+    .empty-state-icon {
+        font-size: 4rem;
+        color: #d1d5db;
+        margin-bottom: 1rem;
+    }
+    
+    /* تنظیمات */
+    .settings-item {
+        cursor: pointer;
+    }
+    
+    .settings-item:hover {
+        background: #f3f4f6 !important;
+        border-color: #3b82f6 !important;
+        transform: translateX(-4px);
+    }
+    
+    /* Responsive */
+    @@media (max-width: 992px) {
+        .sidebar-modern {
+            position: static;
+            margin-top: 2rem;
+        }
+        
+        .project-title {
+            font-size: 2rem;
+        }
     }
 </style>
 
 <!-- پیام‌های سیستم -->
 @if (TempData["InviteSuccess"] != null)
 {
-    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert" style="border-radius: 10px;">
-        <i class="bi bi-check-circle-fill"></i> @TempData["InviteSuccess"]
+    <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert" style="border-radius: 12px; margin-bottom: 1.5rem;">
+        <i class="bi bi-check-circle-fill me-2"></i> @TempData["InviteSuccess"]
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
 @if (TempData["InviteWarning"] != null)
 {
-    <div class="alert alert-warning alert-dismissible fade show shadow-sm" role="alert" style="border-radius: 10px;">
-        <i class="bi bi-exclamation-triangle-fill"></i> @TempData["InviteWarning"]
+    <div class="alert alert-warning alert-dismissible fade show shadow-sm" role="alert" style="border-radius: 12px; margin-bottom: 1.5rem;">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["InviteWarning"]
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
 @if (TempData["InviteError"] != null)
 {
-    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert" style="border-radius: 10px;">
-        <i class="bi bi-x-circle-fill"></i> @TempData["InviteError"]
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert" style="border-radius: 12px; margin-bottom: 1.5rem;">
+        <i class="bi bi-x-circle-fill me-2"></i> @TempData["InviteError"]
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
 
-<!-- هدر پروژه با آمار -->
-<div class="project-header">
+<!-- هدر مدرن -->
+<div class="project-header-modern">
     <div class="row align-items-center">
         <div class="col-md-8">
-            <h1 class="mb-2" style="font-size: 2.5rem; font-weight: 700;">
-                <i class="bi bi-folder-fill me-3"></i>@Model.Name
+            <h1 class="project-title">
+                <i class="bi bi-folder-fill me-2"></i>@Model.Name
             </h1>
             @if (!string.IsNullOrWhiteSpace(Model.Description))
             {
-                <p class="mb-3" style="font-size: 1.1rem; opacity: 0.95;">@Model.Description</p>
+                <p class="project-description">@Model.Description</p>
             }
             <div class="d-flex align-items-center gap-3 flex-wrap">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-person-circle me-2" style="font-size: 1.3rem;"></i>
+                <div>
+                    <i class="bi bi-person-circle me-2" style="font-size: 1.2rem;"></i>
                     <span>سازنده: <strong>@Model.CreatorUserName</strong></span>
                 </div>
                 @if (isCreator)
                 {
-                    <span class="badge" style="background: rgba(255, 255, 255, 0.3); font-size: 0.9rem; padding: 0.4rem 0.8rem;">
+                    <span class="badge" style="background: rgba(255, 255, 255, 0.25); padding: 0.4rem 0.8rem; border-radius: 8px;">
                         <i class="bi bi-shield-check me-1"></i>شما سازنده هستید
                     </span>
                 }
             </div>
         </div>
         <div class="col-md-4 mt-3 mt-md-0">
-            <div class="row g-3">
-                <div class="col-6">
-                    <div class="stat-card text-center">
-                        <p class="stat-number">@totalTasks</p>
-                        <p class="stat-label"><i class="bi bi-list-task me-1"></i>کل تسک‌ها</p>
-                    </div>
+            <div class="d-flex gap-2">
+                <div class="stat-badge flex-fill text-center">
+                    <div class="stat-number">@totalTasks</div>
+                    <div class="stat-label">کل کار‌ها</div>
                 </div>
-                <div class="col-6">
-                    <div class="stat-card text-center">
-                        <p class="stat-number">@completedTasks</p>
-                        <p class="stat-label"><i class="bi bi-check-circle me-1"></i>تکمیل شده</p>
+                @if (totalTasks > 0)
+                {
+                    <div class="stat-badge flex-fill text-center">
+                        <div class="stat-number">@progressPercentage%</div>
+                        <div class="stat-label">پیشرفت</div>
                     </div>
-                </div>
+                }
             </div>
         </div>
     </div>
     
-    <!-- Progress Bar -->
     @if (totalTasks > 0)
     {
         <div class="mt-4">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <span style="opacity: 0.9;">پیشرفت پروژه</span>
-                <span style="font-weight: bold;">@progressPercentage%</span>
+            <div class="d-flex justify-content-between align-items-center mb-2" style="position: relative; z-index: 1;">
+                <span style="opacity: 0.95;">پیشرفت پروژه</span>
+                <span style="font-weight: 700;">@progressPercentage%</span>
             </div>
-            <div class="progress" style="height: 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.2);">
-                <div class="progress-bar bg-white" role="progressbar" style="width: @progressPercentage%; border-radius: 10px;" aria-valuenow="@progressPercentage" aria-valuemin="0" aria-valuemax="100"></div>
+            <div class="progress-modern">
+                <div class="progress-bar-modern" role="progressbar" style="width: @progressPercentage%;" aria-valuenow="@progressPercentage" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
         </div>
     }
-    
-    <!-- دکمه‌های دسترسی سریع -->
-    <div class="mt-4 d-flex gap-2 flex-wrap">
-        <a class="btn btn-light action-btn-modern" href="/Sprints/Index?projectId=@Model.Id">
-            <i class="bi bi-calendar-range me-2"></i>اسپرینت‌ها
-        </a>
-        @if (Model.ActiveSprintId != null)
-        {
-            <a class="btn btn-light action-btn-modern" href="/Sprints/Board/Board/@Model.ActiveSprintId">
-                <i class="bi bi-kanban me-2"></i>تخته کانبان
-            </a>
-        }
-        <a class="btn btn-light action-btn-modern" href="/ProjectNotes/Index?projectId=@Model.Id">
-            <i class="bi bi-journal-text me-2"></i>یادداشت‌ها
-        </a>
-        <a class="btn btn-light action-btn-modern" asp-controller="Tasks" asp-action="Create" asp-route-projectId="@Model.Id">
-            <i class="bi bi-plus-circle me-2"></i>افزودن تسک
-        </a>
-    </div>
 </div>
 
-<!-- Navigation Tabs -->
-<ul class="nav nav-tabs nav-tabs-modern" id="projectTabs" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
-            <i class="bi bi-house-door me-2"></i>نمای کلی
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks" type="button" role="tab">
-            <i class="bi bi-list-task me-2"></i>تسک‌ها (@totalTasks)
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="categories-tab" data-bs-toggle="tab" data-bs-target="#categories" type="button" role="tab">
-            <i class="bi bi-folder me-2"></i>دسته‌بندی‌ها (@(Model.Categories?.Count ?? 0))
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="team-tab" data-bs-toggle="tab" data-bs-target="#team" type="button" role="tab">
-            <i class="bi bi-people me-2"></i>تیم (@(Model.Members?.Count ?? 0))
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <a class="nav-link" href="/Projects/IssueTypes/@Model.Id" role="tab">
-            <i class="bi bi-tags-fill me-2"></i>انواع تسک
+<!-- لینک‌های دسترسی سریع -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 mb-4">
+    <!-- لیست کارها -->
+    <div class="col">
+        <a asp-controller="Tasks" asp-action="Index" asp-route-projectId="@Model.Id" class="text-decoration-none">
+            <div class="card-modern h-100 text-center" style="cursor: pointer;">
+                <div class="card-body-modern py-5">
+                    <div class="mb-3">
+                        <i class="bi bi-list-task" style="font-size: 3.5rem; color: #3b82f6;"></i>
+                    </div>
+                    <h5 class="mb-2">لیست کارها</h5>
+                    <p class="text-muted mb-0 small">@totalTasks تسک</p>
+                </div>
+            </div>
         </a>
-    </li>
-</ul>
+    </div>
+    
+    <!-- تخته کانبان -->
+    @if (Model.ActiveSprintId != null)
+    {
+        <div class="col">
+            <a href="/Sprints/Board/Board/@Model.ActiveSprintId" class="text-decoration-none">
+                <div class="card-modern h-100 text-center" style="cursor: pointer;">
+                    <div class="card-body-modern py-5">
+                        <div class="mb-3">
+                            <i class="bi bi-kanban" style="font-size: 3.5rem; color: #3b82f6;"></i>
+                        </div>
+                        <h5 class="mb-2">تخته کانبان</h5>
+                        <p class="text-muted mb-0 small">اسپرینت فعال</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    }
+    
+    <!-- اسپرینت‌ها -->
+    <div class="col">
+        <a href="/Sprints/Index?projectId=@Model.Id" class="text-decoration-none">
+            <div class="card-modern h-100 text-center" style="cursor: pointer;">
+                <div class="card-body-modern py-5">
+                    <div class="mb-3">
+                        <i class="bi bi-calendar-range" style="font-size: 3.5rem; color: #3b82f6;"></i>
+                    </div>
+                    <h5 class="mb-2">اسپرینت‌ها</h5>
+                    <p class="text-muted mb-0 small">مدیریت اسپرینت‌ها</p>
+                </div>
+            </div>
+        </a>
+    </div>
+    
+</div>
 
-<!-- Tab Content -->
-<div class="tab-content" id="projectTabsContent">
-    <!-- Overview Tab -->
-    <div class="tab-pane fade show active" id="overview" role="tabpanel">
-        <div class="row">
-            <!-- دسته‌بندی‌ها (پیش‌نمایش) -->
-            <div class="col-lg-6 mb-4">
-                <div class="modern-card">
-                    <div class="card-header-modern d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-folder-fill me-2"></i>دسته‌بندی‌ها</span>
-                        @if (isCreator)
-                        {
-                            <a class="btn btn-sm btn-success" href="/Categories/Create?projectId=@Model.Id">
-                                <i class="bi bi-plus-circle"></i>
-                            </a>
-                        }
-                    </div>
-                    <div class="card-body">
-                        @if (Model.Categories?.Any() == true)
-                        {
-                            <div class="row g-2">
-                                @foreach (var category in Model.Categories.Take(6))
-                                {
-                                    <div class="col-6">
-                                        <div class="category-card p-3">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <div>
-                                                    <h6 class="mb-1" style="color: #3b82f6;">
-                                                        <i class="bi bi-tag-fill me-1"></i>@category.Name
-                                                    </h6>
-                                                    <small class="text-muted">
-                                                        @{
-                                                            var taskCount = Model.CategoryTaskCounts.GetValueOrDefault(category.Id, 0);
-                                                        }
-                                                        @taskCount کار
-                                                    </small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
+<!-- بخش تنظیمات -->
+@if (isCreator)
+{
+    <div class="card-modern mb-4">
+        <div class="card-header-modern">
+            <i class="bi bi-gear-fill me-2"></i>تنظیمات پروژه
+        </div>
+        <div class="card-body-modern">
+            <div class="row row-cols-1 row-cols-md-3 g-3">
+                <!-- ویرایش پروژه -->
+                <div class="col">
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="text-decoration-none">
+                        <div class="d-flex align-items-center gap-3 p-3 settings-item" style="background: #f9fafb; border-radius: 12px; transition: all 0.2s ease; border: 2px solid transparent;">
+                            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">
+                                <i class="bi bi-pencil-square"></i>
                             </div>
-                            @if (Model.Categories.Count > 6)
-                            {
-                                <div class="text-center mt-3">
-                                    <a href="#categories" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('categories-tab').click()">
-                                        مشاهده همه (@Model.Categories.Count)
-                                    </a>
-                                </div>
-                            }
-                        }
-                        else
-                        {
-                            <p class="text-muted text-center mb-0 py-3">
-                                <i class="bi bi-folder-x me-2"></i>هیچ دسته‌بندی‌ای وجود ندارد
-                            </p>
-                        }
-                    </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold">ویرایش پروژه</h6>
+                                <small class="text-muted">تغییر نام و توضیحات</small>
+                            </div>
+                            <i class="bi bi-arrow-left text-muted"></i>
+                        </div>
+                    </a>
                 </div>
-            </div>
-            
-            <!-- اعضای تیم (پیش‌نمایش) -->
-            <div class="col-lg-6 mb-4">
-                <div class="modern-card">
-                    <div class="card-header-modern">
-                        <i class="bi bi-people-fill me-2"></i>اعضای تیم
-                    </div>
-                    <div class="card-body">
-                        @if (Model.Members?.Any() == true)
-                        {
-                            <div class="d-flex flex-wrap gap-3">
-                                @foreach (var member in Model.Members.Take(6))
-                                {
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div class="member-avatar">
-                                            @(member.DisplayName.Substring(0, 1).ToUpper())
-                                        </div>
-                                        <div>
-                                            <small class="d-block fw-bold">@member.DisplayName</small>
-                                            <small class="text-muted">عضو</small>
-                                        </div>
-                                    </div>
-                                }
+                
+                <!-- انواع Issue Types -->
+                <div class="col">
+                    <a href="/Projects/IssueTypes/@Model.Id" class="text-decoration-none">
+                        <div class="d-flex align-items-center gap-3 p-3 settings-item" style="background: #f9fafb; border-radius: 12px; transition: all 0.2s ease; border: 2px solid transparent;">
+                            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">
+                                <i class="bi bi-tags-fill"></i>
                             </div>
-                            @if (Model.Members.Count > 6)
-                            {
-                                <div class="text-center mt-3">
-                                    <a href="#team" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('team-tab').click()">
-                                        مشاهده همه (@Model.Members.Count)
-                                    </a>
-                                </div>
-                            }
-                        }
-                        else
-                        {
-                            <p class="text-muted text-center mb-0 py-3">
-                                <i class="bi bi-person-x me-2"></i>هیچ عضوی اضافه نشده است
-                            </p>
-                        }
-                    </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold">انواع فعالیت</h6>
+                                <small class="text-muted">مدیریت انواع Issue Types</small>
+                            </div>
+                            <i class="bi bi-arrow-left text-muted"></i>
+                        </div>
+                    </a>
+                </div>
+                
+                <!-- دسته‌بندی‌ها -->
+                <div class="col">
+                    <a href="/Categories/Create?projectId=@Model.Id" class="text-decoration-none">
+                        <div class="d-flex align-items-center gap-3 p-3 settings-item" style="background: #f9fafb; border-radius: 12px; transition: all 0.2s ease; border: 2px solid transparent;">
+                            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">
+                                <i class="bi bi-folder-fill"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold">دسته‌بندی‌ها</h6>
+                                <small class="text-muted">مدیریت دسته‌بندی‌ها</small>
+                            </div>
+                            <i class="bi bi-arrow-left text-muted"></i>
+                        </div>
+                    </a>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Tasks Tab -->
-    <div class="tab-pane fade" id="tasks" role="tabpanel">
-        <div class="modern-card">
-            <div class="card-header-modern d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-list-task me-2"></i>تسک‌های پروژه</span>
-                <div class="d-flex gap-2">
-                    <a class="btn btn-sm btn-success action-btn-modern"
-                       asp-controller="Tasks" asp-action="Create" asp-route-projectId="@Model.Id">
-                        <i class="bi bi-plus-circle me-1"></i>افزودن تسک جدید
-                    </a>
+}
 
-                    <a class="btn btn-sm btn-warning action-btn-modern"
-                       asp-controller="Tasks" asp-action="Index" asp-route-projectId="@Model.Id">
-                        <i class="bi bi-eye me-1"></i>مشاهده کامل
-                    </a>
-                </div>
-            </div>
-            <div class="card-body p-0">
-                @if (Model.Tasks?.Any() == true)
-                {
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead style="background: #f8f9fa;">
-                                <tr>
-                                    <th style="border-top: none;">عنوان</th>
-                                    <th style="border-top: none;">تاریخ شروع</th>
-                                    <th style="border-top: none;">تاریخ پایان</th>
-                                    <th style="border-top: none;">وضعیت</th>
-                                    <th style="border-top: none;">عملیات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var task in Model.Tasks)
-                                {
-                                    <tr class="task-row">
-                                        <td>
-                                            <div class="d-flex align-items-start gap-2">
-                                                <span class="mt-1" title="@task.IssueTypeName" style="font-size: 1.2rem;">@task.IssueTypeIcon</span>
-                                                <div class="flex-grow-1">
-                                                    <div class="fw-bold">@task.Title</div>
-                                                    @if (!string.IsNullOrEmpty(task.IssueKey))
-                                                    {
-                                                        <small class="text-muted">@task.IssueKey</small>
-                                                    }
-                                                    @if (task.AssignedUser != null)
-                                                    {
-                                                        <div class="mt-1">
-                                                            <small class="text-muted">
-                                                                <i class="bi bi-person me-1"></i>
-                                                                @(string.IsNullOrEmpty(task.AssignedUser.FullName) ? task.AssignedUser.UserName : task.AssignedUser.FullName)
-                                                            </small>
-                                                        </div>
-                                                    }
-                                                    @if (task.ChildIssues != null && task.ChildIssues.Any())
-                                                    {
-                                                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="toggleSubtasks(@task.Id)" aria-expanded="false">
-                                                            <i class="bi bi-list-nested me-1"></i>سابتسک‌ها (@task.ChildIssues.Count)
-                                                        </button>
-                                                        <div id="subtasks-@task.Id" class="mt-2 ms-3" style="display:none;">
-                                                            <ul class="list-unstyled mb-0">
-                                                                @foreach (var sub in task.ChildIssues.OrderBy(ci => ci.Priority))
-                                                                {
-                                                                    <li class="py-1">
-                                                                        <span class="me-1">@sub.IssueTypeIcon</span>
-                                                                        <span>@sub.Title</span>
-                                                                        @if (sub.AssignedUser != null)
-                                                                        {
-                                                                            <small class="text-muted ms-2">
-                                                                                — @(string.IsNullOrEmpty(sub.AssignedUser.FullName) ? sub.AssignedUser.UserName : sub.AssignedUser.FullName)
-                                                                            </small>
-                                                                        }
-                                                                    </li>
-                                                                }
-                                                            </ul>
-                                                        </div>
-                                                    }
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>@task.StartDate.ToShortPersianDateString()</td>
-                                        <td>@(task.DueDate.HasValue ? task.DueDate.Value.ToShortPersianDateString() : "-")</td>
-                                        <td>
-                                            <span class="badge @(task.IsCompleted ? "bg-success" : "bg-warning text-dark")" style="padding: 0.5rem 0.75rem;">
-                                                @(task.IsCompleted ? "✅ انجام شد" : "⏳ در حال انجام")
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex gap-2">
-                                                <a class="btn btn-sm btn-outline-warning action-btn-modern" asp-controller="Tasks" asp-action="Edit" asp-route-id="@task.Id">
-                                                    <i class="bi bi-pencil"></i>
-                                                </a>
-                                                <a class="btn btn-sm btn-outline-info action-btn-modern" asp-controller="Tasks" asp-action="Details" asp-route-id="@task.Id">
-                                                    <i class="bi bi-chat-dots"></i>
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <div class="text-center py-5">
-                        <i class="bi bi-inbox" style="font-size: 4rem; color: #dee2e6;"></i>
-                        <p class="text-muted mt-3 mb-0">هیچ تسکی برای این پروژه ثبت نشده است.</p>
-                        <a class="btn btn-success mt-3" asp-controller="Tasks" asp-action="Create" asp-route-projectId="@Model.Id">
-                            <i class="bi bi-plus-circle me-2"></i>افزودن اولین تسک
-                        </a>
-                    </div>
-                }
-            </div>
+<!-- بخش دعوت کاربران -->
+@if (isCreator)
+{
+    <div class="card-modern mb-4">
+        <div class="card-header-modern">
+            <i class="bi bi-people-fill me-2"></i>دعوت کاربران به پروژه
         </div>
-    </div>
-    
-    <!-- Categories Tab -->
-    <div class="tab-pane fade" id="categories" role="tabpanel">
-        <div class="modern-card">
-            <div class="card-header-modern d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-folder-fill me-2"></i>دسته‌بندی‌ها</span>
-                @if (isCreator)
-                {
-                    <a class="btn btn-sm btn-success action-btn-modern" href="/Categories/Create?projectId=@Model.Id">
-                        <i class="bi bi-plus-circle me-1"></i>افزودن دسته‌بندی
-                    </a>
-                }
-            </div>
-            <div class="card-body">
-                @if (Model.Categories?.Any() == true)
-                {
-                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                        @foreach (var category in Model.Categories)
-                        {
-                            <div class="col">
-                                <div class="category-card h-100">
-                                    <div class="card-body">
-                                        <h5 class="card-title mb-3" style="color: #3b82f6;">
-                                            <i class="bi bi-folder-fill me-2"></i>@category.Name
-                                        </h5>
-                                        <p class="text-muted mb-3">
-                                            <i class="bi bi-list-task me-1"></i>
-                                            @{
-                                                var taskCount = Model.CategoryTaskCounts.GetValueOrDefault(category.Id, 0);
-                                            }
-                                            <strong>@taskCount</strong> کار
-                                        </p>
-                                        @if (isCreator)
-                                        {
-                                            <div class="d-flex gap-2">
-                                                <a class="btn btn-sm btn-outline-warning flex-fill" href="/Categories/Edit/@category.Id">
-                                                    <i class="bi bi-pencil me-1"></i>ویرایش
-                                                </a>
-                                                <a class="btn btn-sm btn-outline-danger flex-fill" href="/Categories/Delete/@category.Id">
-                                                    <i class="bi bi-trash me-1"></i>حذف
-                                                </a>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <div class="text-center py-5">
-                        <i class="bi bi-folder-x" style="font-size: 4rem; color: #dee2e6;"></i>
-                        <p class="text-muted mt-3 mb-0">هیچ دسته‌بندی‌ای برای این پروژه ایجاد نشده است.</p>
-                        @if (isCreator)
-                        {
-                            <a class="btn btn-success mt-3" href="/Categories/Create?projectId=@Model.Id">
-                                <i class="bi bi-plus-circle me-2"></i>افزودن اولین دسته‌بندی
-                            </a>
-                        }
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-    
-    <!-- Team Tab -->
-    <div class="tab-pane fade" id="team" role="tabpanel">
-        <div class="row">
-            <!-- اعضای پروژه -->
-            <div class="col-lg-8 mb-4">
-                <div class="modern-card">
-                    <div class="card-header-modern">
-                        <i class="bi bi-people-fill me-2"></i>اعضای پروژه
-                    </div>
-                    <div class="card-body">
-                        @if (Model.Members?.Any() == true)
-                        {
-                            <div class="row g-3">
-                                @foreach (var member in Model.Members)
-                                {
-                                    <div class="col-md-6">
-                                        <div class="d-flex align-items-center gap-3 p-3" style="background: #f8f9fa; border-radius: 10px;">
-                                            <div class="member-avatar">
-                                                @(member.DisplayName.Substring(0, 1).ToUpper())
-                                            </div>
-                                            <div class="flex-grow-1">
-                                                <h6 class="mb-0">@member.DisplayName</h6>
-                                                <small class="text-muted">عضو فعال</small>
-                                            </div>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <span class="badge bg-success">
-                                                    <i class="bi bi-check-circle me-1"></i>آنلاین
-                                                </span>
-                                                @if (isCreator && member.UserId != Model.CreatorUserId)
-                                                {
-                                                    <form asp-controller="Projects"
-                                                          asp-action="RemoveMember"
-                                                          method="post"
-                                                          onsubmit="return confirm('آیا از حذف این عضو از پروژه اطمینان دارید؟ تمام تسک‌های مرتبط با این فرد بدون مسئول خواهند شد.');"
-                                                          style="display: inline;">
-                                                        @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="projectId" value="@Model.Id" />
-                                                        <input type="hidden" name="memberUserId" value="@member.UserId" />
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف از پروژه">
-                                                            <i class="bi bi-person-x"></i>
-                                                        </button>
-                                                    </form>
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="text-center py-5">
-                                <i class="bi bi-person-x" style="font-size: 4rem; color: #dee2e6;"></i>
-                                <p class="text-muted mt-3 mb-0">هیچ عضوی اضافه نشده است.</p>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
-            
-            <!-- ارسال دعوت -->
-            <div class="col-lg-4 mb-4">
-                <div class="modern-card">
-                    <div class="card-header-modern">
-                        <i class="bi bi-envelope-paper-fill me-2"></i>ارسال دعوت
-                    </div>
-                    <div class="card-body">
-                        <form asp-controller="Projects" asp-action="InviteUserToProject" method="post">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="projectId" value="@Model.Id" />
-                            <div class="mb-3">
-                                <label class="form-label">شماره موبایل</label>
-                                <input name="phone" class="form-control" placeholder="09123456789" required />
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100 action-btn-modern">
-                                <i class="bi bi-send me-2"></i>ارسال دعوت
-                            </button>
-                        </form>
-                    </div>
+        <div class="card-body-modern">
+            <div class="row">
+                <!-- فرم ارسال دعوت -->
+                <div class="col-lg-6 mb-4 mb-lg-0">
+                    <h6 class="mb-3 fw-bold">
+                        <i class="bi bi-envelope-paper-fill me-2 text-primary"></i>ارسال دعوت جدید
+                    </h6>
+                    <form asp-controller="Projects" asp-action="InviteUserToProject" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="projectId" value="@Model.Id" />
+                        <div class="mb-3">
+                            <label class="form-label">شماره موبایل</label>
+                            <input name="phone" class="form-control" placeholder="09123456789" required />
+                            <small class="text-muted">شماره موبایل کاربری که می‌خواهید دعوت کنید</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-modern w-100">
+                            <i class="bi bi-send me-2"></i>ارسال دعوت
+                        </button>
+                    </form>
                 </div>
                 
                 <!-- دعوت‌های در انتظار -->
-                @if (Model.Invitations?.Any() == true)
-                {
-                    <div class="modern-card mt-3">
-                        <div class="card-header-modern">
-                            <i class="bi bi-clock-history me-2"></i>دعوت‌های در انتظار
-                        </div>
-                        <div class="card-body">
-                            <div class="list-group list-group-flush">
-                                @foreach (var inv in Model.Invitations)
-                                {
-                                    <div class="list-group-item border-0 px-0">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <strong>@inv.InviteePhone</strong>
-                                                <br>
-                                                <small class="text-muted">@inv.CreatedAt.ToLocalTime().ToShortPersianDateTimeString()</small>
-                                            </div>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <span class="badge bg-warning text-dark">
-                                                    <i class="bi bi-hourglass-split me-1"></i>در انتظار
-                                                </span>
-                                                @if (isCreator)
-                                                {
-                                                    <form asp-controller="Projects"
-                                                          asp-action="DeleteProjectInvite"
-                                                          method="post"
-                                                          onsubmit="return confirm('حذف این دعوت؟');">
-                                                        @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="projectId" value="@Model.Id" />
-                                                        <input type="hidden" name="inviteId" value="@inv.Id" />
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                            <i class="bi bi-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                }
-                                            </div>
-                                        </div>
+                <div class="col-lg-6">
+                    <h6 class="mb-3 fw-bold">
+                        <i class="bi bi-clock-history me-2 text-warning"></i>دعوت‌های در انتظار
+                        @if (Model.Invitations?.Any() == true)
+                        {
+                            <span class="badge bg-warning text-dark ms-2">@Model.Invitations.Count</span>
+                        }
+                    </h6>
+                    @if (Model.Invitations?.Any() == true)
+                    {
+                        <div class="d-flex flex-column gap-2" style="max-height: 300px; overflow-y: auto;">
+                            @foreach (var inv in Model.Invitations)
+                            {
+                                <div class="d-flex justify-content-between align-items-center p-3" style="background: #f9fafb; border-radius: 10px;">
+                                    <div>
+                                        <div class="fw-bold">@inv.InviteePhone</div>
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar me-1"></i>
+                                            @inv.CreatedAt.ToLocalTime().ToShortPersianDateString()
+                                        </small>
                                     </div>
-                                }
-                            </div>
+                                    <form asp-controller="Projects" asp-action="DeleteProjectInvite" method="post" 
+                                          onsubmit="return confirm('آیا از حذف این دعوت اطمینان دارید؟');" style="display: inline;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="projectId" value="@Model.Id" />
+                                        <input type="hidden" name="inviteId" value="@inv.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف دعوت">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            }
                         </div>
-                    </div>
-                }
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="bi bi-inbox" style="font-size: 2.5rem; color: #d1d5db;"></i>
+                            <p class="text-muted mt-2 mb-0 small">هیچ دعوتی در انتظار نیست</p>
+                        </div>
+                    }
+                </div>
             </div>
         </div>
     </div>
-</div>
+}
 
 <!-- دکمه بازگشت -->
 <div class="mt-4 text-center">
-    <a asp-action="Index" class="btn btn-outline-secondary action-btn-modern">
+    <a asp-action="Index" class="btn btn-outline-secondary btn-modern">
         <i class="bi bi-arrow-right me-2"></i>بازگشت به لیست پروژه‌ها
     </a>
 </div>
-
-@section Scripts {
-    <script>
-        function toggleSubtasks(taskId) {
-            const container = document.getElementById(`subtasks-${taskId}`);
-            if (!container) return;
-            const isHidden = container.style.display === 'none' || container.style.display === '';
-            container.style.display = isHidden ? 'block' : 'none';
-
-            const btn = event?.currentTarget;
-            if (btn) {
-                const expanded = isHidden ? 'true' : 'false';
-                btn.setAttribute('aria-expanded', expanded);
-                const count = container.querySelectorAll('li').length;
-                btn.innerHTML = (isHidden ? '<i class="bi bi-chevron-up me-1"></i>عدم نمایش' : '<i class="bi bi-chevron-down me-1"></i>نمایش') + ` سابتسک‌ها (${count})`;
-            }
-        }
-    </script>
-}
