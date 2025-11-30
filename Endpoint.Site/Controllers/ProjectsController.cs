@@ -90,6 +90,50 @@ namespace Endpoint.Site.Controllers
                 .GroupBy(x => x.ProjectId)
                 .ToDictionary(g => g.Key, g => g.First().Id);
 
+            // دریافت دعوت‌های در انتظار برای سایدبار
+            var user = await _userManager.FindByIdAsync(userId);
+            var phone = user?.Phone;
+            
+            // دعوت‌های پروژه در انتظار
+            var pendingProjectInvitations = await _context.ProjectInvitations
+                .Include(i => i.Project)
+                .Where(i => i.InviteePhone == phone && i.ProjectId != null && i.Status == InvitationStatus.Pending)
+                .OrderByDescending(i => i.CreatedAt)
+                .Take(5)
+                .ToListAsync();
+
+            // دعوت‌های سیستم در انتظار
+            var pendingSystemInvitations = await _context.ProjectInvitations
+                .Where(i => i.InviteePhone == phone && i.ProjectId == null && i.Status == InvitationStatus.Pending)
+                .OrderByDescending(i => i.CreatedAt)
+                .Take(5)
+                .ToListAsync();
+
+            // دریافت نام دعوت‌کنندگان
+            var inviterIds = pendingProjectInvitations.Select(i => i.InviterId)
+                .Concat(pendingSystemInvitations.Select(i => i.InviterId))
+                .Distinct()
+                .ToList();
+
+            var inviterLookup = await _userManager.Users
+                .Where(u => inviterIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => 
+                    !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : (u.UserName ?? "کاربر ناشناس"));
+
+            ViewBag.PendingProjectInvitations = pendingProjectInvitations;
+            ViewBag.PendingSystemInvitations = pendingSystemInvitations;
+            ViewBag.InviterLookup = inviterLookup;
+
+            // دریافت یادداشت‌های شخصی اخیر
+            var recentNotes = await _context.PersonalNotes
+                .Where(n => n.UserId == userId)
+                .OrderByDescending(n => n.IsPinned)
+                .ThenByDescending(n => n.CreatedAt)
+                .Take(5)
+                .ToListAsync();
+
+            ViewBag.RecentNotes = recentNotes;
+
             return View(projects);
         }
         [HttpGet("{id}")]

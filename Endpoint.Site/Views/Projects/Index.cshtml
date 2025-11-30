@@ -5,6 +5,10 @@
     ViewData["Title"] = "داشبورد";
     Layout = "/Views/Shared/_Layout.cshtml";
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var pendingProjectInvitations = ViewBag.PendingProjectInvitations as List<ProjectInvitation> ?? new List<ProjectInvitation>();
+    var pendingSystemInvitations = ViewBag.PendingSystemInvitations as List<ProjectInvitation> ?? new List<ProjectInvitation>();
+    var inviterLookup = ViewBag.InviterLookup as Dictionary<string, string> ?? new Dictionary<string, string>();
+    var recentNotes = ViewBag.RecentNotes as List<PersonalNote> ?? new List<PersonalNote>();
 }
 
 <!-- بخش خوش‌آمدگویی -->
@@ -13,8 +17,12 @@
     <p class="text-muted">تمام ابزارهای مدیریت کار و پروژه شما در یک مکان</p>
 </div>
 
-<!-- بخش پروژه‌ها -->
-<div class="projects-section mb-5">
+<!-- محتوای اصلی با سایدبار -->
+<div class="main-content-wrapper">
+    <!-- محتوای اصلی -->
+    <div class="main-content">
+        <!-- بخش پروژه‌ها -->
+        <div class="projects-section mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="section-title">
             <i class="bi bi-briefcase me-2"></i>
@@ -114,61 +122,236 @@
             </a>
         </div>
     }
-</div>
-
-<!-- کارت‌های دسترسی سریع -->
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
-    <!-- برنامه هفتگی -->
-    <div class="col">
-        <a href="/Tasks/Weekly" class="text-decoration-none">
-            <div class="quick-access-card">
-                <div class="icon-wrapper bg-gradient-primary">
-                    <i class="bi bi-calendar-week"></i>
-                </div>
-                <h5 class="card-title">برنامه هفتگی</h5>
-                <p class="card-text">مشاهده و مدیریت برنامه هفتگی خود</p>
-            </div>
-        </a>
+        </div>
     </div>
 
-    <!-- لیست کارها -->
-    <div class="col">
-        <a href="/Tasks/Index" class="text-decoration-none">
-            <div class="quick-access-card">
-                <div class="icon-wrapper bg-gradient-warning">
-                    <i class="bi bi-list-task"></i>
+    <!-- سایدبار -->
+    <aside class="sidebar">
+        <!-- دعوت‌های در انتظار -->
+        @if (pendingProjectInvitations.Any() || pendingSystemInvitations.Any())
+        {
+            <div class="sidebar-card mb-4">
+                <div class="sidebar-card-header">
+                    <h5 class="sidebar-card-title">
+                        <i class="bi bi-envelope-fill text-danger me-2"></i>
+                        دعوت‌های در انتظار
+                        <span class="badge bg-danger ms-2">@(pendingProjectInvitations.Count + pendingSystemInvitations.Count)</span>
+                    </h5>
                 </div>
-                <h5 class="card-title">لیست کارها</h5>
-                <p class="card-text">مشاهده و مدیریت تمام کارهای خود</p>
-            </div>
-        </a>
-    </div>
+                <div class="sidebar-card-body">
+                    @if (pendingProjectInvitations.Any())
+                    {
+                        <div class="mb-3">
+                            <h6 class="sidebar-subtitle mb-2">
+                                <i class="bi bi-briefcase me-1"></i>
+                                دعوت‌های پروژه
+                            </h6>
+                            @foreach (var invite in pendingProjectInvitations.Take(3))
+                            {
+                                <div class="invitation-item mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <p class="mb-1 fw-semibold">@(invite.Project?.Name ?? "پروژه")</p>
+                                            <small class="text-muted">
+                                                <i class="bi bi-person me-1"></i>
+                                                @(inviterLookup.ContainsKey(invite.InviterId) ? inviterLookup[invite.InviterId] : "کاربر ناشناس")
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <a href="/Projects/Details/@invite.ProjectId" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-eye me-1"></i>
+                                            مشاهده
+                                        </a>
+                                    </div>
+                                </div>
+                                @if (invite != pendingProjectInvitations.Take(3).Last())
+                                {
+                                    <hr class="my-2" />
+                                }
+                            }
+                            @if (pendingProjectInvitations.Count > 3)
+                            {
+                                <a href="/Invitations/MyInvitations" class="btn btn-sm btn-outline-primary w-100 mt-2">
+                                    مشاهده همه (@pendingProjectInvitations.Count)
+                                </a>
+                            }
+                        </div>
+                    }
 
-    <!-- یادداشت‌های شخصی -->
-    <div class="col">
-        <a href="/PersonalNotes/Index" class="text-decoration-none">
-            <div class="quick-access-card">
-                <div class="icon-wrapper bg-gradient-info">
-                    <i class="bi bi-journal-text"></i>
+                    @if (pendingSystemInvitations.Any())
+                    {
+                        @if (pendingProjectInvitations.Any())
+                        {
+                            <hr class="my-3" />
+                        }
+                        <div>
+                            <h6 class="sidebar-subtitle mb-2">
+                                <i class="bi bi-people me-1"></i>
+                                دعوت‌های سیستم
+                            </h6>
+                            @foreach (var invite in pendingSystemInvitations.Take(3))
+                            {
+                                <div class="invitation-item mb-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <p class="mb-1 fw-semibold">دعوت به سیستم</p>
+                                            <small class="text-muted">
+                                                <i class="bi bi-person me-1"></i>
+                                                @(inviterLookup.ContainsKey(invite.InviterId) ? inviterLookup[invite.InviterId] : "کاربر ناشناس")
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <form method="post" action="/Invitations/RespondToSystemInvite" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@invite.Id" />
+                                            <input type="hidden" name="accept" value="true" />
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="bi bi-check me-1"></i>
+                                                قبول
+                                            </button>
+                                        </form>
+                                        <form method="post" action="/Invitations/RespondToSystemInvite" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@invite.Id" />
+                                            <input type="hidden" name="accept" value="false" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-x me-1"></i>
+                                                رد
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                @if (invite != pendingSystemInvitations.Take(3).Last())
+                                {
+                                    <hr class="my-2" />
+                                }
+                            }
+                            @if (pendingSystemInvitations.Count > 3)
+                            {
+                                <a href="/Invitations/MyInvitations" class="btn btn-sm btn-outline-primary w-100 mt-2">
+                                    مشاهده همه (@pendingSystemInvitations.Count)
+                                </a>
+                            }
+                        </div>
+                    }
                 </div>
-                <h5 class="card-title">یادداشت‌های شخصی</h5>
-                <p class="card-text">یادداشت‌ها و نکات مهم خود را ثبت کنید</p>
             </div>
-        </a>
-    </div>
+        }
+        else
+        {
+            <!-- پیام عدم وجود دعوت -->
+            <div class="sidebar-card mb-4">
+                <div class="sidebar-card-header">
+                    <h5 class="sidebar-card-title">
+                        <i class="bi bi-envelope text-muted me-2"></i>
+                        دعوت‌های در انتظار
+                    </h5>
+                </div>
+                <div class="sidebar-card-body text-center py-3">
+                    <p class="text-muted mb-0 small">هیچ دعوتی در انتظار نیست</p>
+                    <a href="/Invitations/MyInvitations" class="btn btn-sm btn-outline-primary mt-2">
+                        مشاهده همه دعوت‌ها
+                    </a>
+                </div>
+            </div>
+        }
 
-    <!-- دعوت کاربران -->
-    <div class="col">
-        <a href="/Invitations/MyInvitations" class="text-decoration-none">
-            <div class="quick-access-card">
-                <div class="icon-wrapper bg-gradient-danger">
-                    <i class="bi bi-envelope"></i>
+        <!-- یادداشت‌های اخیر -->
+        @if (recentNotes.Any())
+        {
+            <div class="sidebar-card mb-4">
+                <div class="sidebar-card-header">
+                    <h5 class="sidebar-card-title">
+                        <i class="bi bi-journal-text text-info me-2"></i>
+                        یادداشت‌های اخیر
+                    </h5>
                 </div>
-                <h5 class="card-title">دعوت‌ها</h5>
-                <p class="card-text">مدیریت دعوت‌نامه‌های پروژه</p>
+                <div class="sidebar-card-body">
+                    @foreach (var note in recentNotes.Take(5))
+                    {
+                        <div class="note-item mb-2">
+                            <a href="/PersonalNotes/Details/@note.Id" class="text-decoration-none text-dark">
+                                <div class="d-flex align-items-start">
+                                    @if (note.IsPinned)
+                                    {
+                                        <i class="bi bi-pin-angle-fill text-warning me-2 mt-1"></i>
+                                    }
+                                    <div class="flex-grow-1">
+                                        <p class="mb-1 fw-semibold">@note.Title</p>
+                                        @if (!string.IsNullOrWhiteSpace(note.Content))
+                                        {
+                                            <small class="text-muted d-block" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                                @note.Content
+                                            </small>
+                                        }
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        @if (note != recentNotes.Take(5).Last())
+                        {
+                            <hr class="my-2" />
+                        }
+                    }
+                    <a href="/PersonalNotes/Index" class="btn btn-sm btn-outline-info w-100 mt-2">
+                        <i class="bi bi-arrow-left me-1"></i>
+                        مشاهده همه یادداشت‌ها
+                    </a>
+                </div>
             </div>
-        </a>
-    </div>
+        }
+        else
+        {
+            <!-- پیام عدم وجود یادداشت -->
+            <div class="sidebar-card mb-4">
+                <div class="sidebar-card-header">
+                    <h5 class="sidebar-card-title">
+                        <i class="bi bi-journal-text text-muted me-2"></i>
+                        یادداشت‌های اخیر
+                    </h5>
+                </div>
+                <div class="sidebar-card-body text-center py-3">
+                    <p class="text-muted mb-0 small">یادداشتی وجود ندارد</p>
+                    <a href="/PersonalNotes/Create" class="btn btn-sm btn-outline-info mt-2">
+                        <i class="bi bi-plus me-1"></i>
+                        ایجاد یادداشت جدید
+                    </a>
+                </div>
+            </div>
+        }
+
+        <!-- دسترسی سریع -->
+        <div class="sidebar-card">
+            <div class="sidebar-card-header">
+                <h5 class="sidebar-card-title">
+                    <i class="bi bi-lightning-charge text-warning me-2"></i>
+                    دسترسی سریع
+                </h5>
+            </div>
+            <div class="sidebar-card-body">
+                <div class="quick-links">
+                    <a href="/Tasks/Weekly" class="quick-link-item">
+                        <i class="bi bi-calendar-week text-primary"></i>
+                        <span>برنامه هفتگی</span>
+                    </a>
+                    <a href="/Tasks/Index" class="quick-link-item">
+                        <i class="bi bi-list-task text-warning"></i>
+                        <span>لیست کارها</span>
+                    </a>
+                    <a href="/PersonalNotes/Index" class="quick-link-item">
+                        <i class="bi bi-journal-text text-info"></i>
+                        <span>یادداشت‌های شخصی</span>
+                    </a>
+                    <a href="/Invitations/MyInvitations" class="quick-link-item">
+                        <i class="bi bi-envelope text-danger"></i>
+                        <span>دعوت‌ها</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </aside>
 </div>
 
 <style>
@@ -178,53 +361,115 @@
         border-bottom: 2px solid #e9ecef;
     }
 
-    /* کارت‌های دسترسی سریع */
-    .quick-access-card {
+    /* لایه‌بندی اصلی با سایدبار */
+    .main-content-wrapper {
+        display: flex;
+        flex-direction: row-reverse; /* برای قرارگیری sidebar در سمت راست */
+        gap: 2rem;
+        align-items: flex-start;
+    }
+
+    .main-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .sidebar {
+        width: 320px;
+        flex-shrink: 0;
+        position: sticky;
+        top: 2rem;
+        max-height: calc(100vh - 4rem);
+        overflow-y: auto;
+        align-self: flex-start;
+    }
+
+    /* کارت‌های سایدبار */
+    .sidebar-card {
         background: white;
-        border-radius: 16px;
-        padding: 2rem;
-        text-align: center;
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
-        height: 100%;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+    }
+
+    .sidebar-card-header {
+        background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .sidebar-card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+        display: flex;
+        align-items: center;
+    }
+
+    .sidebar-subtitle {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #4b5563;
+        margin: 0;
+    }
+
+    .sidebar-card-body {
+        padding: 1.25rem;
+    }
+
+    /* آیتم‌های دعوت */
+    .invitation-item {
+        padding: 0.75rem;
+        background: #f9fafb;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .invitation-item:hover {
+        background: #f3f4f6;
+    }
+
+    /* آیتم‌های یادداشت */
+    .note-item {
+        padding: 0.5rem;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .note-item:hover {
+        background: #f9fafb;
+    }
+
+    /* لینک‌های دسترسی سریع */
+    .quick-links {
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
+        gap: 0.5rem;
     }
 
-    .quick-access-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
-        border-color: #e9ecef;
-    }
-
-    .quick-access-card .icon-wrapper {
-        width: 70px;
-        height: 70px;
-        border-radius: 16px;
+    .quick-link-item {
         display: flex;
         align-items: center;
-        justify-content: center;
-        margin-bottom: 1rem;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: #f9fafb;
+        border-radius: 8px;
+        text-decoration: none;
+        color: #374151;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
     }
 
-    .quick-access-card .icon-wrapper i {
-        font-size: 2rem;
-        color: white;
+    .quick-link-item:hover {
+        background: #f3f4f6;
+        color: #1f2937;
+        transform: translateX(-4px);
     }
 
-    .quick-access-card .card-title {
-        color: #2d3748;
-        font-size: 1.125rem;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-    }
-
-    .quick-access-card .card-text {
-        color: #718096;
-        font-size: 0.875rem;
-        margin: 0;
+    .quick-link-item i {
+        font-size: 1.25rem;
     }
 
     /* گرادیانت‌ها */
@@ -364,22 +609,46 @@
     }
 
     /* ریسپانسیو */
+    @@media (max-width: 992px) {
+        .main-content-wrapper {
+            flex-direction: column;
+        }
+
+        .sidebar {
+            width: 100%;
+            position: static;
+            max-height: none;
+        }
+
+        .sidebar-card {
+            margin-bottom: 1.5rem;
+        }
+    }
+
     @@media (max-width: 768px) {
         .welcome-section h1 {
             font-size: 1.75rem;
         }
 
-        .quick-access-card {
-            padding: 1.5rem;
+        .welcome-section {
+            padding: 1.5rem 0;
         }
 
-        .quick-access-card .icon-wrapper {
-            width: 60px;
-            height: 60px;
+        .main-content-wrapper {
+            gap: 1.5rem;
         }
 
-        .quick-access-card .icon-wrapper i {
-            font-size: 1.5rem;
+        .sidebar-card-header {
+            padding: 0.875rem 1rem;
+        }
+
+        .sidebar-card-body {
+            padding: 1rem;
+        }
+
+        .invitation-item,
+        .note-item {
+            padding: 0.625rem;
         }
     }
 </style>

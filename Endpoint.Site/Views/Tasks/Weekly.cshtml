@@ -48,7 +48,7 @@
     .calendar-title {
         font-size: 1.75rem;
         font-weight: 700;
-        color: #1f2937;
+        color: #000;
         margin: 0 0 4px 0;
         letter-spacing: -0.5px;
     }
@@ -56,7 +56,7 @@
     .calendar-month {
         font-size: 1.3rem;
         font-weight: 600;
-        color: #6366f1;
+        color: #333;
         margin: 0 0 8px 0;
         display: flex;
         align-items: center;
@@ -64,7 +64,7 @@
     }
     
     .calendar-date-range {
-        color: #6b7280;
+        color: #666;
         font-size: 1rem;
         font-weight: 500;
     }
@@ -77,9 +77,9 @@
     .btn-nav {
         padding: 10px 20px;
         border-radius: 10px;
-        border: 1.5px solid #6366f1;
+        border: 1.5px solid #000;
         background: #fff;
-        color: #6366f1;
+        color: #000;
         font-weight: 600;
         text-decoration: none;
         transition: all 0.3s ease;
@@ -88,17 +88,15 @@
     }
     
     .btn-nav:hover {
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        background: #000;
         color: #fff;
-        border-color: #6366f1;
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     }
     
     .btn-nav.active {
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        background: #000;
         color: #fff;
-        border-color: #6366f1;
     }
     
     .calendar-grid {
@@ -125,10 +123,10 @@
     }
     
     .calendar-day.today {
-        background: linear-gradient(135deg, #f0f0ff 0%, #ffffff 100%);
-        border-color: #6366f1;
+        background: #fff;
+        border-color: #000;
         border-width: 2.5px;
-        box-shadow: 0 6px 24px rgba(99, 102, 241, 0.2);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
     }
     
     .day-header {
@@ -143,7 +141,7 @@
     .day-name {
         font-weight: 700;
         font-size: 0.9rem;
-        color: #1f2937;
+        color: #000;
         margin-bottom: 6px;
         letter-spacing: 0.3px;
     }
@@ -151,12 +149,12 @@
     .day-number {
         font-size: 1.8rem;
         font-weight: 700;
-        color: #374151;
+        color: #000;
         line-height: 1;
     }
     
     .day-number.today-badge {
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        background: #000;
         color: #fff;
         width: 38px;
         height: 38px;
@@ -165,7 +163,6 @@
         align-items: center;
         justify-content: center;
         font-size: 1.2rem;
-        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
     }
     
     .day-tasks {
@@ -186,35 +183,34 @@
     }
     
     .day-tasks::-webkit-scrollbar-thumb {
-        background: #6366f1;
+        background: #888;
         border-radius: 4px;
     }
     
     .day-tasks::-webkit-scrollbar-thumb:hover {
-        background: #4f46e5;
+        background: #555;
     }
     
     .task-card {
         background: #fff;
-        border: 1.5px solid #e5e7eb;
+        border: 1.5px solid #dee2e6;
         border-radius: 10px;
         padding: 10px;
         font-size: 0.85rem;
         cursor: pointer;
         transition: all 0.2s ease;
-        border-right: 4px solid #6366f1;
+        border-right: 4px solid #000;
     }
     
     .task-card:hover {
-        box-shadow: 0 3px 12px rgba(99, 102, 241, 0.2);
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
         transform: translateX(-3px);
-        border-right-color: #4f46e5;
-        background: linear-gradient(135deg, #faf5ff 0%, #ffffff 100%);
+        border-right-color: #333;
     }
     
     .task-title {
         font-weight: 600;
-        color: #1f2937;
+        color: #000;
         margin-bottom: 6px;
         display: flex;
         align-items: center;
@@ -227,15 +223,15 @@
     
     .task-key {
         font-size: 0.7rem;
-        color: #6366f1;
+        color: #666;
         font-family: monospace;
         margin-bottom: 4px;
-        font-weight: 600;
+        font-weight: 500;
     }
     
     .task-meta {
         font-size: 0.75rem;
-        color: #6b7280;
+        color: #666;
         display: flex;
         flex-direction: column;
         gap: 3px;
@@ -244,7 +240,7 @@
     
     .task-project {
         font-weight: 600;
-        color: #4b5563;
+        color: #333;
     }
     
     .task-assignee {
