@@ -6,6 +6,43 @@
     var collapseId = $"collapse_{Model.Id}";
 }
 
+<style>
+    /* اطمینان از نمایش کامل منوی dropdown */
+    .task-card .dropdown-menu {
+        z-index: 1060 !important;
+    }
+    
+    /* اجازه به dropdown برای خروج از محدودیت overflow در children */
+    .task-card__children {
+        overflow: visible !important;
+    }
+    
+    /* برای container های والد که ممکن است overflow داشته باشند */
+    .task-tree-wrapper,
+    .task-node {
+        overflow: visible !important;
+    }
+    
+    /* اطمینان از اینکه task-card خودش overflow ایجاد نمی‌کند */
+    .task-card {
+        overflow: visible !important;
+    }
+    
+    /* برای dropdown wrapper */
+    .task-dropdown-wrapper {
+        position: static !important;
+    }
+    
+    /* وقتی dropdown باز است، آن را با position fixed نمایش بده */
+    .task-dropdown-wrapper .dropdown-menu.show {
+        position: fixed !important;
+        z-index: 1070 !important;
+        display: block !important;
+        transform: none !important;
+        will-change: auto !important;
+    }
+</style>
+
 @{
     var isCompleted = Model.IsCompleted;
     var dueState = Model.DueDate switch
@@ -80,33 +117,14 @@
                     </div>
                     <div class="d-flex flex-wrap align-items-center gap-2 meta-row">
                         <span class="meta-item">
-                            <i class="bi bi-diagram-3 text-primary"></i>
-                            <strong>پروژه:</strong> @Model.Project?.Name
-                        </span>
-                        <span class="meta-item">
-                            <i class="bi bi-tags text-info"></i>
-                            <strong>دسته:</strong> @Model.Category?.Name
-                        </span>
-                        <span class="meta-item">
-                            <i class="bi bi-calendar-event text-warning"></i>
-                            <strong>شروع:</strong> @Model.StartDate.ToShortPersianDateString()
+                            <i class="bi bi-person text-success"></i>
+                            <strong>مسئول:</strong> @assignedName
                         </span>
                         @if (Model.DueDate != null)
                         {
                             <span class="meta-item">
                                 <i class="bi bi-flag text-danger"></i>
                                 <strong>پایان:</strong> <span class="@dueState">@Model.DueDate.Value.ToShortPersianDateString()</span>
-                            </span>
-                        }
-                        <span class="meta-item">
-                            <i class="bi bi-person text-success"></i>
-                            <strong>مسئول:</strong> @assignedName
-                        </span>
-                        @if (Model.Sprint != null)
-                        {
-                            <span class="meta-item">
-                                <i class="bi bi-lightning-charge text-warning"></i>
-                                <strong>اسپرینت:</strong> @Model.Sprint.Name
                             </span>
                         }
                         @if (Model.WorkflowStatus != null)
@@ -123,53 +141,7 @@
                     </div>
                 </div>
             </div>
-            <div class="d-flex flex-wrap gap-2 action-group">
-                @if (!Model.IsCompleted)
-                {
-                    <a class="btn btn-sm btn-outline-warning d-flex align-items-center justify-content-center"
-                       asp-controller="Tasks"
-                       asp-action="Edit"
-                       asp-route-id="@Model.Id"
-                       title="ویرایش">
-                        <i class="bi bi-pencil-square"></i>
-                    </a>
-                }
-
-                <a class="btn btn-sm btn-outline-info d-flex align-items-center justify-content-center"
-                   asp-controller="Tasks"
-                   asp-action="Details"
-                   asp-route-id="@Model.Id"
-                   title="گفتگو">
-                    <i class="bi bi-chat-dots"></i>
-                </a>
-
-                @if (!Model.IsCompleted)
-                {
-                    <button class="btn btn-sm btn-outline-success d-flex align-items-center justify-content-center"
-                            onclick="completeTask(@Model.Id)"
-                            title="خاتمه">
-                        <i class="bi bi-check-lg"></i>
-                    </button>
-                }
-
-                @if (!Model.IsCompleted && Model.CanHaveChildren)
-                {
-                    <button class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
-                            onclick="openChildIssueModal(@Model.Id, '@Model.IssueType')"
-                            title="افزودن @(Model.ProjectIssueType?.Level == IssueTypeLevel.Epic ? "Story-level types" : Model.ProjectIssueType?.Level == IssueTypeLevel.StoryLevel ? "Subtask" : Model.IssueType == IssueType.Epic ? "Story-level types" : "Subtask")">
-                        <i class="bi bi-plus-circle"></i>
-                    </button>
-                }
-
-                @if (!Model.IsCompleted)
-                {
-                    <button class="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center"
-                            onclick="deleteTask(@Model.Id)"
-                            title="حذف">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                }
-
+            <div class="d-flex align-items-center gap-2">
                 @if (hasSubs)
                 {
                     <button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center"
@@ -182,6 +154,55 @@
                         <i class="bi bi-diagram-3"></i>
                     </button>
                 }
+                <div class="dropdown task-dropdown-wrapper" data-task-id="@Model.Id">
+                    <button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center task-dropdown-toggle"
+                            type="button"
+                            id="taskActions_@Model.Id"
+                            data-bs-toggle="dropdown"
+                            data-bs-boundary="viewport"
+                            data-bs-offset="0,8"
+                            aria-expanded="false"
+                            title="عملیات">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="taskActions_@Model.Id">
+                        @if (!Model.IsCompleted)
+                        {
+                            <li>
+                                <a class="dropdown-item" asp-controller="Tasks" asp-action="Edit" asp-route-id="@Model.Id">
+                                    <i class="bi bi-pencil-square me-2"></i> ویرایش
+                                </a>
+                            </li>
+                        }
+                        <li>
+                            <a class="dropdown-item" asp-controller="Tasks" asp-action="Details" asp-route-id="@Model.Id">
+                                <i class="bi bi-chat-dots me-2"></i> گفتگو
+                            </a>
+                        </li>
+                        @if (!Model.IsCompleted && Model.CanHaveChildren)
+                        {
+                            <li>
+                                <button class="dropdown-item" onclick="openChildIssueModal(@Model.Id, '@Model.IssueType')">
+                                    <i class="bi bi-plus-circle me-2"></i> افزودن @(Model.ProjectIssueType?.Level == IssueTypeLevel.Epic ? "Story-level types" : Model.ProjectIssueType?.Level == IssueTypeLevel.StoryLevel ? "Subtask" : Model.IssueType == IssueType.Epic ? "Story-level types" : "Subtask")
+                                </button>
+                            </li>
+                        }
+                        @if (!Model.IsCompleted)
+                        {
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <button class="dropdown-item text-success" onclick="completeTask(@Model.Id)">
+                                    <i class="bi bi-check-lg me-2"></i> خاتمه
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item text-danger" onclick="deleteTask(@Model.Id)">
+                                    <i class="bi bi-trash me-2"></i> حذف
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -198,3 +219,177 @@
         </div>
     }
 </div>
+
+@* اسکریپت مدیریت dropdown - راه حل جامع برای همه سطوح (Feature/Task/Subtask) *@
+<script>
+    (function() {
+        if (window.taskDropdownInitialized) return;
+        window.taskDropdownInitialized = true;
+        
+        // ذخیره اطلاعات dropdown برای بازگرداندن
+        const dropdownData = new WeakMap();
+        
+        // تابع برای تنظیم موقعیت dropdown با انتقال به body
+        function setupDropdownPosition(dropdownToggle) {
+            if (!dropdownToggle) return;
+            
+            const dropdownMenu = dropdownToggle.nextElementSibling;
+            if (!dropdownMenu || !dropdownMenu.classList.contains('dropdown-menu')) return;
+            if (!dropdownMenu.classList.contains('show')) return;
+            
+            // ذخیره اطلاعات برای بازگرداندن
+            if (!dropdownData.has(dropdownMenu)) {
+                dropdownData.set(dropdownMenu, {
+                    parent: dropdownMenu.parentElement,
+                    nextSibling: dropdownMenu.nextSibling
+                });
+            }
+            
+            // محاسبه موقعیت دکمه
+            const buttonRect = dropdownToggle.getBoundingClientRect();
+            const isRTL = document.documentElement.dir === 'rtl';
+            const padding = 8;
+            
+            // انتقال dropdown به body اگر هنوز در جای قبلی است
+            const wasInBody = dropdownMenu.parentElement === document.body;
+            if (!wasInBody) {
+                // حفظ display برای محاسبه اندازه
+                const currentDisplay = dropdownMenu.style.display || 'block';
+                dropdownMenu.style.display = 'block';
+                dropdownMenu.style.visibility = 'hidden';
+                dropdownMenu.style.position = 'fixed';
+                document.body.appendChild(dropdownMenu);
+            }
+            
+            // گرفتن اندازه واقعی menu
+            const menuRect = dropdownMenu.getBoundingClientRect();
+            const menuHeight = menuRect.height || dropdownMenu.scrollHeight || 200;
+            const menuWidth = menuRect.width || 200;
+            
+            if (!wasInBody) {
+                dropdownMenu.style.visibility = 'visible';
+            }
+            
+            // تنظیم استایل‌های پایه
+            dropdownMenu.style.position = 'fixed';
+            dropdownMenu.style.zIndex = '1070';
+            dropdownMenu.style.display = 'block';
+            dropdownMenu.style.visibility = 'visible';
+            dropdownMenu.style.transform = 'none';
+            
+            // محاسبه و تنظیم موقعیت افقی
+            if (isRTL) {
+                // برای dropdown-menu-end در RTL
+                dropdownMenu.style.right = (window.innerWidth - buttonRect.right) + 'px';
+                dropdownMenu.style.left = 'auto';
+            } else {
+                dropdownMenu.style.left = buttonRect.left + 'px';
+                dropdownMenu.style.right = 'auto';
+            }
+            
+            // محاسبه موقعیت عمودی
+            const spaceBelow = window.innerHeight - buttonRect.bottom;
+            const spaceAbove = buttonRect.top;
+            
+            if (spaceBelow >= menuHeight + padding) {
+                // فضای کافی در پایین
+                dropdownMenu.style.top = (buttonRect.bottom + padding) + 'px';
+                dropdownMenu.style.bottom = 'auto';
+                dropdownMenu.style.maxHeight = '';
+                dropdownMenu.style.overflowY = '';
+            } else if (spaceAbove >= menuHeight + padding) {
+                // فضای کافی در بالا
+                dropdownMenu.style.top = 'auto';
+                dropdownMenu.style.bottom = (window.innerHeight - buttonRect.top + padding) + 'px';
+                dropdownMenu.style.maxHeight = '';
+                dropdownMenu.style.overflowY = '';
+            } else {
+                // فضای کافی در هیچ کدام نیست
+                if (spaceBelow > spaceAbove) {
+                    dropdownMenu.style.top = (buttonRect.bottom + padding) + 'px';
+                    dropdownMenu.style.bottom = 'auto';
+                    dropdownMenu.style.maxHeight = Math.max(spaceBelow - padding, 100) + 'px';
+                    dropdownMenu.style.overflowY = 'auto';
+                } else {
+                    dropdownMenu.style.top = 'auto';
+                    dropdownMenu.style.bottom = (window.innerHeight - buttonRect.top + padding) + 'px';
+                    dropdownMenu.style.maxHeight = Math.max(spaceAbove - padding, 100) + 'px';
+                    dropdownMenu.style.overflowY = 'auto';
+                }
+            }
+        }
+        
+        // تابع برای بازگرداندن dropdown به جای اصلی
+        function restoreDropdown(dropdownMenu) {
+            const data = dropdownData.get(dropdownMenu);
+            if (data && dropdownMenu.parentElement === document.body) {
+                // پاک کردن استایل‌های inline
+                dropdownMenu.style.cssText = '';
+                
+                // بازگرداندن به جای اصلی
+                if (data.nextSibling && data.nextSibling.parentElement) {
+                    data.parent.insertBefore(dropdownMenu, data.nextSibling);
+                } else if (data.parent) {
+                    data.parent.appendChild(dropdownMenu);
+                }
+            }
+        }
+        
+        // مدیریت باز شدن dropdown
+        document.addEventListener('shown.bs.dropdown', function(event) {
+            const dropdownToggle = event.target;
+            
+            if (dropdownToggle && dropdownToggle.classList.contains('task-dropdown-toggle')) {
+                // تنظیم موقعیت با تاخیر کوتاه
+                setTimeout(function() {
+                    setupDropdownPosition(dropdownToggle);
+                }, 10);
+                
+                // تنظیم مجدد برای اطمینان
+                setTimeout(function() {
+                    setupDropdownPosition(dropdownToggle);
+                }, 100);
+            }
+        });
+        
+        // مدیریت بسته شدن dropdown
+        document.addEventListener('hidden.bs.dropdown', function(event) {
+            const dropdownToggle = event.target;
+            if (dropdownToggle && dropdownToggle.classList.contains('task-dropdown-toggle')) {
+                const dropdownMenu = dropdownToggle.nextElementSibling;
+                if (dropdownMenu && dropdownMenu.classList.contains('dropdown-menu')) {
+                    restoreDropdown(dropdownMenu);
+                }
+            }
+        });
+        
+        // جلوگیری از بسته شدن dropdown با کلیک روی خود dropdown menu
+        document.addEventListener('click', function(e) {
+            const clickedMenu = e.target.closest('.dropdown-menu.show');
+            if (clickedMenu && clickedMenu.parentElement === document.body) {
+                const toggleId = clickedMenu.getAttribute('aria-labelledby');
+                if (toggleId) {
+                    const toggle = document.getElementById(toggleId);
+                    if (toggle && toggle.classList.contains('task-dropdown-toggle')) {
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        return false;
+                    }
+                }
+            }
+        }, true);
+        
+        // مدیریت تغییر اندازه صفحه و scroll
+        function updateAllDropdowns() {
+            document.querySelectorAll('.task-dropdown-toggle').forEach(function(btn) {
+                const dropdownMenu = btn.nextElementSibling;
+                if (dropdownMenu && dropdownMenu.classList.contains('dropdown-menu') && dropdownMenu.classList.contains('show')) {
+                    setupDropdownPosition(btn);
+                }
+            });
+        }
+        
+        window.addEventListener('resize', updateAllDropdowns);
+        window.addEventListener('scroll', updateAllDropdowns, true);
+    })();
+</script>

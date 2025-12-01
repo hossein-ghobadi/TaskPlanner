@@ -100,6 +100,21 @@
         background: #fff;
         border: 1px solid rgba(0, 0, 0, 0.06);
         padding: 1.5rem;
+        overflow: visible !important;
+    }
+    
+    /* اجازه به dropdown ها برای خروج از محدودیت overflow */
+    .task-node {
+        overflow: visible !important;
+    }
+    
+    /* اطمینان از نمایش کامل dropdown منوها */
+    .task-card .dropdown-menu {
+        z-index: 1070 !important;
+    }
+    
+    .task-card .dropdown.show .dropdown-menu {
+        position: fixed !important;
     }
     .search-input::placeholder {
         color: #98a1b3;
@@ -249,7 +264,7 @@
     </div>
     
     <div class="d-flex gap-2">
-        <a class="btn btn-info text-white" asp-controller="Tasks" asp-action="Weekly">
+        <a class="btn btn-info text-white" asp-controller="Tasks" asp-action="Weekly" asp-route-projectId="@projectIdInt">
             <i class="bi bi-calendar-week"></i> برنامه هفتگی
         </a>
         <a class="btn btn-outline-success"

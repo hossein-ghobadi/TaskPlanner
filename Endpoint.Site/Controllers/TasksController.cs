@@ -863,7 +863,7 @@ namespace Endpoint.Site.Controllers
         }
 
         // 📅 برنامه هفتگی کاربر
-        public async Task<IActionResult> Weekly(int? offset)
+        public async Task<IActionResult> Weekly(int? offset, int? projectId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -880,6 +880,17 @@ namespace Endpoint.Site.Controllers
                             p.Members.Any(m => m.UserId == userId))
                 .Select(p => p.Id)
                 .ToListAsync();
+
+            // اگر projectId داده شده، دسترسی را بررسی و فیلتر کن
+            if (projectId.HasValue)
+            {
+                if (!userProjectIds.Contains(projectId.Value))
+                {
+                    TempData["Error"] = "شما دسترسی به این پروژه ندارید.";
+                    return RedirectToAction(nameof(Weekly), new { offset = weekOffset });
+                }
+                userProjectIds = new List<int> { projectId.Value };
+            }
 
             // 📋 تسک‌های همان پروژه‌ها (بدون Epic)
             var weeklyTasks = await _context.TaskItems
@@ -909,10 +920,20 @@ namespace Endpoint.Site.Controllers
                     u => $"{u.FullName ?? u.UserName} ({u.Phone})"
                 );
 
+            // 📌 دریافت لیست پروژه‌های کاربر برای فیلتر
+            var userProjects = await _context.Projects
+                .Where(p => p.CreatorUserId == userId ||
+                            p.Members.Any(m => m.UserId == userId))
+                .OrderBy(p => p.Name)
+                .Select(p => new { p.Id, p.Name })
+                .ToListAsync();
+
             ViewBag.UserLookup = userLookup;
             ViewBag.StartOfWeek = startOfWeek;
             ViewBag.EndOfWeek = endOfWeek;
             ViewBag.Offset = weekOffset;
+            ViewBag.UserProjects = userProjects;
+            ViewBag.SelectedProjectId = projectId;
 
             return View(weeklyTasks);
         }
