@@ -183,7 +183,7 @@
                         {
                             <li>
                                 <button class="dropdown-item" onclick="openChildIssueModal(@Model.Id, '@Model.IssueType')">
-                                    <i class="bi bi-plus-circle me-2"></i> افزودن @(Model.ProjectIssueType?.Level == IssueTypeLevel.Epic ? "Story-level types" : Model.ProjectIssueType?.Level == IssueTypeLevel.StoryLevel ? "Subtask" : Model.IssueType == IssueType.Epic ? "Story-level types" : "Subtask")
+                                    <i class="bi bi-plus-circle me-2"></i> افزودن @(Model.ProjectIssueType?.Level == IssueTypeLevel.Epic ? "کار" : Model.ProjectIssueType?.Level == IssueTypeLevel.StoryLevel ? "کارک" : Model.IssueType == IssueType.Epic ? "کار" : "کارک")
                                 </button>
                             </li>
                         }
@@ -340,6 +340,8 @@
             const dropdownToggle = event.target;
             
             if (dropdownToggle && dropdownToggle.classList.contains('task-dropdown-toggle')) {
+                const dropdownMenu = dropdownToggle.nextElementSibling;
+                
                 // تنظیم موقعیت با تاخیر کوتاه
                 setTimeout(function() {
                     setupDropdownPosition(dropdownToggle);
@@ -349,6 +351,32 @@
                 setTimeout(function() {
                     setupDropdownPosition(dropdownToggle);
                 }, 100);
+                
+                // اضافه کردن event listener مستقیم روی dropdown menu برای مدیریت کلیک
+                if (dropdownMenu) {
+                    // حذف listener های قبلی اگر وجود دارند
+                    if (dropdownMenu._taskDropdownHandler) {
+                        dropdownMenu.removeEventListener('click', dropdownMenu._taskDropdownHandler);
+                    }
+                    
+                    // اضافه کردن handler جدید
+                    dropdownMenu._taskDropdownHandler = function(e) {
+                        const clickedItem = e.target.closest('.dropdown-item');
+                        if (clickedItem) {
+                            // بستن dropdown بعد از کلیک روی item
+                            const dropdownInstance = bootstrap.Dropdown.getInstance(dropdownToggle);
+                            if (dropdownInstance) {
+                                setTimeout(function() {
+                                    if (dropdownInstance._isShown) {
+                                        dropdownInstance.hide();
+                                    }
+                                }, 250);
+                            }
+                        }
+                    };
+                    
+                    dropdownMenu.addEventListener('click', dropdownMenu._taskDropdownHandler);
+                }
             }
         });
         
@@ -363,20 +391,22 @@
             }
         });
         
-        // جلوگیری از بسته شدن dropdown با کلیک روی خود dropdown menu
+        // مدیریت کلیک روی document - فقط برای جلوگیری از بسته شدن با کلیک خارج از dropdown
+        // این listener فقط برای کلیک‌های خارج از dropdown menu است
         document.addEventListener('click', function(e) {
             const clickedMenu = e.target.closest('.dropdown-menu.show');
-            if (clickedMenu && clickedMenu.parentElement === document.body) {
-                const toggleId = clickedMenu.getAttribute('aria-labelledby');
-                if (toggleId) {
-                    const toggle = document.getElementById(toggleId);
-                    if (toggle && toggle.classList.contains('task-dropdown-toggle')) {
-                        e.stopPropagation();
-                        e.stopImmediatePropagation();
-                        return false;
-                    }
-                }
+            if (!clickedMenu || clickedMenu.parentElement !== document.body) {
+                // کلیک خارج از dropdown - Bootstrap خودش مدیریت می‌کند
+                return;
             }
+            
+            // اگر کلیک روی background dropdown menu (نه روی item) است
+            const clickedItem = e.target.closest('.dropdown-item');
+            if (!clickedItem) {
+                // جلوگیری از بسته شدن با کلیک روی background
+                e.stopPropagation();
+            }
+            // اگر روی item کلیک شده، handler مستقیم روی menu مدیریت می‌کند
         }, true);
         
         // مدیریت تغییر اندازه صفحه و scroll
