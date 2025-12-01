@@ -2073,7 +2073,24 @@ namespace Endpoint.Site.Controllers
                 : vm.DueDateSh.ToGregorianDateTime();
 
             // 👇 مسئول تسک
-            task.AssignedUserId = vm.AssignedUserId;
+            // برای Subtask، AssignedUserId را از parent task بگیر (نه از vm)
+            if (vm.IssueType == IssueType.Subtask && task.ParentTaskId.HasValue)
+            {
+                var parentTask = await _context.TaskItems
+                    .FirstOrDefaultAsync(t => t.Id == task.ParentTaskId.Value);
+                if (parentTask != null)
+                {
+                    task.AssignedUserId = parentTask.AssignedUserId;
+                }
+                else
+                {
+                    task.AssignedUserId = vm.AssignedUserId; // fallback
+                }
+            }
+            else
+            {
+                task.AssignedUserId = vm.AssignedUserId;
+            }
 
             _context.Update(task);
             await _context.SaveChangesAsync();

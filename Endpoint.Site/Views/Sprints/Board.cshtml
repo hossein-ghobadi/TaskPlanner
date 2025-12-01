@@ -149,6 +149,8 @@
         border: 1px solid #dee2e6;
         display: flex;
         flex-direction: column;
+        position: relative;
+        overflow: visible;
     }
     .kanban-column.column-dragging {
         opacity: 0.6;
@@ -170,6 +172,9 @@
         padding: 0.5rem;
         flex: 1;
         min-height: 300px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        position: relative;
     }
     .task-card {
         background: white;
@@ -179,16 +184,20 @@
         margin-bottom: 0.5rem;
         cursor: grab;
         transition: all 0.2s;
+        position: relative;
+        z-index: 1;
     }
     .task-card:hover {
         box-shadow: 0 2px 6px rgba(0,0,0,0.1);
         transform: translateY(-1px);
+        z-index: 10;
     }
     .task-card:active {
         cursor: grabbing;
     }
     .task-card.dragging {
         opacity: 0.5;
+        z-index: 1000;
     }
     .task-card[data-due-soon="true"] {
         border-left: 3px solid #f97316;
@@ -252,6 +261,14 @@
     .task-actions .dropdown-menu {
         font-size: 0.85rem;
         min-width: 200px;
+        z-index: 1050;
+    }
+    .task-card .dropdown {
+        position: relative;
+        z-index: 2;
+    }
+    .task-card .dropdown.show {
+        z-index: 1051;
     }
     .task-actions .dropdown-item {
         padding: 0.5rem 1rem;
@@ -723,17 +740,23 @@
                     <option value="@status.Id">@status.Name</option>
                 }
             </select>
-            <select id="assigneeFilterSelect" class="form-select toolbar-select" style="min-width: 180px;">
-                <option value="all">همه افراد</option>
-                <option value="unassigned">تخصیص نیافته</option>
-                @{
-                    var projectMembers = ViewBag.ProjectMembers as List<ProjectMemberVm> ?? new List<ProjectMemberVm>();
-                }
-                @foreach (var member in projectMembers)
-                {
-                    <option value="@member.UserId">@(member.FullName ?? member.UserName)</option>
-                }
-            </select>
+            <div class="d-flex align-items-center gap-2" style="position: relative;">
+                <select id="assigneeFilterSelect" class="form-select toolbar-select" style="min-width: 180px;">
+                    <option value="all">همه افراد</option>
+                    <option value="unassigned">تخصیص نیافته</option>
+                    @{
+                        var projectMembers = ViewBag.ProjectMembers as List<ProjectMemberVm> ?? new List<ProjectMemberVm>();
+                    }
+                    @foreach (var member in projectMembers)
+                    {
+                        <option value="@member.UserId">@(member.FullName ?? member.UserName)</option>
+                    }
+                </select>
+                <span id="selectedAssigneeBadge" class="badge bg-primary d-none" style="font-size: 0.85rem;">
+                    <i class="bi bi-funnel-fill"></i> 
+                    <span id="selectedAssigneeName"></span>
+                </span>
+            </div>
             <button type="button" id="dueSoonToggle" class="btn btn-toggle">
                 <i class="bi bi-alarm"></i> موعد نزدیک
             </button>
@@ -1066,6 +1089,10 @@
                             }
                         </select>
                     </div>
+                    <div class="alert alert-info mb-0" style="font-size: 0.9rem;">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>نکته:</strong> مسئول کارک به صورت خودکار از کار والد گرفته می‌شود.
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -1296,6 +1323,9 @@
             assignee: 'all',
             dueSoon: false
         };
+        
+        // ذخیره کارت‌های حذف شده برای بازگردانی
+        const removedCards = new Map(); // key: card element, value: { parent, nextSibling }
 
         function showNotification(message, type = 'success') {
             const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
@@ -1334,6 +1364,16 @@
             const assignee = boardFilters.assignee;
             const dueSoon = boardFilters.dueSoon;
 
+            // ابتدا همه کارت‌های حذف شده را برگردان تا بتوانیم فیلتر جدید را اعمال کنیم
+            removedCards.forEach((info, card) => {
+                if (info.nextSibling && info.nextSibling.parentNode) {
+                    info.parent.insertBefore(card, info.nextSibling);
+                } else if (info.parent) {
+                    info.parent.appendChild(card);
+                }
+            });
+            removedCards.clear();
+
             // فیلتر کارت‌های اصلی
             document.querySelectorAll('.task-card').forEach(card => {
                 if (!card.dataset.initializedDue) {
@@ -1356,12 +1396,28 @@
                 const matchesDue = !dueSoon || card.dataset.dueSoon === 'true';
 
                 const visible = matchesText && matchesStatus && matchesAssignee && matchesDue;
+                
                 if (visible) {
+                    // اگر کارت حذف شده بود، دوباره اضافه کن
+                    if (removedCards.has(card)) {
+                        const info = removedCards.get(card);
+                        if (info.nextSibling) {
+                            info.parent.insertBefore(card, info.nextSibling);
+                        } else {
+                            info.parent.appendChild(card);
+                        }
+                        removedCards.delete(card);
+                    }
                     card.classList.remove('filtered-out');
                     card.style.display = '';
                 } else {
-                    card.classList.add('filtered-out');
-                    card.style.display = 'none';
+                    // کارت را از DOM حذف کن و اطلاعات آن را ذخیره کن
+                    if (!removedCards.has(card) && card.parentNode) {
+                        const parent = card.parentNode;
+                        const nextSibling = card.nextSibling;
+                        removedCards.set(card, { parent, nextSibling });
+                        parent.removeChild(card);
+                    }
                 }
             });
 
@@ -1408,9 +1464,32 @@
             if (assigneeSelect) {
                 assigneeSelect.addEventListener('change', (e) => {
                     boardFilters.assignee = e.target.value || 'all';
+                    updateAssigneeBadge();
                     applyBoardFilters();
                 });
             }
+            
+            // تابع برای به‌روزرسانی نمایش مسئول انتخاب شده
+            function updateAssigneeBadge() {
+                const badge = document.getElementById('selectedAssigneeBadge');
+                const badgeName = document.getElementById('selectedAssigneeName');
+                const assigneeSelect = document.getElementById('assigneeFilterSelect');
+                
+                if (!badge || !badgeName || !assigneeSelect) return;
+                
+                const selectedValue = assigneeSelect.value;
+                const selectedText = assigneeSelect.options[assigneeSelect.selectedIndex].text;
+                
+                if (selectedValue === 'all') {
+                    badge.classList.add('d-none');
+                } else {
+                    badgeName.textContent = selectedValue === 'unassigned' ? 'تخصیص نیافته' : selectedText;
+                    badge.classList.remove('d-none');
+                }
+            }
+            
+            // مقداردهی اولیه
+            updateAssigneeBadge();
 
             if (dueToggle) {
                 dueToggle.addEventListener('click', () => {
@@ -2266,6 +2345,9 @@
         }
 
         // باز کردن modal ویرایش تسک
+        // ذخیره اطلاعات اصلی تسک برای استفاده در submit
+        let originalTaskData = null;
+        
         async function openEditTaskModal(taskId) {
             if (!taskId) {
                 showNotification('شناسه کار نامعتبر است', 'error');
@@ -2305,6 +2387,9 @@
                     throw new Error(taskData.message || 'خطا در دریافت اطلاعات کار');
                 }
                 
+                // ذخیره اطلاعات اصلی برای استفاده در submit
+                originalTaskData = taskData;
+                
                 // پر کردن فرم
                 document.getElementById('editTaskId').value = taskData.id;
                 document.getElementById('editTaskProjectId').value = taskData.projectId;
@@ -2333,17 +2418,61 @@
                 
                 // پر کردن AssignedUser dropdown
                 const assignedUserSelect = document.getElementById('editTaskAssignedUser');
-                assignedUserSelect.innerHTML = '<option value="">-- انتخاب کاربر --</option>';
-                if (taskData.assignedUsers) {
-                    taskData.assignedUsers.forEach(user => {
-                        const option = document.createElement('option');
-                        option.value = user.id;
-                        option.textContent = user.name;
-                        if (taskData.assignedUserId == user.id) {
+                const assignedUserLabel = assignedUserSelect.previousElementSibling;
+                const assignedUserContainer = assignedUserSelect.closest('.col-md-6');
+                
+                // چک کردن اینکه آیا این یک Subtask است (issueType === 4)
+                const isSubtask = taskData.issueType === 4;
+                
+                if (isSubtask) {
+                    // برای Subtask: غیرفعال کردن فیلد و نمایش پیام
+                    assignedUserSelect.innerHTML = '<option value="">-- انتخاب کاربر --</option>';
+                    if (taskData.assignedUsers && taskData.assignedUserId) {
+                        // نمایش کاربر فعلی برای اطلاع (فقط خواندنی)
+                        const currentUser = taskData.assignedUsers.find(u => u.id == taskData.assignedUserId);
+                        if (currentUser) {
+                            const option = document.createElement('option');
+                            option.value = currentUser.id;
+                            option.textContent = currentUser.name;
                             option.selected = true;
+                            assignedUserSelect.appendChild(option);
                         }
-                        assignedUserSelect.appendChild(option);
-                    });
+                    }
+                    assignedUserSelect.disabled = true;
+                    assignedUserSelect.setAttribute('title', 'مسئول کارک به صورت خودکار از کار والد گرفته می‌شود');
+                    
+                    // اضافه کردن پیام توضیحی
+                    let helpText = assignedUserContainer.querySelector('.subtask-assignee-help');
+                    if (!helpText) {
+                        helpText = document.createElement('small');
+                        helpText.className = 'text-muted subtask-assignee-help';
+                        helpText.style.display = 'block';
+                        helpText.style.marginTop = '0.25rem';
+                        helpText.innerHTML = '<i class="bi bi-info-circle"></i> مسئول کارک از کار والد گرفته می‌شود';
+                        assignedUserSelect.parentNode.appendChild(helpText);
+                    }
+                } else {
+                    // برای کارهای عادی: نمایش لیست کاربران
+                    assignedUserSelect.innerHTML = '<option value="">-- انتخاب کاربر --</option>';
+                    if (taskData.assignedUsers) {
+                        taskData.assignedUsers.forEach(user => {
+                            const option = document.createElement('option');
+                            option.value = user.id;
+                            option.textContent = user.name;
+                            if (taskData.assignedUserId == user.id) {
+                                option.selected = true;
+                            }
+                            assignedUserSelect.appendChild(option);
+                        });
+                    }
+                    assignedUserSelect.disabled = false;
+                    assignedUserSelect.removeAttribute('title');
+                    
+                    // حذف پیام توضیحی اگر وجود داشت
+                    const helpText = assignedUserContainer?.querySelector('.subtask-assignee-help');
+                    if (helpText) {
+                        helpText.remove();
+                    }
                 }
                 
                 // تنظیم Persian Datepicker
@@ -2401,6 +2530,14 @@
             // دریافت ProjectIssueTypeId از hidden input
             const projectIssueTypeId = document.getElementById('editTaskProjectIssueTypeId').value || null;
             
+            // برای Subtask، AssignedUserId را از داده‌های اصلی نگه دار (تغییر نمی‌دهیم)
+            let assignedUserId = document.getElementById('editTaskAssignedUser').value || null;
+            const isSubtask = parseInt(issueType) === 4;
+            if (isSubtask && originalTaskData && originalTaskData.assignedUserId) {
+                // برای Subtask، از AssignedUserId اصلی استفاده کن
+                assignedUserId = originalTaskData.assignedUserId;
+            }
+            
             const formData = {
                 Id: parseInt(taskId),
                 Title: title,
@@ -2411,7 +2548,7 @@
                 StartDateSh: document.getElementById('editTaskStartDate').value || '',
                 DueDateSh: document.getElementById('editTaskDueDate').value || '',
                 CategoryId: document.getElementById('editTaskCategory').value ? parseInt(document.getElementById('editTaskCategory').value) : null,
-                AssignedUserId: document.getElementById('editTaskAssignedUser').value || null,
+                AssignedUserId: assignedUserId,
                 StoryPoints: document.getElementById('editTaskStoryPoints').value ? parseInt(document.getElementById('editTaskStoryPoints').value) : null
             };
             
