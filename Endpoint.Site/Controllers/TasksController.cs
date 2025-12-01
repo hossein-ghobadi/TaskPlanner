@@ -939,13 +939,13 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
-            // اعضای پذیرفته‌شده پروژه
-            var acceptedProjectMembers = await _context.ProjectInvitations
-                .Where(i => i.ProjectId == projectId && i.Status == InvitationStatus.Accepted)
-                .Select(i => i.InviteeId)
+            // دریافت اعضای فعال پروژه از جدول ProjectMembers
+            var activeProjectMembers = await _context.ProjectMembers
+                .Where(m => m.ProjectId == projectId)
+                .Select(m => m.UserId)
                 .ToListAsync();
 
-            foreach (var memberId in acceptedProjectMembers)
+            foreach (var memberId in activeProjectMembers)
             {
                 // جلوگیری از اضافه کردن مجدد سازنده پروژه
                 if (project != null && memberId == project.CreatorUserId) continue;
@@ -1038,13 +1038,13 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
-            // اعضای پذیرفته‌شده پروژه
-            var acceptedProjectMembers = await _context.ProjectInvitations
-                .Where(i => i.ProjectId == projectId.Value && i.Status == InvitationStatus.Accepted)
-                .Select(i => i.InviteeId)
+            // دریافت اعضای فعال پروژه از جدول ProjectMembers
+            var activeProjectMembers = await _context.ProjectMembers
+                .Where(m => m.ProjectId == projectId.Value)
+                .Select(m => m.UserId)
                 .ToListAsync();
 
-            foreach (var memberId in acceptedProjectMembers)
+            foreach (var memberId in activeProjectMembers)
             {
                 // جلوگیری از اضافه کردن مجدد سازنده پروژه
                 if (memberId == project.CreatorUserId) continue;
@@ -1398,12 +1398,13 @@ namespace Endpoint.Site.Controllers
 
             if (project != null)
             {
-                var acceptedProjectMembers = await _context.ProjectInvitations
-                    .Where(i => i.ProjectId == projectId && i.Status == InvitationStatus.Accepted)
-                    .Select(i => i.InviteeId)
+                // دریافت اعضای فعال پروژه از جدول ProjectMembers
+                var activeProjectMembers = await _context.ProjectMembers
+                    .Where(m => m.ProjectId == projectId)
+                    .Select(m => m.UserId)
                     .ToListAsync();
 
-                foreach (var memberId in acceptedProjectMembers)
+                foreach (var memberId in activeProjectMembers)
                 {
                     if (memberId == project.CreatorUserId) continue;
 
@@ -1450,8 +1451,148 @@ namespace Endpoint.Site.Controllers
 
 
         [HttpGet]
-        public async Task<IActionResult> Edit(int id)
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> GetTaskDetails(int? id)
         {
+            if (!id.HasValue)
+            {
+                if (Request.Query.ContainsKey("id") && int.TryParse(Request.Query["id"], out int queryId))
+                {
+                    id = queryId;
+                }
+                else
+                {
+                    return Json(new { success = false, message = "شناسه کار نامعتبر است" });
+                }
+            }
+            
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            
+            var task = await _context.TaskItems
+                .Include(t => t.Project)
+                .Include(t => t.Category)
+                .Include(t => t.ProjectIssueType)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (task == null)
+            {
+                return Json(new { success = false, message = "کار یافت نشد" });
+            }
+
+            // بررسی دسترسی
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == task.ProjectId &&
+                    (p.CreatorUserId == userId || 
+                     p.Members.Any(m => m.UserId == userId) ||
+                     _context.ProjectInvitations.Any(i => i.ProjectId == task.ProjectId && i.InviteeId == userId && i.Status == InvitationStatus.Accepted)));
+
+            if (!hasAccess)
+            {
+                return Json(new { success = false, message = "شما به این کار دسترسی ندارید" });
+            }
+
+            var pc = new System.Globalization.PersianCalendar();
+            string ToJalali(DateTime d) => $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
+
+            // دریافت IssueTypes
+            var projectIssueTypes = await _context.ProjectIssueTypes
+                .Where(pit => pit.ProjectId == task.ProjectId)
+                .OrderBy(pit => pit.Order)
+                .ToListAsync();
+
+            var availableIssueTypes = projectIssueTypes
+                .Where(pit => pit.Level != IssueTypeLevel.Subtask)
+                .Select(pit => new
+                {
+                    id = pit.Id,
+                    name = pit.Name,
+                    icon = pit.Icon,
+                    baseType = (int)pit.BaseType
+                })
+                .ToList();
+
+            // دریافت کاربران
+            var assignedUsers = new List<dynamic>();
+            
+            if (task.Project != null && !string.IsNullOrEmpty(task.Project.CreatorUserId))
+            {
+                var creatorInfo = await _userManager.FindByIdAsync(task.Project.CreatorUserId);
+                if (creatorInfo != null)
+                {
+                    assignedUsers.Add(new
+                    {
+                        id = task.Project.CreatorUserId,
+                        name = $"{creatorInfo.FullName ?? creatorInfo.UserName} ({creatorInfo.Phone}) - سازنده پروژه"
+                    });
+                }
+            }
+
+            // دریافت اعضای فعال پروژه از جدول ProjectMembers
+            var activeMembers = await _context.ProjectMembers
+                .Where(m => m.ProjectId == task.ProjectId)
+                .Select(m => m.UserId)
+                .ToListAsync();
+
+            foreach (var memberId in activeMembers)
+            {
+                if (task.Project != null && memberId == task.Project.CreatorUserId) continue;
+
+                var userInfo = await _userManager.FindByIdAsync(memberId);
+                if (userInfo != null)
+                {
+                    assignedUsers.Add(new
+                    {
+                        id = memberId,
+                        name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.Phone})"
+                    });
+                }
+            }
+
+            var currentUser = await _userManager.FindByIdAsync(userId);
+            if (currentUser != null && !assignedUsers.Any(u => u.id == userId))
+            {
+                assignedUsers.Add(new
+                {
+                    id = userId,
+                    name = $"{currentUser.FullName ?? currentUser.UserName} ({currentUser.Phone})"
+                });
+            }
+
+            return Json(new
+            {
+                success = true,
+                id = task.Id,
+                title = task.Title,
+                description = task.Description,
+                issueType = (int)task.IssueType,
+                projectIssueTypeId = task.ProjectIssueTypeId,
+                projectId = task.ProjectId,
+                startDateSh = ToJalali(task.StartDate),
+                dueDateSh = task.DueDate.HasValue ? ToJalali(task.DueDate.Value) : null,
+                categoryId = task.CategoryId,
+                assignedUserId = task.AssignedUserId,
+                storyPoints = task.StoryPoints,
+                availableIssueTypes = availableIssueTypes,
+                assignedUsers = assignedUsers.OrderBy(u => u.name).ToList()
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Edit(int? id)
+        {
+            // پشتیبانی از query parameter
+            if (!id.HasValue)
+            {
+                if (Request.Query.ContainsKey("id") && int.TryParse(Request.Query["id"], out int queryId))
+                {
+                    id = queryId;
+                }
+                else
+                {
+                    return NotFound();
+                }
+            }
+            
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             
             var task = await _context.TaskItems
@@ -1508,7 +1649,7 @@ namespace Endpoint.Site.Controllers
             // 🔒 پروژه فقط برای نمایش (غیرفعال خواهد شد) - فقط پروژه فعلی
             ViewBag.Projects = new List<Project> { task.Project };
 
-            // 🔹 گرفتن کاربران تاییدشده پروژه برای انتخاب "مسئول تسک"
+            // 🔹 گرفتن کاربران فعال پروژه برای انتخاب "مسئول تسک"
             var users = new List<dynamic>();
             
             // اضافه کردن سازنده پروژه
@@ -1525,12 +1666,13 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
-            var acceptedMembers = await _context.ProjectInvitations
-                .Where(i => i.ProjectId == task.ProjectId && i.Status == InvitationStatus.Accepted)
-                .Select(i => i.InviteeId)
+            // دریافت اعضای فعال پروژه از جدول ProjectMembers
+            var activeMembers = await _context.ProjectMembers
+                .Where(m => m.ProjectId == task.ProjectId)
+                .Select(m => m.UserId)
                 .ToListAsync();
 
-            foreach (var memberId in acceptedMembers)
+            foreach (var memberId in activeMembers)
             {
                 // جلوگیری از اضافه کردن مجدد سازنده پروژه
                 if (task.Project != null && memberId == task.Project.CreatorUserId) continue;
@@ -1546,9 +1688,73 @@ namespace Endpoint.Site.Controllers
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(TaskEditVm vm)
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> Edit([FromBody] TaskEditVm vmJson = null)
         {
+            // بررسی اینکه آیا درخواست JSON است یا فرم معمولی
+            var isJsonRequest = Request.ContentType?.Contains("application/json") == true;
+            
+            TaskEditVm vm;
+            
+            if (isJsonRequest)
+            {
+                // برای JSON، از [FromBody] استفاده می‌کنیم
+                vm = vmJson;
+                
+                // اگر model bind نشد، از Request body بخوان
+                if (vm == null || vm.Id == 0)
+                {
+                    try
+                    {
+                        Request.EnableBuffering();
+                        Request.Body.Position = 0;
+                        using var reader = new System.IO.StreamReader(Request.Body, System.Text.Encoding.UTF8, leaveOpen: true);
+                        var body = await reader.ReadToEndAsync();
+                        Request.Body.Position = 0;
+                        
+                        if (!string.IsNullOrEmpty(body))
+                        {
+                            vm = System.Text.Json.JsonSerializer.Deserialize<TaskEditVm>(body, new System.Text.Json.JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = true
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        return Json(new { success = false, message = $"خطا در خواندن اطلاعات: {ex.Message}" });
+                    }
+                }
+            }
+            else
+            {
+                // برای فرم‌های معمولی، از Form data استفاده می‌کنیم
+                vm = new TaskEditVm
+                {
+                    Id = int.TryParse(Request.Form["Id"].FirstOrDefault(), out var id) ? id : 0,
+                    Title = Request.Form["Title"].FirstOrDefault(),
+                    Description = Request.Form["Description"].FirstOrDefault(),
+                    IssueType = Enum.TryParse<IssueType>(Request.Form["IssueType"].FirstOrDefault(), out var issueType) ? issueType : IssueType.Task,
+                    ProjectIssueTypeId = int.TryParse(Request.Form["ProjectIssueTypeId"].FirstOrDefault(), out var pitId) ? pitId : (int?)null,
+                    ProjectId = int.TryParse(Request.Form["ProjectId"].FirstOrDefault(), out var projectId) ? projectId : 0,
+                    StartDateSh = Request.Form["StartDateSh"].FirstOrDefault(),
+                    DueDateSh = Request.Form["DueDateSh"].FirstOrDefault(),
+                    CategoryId = int.TryParse(Request.Form["CategoryId"].FirstOrDefault(), out var catId) ? catId : (int?)null,
+                    AssignedUserId = Request.Form["AssignedUserId"].FirstOrDefault(),
+                    StoryPoints = int.TryParse(Request.Form["StoryPoints"].FirstOrDefault(), out var sp) ? sp : (int?)null
+                };
+            }
+            
+            if (vm == null || vm.Id == 0)
+            {
+                if (isJsonRequest)
+                {
+                    return Json(new { success = false, message = "اطلاعات کار نامعتبر است." });
+                }
+                TempData["Error"] = "اطلاعات کار نامعتبر است.";
+                return RedirectToAction(nameof(Index));
+            }
+            
             if (!ModelState.IsValid)
             {
                 // بارگذاری مجدد ViewBag برای نمایش خطا
@@ -1591,11 +1797,12 @@ namespace Endpoint.Site.Controllers
                             });
                         }
                     }
-                    var acceptedMembers = await _context.ProjectInvitations
-                        .Where(i => i.ProjectId == taskForError.ProjectId && i.Status == InvitationStatus.Accepted)
-                        .Select(i => i.InviteeId)
+                    // دریافت اعضای فعال پروژه از جدول ProjectMembers
+                    var activeMembers = await _context.ProjectMembers
+                        .Where(m => m.ProjectId == taskForError.ProjectId)
+                        .Select(m => m.UserId)
                         .ToListAsync();
-                    foreach (var memberId in acceptedMembers)
+                    foreach (var memberId in activeMembers)
                     {
                         if (taskForError.Project != null && memberId == taskForError.Project.CreatorUserId) continue;
                         var userInfo = await _userManager.FindByIdAsync(memberId);
@@ -1661,18 +1868,19 @@ namespace Endpoint.Site.Controllers
                         });
                     }
                 }
-                var acceptedMembers = await _context.ProjectInvitations
-                    .Where(i => i.ProjectId == task.ProjectId && i.Status == InvitationStatus.Accepted)
-                    .Select(i => i.InviteeId)
-                    .ToListAsync();
-                foreach (var memberId in acceptedMembers)
-                {
-                    if (task.Project != null && memberId == task.Project.CreatorUserId) continue;
-                    var userInfo = await _userManager.FindByIdAsync(memberId);
-                    if (userInfo != null)
-                        users.Add(new { Id = memberId, Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.Phone})" });
-                }
-                ViewBag.AssignedUsers = users;
+                    // دریافت اعضای فعال پروژه از جدول ProjectMembers
+                    var activeMembers = await _context.ProjectMembers
+                        .Where(m => m.ProjectId == task.ProjectId)
+                        .Select(m => m.UserId)
+                        .ToListAsync();
+                    foreach (var memberId in activeMembers)
+                    {
+                        if (task.Project != null && memberId == task.Project.CreatorUserId) continue;
+                        var userInfo = await _userManager.FindByIdAsync(memberId);
+                        if (userInfo != null)
+                            users.Add(new { Id = memberId, Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.Phone})" });
+                    }
+                    ViewBag.AssignedUsers = users;
                 
                 return View(vm);
             }
@@ -1705,11 +1913,12 @@ namespace Endpoint.Site.Controllers
                             });
                         }
                     }
-                    var acceptedMembers = await _context.ProjectInvitations
-                        .Where(i => i.ProjectId == task.ProjectId && i.Status == InvitationStatus.Accepted)
-                        .Select(i => i.InviteeId)
+                    // دریافت اعضای فعال پروژه از جدول ProjectMembers
+                    var activeMembers = await _context.ProjectMembers
+                        .Where(m => m.ProjectId == task.ProjectId)
+                        .Select(m => m.UserId)
                         .ToListAsync();
-                    foreach (var memberId in acceptedMembers)
+                    foreach (var memberId in activeMembers)
                     {
                         if (task.Project != null && memberId == task.Project.CreatorUserId) continue;
                         var userInfo = await _userManager.FindByIdAsync(memberId);
@@ -1717,9 +1926,9 @@ namespace Endpoint.Site.Controllers
                             users.Add(new { Id = memberId, Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.Phone})" });
                     }
                     ViewBag.AssignedUsers = users;
-
-                    return View(vm);
-                }
+                
+                return View(vm);
+            }
             }
 
             // ✅ اگر AssignedUserId ست شده، حتماً عضو پروژه یا سازنده پروژه باشد
@@ -1751,11 +1960,12 @@ namespace Endpoint.Site.Controllers
                             });
                         }
                     }
-                    var acceptedMembers = await _context.ProjectInvitations
-                        .Where(i => i.ProjectId == task.ProjectId && i.Status == InvitationStatus.Accepted)
-                        .Select(i => i.InviteeId)
+                    // دریافت اعضای فعال پروژه از جدول ProjectMembers
+                    var activeMembers = await _context.ProjectMembers
+                        .Where(m => m.ProjectId == task.ProjectId)
+                        .Select(m => m.UserId)
                         .ToListAsync();
-                    foreach (var memberId in acceptedMembers)
+                    foreach (var memberId in activeMembers)
                     {
                         if (task.Project != null && memberId == task.Project.CreatorUserId) continue;
                         var userInfo = await _userManager.FindByIdAsync(memberId);
@@ -1763,9 +1973,9 @@ namespace Endpoint.Site.Controllers
                             users.Add(new { Id = memberId, Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.Phone})" });
                     }
                     ViewBag.AssignedUsers = users;
-                    
-                    return View(vm);
-                }
+                
+                return View(vm);
+            }
 
                 // بررسی اینکه آیا کاربر سازنده پروژه است یا عضو پروژه
                 // 🔒 استفاده از task.ProjectId به جای vm.ProjectId چون پروژه قابل تغییر نیست
@@ -1803,11 +2013,12 @@ namespace Endpoint.Site.Controllers
                             });
                         }
                     }
-                    var acceptedMembers = await _context.ProjectInvitations
-                        .Where(i => i.ProjectId == task.ProjectId && i.Status == InvitationStatus.Accepted)
-                        .Select(i => i.InviteeId)
+                    // دریافت اعضای فعال پروژه از جدول ProjectMembers
+                    var activeMembers = await _context.ProjectMembers
+                        .Where(m => m.ProjectId == task.ProjectId)
+                        .Select(m => m.UserId)
                         .ToListAsync();
-                    foreach (var memberId in acceptedMembers)
+                    foreach (var memberId in activeMembers)
                     {
                         if (task.Project != null && memberId == task.Project.CreatorUserId) continue;
                         var userInfo = await _userManager.FindByIdAsync(memberId);
@@ -1815,9 +2026,9 @@ namespace Endpoint.Site.Controllers
                             users.Add(new { Id = memberId, Name = $"{userInfo.FullName ?? userInfo.UserName} ({userInfo.Phone})" });
                     }
                     ViewBag.AssignedUsers = users;
-                    
-                    return View(vm);
-                }
+                
+                return View(vm);
+            }
             }
 
             // بررسی و به‌روزرسانی ProjectIssueType
@@ -1892,6 +2103,25 @@ namespace Endpoint.Site.Controllers
                 }
             }
             await _notificationService.TrySendDueSoonNotificationAsync(task, task.Project?.Name);
+            
+            // بررسی اینکه آیا درخواست JSON است
+            if (Request.ContentType?.Contains("application/json") == true)
+            {
+                return Json(new { success = true, message = "کار با موفقیت ویرایش شد." });
+            }
+            
+            TempData["Success"] = "کار با موفقیت ویرایش شد.";
+            
+            // بررسی اینکه آیا از modal آمده (از form data یا query parameter)
+            var fromModal = Request.Form.ContainsKey("fromModal") && Request.Form["fromModal"] == "true" ||
+                           Request.Query.ContainsKey("fromModal") && Request.Query["fromModal"] == "true";
+            
+            // اگر از query parameter ?fromModal=true استفاده شده، به Edit برگرد (برای iframe)
+            if (fromModal)
+            {
+                return RedirectToAction(nameof(Edit), new { id = task.Id, fromModal = true, saved = true });
+            }
+            
             return RedirectToAction(nameof(Index), new { projectId = task.ProjectId });
         }
 

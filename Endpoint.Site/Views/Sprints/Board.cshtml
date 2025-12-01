@@ -197,16 +197,48 @@
         opacity: 0.3;
         pointer-events: none;
     }
+    .due-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        margin-top: 0.15rem;
+    }
+    .due-badge i {
+        font-size: 0.9rem;
+    }
+    .due-soon {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+    .due-past {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    .due-none {
+        background-color: #fef9c3;
+        color: #92400e;
+    }
+    .subtask-item {
+        flex-direction: row-reverse;
+    }
+    .subtask-item .flex-grow-1 {
+        text-align: right;
+    }
     .task-card-header {
         display: flex;
-        justify-content: space-between;
-        align-items: start;
+        justify-content: flex-start;
+        align-items: flex-start;
         margin-bottom: 0.5rem;
+        flex-direction: row;
     }
     .task-key {
         font-weight: 600;
         font-size: 0.85rem;
         color: #495057;
+        text-align: right;
     }
     .task-actions {
         display: flex;
@@ -218,11 +250,220 @@
         font-size: 0.75rem;
         line-height: 1;
     }
+    .task-actions .dropdown-menu {
+        font-size: 0.85rem;
+        min-width: 200px;
+    }
+    .task-actions .dropdown-item {
+        padding: 0.5rem 1rem;
+        display: flex;
+        align-items: center;
+    }
+    .task-actions .dropdown-item i {
+        width: 20px;
+    }
+    /* استایل‌های modal ویرایش کار */
+    #editTaskModal .modal-dialog {
+        max-width: 900px;
+        margin: 2rem auto;
+    }
+    #editTaskModal .modal-content {
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 25px 80px rgba(0, 0, 0, 0.25);
+        border: none;
+    }
+    #editTaskModal .modal-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: white;
+        border-bottom: none;
+        padding: 1.5rem 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    #editTaskModal .modal-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: pulse 3s ease-in-out infinite;
+    }
+    @@keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+    #editTaskModal .modal-title {
+        font-weight: 700;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        position: relative;
+        z-index: 1;
+    }
+    #editTaskModal .modal-title::before {
+        content: "✏️";
+        font-size: 1.75rem;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    }
+    #editTaskModal .btn-close {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        opacity: 1;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+    }
+    #editTaskModal .btn-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: rotate(90deg);
+    }
+    #editTaskModal .modal-body {
+        padding: 2rem;
+        background: linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%);
+        max-height: calc(90vh - 200px);
+        overflow-y: auto;
+    }
+    #editTaskModal .modal-body::-webkit-scrollbar {
+        width: 8px;
+    }
+    #editTaskModal .modal-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    #editTaskModal .modal-body::-webkit-scrollbar-thumb {
+        background: #2563eb;
+        border-radius: 10px;
+    }
+    #editTaskModal .modal-body::-webkit-scrollbar-thumb:hover {
+        background: #1e40af;
+    }
+    #editTaskModal .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    #editTaskModal .form-label::before {
+        content: '';
+        width: 4px;
+        height: 18px;
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        border-radius: 2px;
+    }
+    #editTaskModal .form-control,
+    #editTaskModal .form-select {
+        border: 2px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        background: white;
+    }
+    #editTaskModal .form-control:focus,
+    #editTaskModal .form-select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+        outline: none;
+    }
+    #editTaskModal .form-control:hover,
+    #editTaskModal .form-select:hover {
+        border-color: #d1d5db;
+    }
+    #editTaskModal textarea.form-control {
+        resize: vertical;
+        min-height: 100px;
+    }
+    #editTaskModal .form-control:disabled,
+    #editTaskModal .form-select:disabled {
+        background-color: #f3f4f6;
+        cursor: not-allowed;
+        opacity: 0.8;
+        border-color: #d1d5db;
+    }
+    #editTaskModal .modal-footer {
+        background: white;
+        border-top: 1px solid #e5e7eb;
+        padding: 1.25rem 2rem;
+        border-radius: 0 0 20px 20px;
+    }
+    #editTaskModal .modal-footer .btn {
+        border-radius: 10px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    #editTaskModal .modal-footer .btn-secondary {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+    #editTaskModal .modal-footer .btn-secondary:hover {
+        background: #e5e7eb;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    #editTaskModal .modal-footer .btn-primary {
+        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+    }
+    #editTaskModal .modal-footer .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+    }
+    #editTaskModal .modal-footer .btn-primary:active {
+        transform: translateY(0);
+    }
+    #editTaskModal .row {
+        margin-left: -0.5rem;
+        margin-right: -0.5rem;
+    }
+    #editTaskModal .row > [class*="col-"] {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    #editTaskModalBody {
+        min-height: 400px;
+    }
+    #editTaskModalBody form {
+        max-width: 100%;
+    }
+    @@media (max-width: 992px) {
+        #editTaskModal .modal-dialog {
+            max-width: 95%;
+            margin: 1rem auto;
+        }
+        #editTaskModal .modal-header {
+            padding: 1.25rem 1.5rem;
+        }
+        #editTaskModal .modal-title {
+            font-size: 1.25rem;
+        }
+        #editTaskModal .modal-body {
+            padding: 1.5rem;
+        }
+        #editTaskModal .modal-footer {
+            padding: 1rem 1.5rem;
+        }
+        #editTaskModal .row > [class*="col-"] {
+            margin-bottom: 1rem;
+        }
+    }
     .task-title {
         font-size: 0.9rem;
         color: #212529;
         margin-bottom: 0.5rem;
         line-height: 1.4;
+        text-align: right;
     }
     .task-title a {
         color: #0d6efd;
@@ -240,6 +481,8 @@
         display: flex;
         flex-direction: column;
         gap: 0.25rem;
+        text-align: right;
+        align-items: flex-end;
     }
     .available-tasks-column {
         background: #f8f9fa;
@@ -565,37 +808,55 @@
                                          data-due-soon="@dueSoonFlag.ToString().ToLower()">
 
                                         <div class="task-card-header">
-                                            <span class="task-key">@issue.IssueKey</span>
                                             <div class="task-actions">
                                                 <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
-                                                @if (Model.Status == SprintStatus.Active && finalStatus != null && status.Id != finalStatus.Id)
-                                                {
-                                                    <button class="btn btn-sm btn-success complete-task-btn"
-                                                            onclick="event.stopPropagation(); event.preventDefault(); completeTask(@issue.Id);"
-                                                            title="خاتمه تسک">
-                                                        <i class="bi bi-check-lg"></i>
-                                                    </button>
-                                                }
                                                 @if (Model.Status == SprintStatus.Active && issue.CanHaveChildren)
                                                 {
                                                     <button class="btn btn-sm btn-outline-primary"
-                                                            onclick="event.stopPropagation(); event.preventDefault(); openAddSubtaskModal(@issue.Id, '@issue.IssueKey');"
+                                                            onclick="event.stopPropagation(); event.preventDefault(); openAddSubtaskModal(@issue.Id, '@Html.Raw(issue.Title.Replace("'", "\\'"))');"
                                                             title="افزودن زیرتسک">
                                                         <i class="bi bi-plus-circle"></i>
                                                     </button>
                                                 }
                                                 @if (Model.Status == SprintStatus.Active)
                                                 {
-                                                    <button class="btn btn-sm btn-outline-warning"
-                                                            onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(@issue.Id);"
-                                                            title="خارج کردن از اسپرینت">
-                                                        <i class="bi bi-x-circle"></i>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                                                                type="button"
+                                                                id="taskMenu-@issue.Id"
+                                                                data-bs-toggle="dropdown"
+                                                                aria-expanded="false"
+                                                                onclick="event.stopPropagation(); event.preventDefault();"
+                                                                title="عملیات بیشتر">
+                                                            <i class="bi bi-three-dots-vertical"></i>
                                                     </button>
-                                                    <button class="btn btn-sm btn-outline-danger"
-                                                            onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@issue.Id, '@issue.Title');"
-                                                            title="حذف تسک">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
+                                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="taskMenu-@issue.Id">
+                                                            <li>
+                                                                <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@issue.Id);">
+                                                                    <i class="bi bi-pencil text-primary me-2"></i>ویرایش کار
+                                                                </a>
+                                                            </li>
+                                                            @if (finalStatus != null && status.Id != finalStatus.Id)
+                                                            {
+                                                                <li>
+                                                                    <a class="dropdown-item complete-task-btn" href="#" onclick="event.stopPropagation(); event.preventDefault(); completeTask(@issue.Id);">
+                                                                        <i class="bi bi-check-lg text-success me-2"></i>خاتمه کار
+                                                                    </a>
+                                                                </li>
+                                                            }
+                                                            <li>
+                                                                <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(@issue.Id);">
+                                                                    <i class="bi bi-x-circle text-warning me-2"></i>خارج کردن از اسپرینت
+                                                                </a>
+                                                            </li>
+                                                            <li><hr class="dropdown-divider"></li>
+                                                            <li>
+                                                                <a class="dropdown-item text-danger" href="#" onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@issue.Id, '@issue.Title');">
+                                                                    <i class="bi bi-trash me-2"></i>حذف کار
+                                                                </a>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
                                                 }
                                             </div>
                                         </div>
@@ -606,10 +867,37 @@
 
                                         <div class="task-meta">
                                             <div>👤 @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص")</div>
-                                            @if (issue.DueDatePersian != "تعیین نشده")
-                                            {
-                                                <div>🗓️ @issue.DueDatePersian</div>
+                                            @{
+                                                string dueText;
+                                                string dueClass;
+                                                if (!issue.DueDate.HasValue)
+                                                {
+                                                    dueText = "بدون موعد تحویل";
+                                                    dueClass = "due-badge due-none";
+                                                }
+                                                else
+                                                {
+                                                    var today = DateTime.UtcNow.Date;
+                                                    var dueDateOnly = issue.DueDate.Value.Date;
+                                                    var diffDays = (dueDateOnly - today).Days;
+                                                    if (diffDays >= 0)
+                                                    {
+                                                        var daysLeft = diffDays;
+                                                        dueText = daysLeft == 0 ? "امروز موعد تحویل" : $"{daysLeft} روز مانده";
+                                                        dueClass = "due-badge due-soon";
+                                                    }
+                                                    else
+                                                    {
+                                                        var daysPassed = Math.Abs(diffDays);
+                                                        dueText = daysPassed == 0 ? "امروز موعد تحویل" : $"{daysPassed} روز گذشته";
+                                                        dueClass = "due-badge due-past";
+                                                    }
+                                                }
                                             }
+                                            <div class="@dueClass">
+                                                <i class="bi bi-calendar-event"></i>
+                                                @dueText
+                                            </div>
                                             @if (issue.StoryPoints.HasValue && issue.StoryPoints > 0)
                                             {
                                                 <div>⚡ @issue.StoryPoints SP</div>
@@ -621,7 +909,7 @@
                                                             onclick="event.stopPropagation(); event.preventDefault(); toggleSubtasks(@issue.Id);"
                                                             style="font-size: 0.7rem;">
                                                         <i class="bi bi-chevron-down" id="subtask-icon-@issue.Id"></i>
-                                                        @issue.ChildIssues.Count زیرتسک
+                                                        @issue.ChildIssues.Count کارک
                                                     </button>
                                                 </div>
                                             }
@@ -633,33 +921,70 @@
                                                 @foreach (var subtask in issue.ChildIssues.OrderBy(c => c.CreatedAt))
                                                 {
                                                     <div class="subtask-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded" style="font-size: 0.85rem;">
-                                                        <div class="d-flex align-items-center gap-2">
+                                                        <div class="d-flex align-items-center gap-2 flex-grow-1">
                                                             <span class="issue-type-icon" style="font-size: 0.9rem;">@subtask.IssueTypeIcon</span>
-                                                            <div>
-                                                                <div class="fw-bold">@subtask.IssueKey: @subtask.Title</div>
+                                                            <div class="flex-grow-1">
+                                                                <div class="fw-bold">@subtask.Title</div>
                                                                 @if (!string.IsNullOrEmpty(subtask.Description))
                                                                 {
                                                                     <small class="text-muted">@(subtask.Description.Length > 50 ? subtask.Description.Substring(0, 50) + "..." : subtask.Description)</small>
                                                                 }
                                                             </div>
                                                         </div>
-                                                        <div class="d-flex gap-1">
+                                                        @if (Model.Status == SprintStatus.Active)
+                                                        {
+                                                            <div class="dropdown">
+                                                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle p-0 px-1"
+                                                                        type="button"
+                                                                        id="subtaskMenu-@subtask.Id"
+                                                                        data-bs-toggle="dropdown"
+                                                                        aria-expanded="false"
+                                                                        onclick="event.stopPropagation(); event.preventDefault();"
+                                                                        title="عملیات بیشتر"
+                                                                        style="font-size: 0.7rem;">
+                                                                    <i class="bi bi-three-dots-vertical"></i>
+                                                                </button>
+                                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="subtaskMenu-@subtask.Id">
+                                                                    <li>
+                                                                        <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@subtask.Id);">
+                                                                            <i class="bi bi-pencil-square text-primary me-2"></i>ویرایش کار
+                                                                        </a>
+                                                                    </li>
+                                                                    <li>
+                                                                        <a class="dropdown-item" href="/Tasks/Details/@subtask.Id" onclick="event.stopPropagation();">
+                                                                            <i class="bi bi-eye text-info me-2"></i>مشاهده جزئیات
+                                                                        </a>
+                                                                    </li>
+                                                                    @{
+                                                                        var subtaskStatus = Model.Statuses.FirstOrDefault(s => s.Id == subtask.StatusId);
+                                                                        var subtaskIsFinal = subtaskStatus != null && subtaskStatus.IsFinal;
+                                                                    }
+                                                                    @if (finalStatus != null && !subtaskIsFinal)
+                                                                    {
+                                                                        <li>
+                                                                            <a class="dropdown-item complete-task-btn" href="#" onclick="event.stopPropagation(); event.preventDefault(); completeTask(@subtask.Id);">
+                                                                                <i class="bi bi-check-lg text-success me-2"></i>خاتمه کار
+                                                                            </a>
+                                                                        </li>
+                                                                    }
+                                                                    <li><hr class="dropdown-divider"></li>
+                                                                    <li>
+                                                                        <a class="dropdown-item text-danger" href="#" onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@subtask.Id, '@subtask.Title');">
+                                                                            <i class="bi bi-trash me-2"></i>حذف کار
+                                                                        </a>
+                                                                    </li>
+                                                                </ul>
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
                                                             <a href="/Tasks/Details/@subtask.Id" class="btn btn-sm btn-outline-info p-0 px-1"
                                                                onclick="event.stopPropagation();"
                                                                title="جزئیات"
                                                                style="font-size: 0.7rem;">
                                                                 <i class="bi bi-eye"></i>
                                                             </a>
-                                                            @if (Model.Status == SprintStatus.Active)
-                                                            {
-                                                                <button class="btn btn-sm btn-outline-danger p-0 px-1"
-                                                                        onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@subtask.Id, '@subtask.Title');"
-                                                                        title="حذف زیرتسک"
-                                                                        style="font-size: 0.7rem;">
-                                                                    <i class="bi bi-trash"></i>
-                                                                </button>
-                                                            }
-                                                        </div>
+                                                        }
                                                     </div>
                                                 }
                                             </div>
@@ -684,7 +1009,7 @@
         {
             <div class="available-tasks-column">
                 <div class="available-tasks-header">
-                    <span>تسک‌های آماده</span>
+                    <span>کارهای آماده</span>
                     <span class="badge bg-primary">@Model.TotalTasks</span>
                 </div>
                 <div id="availableTasksContainer" class="available-tasks-body">
@@ -696,24 +1021,24 @@
 </div>
 
 
-<!-- Modal افزودن Subtask -->
+<!-- Modal افزودن کارک -->
 <div class="modal fade" id="addSubtaskModal" tabindex="-1" aria-labelledby="addSubtaskModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addSubtaskModalLabel">افزودن زیرتسک</h5>
+                <h5 class="modal-title" id="addSubtaskModalLabel">افزودن کارک</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="addSubtaskForm">
                     <input type="hidden" id="subtaskParentId" />
                     <div class="mb-3">
-                        <label for="subtaskParentKey" class="form-label">تسک والد</label>
+                        <label for="subtaskParentKey" class="form-label">کار والد</label>
                         <input type="text" class="form-control" id="subtaskParentKey" readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="subtaskTitle" class="form-label">عنوان زیرتسک <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="subtaskTitle" required placeholder="عنوان زیرتسک را وارد کنید">
+                        <label for="subtaskTitle" class="form-label">عنوان کارک <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="subtaskTitle" required placeholder="عنوان کارک را وارد کنید">
                     </div>
                     <div class="mb-3">
                         <label for="subtaskCategory" class="form-label">دسته‌بندی</label>
@@ -732,7 +1057,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
-                <button type="button" class="btn btn-primary" onclick="submitSubtask()">افزودن زیرتسک</button>
+                <button type="button" class="btn btn-primary" onclick="submitSubtask()">افزودن کارک</button>
             </div>
         </div>
     </div>
@@ -833,6 +1158,105 @@
         </div>
     </div>
 }
+
+<!-- Modal ویرایش تسک -->
+<div class="modal fade" id="editTaskModal" tabindex="-1" aria-labelledby="editTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editTaskModalLabel">ویرایش کار</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editTaskForm">
+                    <input type="hidden" id="editTaskId" />
+                    <input type="hidden" id="editTaskProjectId" />
+                    <input type="hidden" id="editTaskProjectIssueTypeId" />
+                    <input type="hidden" id="editTaskIssueTypeHidden" />
+                    
+                    <div class="mb-4">
+                        <label for="editTaskTitle" class="form-label">
+                            <i class="bi bi-card-heading text-primary"></i>
+                            عنوان کار <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="editTaskTitle" required placeholder="عنوان کار را وارد کنید">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="editTaskDescription" class="form-label">
+                            <i class="bi bi-file-text text-primary"></i>
+                            توضیحات
+                        </label>
+                        <textarea class="form-control" id="editTaskDescription" rows="4" placeholder="توضیحات کار را وارد کنید"></textarea>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="editTaskStartDate" class="form-label">
+                                <i class="bi bi-calendar-event text-primary"></i>
+                                تاریخ شروع
+                            </label>
+                            <input type="text" class="form-control" id="editTaskStartDateDisplay" autocomplete="off">
+                            <input type="hidden" id="editTaskStartDate">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editTaskDueDate" class="form-label">
+                                <i class="bi bi-calendar-check text-primary"></i>
+                                تاریخ پایان
+                            </label>
+                            <input type="text" class="form-control" id="editTaskDueDateDisplay" autocomplete="off">
+                            <input type="hidden" id="editTaskDueDate">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="editTaskCategory" class="form-label">
+                                <i class="bi bi-collection text-primary"></i>
+                                دسته‌بندی
+                            </label>
+                            <select class="form-select" id="editTaskCategory">
+                                <option value="">-- بدون دسته --</option>
+                                @{
+                                    var categoriesForEdit = ViewBag.Categories as List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory> ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory>();
+                                }
+                                @foreach (var cat in categoriesForEdit)
+                                {
+                                    <option value="@cat.Id">@cat.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editTaskAssignedUser" class="form-label">
+                                <i class="bi bi-person text-primary"></i>
+                                مسئول کار
+                            </label>
+                            <select class="form-select" id="editTaskAssignedUser">
+                                <option value="">-- انتخاب کاربر --</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="editTaskStoryPoints" class="form-label">
+                            <i class="bi bi-star text-primary"></i>
+                            امتیاز داستان
+                        </label>
+                        <input type="number" class="form-control" id="editTaskStoryPoints" min="0" placeholder="مثلاً 5">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>انصراف
+                </button>
+                <button type="button" class="btn btn-primary" onclick="submitEditTask()">
+                    <i class="bi bi-check-circle me-2"></i>ذخیره تغییرات
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     @Html.AntiForgeryToken()
@@ -1170,33 +1594,53 @@
             card.addEventListener('click', (e) => handleCardClick(e, task.id));
 
             const safeTitle = escapeHtml(task.title || '');
-            const safeKey = escapeHtml(task.issueKey || 'جدید');
+            const issueKey = task.issueKey || 'جدید';
+            const keyNumber = issueKey.includes('-') ? issueKey.split('-').pop() : issueKey;
+            const safeKey = escapeHtml(keyNumber);
             const deleteTitleArgument = (task.title || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
             const canComplete = canManageStatuses && finalStatusId && task.statusId !== finalStatusId;
-            const completeButtonHtml = canComplete ? `
-                <button class="btn btn-sm btn-success complete-task-btn"
-                        onclick="event.stopPropagation(); event.preventDefault(); completeTask(${task.id});"
-                        title="خاتمه تسک">
-                    <i class="bi bi-check-lg"></i>
-                </button>` : '';
+            const completeMenuItem = canComplete ? `
+                <li>
+                    <a class="dropdown-item complete-task-btn" href="#" onclick="event.stopPropagation(); event.preventDefault(); completeTask(${task.id});">
+                        <i class="bi bi-check-lg text-success me-2"></i>خاتمه کار
+                    </a>
+                </li>` : '';
 
             const actionButtons = canManageStatuses ? `
-                ${completeButtonHtml}
-                <button class="btn btn-sm btn-outline-warning"
-                        onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(${task.id});"
-                        title="خارج کردن از اسپرینت">
-                    <i class="bi bi-x-circle"></i>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                            type="button"
+                            id="taskMenu-${task.id}"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            onclick="event.stopPropagation(); event.preventDefault();"
+                            title="عملیات بیشتر">
+                        <i class="bi bi-three-dots-vertical"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-danger"
-                        onclick="event.stopPropagation(); event.preventDefault(); deleteTask(${task.id}, '${deleteTitleArgument}');"
-                        title="حذف تسک">
-                    <i class="bi bi-trash"></i>
-                </button>` : '';
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="taskMenu-${task.id}">
+                        <li>
+                            <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(${task.id});">
+                                <i class="bi bi-pencil text-primary me-2"></i>ویرایش کار
+                            </a>
+                        </li>
+                        ${completeMenuItem}
+                        <li>
+                            <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(${task.id});">
+                                <i class="bi bi-x-circle text-warning me-2"></i>خارج کردن از اسپرینت
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="#" onclick="event.stopPropagation(); event.preventDefault(); deleteTask(${task.id}, '${deleteTitleArgument}');">
+                                <i class="bi bi-trash me-2"></i>حذف کار
+                            </a>
+                        </li>
+                    </ul>
+                </div>` : '';
 
             card.innerHTML = `
                 <div class="task-card-header">
-                    <span class="task-key">${safeKey}</span>
                     <div class="task-actions">
                         <span class="issue-type-icon" title="Task">🆕</span>
                         ${actionButtons}
@@ -1505,7 +1949,7 @@
                 return;
             }
 
-            const confirmed = confirm(`آیا از حذف وضعیت "${statusName || ''}" مطمئن هستید؟\nتمام تسک‌های این وضعیت به وضعیت شروع منتقل می‌شوند.`);
+            const confirmed = confirm(`آیا از حذف وضعیت "${statusName || ''}" مطمئن هستید؟\nتمام کارهای این وضعیت به وضعیت شروع منتقل می‌شوند.`);
             if (!confirmed) {
                 return;
             }
@@ -1541,7 +1985,7 @@
             if (e.target.closest('button') || e.target.closest('a')) {
                 return;
             }
-            // در غیر این صورت، به جزئیات تسک برو
+            // در غیر این صورت، به جزئیات کار برو
             window.location.href = '/Tasks/Details/' + issueId;
         }
 
@@ -1718,7 +2162,17 @@
                 return;
             }
 
+            // دریافت اطلاعات کار برای نمایش در پیغام تایید
             const card = document.querySelector(`.task-card[data-issue-id="${taskId}"]`);
+            const taskTitle = card?.dataset.title || 'این کار';
+            const taskKey = card?.dataset.key || '';
+            
+            // نمایش پیغام تایید
+            const confirmMessage = `آیا مطمئن هستید که می‌خواهید کار "${taskKey}: ${taskTitle}" را خاتمه دهید؟\n\nاین کار به ستون "${finalStatusName}" منتقل خواهد شد.`;
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
             const previousOpacity = card ? card.style.opacity : null;
             if (card) {
                 card.style.opacity = '0.5';
@@ -1735,10 +2189,10 @@
                 if (!moved) {
                     setTimeout(() => location.reload(), 500);
                 } else {
-                    showNotification('تسک با موفقیت خاتمه یافت.', 'success');
+                    showNotification('کار با موفقیت خاتمه یافت.', 'success');
                 }
             } catch (error) {
-                showNotification(error.message || 'خطا در خاتمه تسک', 'error');
+                showNotification(error.message || 'خطا در خاتمه کار', 'error');
                 if (card) {
                     card.style.opacity = previousOpacity ?? '1';
                 }
@@ -1758,6 +2212,214 @@
                     badge.textContent = count;
                 }
             });
+        }
+
+        // باز کردن modal ویرایش تسک
+        async function openEditTaskModal(taskId) {
+            if (!taskId) {
+                showNotification('شناسه کار نامعتبر است', 'error');
+                return;
+            }
+
+            const modalElement = document.getElementById('editTaskModal');
+            if (!modalElement) {
+                showNotification('خطا در باز کردن فرم ویرایش', 'error');
+                return;
+            }
+
+            // باز کردن modal
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+
+            try {
+                // دریافت اطلاعات کار با AJAX
+                const response = await fetch(`/Tasks/GetTaskDetails?id=${taskId}`);
+                
+                // بررسی Content-Type
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    const text = await response.text();
+                    console.error('Expected JSON but got:', contentType, text.substring(0, 200));
+                    throw new Error('سرور پاسخ غیرمنتظره‌ای برگرداند. لطفاً صفحه را رفرش کنید.');
+                }
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ message: 'خطا در دریافت اطلاعات کار' }));
+                    throw new Error(errorData.message || 'خطا در دریافت اطلاعات کار');
+                }
+                
+                const taskData = await response.json();
+                
+                if (!taskData.success) {
+                    throw new Error(taskData.message || 'خطا در دریافت اطلاعات کار');
+                }
+                
+                // پر کردن فرم
+                document.getElementById('editTaskId').value = taskData.id;
+                document.getElementById('editTaskProjectId').value = taskData.projectId;
+                document.getElementById('editTaskProjectIssueTypeId').value = taskData.projectIssueTypeId || '';
+                document.getElementById('editTaskTitle').value = taskData.title || '';
+                document.getElementById('editTaskDescription').value = taskData.description || '';
+                document.getElementById('editTaskStartDateDisplay').value = taskData.startDateSh || '';
+                document.getElementById('editTaskStartDate').value = taskData.startDateSh || '';
+                document.getElementById('editTaskDueDateDisplay').value = taskData.dueDateSh || '';
+                document.getElementById('editTaskDueDate').value = taskData.dueDateSh || '';
+                document.getElementById('editTaskCategory').value = taskData.categoryId || '';
+                document.getElementById('editTaskAssignedUser').value = taskData.assignedUserId || '';
+                document.getElementById('editTaskStoryPoints').value = taskData.storyPoints || '';
+                
+                // ذخیره مقدار IssueType در hidden input (فیلد نمایش داده نمی‌شود)
+                const issueTypeHidden = document.getElementById('editTaskIssueTypeHidden');
+                if (taskData.issueType) {
+                    issueTypeHidden.value = taskData.issueType;
+                } else if (taskData.projectIssueTypeId && taskData.availableIssueTypes) {
+                    // اگر issueType مستقیم نبود، از projectIssueTypeId پیدا کن
+                    const matchingType = taskData.availableIssueTypes.find(it => it.id == taskData.projectIssueTypeId);
+                    if (matchingType) {
+                        issueTypeHidden.value = matchingType.baseType;
+                    }
+                }
+                
+                // پر کردن AssignedUser dropdown
+                const assignedUserSelect = document.getElementById('editTaskAssignedUser');
+                assignedUserSelect.innerHTML = '<option value="">-- انتخاب کاربر --</option>';
+                if (taskData.assignedUsers) {
+                    taskData.assignedUsers.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.name;
+                        if (taskData.assignedUserId == user.id) {
+                            option.selected = true;
+                        }
+                        assignedUserSelect.appendChild(option);
+                    });
+                }
+                
+                // تنظیم Persian Datepicker
+                if ($.fn.persianDatepicker) {
+                    $('#editTaskStartDateDisplay').persianDatepicker({
+                        format: 'YYYY/MM/DD',
+                        autoClose: true,
+                        initialValueType: "persian",
+                        initialValue: true,
+                        altField: '#editTaskStartDate',
+                        altFormat: 'YYYY/MM/DD',
+                        timePicker: { enabled: false },
+                        calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+                    });
+                    
+                    $('#editTaskDueDateDisplay').persianDatepicker({
+                        format: 'YYYY/MM/DD',
+                        autoClose: true,
+                        initialValueType: "persian",
+                        initialValue: true,
+                        altField: '#editTaskDueDate',
+                        altFormat: 'YYYY/MM/DD',
+                        timePicker: { enabled: false },
+                        calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+                    });
+                }
+                
+            } catch (error) {
+                showNotification('خطا در بارگذاری اطلاعات کار: ' + error.message, 'error');
+                bootstrap.Modal.getInstance(modalElement)?.hide();
+            }
+        }
+        
+        // ارسال فرم ویرایش کار
+        async function submitEditTask() {
+            const taskId = document.getElementById('editTaskId').value;
+            if (!taskId) {
+                showNotification('شناسه کار نامعتبر است', 'error');
+                return;
+            }
+            
+            const title = document.getElementById('editTaskTitle').value.trim();
+            if (!title) {
+                showNotification('عنوان کار الزامی است', 'error');
+                return;
+            }
+            
+            // استفاده از hidden input برای IssueType
+            const issueType = document.getElementById('editTaskIssueTypeHidden').value;
+            if (!issueType) {
+                showNotification('نوع کار الزامی است', 'error');
+                return;
+            }
+            
+            // دریافت ProjectIssueTypeId از hidden input
+            const projectIssueTypeId = document.getElementById('editTaskProjectIssueTypeId').value || null;
+            
+            const formData = {
+                Id: parseInt(taskId),
+                Title: title,
+                Description: document.getElementById('editTaskDescription').value || '',
+                IssueType: parseInt(issueType),
+                ProjectIssueTypeId: projectIssueTypeId ? parseInt(projectIssueTypeId) : null,
+                ProjectId: parseInt(document.getElementById('editTaskProjectId').value),
+                StartDateSh: document.getElementById('editTaskStartDate').value || '',
+                DueDateSh: document.getElementById('editTaskDueDate').value || '',
+                CategoryId: document.getElementById('editTaskCategory').value ? parseInt(document.getElementById('editTaskCategory').value) : null,
+                AssignedUserId: document.getElementById('editTaskAssignedUser').value || null,
+                StoryPoints: document.getElementById('editTaskStoryPoints').value ? parseInt(document.getElementById('editTaskStoryPoints').value) : null
+            };
+            
+            // نمایش loading
+            const submitBtn = document.querySelector('button[onclick="submitEditTask()"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>در حال ذخیره...';
+            
+            try {
+                // دریافت AntiForgeryToken
+                const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                const token = tokenInput ? tokenInput.value : '';
+                
+                const response = await fetch('/Tasks/Edit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(token ? { 'RequestVerificationToken': token } : {})
+                    },
+                    body: JSON.stringify(formData),
+                    credentials: 'same-origin'
+                });
+                
+                // بررسی Content-Type
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const result = await response.json();
+                    if (response.ok && result.success) {
+                        showNotification('کار با موفقیت ویرایش شد', 'success');
+                        bootstrap.Modal.getInstance(document.getElementById('editTaskModal'))?.hide();
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showNotification('خطا: ' + (result.message || 'خطا در ویرایش کار'), 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
+                } else {
+                    // اگر JSON نبود، احتمالاً redirect شده یا خطا رخ داده
+                    const text = await response.text();
+                    console.error('Expected JSON but got:', contentType, text.substring(0, 200));
+                    
+                    if (response.redirected || response.status === 302 || response.status === 301) {
+                        // احتمالاً redirect به login شده
+                        showNotification('لطفاً دوباره وارد شوید', 'error');
+                        setTimeout(() => location.reload(), 2000);
+                    } else {
+                        showNotification('خطا در ذخیره تغییرات. لطفاً صفحه را رفرش کنید.', 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
+                }
+            } catch (error) {
+                console.error('Error submitting task:', error);
+                showNotification('خطا در ارتباط با سرور: ' + error.message, 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
         }
 
         document.addEventListener('dragend', function() {
@@ -1839,7 +2501,7 @@
             }
         });
 
-        // بارگذاری تسک‌های موجود (فقط برای اسپرینت فعال)
+        // بارگذاری کارهای موجود (فقط برای اسپرینت فعال)
         @if (Model.Status == SprintStatus.Active)
         {
             <text>
@@ -1852,7 +2514,7 @@
                         if (response.success) {
                             displayAvailableTasks(response.tasks);
                         } else {
-                            $('#availableTasksContainer').html('<p class="text-muted">خطا در بارگذاری تسک‌ها: ' + response.message + '</p>');
+                            $('#availableTasksContainer').html('<p class="text-muted">خطا در بارگذاری کارها: ' + response.message + '</p>');
                         }
                     },
                     error: function(xhr, status, error) {
@@ -1868,7 +2530,7 @@
                 const container = $('#availableTasksContainer');
                 
                 if (tasks.length === 0) {
-                    container.html('<div class="empty-message"><i class="bi bi-inbox"></i><br>تسک قابل اضافه شدن وجود ندارد</div>');
+                    container.html('<div class="empty-message"><i class="bi bi-inbox"></i><br>کار قابل اضافه شدن وجود ندارد</div>');
                     return;
                 }
 
@@ -1894,14 +2556,14 @@
                     
                     const taskItem = $(this);
                     
-                    // اگر همان تسک قبلی انتخاب شده بود، با دوبار کلیک اضافه کن
+                    // اگر همان کار قبلی انتخاب شده بود، با دوبار کلیک اضافه کن
                     if (selectedTaskId === taskId) {
                         clearTimeout(clickTimeout);
                         addTaskToSprint(taskId);
                         selectedTaskId = null;
                         $('.available-task-item').removeClass('selected');
                     } else {
-                        // انتخاب تسک جدید
+                        // انتخاب کار جدید
                         clearTimeout(clickTimeout);
                         $('.available-task-item').removeClass('selected');
                         taskItem.addClass('selected');
@@ -1940,7 +2602,7 @@
                     success: function(response) {
                         addingTaskInProgress = false;
                         if (response.success) {
-                            showNotification('تسک با موفقیت به اسپرینت اضافه شد', 'success');
+                            showNotification('کار با موفقیت به اسپرینت اضافه شد', 'success');
                             selectedTaskId = null;
                             $('.available-task-item').removeClass('selected');
                             loadAvailableTasks();
@@ -1959,7 +2621,7 @@
             }
 
             function removeTaskFromSprint(taskId) {
-                if (!confirm('آیا مطمئن هستید که می‌خواهید این تسک را از اسپرینت خارج کنید؟')) {
+                if (!confirm('آیا مطمئن هستید که می‌خواهید این کار را از اسپرینت خارج کنید؟')) {
                     return;
                 }
 
@@ -1972,7 +2634,7 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('تسک با موفقیت از اسپرینت خارج شد', 'success');
+                            showNotification('کار با موفقیت از اسپرینت خارج شد', 'success');
                             // حذف کارت از صفحه
                             const card = document.querySelector(`.task-card[data-issue-id="${taskId}"]`);
                             if (card) {
@@ -2010,9 +2672,9 @@
             });
 
             // باز کردن Modal افزودن Subtask
-            function openAddSubtaskModal(parentId, parentKey) {
+            function openAddSubtaskModal(parentId, parentTitle) {
                 $('#subtaskParentId').val(parentId);
-                $('#subtaskParentKey').val(parentKey);
+                $('#subtaskParentKey').val(parentTitle);
                 $('#subtaskTitle').val('');
                 $('#subtaskCategory').val('');
                 const modal = new bootstrap.Modal(document.getElementById('addSubtaskModal'));
@@ -2026,7 +2688,7 @@
                 const categoryId = $('#subtaskCategory').val();
 
                 if (!title) {
-                    showNotification('عنوان زیرتسک الزامی است', 'error');
+                    showNotification('عنوان کارک الزامی است', 'error');
                     return;
                 }
 
@@ -2054,13 +2716,13 @@
                     data: JSON.stringify(data),
                     success: function(response) {
                         if (response.success) {
-                            showNotification(response.message || 'زیرتسک با موفقیت ایجاد شد', 'success');
+                            showNotification(response.message || 'کارک با موفقیت ایجاد شد', 'success');
                             // بستن Modal
                             bootstrap.Modal.getInstance(document.getElementById('addSubtaskModal')).hide();
                             // بارگذاری مجدد صفحه برای نمایش زیرتسک جدید
                             setTimeout(() => location.reload(), 1000);
                         } else {
-                            showNotification('خطا: ' + (response.message || 'خطا در ایجاد زیرتسک'), 'error');
+                            showNotification('خطا: ' + (response.message || 'خطا در ایجاد کارک'), 'error');
                             submitBtn.prop('disabled', false).html(originalText);
                         }
                     },
@@ -2077,7 +2739,7 @@
                 });
             }
 
-            // نمایش/مخفی کردن زیرتسک‌ها
+            // نمایش/مخفی کردن کارک‌ها
             function toggleSubtasks(issueId) {
                 const container = document.getElementById(`subtasks-${issueId}`);
                 const icon = document.getElementById(`subtask-icon-${issueId}`);
@@ -2091,9 +2753,9 @@
                 }
             }
 
-            // حذف تسک یا زیرتسک
+            // حذف کار یا کارک
             function deleteTask(taskId, taskTitle) {
-                if (!confirm(`آیا مطمئن هستید که می‌خواهید تسک "${taskTitle}" را حذف کنید؟\n\nاین عمل قابل بازگشت نیست و تمام زیرتسک‌های آن نیز حذف خواهند شد.`)) {
+                if (!confirm(`آیا مطمئن هستید که می‌خواهید کار "${taskTitle}" را حذف کنید؟\n\nاین عمل قابل بازگشت نیست و تمام کارک‌های آن نیز حذف خواهند شد.`)) {
                     return;
                 }
 
@@ -2239,7 +2901,7 @@
                 const confirmMsg = `آیا مطمئن هستید که می‌خواهید این اسپرینت را خاتمه دهید؟\n\n` +
                     `این عمل باعث می‌شود:\n` +
                     `✓ اسپرینت به حالت "خاتمه یافته" تغییر کند\n` +
-                    `✓ تمام تسک‌های Done به صورت خودکار تکمیل شوند\n` +
+                    `✓ تمام کارهای Done به صورت خودکار تکمیل شوند\n` +
                     `✓ به صفحه جزئیات پروژه هدایت شوید`;
                 
                 if (confirm(confirmMsg)) {

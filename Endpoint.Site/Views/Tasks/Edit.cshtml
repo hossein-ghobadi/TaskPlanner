@@ -196,6 +196,10 @@
         @Html.HiddenFor(m => m.Id)
         <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
         @Html.HiddenFor(m => m.ProjectId)
+        @if (Context.Request.Query.ContainsKey("fromModal") && Context.Request.Query["fromModal"] == "true")
+        {
+            <input type="hidden" name="fromModal" value="true" />
+        }
 
         @if (!ViewData.ModelState.IsValid)
         {
@@ -398,5 +402,44 @@
                 }
             }
         });
+
+        // ارسال پیام به parent window بعد از ذخیره موفق (اگر در iframe هستیم)
+        @{
+            var fromModal = Context.Request.Query.ContainsKey("fromModal") && Context.Request.Query["fromModal"] == "true";
+            var saved = Context.Request.Query.ContainsKey("saved") && Context.Request.Query["saved"] == "true";
+        }
+        @if (fromModal && saved)
+        {
+            <text>
+            // بررسی اینکه آیا در iframe هستیم
+            (function() {
+                if (window.self !== window.top) {
+                    // در iframe هستیم - ارسال پیام به parent
+                    function sendSuccessMessage() {
+                        try {
+                            window.parent.postMessage('taskEditSuccess', '*');
+                        } catch (e) {
+                            console.error('Error sending message to parent:', e);
+                        }
+                    }
+                    
+                    // ارسال فوری
+                    sendSuccessMessage();
+                    
+                    // ارسال بعد از لود کامل DOM
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', sendSuccessMessage);
+                    } else {
+                        // DOM قبلاً لود شده
+                        setTimeout(sendSuccessMessage, 100);
+                    }
+                    
+                    // ارسال مجدد با تاخیر بیشتر برای اطمینان
+                    setTimeout(sendSuccessMessage, 300);
+                    setTimeout(sendSuccessMessage, 500);
+                }
+            })();
+            </text>
+        }
     </script>
 }
