@@ -574,7 +574,7 @@
                                                 {
                                                     <button class="btn btn-sm btn-success complete-task-btn"
                                                             onclick="event.stopPropagation(); event.preventDefault(); completeTask(@issue.Id);"
-                                                            title="خاتمه کار">
+                                                            title="خاتمه تسک">
                                                         <i class="bi bi-check-lg"></i>
                                                     </button>
                                                 }
@@ -582,7 +582,7 @@
                                                 {
                                                     <button class="btn btn-sm btn-outline-primary"
                                                             onclick="event.stopPropagation(); event.preventDefault(); openAddSubtaskModal(@issue.Id, '@issue.IssueKey');"
-                                                            title="افزودن زیرکار">
+                                                            title="افزودن زیرتسک">
                                                         <i class="bi bi-plus-circle"></i>
                                                     </button>
                                                 }
@@ -595,7 +595,7 @@
                                                     </button>
                                                     <button class="btn btn-sm btn-outline-danger"
                                                             onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@issue.Id, '@issue.Title');"
-                                                            title="حذف کار">
+                                                            title="حذف تسک">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 }
@@ -623,7 +623,7 @@
                                                             onclick="event.stopPropagation(); event.preventDefault(); toggleSubtasks(@issue.Id);"
                                                             style="font-size: 0.7rem;">
                                                         <i class="bi bi-chevron-down" id="subtask-icon-@issue.Id"></i>
-                                                        @issue.ChildIssues.Count زیرکار
+                                                        @issue.ChildIssues.Count زیرتسک
                                                     </button>
                                                 </div>
                                             }
@@ -656,7 +656,7 @@
                                                             {
                                                                 <button class="btn btn-sm btn-outline-danger p-0 px-1"
                                                                         onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@subtask.Id, '@subtask.Title');"
-                                                                        title="حذف زیرکار"
+                                                                        title="حذف زیرتسک"
                                                                         style="font-size: 0.7rem;">
                                                                     <i class="bi bi-trash"></i>
                                                                 </button>
@@ -686,7 +686,7 @@
         {
             <div class="available-tasks-column">
                 <div class="available-tasks-header">
-                    <span>کارهای آماده</span>
+                    <span>تسک‌های آماده</span>
                     <span class="badge bg-primary">@Model.TotalTasks</span>
                 </div>
                 <div id="availableTasksContainer" class="available-tasks-body">
@@ -703,19 +703,19 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addSubtaskModalLabel">افزودن زیرکار</h5>
+                <h5 class="modal-title" id="addSubtaskModalLabel">افزودن زیرتسک</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="addSubtaskForm">
                     <input type="hidden" id="subtaskParentId" />
                     <div class="mb-3">
-                        <label for="subtaskParentKey" class="form-label">کار والد</label>
+                        <label for="subtaskParentKey" class="form-label">تسک والد</label>
                         <input type="text" class="form-control" id="subtaskParentKey" readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="subtaskTitle" class="form-label">عنوان زیرکار <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="subtaskTitle" required placeholder="عنوان زیرکار را وارد کنید">
+                        <label for="subtaskTitle" class="form-label">عنوان زیرتسک <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="subtaskTitle" required placeholder="عنوان زیرتسک را وارد کنید">
                     </div>
                     <div class="mb-3">
                         <label for="subtaskCategory" class="form-label">دسته‌بندی</label>
@@ -734,7 +734,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
-                <button type="button" class="btn btn-primary" onclick="submitSubtask()">افزودن زیرکار</button>
+                <button type="button" class="btn btn-primary" onclick="submitSubtask()">افزودن زیرتسک</button>
             </div>
         </div>
     </div>
@@ -1179,7 +1179,7 @@
             const completeButtonHtml = canComplete ? `
                 <button class="btn btn-sm btn-success complete-task-btn"
                         onclick="event.stopPropagation(); event.preventDefault(); completeTask(${task.id});"
-                        title="خاتمه کار">
+                        title="خاتمه تسک">
                     <i class="bi bi-check-lg"></i>
                 </button>` : '';
 
@@ -1192,7 +1192,7 @@
                 </button>
                 <button class="btn btn-sm btn-outline-danger"
                         onclick="event.stopPropagation(); event.preventDefault(); deleteTask(${task.id}, '${deleteTitleArgument}');"
-                        title="حذف کار">
+                        title="حذف تسک">
                     <i class="bi bi-trash"></i>
                 </button>` : '';
 
@@ -1507,7 +1507,7 @@
                 return;
             }
 
-            const confirmed = confirm(`آیا از حذف وضعیت "${statusName || ''}" مطمئن هستید؟\nتمام کارهای این وضعیت به وضعیت شروع منتقل می‌شوند.`);
+            const confirmed = confirm(`آیا از حذف وضعیت "${statusName || ''}" مطمئن هستید؟\nتمام تسک‌های این وضعیت به وضعیت شروع منتقل می‌شوند.`);
             if (!confirmed) {
                 return;
             }
@@ -1543,7 +1543,7 @@
             if (e.target.closest('button') || e.target.closest('a')) {
                 return;
             }
-            // در غیر این صورت، به جزئیات کار برو
+            // در غیر این صورت، به جزئیات تسک برو
             window.location.href = '/Tasks/Details/' + issueId;
         }
 
@@ -1737,10 +1737,10 @@
                 if (!moved) {
                     setTimeout(() => location.reload(), 500);
                 } else {
-                    showNotification('کار با موفقیت خاتمه یافت.', 'success');
+                    showNotification('تسک با موفقیت خاتمه یافت.', 'success');
                 }
             } catch (error) {
-                showNotification(error.message || 'خطا در خاتمه کار', 'error');
+                showNotification(error.message || 'خطا در خاتمه تسک', 'error');
                 if (card) {
                     card.style.opacity = previousOpacity ?? '1';
                 }
@@ -1841,7 +1841,7 @@
             }
         });
 
-        // بارگذاری کارهای موجود (فقط برای اسپرینت فعال)
+        // بارگذاری تسک‌های موجود (فقط برای اسپرینت فعال)
         @if (Model.Status == SprintStatus.Active)
         {
             <text>
@@ -1854,7 +1854,7 @@
                         if (response.success) {
                             displayAvailableTasks(response.tasks);
                         } else {
-                            $('#availableTasksContainer').html('<p class="text-muted">خطا در بارگذاری کارها: ' + response.message + '</p>');
+                            $('#availableTasksContainer').html('<p class="text-muted">خطا در بارگذاری تسک‌ها: ' + response.message + '</p>');
                         }
                     },
                     error: function(xhr, status, error) {
@@ -1870,7 +1870,7 @@
                 const container = $('#availableTasksContainer');
                 
                 if (tasks.length === 0) {
-                    container.html('<div class="empty-message"><i class="bi bi-inbox"></i><br>کار قابل اضافه شدن وجود ندارد</div>');
+                    container.html('<div class="empty-message"><i class="bi bi-inbox"></i><br>تسک قابل اضافه شدن وجود ندارد</div>');
                     return;
                 }
 
@@ -1896,14 +1896,14 @@
                     
                     const taskItem = $(this);
                     
-                    // اگر همان کار قبلی انتخاب شده بود، با دوبار کلیک اضافه کن
+                    // اگر همان تسک قبلی انتخاب شده بود، با دوبار کلیک اضافه کن
                     if (selectedTaskId === taskId) {
                         clearTimeout(clickTimeout);
                         addTaskToSprint(taskId);
                         selectedTaskId = null;
                         $('.available-task-item').removeClass('selected');
                     } else {
-                        // انتخاب کار جدید
+                        // انتخاب تسک جدید
                         clearTimeout(clickTimeout);
                         $('.available-task-item').removeClass('selected');
                         taskItem.addClass('selected');
@@ -1942,7 +1942,7 @@
                     success: function(response) {
                         addingTaskInProgress = false;
                         if (response.success) {
-                            showNotification('کار با موفقیت به اسپرینت اضافه شد', 'success');
+                            showNotification('تسک با موفقیت به اسپرینت اضافه شد', 'success');
                             selectedTaskId = null;
                             $('.available-task-item').removeClass('selected');
                             loadAvailableTasks();
@@ -1961,7 +1961,7 @@
             }
 
             function removeTaskFromSprint(taskId) {
-                if (!confirm('آیا مطمئن هستید که می‌خواهید این کار را از اسپرینت خارج کنید؟')) {
+                if (!confirm('آیا مطمئن هستید که می‌خواهید این تسک را از اسپرینت خارج کنید؟')) {
                     return;
                 }
 
@@ -1974,7 +1974,7 @@
                     },
                     success: function(response) {
                         if (response.success) {
-                            showNotification('کار با موفقیت از اسپرینت خارج شد', 'success');
+                            showNotification('تسک با موفقیت از اسپرینت خارج شد', 'success');
                             // حذف کارت از صفحه
                             const card = document.querySelector(`.task-card[data-issue-id="${taskId}"]`);
                             if (card) {
@@ -1995,7 +1995,7 @@
                                     }
                                 }, 300);
                             }
-                            // بارگذاری مجدد کارهای موجود
+                            // بارگذاری مجدد تسک‌های موجود
                             loadAvailableTasks();
                         } else {
                             showNotification('خطا: ' + response.message, 'error');
@@ -2028,7 +2028,7 @@
                 const categoryId = $('#subtaskCategory').val();
 
                 if (!title) {
-                    showNotification('عنوان زیرکار الزامی است', 'error');
+                    showNotification('عنوان زیرتسک الزامی است', 'error');
                     return;
                 }
 
@@ -2056,13 +2056,13 @@
                     data: JSON.stringify(data),
                     success: function(response) {
                         if (response.success) {
-                            showNotification(response.message || 'زیرکار با موفقیت ایجاد شد', 'success');
+                            showNotification(response.message || 'زیرتسک با موفقیت ایجاد شد', 'success');
                             // بستن Modal
                             bootstrap.Modal.getInstance(document.getElementById('addSubtaskModal')).hide();
-                            // بارگذاری مجدد صفحه برای نمایش زیرکار جدید
+                            // بارگذاری مجدد صفحه برای نمایش زیرتسک جدید
                             setTimeout(() => location.reload(), 1000);
                         } else {
-                            showNotification('خطا: ' + (response.message || 'خطا در ایجاد زیرکار'), 'error');
+                            showNotification('خطا: ' + (response.message || 'خطا در ایجاد زیرتسک'), 'error');
                             submitBtn.prop('disabled', false).html(originalText);
                         }
                     },
@@ -2079,7 +2079,7 @@
                 });
             }
 
-            // نمایش/مخفی کردن زیرکارها
+            // نمایش/مخفی کردن زیرتسک‌ها
             function toggleSubtasks(issueId) {
                 const container = document.getElementById(`subtasks-${issueId}`);
                 const icon = document.getElementById(`subtask-icon-${issueId}`);
@@ -2093,9 +2093,9 @@
                 }
             }
 
-            // حذف کار یا زیرکار
+            // حذف تسک یا زیرتسک
             function deleteTask(taskId, taskTitle) {
-                if (!confirm(`آیا مطمئن هستید که می‌خواهید کار "${taskTitle}" را حذف کنید؟\n\nاین عمل قابل بازگشت نیست و تمام زیرکارهای آن نیز حذف خواهند شد.`)) {
+                if (!confirm(`آیا مطمئن هستید که می‌خواهید تسک "${taskTitle}" را حذف کنید؟\n\nاین عمل قابل بازگشت نیست و تمام زیرتسک‌های آن نیز حذف خواهند شد.`)) {
                     return;
                 }
 
@@ -2109,9 +2109,9 @@
                     data: JSON.stringify({ taskId: taskId }),
                     success: function(response) {
                         if (response.success) {
-                            showNotification(response.message || 'کار با موفقیت حذف شد', 'success');
+                            showNotification(response.message || 'تسک با موفقیت حذف شد', 'success');
                         } else {
-                            showNotification('خطا: ' + (response.message || 'خطا در حذف کار'), 'error');
+                            showNotification('خطا: ' + (response.message || 'خطا در حذف تسک'), 'error');
                             return;
                         }
                         // حذف کارت از صفحه
@@ -2135,7 +2135,7 @@
                                 }
                             }, 300);
                         } else if (subtaskItem && subtaskItem.closest(`[data-issue-id]`)) {
-                            // اگر زیرکار حذف شد، صفحه را refresh کن
+                            // اگر زیرتسک حذف شد، صفحه را refresh کن
                             setTimeout(() => location.reload(), 1000);
                         } else {
                             // اگر کارت پیدا نشد، صفحه را refresh کن
@@ -2154,7 +2154,7 @@
                 });
             }
 
-            // فرم ایجاد کار سریع
+            // فرم ایجاد تسک سریع
             $('#quickTaskForm').on('submit', function(e) {
                 e.preventDefault();
                 
@@ -2241,7 +2241,7 @@
                 const confirmMsg = `آیا مطمئن هستید که می‌خواهید این اسپرینت را خاتمه دهید؟\n\n` +
                     `این عمل باعث می‌شود:\n` +
                     `✓ اسپرینت به حالت "خاتمه یافته" تغییر کند\n` +
-                    `✓ تمام کارهای Done به صورت خودکار تکمیل شوند\n` +
+                    `✓ تمام تسک‌های Done به صورت خودکار تکمیل شوند\n` +
                     `✓ به صفحه جزئیات پروژه هدایت شوید`;
                 
                 if (confirm(confirmMsg)) {

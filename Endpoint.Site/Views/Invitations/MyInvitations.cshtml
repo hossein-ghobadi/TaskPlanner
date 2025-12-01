@@ -215,6 +215,7 @@
                             <th>نوع دعوت</th>
                             <th>پروژه / توضیحات</th>
                             <th>شماره دعوت‌شونده</th>
+                            <th>نام دعوت‌شونده</th>
                             <th>تاریخ ارسال</th>
                             <th>وضعیت</th>
                             <th class="text-center">عملیات</th>
@@ -227,6 +228,16 @@
                                 <td><span class="badge bg-primary">پروژه</span></td>
                                 <td>@(inv.Project?.Name ?? "پروژه نامشخص")</td>
                                 <td>@inv.InviteePhone</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(inv.InviteeId) && ViewBag.UserLookup.ContainsKey(inv.InviteeId))
+                                    {
+                                        @ViewBag.UserLookup[inv.InviteeId]
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
                                 <td>@inv.CreatedAt.ToLocalTime().ToShortPersianDateTimeString()</td>
                                 <td>
                                     @switch (inv.Status)
@@ -258,6 +269,21 @@
                                             </button>
                                         </form>
                                     }
+                                    else if (inv.Status == InvitationStatus.Accepted && !string.IsNullOrEmpty(inv.InviteeId) && inv.ProjectId.HasValue)
+                                    {
+                                        <form asp-controller="Invitations"
+                                              asp-action="RemoveMemberFromProject"
+                                              method="post"
+                                              class="d-inline"
+                                              onsubmit="return confirm('آیا از حذف این عضو از پروژه اطمینان دارید؟');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="projectId" value="@inv.ProjectId" />
+                                            <input type="hidden" name="memberUserId" value="@inv.InviteeId" />
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                <i class="bi bi-person-x"></i> حذف از پروژه
+                                            </button>
+                                        </form>
+                                    }
                                 </td>
                             </tr>
                         }
@@ -267,6 +293,16 @@
                                 <td><span class="badge bg-secondary">همکاری</span></td>
                                 <td>دعوت به همکاری</td>
                                 <td>@inv.InviteePhone</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(inv.InviteeId) && ViewBag.UserLookup.ContainsKey(inv.InviteeId))
+                                    {
+                                        @ViewBag.UserLookup[inv.InviteeId]
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
                                 <td>@inv.CreatedAt.ToLocalTime().ToShortPersianDateTimeString()</td>
                                 <td>
                                     @switch (inv.Status)

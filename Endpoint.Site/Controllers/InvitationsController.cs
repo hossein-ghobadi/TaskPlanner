@@ -168,7 +168,7 @@ namespace Endpoint.Site.Controllers
                 .OrderByDescending(i => i.CreatedAt)
                 .ToListAsync();
 
-            // 📍 دیکشنری از نام کاربران
+            // 📍 دیکشنری از نام کاربران (دعوت‌کنندگان و دعوت‌شوندگان)
             var inviterIds = projectInvitations.Select(i => i.InviterId)
                               .Concat(systemInvitations.Select(i => i.InviterId))
                               .Concat(sentProjectInvitations.Select(i => i.InviterId))
@@ -176,8 +176,17 @@ namespace Endpoint.Site.Controllers
                               .Distinct()
                               .ToList();
 
+            var inviteeIds = sentProjectInvitations.Where(i => !string.IsNullOrEmpty(i.InviteeId))
+                              .Select(i => i.InviteeId)
+                              .Concat(sentSystemInvitations.Where(i => !string.IsNullOrEmpty(i.InviteeId))
+                                  .Select(i => i.InviteeId))
+                              .Distinct()
+                              .ToList();
+
+            var allUserIds = inviterIds.Concat(inviteeIds).Distinct().ToList();
+
             var users = await _userManager.Users
-                .Where(u => inviterIds.Contains(u.Id))
+                .Where(u => allUserIds.Contains(u.Id))
                 .ToDictionaryAsync(u => u.Id, u =>
                     !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : (u.UserName ?? "کاربر ناشناس"));
 
@@ -243,6 +252,78 @@ namespace Endpoint.Site.Controllers
 
             TempData["Success"] = "دعوت با موفقیت حذف شد.";
             return RedirectToAction("MyInvitations");
+        }
+
+        /// <summary>
+        /// حذف عضو از پروژه (از طریق صفحه دعوت‌ها)
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveMemberFromProject(int projectId, string memberUserId)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(memberUserId))
+            {
+                TempData["Error"] = "شناسه کاربر نامعتبر است.";
+                return RedirectToAction("MyInvitations");
+            }
+
+            // بررسی اینکه دعوت توسط کاربر فعلی ارسال شده و پذیرفته شده است
+            var invitation = await _context.ProjectInvitations
+                .FirstOrDefaultAsync(i => i.ProjectId == projectId 
+                    && i.InviterId == currentUserId 
+                    && i.InviteeId == memberUserId 
+                    && i.Status == InvitationStatus.Accepted);
+
+            if (invitation == null)
+            {
+                TempData["Error"] = "دعوت مورد نظر یافت نشد یا شما مجاز به حذف این عضو نیستید.";
+                return RedirectToAction("MyInvitations");
+            }
+
+            // بررسی اینکه پروژه وجود دارد
+            var project = await _context.Projects.FindAsync(projectId);
+            if (project == null)
+            {
+                TempData["Error"] = "پروژه یافت نشد.";
+                return RedirectToAction("MyInvitations");
+            }
+
+            // بررسی دسترسی: فقط سازنده پروژه یا دعوت‌کننده می‌تواند عضو را حذف کند
+            if (project.CreatorUserId != currentUserId && invitation.InviterId != currentUserId)
+            {
+                TempData["Error"] = "شما مجاز به حذف این عضو نیستید.";
+                return RedirectToAction("MyInvitations");
+            }
+
+            try
+            {
+                // حذف عضو از ProjectMembers
+                var member = await _context.ProjectMembers
+                    .FirstOrDefaultAsync(m => m.ProjectId == projectId && m.UserId == memberUserId);
+
+                if (member != null)
+                {
+                    _context.ProjectMembers.Remove(member);
+                }
+
+                // حذف دعوت یا تغییر وضعیت آن
+                _context.ProjectInvitations.Remove(invitation);
+
+                // حذف تسک‌های مرتبط با این کاربر (اختیاری - بسته به نیاز کسب‌وکار)
+                // در اینجا فقط عضو را حذف می‌کنیم و تسک‌ها بدون مسئول می‌مانند
+
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = "عضو با موفقیت از پروژه حذف شد.";
+                return RedirectToAction("MyInvitations");
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"خطا در حذف عضو: {ex.Message}";
+                return RedirectToAction("MyInvitations");
+            }
         }
 
     }
