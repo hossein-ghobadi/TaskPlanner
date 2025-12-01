@@ -2090,6 +2090,23 @@ namespace Endpoint.Site.Controllers
             else
             {
                 task.AssignedUserId = vm.AssignedUserId;
+                
+                // 🔄 اگر مسئول کار تغییر کرد، مسئول تمام کارک‌های آن را هم به‌روزرسانی کن
+                var assignedUserIdChanged = !string.Equals(previousAssignee, vm.AssignedUserId, StringComparison.OrdinalIgnoreCase);
+                if (assignedUserIdChanged && vm.IssueType != IssueType.Subtask)
+                {
+                    // پیدا کردن تمام کارک‌های این کار
+                    var childTasks = await _context.TaskItems
+                        .Where(t => t.ParentTaskId == task.Id && t.IssueType == IssueType.Subtask)
+                        .ToListAsync();
+                    
+                    // به‌روزرسانی مسئول تمام کارک‌ها
+                    foreach (var childTask in childTasks)
+                    {
+                        childTask.AssignedUserId = vm.AssignedUserId;
+                        _context.Update(childTask);
+                    }
+                }
             }
 
             _context.Update(task);
