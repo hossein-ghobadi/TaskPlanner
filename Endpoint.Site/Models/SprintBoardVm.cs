@@ -32,6 +32,13 @@ namespace Endpoint.Site.Models
         
         public double CompletionPercentage => TotalTasks > 0 ? (double)CompletedTasks / TotalTasks * 100 : 0;
     }
+
+    public class ProjectMemberVm
+    {
+        public string UserId { get; set; } = null!;
+        public string FullName { get; set; } = null!;
+        public string UserName { get; set; } = null!;
+    }
 }
 
 

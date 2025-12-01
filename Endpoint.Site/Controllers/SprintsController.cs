@@ -197,6 +197,43 @@ namespace Endpoint.Site.Controllers
                 .ToListAsync();
             ViewBag.MemberIds = memberIds;
 
+            // دریافت لیست کامل اعضای پروژه برای فیلتر
+            var memberUserIds = await _context.ProjectMembers
+                .Where(m => m.ProjectId == sprint.ProjectId)
+                .Select(m => m.UserId)
+                .ToListAsync();
+            
+            var projectMembers = await _context.Users
+                .Where(u => memberUserIds.Contains(u.Id))
+                .Select(u => new ProjectMemberVm
+                {
+                    UserId = u.Id,
+                    FullName = u.FullName ?? u.UserName,
+                    UserName = u.UserName
+                })
+                .ToListAsync();
+            
+            // اضافه کردن سازنده پروژه به لیست (اگر از قبل در لیست نیست)
+            if (sprint.Project != null && !string.IsNullOrEmpty(sprint.Project.CreatorUserId))
+            {
+                var creatorExists = projectMembers.Any(pm => pm.UserId == sprint.Project.CreatorUserId);
+                if (!creatorExists)
+                {
+                    var creatorInfo = await _userManager.FindByIdAsync(sprint.Project.CreatorUserId);
+                    if (creatorInfo != null)
+                    {
+                        projectMembers.Add(new ProjectMemberVm
+                        {
+                            UserId = sprint.Project.CreatorUserId,
+                            FullName = $"{creatorInfo.FullName ?? creatorInfo.UserName} - سازنده پروژه",
+                            UserName = creatorInfo.UserName ?? ""
+                        });
+                    }
+                }
+            }
+            
+            ViewBag.ProjectMembers = projectMembers.OrderBy(u => u.FullName).ToList();
+
             return View(vm);
         }
 
@@ -531,6 +568,7 @@ namespace Endpoint.Site.Controllers
                     title = t.Title,
                     description = t.Description,
                     categoryName = t.Category != null ? t.Category.Name : "بدون دسته",
+                    assignedUserId = t.AssignedUserId,
                     assignedUserName = t.AssignedUser != null ? (t.AssignedUser.FullName ?? t.AssignedUser.UserName) : "تخصیص نیافته",
                     dueDate = t.DueDate,
                     priority = t.Priority.ToString(),

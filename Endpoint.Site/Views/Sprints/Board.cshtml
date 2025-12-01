@@ -194,8 +194,7 @@
         border-left: 3px solid #f97316;
     }
     .task-card.filtered-out {
-        opacity: 0.3;
-        pointer-events: none;
+        display: none !important;
     }
     .due-badge {
         display: inline-flex;
@@ -724,6 +723,17 @@
                     <option value="@status.Id">@status.Name</option>
                 }
             </select>
+            <select id="assigneeFilterSelect" class="form-select toolbar-select" style="min-width: 180px;">
+                <option value="all">همه افراد</option>
+                <option value="unassigned">تخصیص نیافته</option>
+                @{
+                    var projectMembers = ViewBag.ProjectMembers as List<ProjectMemberVm> ?? new List<ProjectMemberVm>();
+                }
+                @foreach (var member in projectMembers)
+                {
+                    <option value="@member.UserId">@(member.FullName ?? member.UserName)</option>
+                }
+            </select>
             <button type="button" id="dueSoonToggle" class="btn btn-toggle">
                 <i class="bi bi-alarm"></i> موعد نزدیک
             </button>
@@ -805,6 +815,7 @@
                                          data-status-name="@status.Name"
                                          data-title="@issue.Title"
                                          data-assignee="@((issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص"))"
+                                         data-assignee-id="@(issue.AssignedUserId ?? "unassigned")"
                                          data-key="@issue.IssueKey"
                                          data-due="@dueDate?.ToString("o")"
                                          data-due-soon="@dueSoonFlag.ToString().ToLower()">
@@ -1282,6 +1293,7 @@
         const boardFilters = {
             text: '',
             status: 'all',
+            assignee: 'all',
             dueSoon: false
         };
 
@@ -1319,8 +1331,10 @@
         function applyBoardFilters() {
             const text = boardFilters.text.trim().toLowerCase();
             const status = boardFilters.status;
+            const assignee = boardFilters.assignee;
             const dueSoon = boardFilters.dueSoon;
 
+            // فیلتر کارت‌های اصلی
             document.querySelectorAll('.task-card').forEach(card => {
                 if (!card.dataset.initializedDue) {
                     card.dataset.initializedDue = 'true';
@@ -1330,15 +1344,35 @@
                 }
 
                 const title = (card.dataset.title || '').toLowerCase();
-                const assignee = (card.dataset.assignee || '').toLowerCase();
+                const assigneeName = (card.dataset.assignee || '').toLowerCase();
+                const assigneeId = card.dataset.assigneeId || 'unassigned';
                 const key = (card.dataset.key || '').toLowerCase();
 
-                const matchesText = !text || title.includes(text) || assignee.includes(text) || key.includes(text);
+                const matchesText = !text || title.includes(text) || assigneeName.includes(text) || key.includes(text);
                 const matchesStatus = status === 'all' || card.dataset.statusId === status;
+                const matchesAssignee = assignee === 'all' || 
+                    (assignee === 'unassigned' && assigneeId === 'unassigned') ||
+                    (assignee !== 'unassigned' && assigneeId === assignee);
                 const matchesDue = !dueSoon || card.dataset.dueSoon === 'true';
 
-                const visible = matchesText && matchesStatus && matchesDue;
-                card.classList.toggle('filtered-out', !visible);
+                const visible = matchesText && matchesStatus && matchesAssignee && matchesDue;
+                if (visible) {
+                    card.classList.remove('filtered-out');
+                    card.style.display = '';
+                } else {
+                    card.classList.add('filtered-out');
+                    card.style.display = 'none';
+                }
+            });
+
+            // فیلتر کارت‌های "سبد کارها"
+            document.querySelectorAll('.available-task-item').forEach(item => {
+                const assigneeId = item.dataset.assigneeId || 'unassigned';
+                const matchesAssignee = assignee === 'all' || 
+                    (assignee === 'unassigned' && assigneeId === 'unassigned') ||
+                    (assignee !== 'unassigned' && assigneeId === assignee);
+                
+                item.style.display = matchesAssignee ? '' : 'none';
             });
         }
 
@@ -1353,6 +1387,7 @@
         function registerBoardFilterEvents() {
             const searchInput = document.getElementById('boardSearchInput');
             const statusSelect = document.getElementById('statusFilterSelect');
+            const assigneeSelect = document.getElementById('assigneeFilterSelect');
             const dueToggle = document.getElementById('dueSoonToggle');
 
             if (searchInput) {
@@ -1367,6 +1402,13 @@
                     boardFilters.status = e.target.value || 'all';
                     applyBoardFilters();
                     scrollToStatusColumn(boardFilters.status);
+                });
+            }
+
+            if (assigneeSelect) {
+                assigneeSelect.addEventListener('change', (e) => {
+                    boardFilters.assignee = e.target.value || 'all';
+                    applyBoardFilters();
                 });
             }
 
@@ -2545,8 +2587,9 @@
 
                 let html = '';
                 tasks.forEach(task => {
+                    const assigneeId = task.assignedUserId || 'unassigned';
                     html += `
-                        <div class="available-task-item" data-task-id="${task.id}">
+                        <div class="available-task-item" data-task-id="${task.id}" data-assignee-id="${assigneeId}">
                             <div class="available-task-title">
                                 <a href="/Tasks/Details/${task.id}" onclick="event.stopPropagation();">${escapeHtml(task.title || 'بدون عنوان')}</a>
                             </div>
