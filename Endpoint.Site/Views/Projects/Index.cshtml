@@ -9,6 +9,7 @@
     var pendingSystemInvitations = ViewBag.PendingSystemInvitations as List<ProjectInvitation> ?? new List<ProjectInvitation>();
     var inviterLookup = ViewBag.InviterLookup as Dictionary<string, string> ?? new Dictionary<string, string>();
     var recentNotes = ViewBag.RecentNotes as List<PersonalNote> ?? new List<PersonalNote>();
+    var collaborators = ViewBag.Collaborators as dynamic ?? new List<dynamic>();
 }
 
 <!-- بخش خوش‌آمدگویی -->
@@ -276,6 +277,71 @@
             </div>
         }
 
+        <!-- لیست همکاران -->
+        @{
+            var collaboratorsList = ViewBag.Collaborators as List<Dictionary<string, object>> ?? new List<Dictionary<string, object>>();
+        }
+        @if (collaboratorsList.Any())
+        {
+            <div class="sidebar-card mb-4">
+                <div class="sidebar-card-header">
+                    <h5 class="sidebar-card-title">
+                        <i class="bi bi-people-fill text-success me-2"></i>
+                        همکاران من
+                        <span class="badge bg-success ms-2">@collaboratorsList.Count</span>
+                    </h5>
+                </div>
+                <div class="sidebar-card-body">
+                    @foreach (var collaborator in collaboratorsList.Take(10))
+                    {
+                        <div class="collaborator-item mb-2">
+                            <div class="d-flex align-items-center">
+                                <div class="collaborator-avatar me-2">
+                                    <i class="bi bi-person-circle text-primary"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <p class="mb-0 fw-semibold small">@collaborator["DisplayName"]</p>
+                                    @if (collaborator.ContainsKey("Phone") && !string.IsNullOrWhiteSpace(collaborator["Phone"]?.ToString()))
+                                    {
+                                        <small class="text-muted d-block">@collaborator["Phone"]</small>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        @if (collaborator != collaboratorsList.Take(10).Last())
+                        {
+                            <hr class="my-2" />
+                        }
+                    }
+                    @if (collaboratorsList.Count > 10)
+                    {
+                        <a href="/Invitations/MyInvitations" class="btn btn-sm btn-outline-success w-100 mt-2">
+                            مشاهده همه همکاران (@collaboratorsList.Count)
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- پیام عدم وجود همکار -->
+            <div class="sidebar-card mb-4">
+                <div class="sidebar-card-header">
+                    <h5 class="sidebar-card-title">
+                        <i class="bi bi-people text-muted me-2"></i>
+                        همکاران من
+                    </h5>
+                </div>
+                <div class="sidebar-card-body text-center py-3">
+                    <p class="text-muted mb-0 small">هنوز همکاری ندارید</p>
+                    <a href="/Invitations/MyInvitations" class="btn btn-sm btn-outline-success mt-2">
+                        <i class="bi bi-plus me-1"></i>
+                        دعوت همکار جدید
+                    </a>
+                </div>
+            </div>
+        }
+
         <!-- یادداشت‌های اخیر -->
         @if (recentNotes.Any())
         {
@@ -447,6 +513,27 @@
 
     .invitation-item:hover {
         background: #f3f4f6;
+    }
+
+    /* آیتم‌های همکار */
+    .collaborator-item {
+        padding: 0.75rem;
+        background: #f9fafb;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .collaborator-item:hover {
+        background: #f3f4f6;
+    }
+
+    .collaborator-avatar {
+        font-size: 1.5rem;
+        width: 2rem;
+        height: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     /* آیتم‌های یادداشت */

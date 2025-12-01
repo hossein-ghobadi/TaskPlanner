@@ -193,6 +193,58 @@ namespace Endpoint.Site.Controllers
             // 👇 نگهداری در ViewBag برای استفاده در ویو
             ViewBag.UserLookup = users;
 
+            // دریافت لیست همکاران (کاربرانی که دعوت سیستم را قبول کرده‌اند)
+            // کسانی که من دعوتشان دادم و قبول کردند
+            var invitationsISent = await _context.ProjectInvitations
+                .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
+                    i.InviterId == userId && !string.IsNullOrEmpty(i.InviteeId))
+                .Select(i => i.InviteeId)
+                .Distinct()
+                .ToListAsync();
+
+            // کسانی که من دعوتشان را قبول کردم
+            var invitationsIAccepted = await _context.ProjectInvitations
+                .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
+                    i.InviteePhone == phone && !string.IsNullOrEmpty(i.InviteeId))
+                .Select(i => i.InviterId)
+                .Distinct()
+                .ToListAsync();
+
+            // همچنین کسانی که من دعوتشان دادم و با شماره تلفن قبول کردند (اگر InviteeId خالی باشد)
+            var invitationsByPhone = await _context.ProjectInvitations
+                .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
+                    i.InviterId == userId && string.IsNullOrEmpty(i.InviteeId) && !string.IsNullOrEmpty(i.InviteePhone))
+                .ToListAsync();
+
+            // پیدا کردن کاربران با شماره تلفن
+            var phoneNumbers = invitationsByPhone.Select(i => i.InviteePhone).Distinct().ToList();
+            var usersByPhone = await _userManager.Users
+                .Where(u => phoneNumbers.Contains(u.Phone))
+                .Select(u => u.Id)
+                .ToListAsync();
+
+            // ترکیب همه ID های همکاران
+            var collaboratorIds = invitationsISent
+                .Concat(invitationsIAccepted)
+                .Concat(usersByPhone)
+                .Distinct()
+                .Where(id => id != userId && !string.IsNullOrEmpty(id))
+                .ToList();
+
+            // دریافت اطلاعات همکاران
+            var collaborators = await _userManager.Users
+                .Where(u => collaboratorIds.Contains(u.Id))
+                .Select(u => new Dictionary<string, object>
+                {
+                    { "Id", u.Id },
+                    { "DisplayName", !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : (u.UserName ?? "کاربر ناشناس") },
+                    { "Phone", u.Phone ?? "" },
+                    { "Email", u.Email ?? "" }
+                })
+                .ToListAsync();
+
+            ViewBag.Collaborators = collaborators;
+
             var model = new CombinedInvitationsVm
             {
                 ProjectInvitations = projectInvitations,
@@ -210,6 +262,15 @@ namespace Endpoint.Site.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RespondToSystemInvite(int id, bool accept)
         {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var currentUser = await _userManager.FindByIdAsync(currentUserId);
+            
+            if (currentUser == null)
+            {
+                TempData["Error"] = "کاربر یافت نشد.";
+                return RedirectToAction("MyInvitations");
+            }
+
             var invite = await _context.ProjectInvitations.FindAsync(id);
             if (invite == null || invite.ProjectId != null)
             {
@@ -217,8 +278,22 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("MyInvitations");
             }
 
+            // بررسی اینکه دعوت برای کاربر فعلی است
+            if (invite.InviteePhone != currentUser.Phone)
+            {
+                TempData["Error"] = "شما مجاز به پاسخ به این دعوت نیستید.";
+                return RedirectToAction("MyInvitations");
+            }
+
             invite.Status = accept ? InvitationStatus.Accepted : InvitationStatus.Rejected;
             invite.RespondedAt = DateTime.UtcNow;
+            
+            // تنظیم InviteeId در صورت خالی بودن
+            if (string.IsNullOrEmpty(invite.InviteeId))
+            {
+                invite.InviteeId = currentUserId;
+            }
+            
             _context.Update(invite);
             await _context.SaveChangesAsync();
 

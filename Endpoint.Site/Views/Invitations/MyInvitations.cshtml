@@ -346,3 +346,75 @@
         }
     </div>
 </div>
+
+<!-- 👥 لیست همکاران -->
+@{
+    var collaboratorsList = ViewBag.Collaborators as List<Dictionary<string, object>> ?? new List<Dictionary<string, object>>();
+}
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-light fw-bold">
+        <i class="bi bi-people-fill text-success me-2"></i>
+        همکاران من
+        @if (collaboratorsList.Any())
+        {
+            <span class="badge bg-success ms-2">@collaboratorsList.Count</span>
+        }
+    </div>
+    <div class="card-body p-0">
+        @if (collaboratorsList.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>نام</th>
+                            <th>شماره تلفن</th>
+                            <th>ایمیل</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var collaborator in collaboratorsList)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-person-circle text-primary me-2" style="font-size: 1.5rem;"></i>
+                                        <span class="fw-semibold">@collaborator["DisplayName"]</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (collaborator.ContainsKey("Phone") && !string.IsNullOrWhiteSpace(collaborator["Phone"]?.ToString()))
+                                    {
+                                        @collaborator["Phone"]
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (collaborator.ContainsKey("Email") && !string.IsNullOrWhiteSpace(collaborator["Email"]?.ToString()))
+                                    {
+                                        @collaborator["Email"]
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="p-4 text-center">
+                <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
+                <p class="text-muted mt-3 mb-0">هنوز همکاری ندارید</p>
+                <p class="text-muted small">با ارسال دعوت به همکاری، همکاران شما در اینجا نمایش داده می‌شوند</p>
+            </div>
+        }
+    </div>
+</div>

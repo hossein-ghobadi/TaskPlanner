@@ -124,6 +124,58 @@ namespace Endpoint.Site.Controllers
             ViewBag.PendingSystemInvitations = pendingSystemInvitations;
             ViewBag.InviterLookup = inviterLookup;
 
+            // دریافت لیست همکاران (کاربرانی که دعوت سیستم را قبول کرده‌اند)
+            // کسانی که من دعوتشان دادم و قبول کردند
+            var invitationsISent = await _context.ProjectInvitations
+                .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
+                    i.InviterId == userId && !string.IsNullOrEmpty(i.InviteeId))
+                .Select(i => i.InviteeId)
+                .Distinct()
+                .ToListAsync();
+
+            // کسانی که من دعوتشان را قبول کردم
+            var invitationsIAccepted = await _context.ProjectInvitations
+                .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
+                    i.InviteePhone == phone && !string.IsNullOrEmpty(i.InviteeId))
+                .Select(i => i.InviterId)
+                .Distinct()
+                .ToListAsync();
+
+            // همچنین کسانی که من دعوتشان دادم و با شماره تلفن قبول کردند (اگر InviteeId خالی باشد)
+            var invitationsByPhone = await _context.ProjectInvitations
+                .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
+                    i.InviterId == userId && string.IsNullOrEmpty(i.InviteeId) && !string.IsNullOrEmpty(i.InviteePhone))
+                .ToListAsync();
+
+            // پیدا کردن کاربران با شماره تلفن
+            var phoneNumbers = invitationsByPhone.Select(i => i.InviteePhone).Distinct().ToList();
+            var usersByPhone = await _userManager.Users
+                .Where(u => phoneNumbers.Contains(u.Phone))
+                .Select(u => u.Id)
+                .ToListAsync();
+
+            // ترکیب همه ID های همکاران
+            var collaboratorIds = invitationsISent
+                .Concat(invitationsIAccepted)
+                .Concat(usersByPhone)
+                .Distinct()
+                .Where(id => id != userId && !string.IsNullOrEmpty(id))
+                .ToList();
+
+            // دریافت اطلاعات همکاران
+            var collaborators = await _userManager.Users
+                .Where(u => collaboratorIds.Contains(u.Id))
+                .Select(u => new Dictionary<string, object>
+                {
+                    { "Id", u.Id },
+                    { "DisplayName", !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : (u.UserName ?? "کاربر ناشناس") },
+                    { "Phone", u.Phone ?? "" },
+                    { "Email", u.Email ?? "" }
+                })
+                .ToListAsync();
+
+            ViewBag.Collaborators = collaborators;
+
             // دریافت یادداشت‌های شخصی اخیر
             var recentNotes = await _context.PersonalNotes
                 .Where(n => n.UserId == userId)
@@ -182,6 +234,72 @@ namespace Endpoint.Site.Controllers
                     ProgressPercentage = progressPercentage,
                     CategoryTaskCounts = categoryTaskCounts
                 };
+                
+                // دریافت لیست همکاران برای دعوت به پروژه
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var currentUser = await _userManager.FindByIdAsync(currentUserId);
+                var phone = currentUser?.Phone;
+                
+                // کسانی که من دعوتشان دادم و قبول کردند
+                var invitationsISent = await _context.ProjectInvitations
+                    .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
+                        i.InviterId == currentUserId && !string.IsNullOrEmpty(i.InviteeId))
+                    .Select(i => i.InviteeId)
+                    .Distinct()
+                    .ToListAsync();
+
+                // کسانی که من دعوتشان را قبول کردم
+                var invitationsIAccepted = await _context.ProjectInvitations
+                    .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
+                        i.InviteePhone == phone && !string.IsNullOrEmpty(i.InviteeId))
+                    .Select(i => i.InviterId)
+                    .Distinct()
+                    .ToListAsync();
+
+                // همچنین کسانی که من دعوتشان دادم و با شماره تلفن قبول کردند
+                var invitationsByPhone = await _context.ProjectInvitations
+                    .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
+                        i.InviterId == currentUserId && string.IsNullOrEmpty(i.InviteeId) && !string.IsNullOrEmpty(i.InviteePhone))
+                    .ToListAsync();
+
+                var phoneNumbers = invitationsByPhone.Select(i => i.InviteePhone).Distinct().ToList();
+                var usersByPhone = await _userManager.Users
+                    .Where(u => phoneNumbers.Contains(u.Phone))
+                    .Select(u => u.Id)
+                    .ToListAsync();
+
+                // ترکیب همه ID های همکاران
+                var collaboratorIds = invitationsISent
+                    .Concat(invitationsIAccepted)
+                    .Concat(usersByPhone)
+                    .Distinct()
+                    .Where(id => id != currentUserId && !string.IsNullOrEmpty(id))
+                    .ToList();
+
+                // دریافت اطلاعات همکاران
+                var collaborators = await _userManager.Users
+                    .Where(u => collaboratorIds.Contains(u.Id))
+                    .Select(u => new Dictionary<string, object>
+                    {
+                        { "Id", u.Id },
+                        { "DisplayName", !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : (u.UserName ?? "کاربر ناشناس") },
+                        { "Phone", u.Phone ?? "" },
+                        { "Email", u.Email ?? "" }
+                    })
+                    .ToListAsync();
+
+                // فیلتر کردن همکارانی که قبلاً عضو پروژه هستند یا دعوت در انتظار دارند
+                var existingMemberIds = vm.Members.Select(m => m.UserId).ToList();
+                var pendingInviteePhones = vm.Invitations.Where(i => i.Status == InvitationStatus.Pending)
+                    .Select(i => i.InviteePhone)
+                    .ToList();
+                
+                var availableCollaborators = collaborators
+                    .Where(c => !existingMemberIds.Contains(c["Id"].ToString()) && 
+                                !pendingInviteePhones.Contains(c["Phone"].ToString()))
+                    .ToList();
+
+                ViewBag.Collaborators = availableCollaborators;
                 
                 return View(vm);
             }
@@ -510,6 +628,50 @@ namespace Endpoint.Site.Controllers
             {
                 await _projectCommandService.InviteUserToProjectAsync(projectId, phone, inviterId);
                 TempData["InviteSuccess"] = $"دعوت برای شماره {phone} ارسال شد.";
+            }
+            catch (ArgumentException ex)
+            {
+                TempData["InviteError"] = ex.Message;
+            }
+            catch (InvalidOperationException ex)
+            {
+                if (ex.Message.Contains("قبلاً دعوت"))
+                    TempData["InviteWarning"] = ex.Message;
+                else
+                    TempData["InviteError"] = ex.Message;
+            }
+
+            return RedirectToAction("Details", new { id = projectId });
+        }
+
+        /// <summary>
+        /// دعوت همکار به پروژه (از طریق ID همکار)
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> InviteCollaboratorToProject(int projectId, string collaboratorId)
+        {
+            var inviterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(collaboratorId))
+            {
+                TempData["InviteError"] = "شناسه همکار نامعتبر است.";
+                return RedirectToAction("Details", new { id = projectId });
+            }
+
+            // دریافت اطلاعات همکار
+            var collaborator = await _userManager.FindByIdAsync(collaboratorId);
+            if (collaborator == null || string.IsNullOrWhiteSpace(collaborator.Phone))
+            {
+                TempData["InviteError"] = "همکار مورد نظر یافت نشد یا شماره تلفن ندارد.";
+                return RedirectToAction("Details", new { id = projectId });
+            }
+
+            try
+            {
+                // استفاده از متد موجود برای دعوت
+                await _projectCommandService.InviteUserToProjectAsync(projectId, collaborator.Phone, inviterId);
+                TempData["InviteSuccess"] = $"دعوت برای {collaborator.FullName ?? collaborator.UserName ?? collaborator.Phone} ارسال شد.";
             }
             catch (ArgumentException ex)
             {

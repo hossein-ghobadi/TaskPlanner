@@ -151,6 +151,7 @@
         flex-direction: column;
         position: relative;
         overflow: visible;
+        align-items: stretch;
     }
     .kanban-column.column-dragging {
         opacity: 0.6;
@@ -170,11 +171,31 @@
     }
     .kanban-column-body {
         padding: 0.5rem;
-        flex: 1;
-        min-height: 300px;
-        overflow-y: auto;
-        overflow-x: hidden;
+        flex: 0 0 auto;
+        overflow: hidden !important;
+        overflow-y: hidden !important;
+        overflow-x: hidden !important;
         position: relative;
+        max-height: none !important;
+        height: auto !important;
+    }
+    .kanban-column-body.drop-zone {
+        overflow: hidden !important;
+        overflow-y: hidden !important;
+        overflow-x: hidden !important;
+        max-height: none !important;
+        height: auto !important;
+    }
+    /* مخفی کردن scrollbar در تمام مرورگرها */
+    .kanban-column-body::-webkit-scrollbar,
+    .kanban-column-body.drop-zone::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+    .kanban-column-body {
+        -ms-overflow-style: none !important;
+        scrollbar-width: none !important;
     }
     .task-card {
         background: white;
@@ -573,7 +594,6 @@
         color: #6c757d;
     }
     .drop-zone {
-        min-height: 300px;
         display: flex;
         flex-direction: column;
     }
@@ -588,17 +608,35 @@
         padding: 2rem;
     }
     .quick-add-column-btn {
-        background: rgba(13,110,253,0.1);
-        border: 1px solid rgba(13,110,253,0.2);
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(13,110,253,0.3);
         color: #0d6efd;
         padding: 0.25rem 0.5rem;
         border-radius: 4px;
         font-size: 0.8rem;
         transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        backdrop-filter: blur(4px);
     }
     .quick-add-column-btn:hover {
         background: #0d6efd;
         color: #fff;
+        box-shadow: 0 2px 6px rgba(13, 110, 253, 0.4);
+    }
+    .delete-status-btn {
+        background: rgba(255, 255, 255, 0.95) !important;
+        border: 1px solid rgba(220, 53, 69, 0.3) !important;
+        color: #dc3545 !important;
+        border-radius: 4px;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        backdrop-filter: blur(4px);
+        opacity: 1 !important;
+    }
+    .delete-status-btn:hover {
+        background: #dc3545 !important;
+        color: #fff !important;
+        box-shadow: 0 2px 6px rgba(220, 53, 69, 0.4);
     }
     .issue-type-icon {
         font-size: 1rem;
@@ -804,11 +842,10 @@
                                 @if (Model.Status != SprintStatus.Completed && !status.IsDefault && !status.IsFinal)
                                 {
                                     <button type="button"
-                                            class="btn btn-sm p-0 px-1 text-white"
+                                            class="btn btn-sm p-0 px-1 delete-status-btn"
                                             data-status-name="@status.Name"
                                             title="حذف وضعیت"
-                                            onclick="event.preventDefault(); event.stopPropagation(); deleteStatus(@status.Id, this.dataset.statusName);"
-                                            style="background: transparent; border: none; opacity: 0.8;">
+                                            onclick="event.preventDefault(); event.stopPropagation(); deleteStatus(@status.Id, this.dataset.statusName);">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 }

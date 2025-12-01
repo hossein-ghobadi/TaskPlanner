@@ -537,6 +537,48 @@
         </div>
         <div class="card-body-modern">
             <div class="row">
+                <!-- لیست همکاران برای دعوت سریع -->
+                @{
+                    var collaboratorsList = ViewBag.Collaborators as List<Dictionary<string, object>> ?? new List<Dictionary<string, object>>();
+                }
+                @if (collaboratorsList.Any())
+                {
+                    <div class="col-12 mb-4">
+                        <h6 class="mb-3 fw-bold">
+                            <i class="bi bi-people-fill me-2 text-success"></i>دعوت همکاران
+                            <span class="badge bg-success ms-2">@collaboratorsList.Count</span>
+                        </h6>
+                        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3" style="max-height: 300px; overflow-y: auto;">
+                            @foreach (var collaborator in collaboratorsList)
+                            {
+                                <div class="col">
+                                    <div class="d-flex justify-content-between align-items-center p-3" style="background: #f9fafb; border-radius: 10px; border: 1px solid #e5e7eb;">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="bi bi-person-circle text-primary" style="font-size: 1.5rem;"></i>
+                                            <div>
+                                                <div class="fw-bold small">@collaborator["DisplayName"]</div>
+                                                @if (!string.IsNullOrWhiteSpace(collaborator["Phone"]?.ToString()))
+                                                {
+                                                    <small class="text-muted d-block">@collaborator["Phone"]</small>
+                                                }
+                                            </div>
+                                        </div>
+                                        <form asp-controller="Projects" asp-action="InviteCollaboratorToProject" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="projectId" value="@Model.Id" />
+                                            <input type="hidden" name="collaboratorId" value="@collaborator["Id"]" />
+                                            <button type="submit" class="btn btn-sm btn-success" title="دعوت به پروژه">
+                                                <i class="bi bi-person-plus me-1"></i>دعوت
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    <hr class="my-3" />
+                }
+                
                 <!-- فرم ارسال دعوت -->
                 <div class="col-lg-6 mb-4 mb-lg-0">
                     <h6 class="mb-3 fw-bold">
