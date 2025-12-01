@@ -151,7 +151,6 @@
         flex-direction: column;
         position: relative;
         overflow: visible;
-        align-items: stretch;
     }
     .kanban-column.column-dragging {
         opacity: 0.6;
@@ -171,31 +170,11 @@
     }
     .kanban-column-body {
         padding: 0.5rem;
-        flex: 0 0 auto;
-        overflow: hidden !important;
-        overflow-y: hidden !important;
-        overflow-x: hidden !important;
+        flex: 1;
+        min-height: 300px;
+        overflow-y: auto;
+        overflow-x: hidden;
         position: relative;
-        max-height: none !important;
-        height: auto !important;
-    }
-    .kanban-column-body.drop-zone {
-        overflow: hidden !important;
-        overflow-y: hidden !important;
-        overflow-x: hidden !important;
-        max-height: none !important;
-        height: auto !important;
-    }
-    /* مخفی کردن scrollbar در تمام مرورگرها */
-    .kanban-column-body::-webkit-scrollbar,
-    .kanban-column-body.drop-zone::-webkit-scrollbar {
-        display: none !important;
-        width: 0 !important;
-        height: 0 !important;
-    }
-    .kanban-column-body {
-        -ms-overflow-style: none !important;
-        scrollbar-width: none !important;
     }
     .task-card {
         background: white;
@@ -594,6 +573,7 @@
         color: #6c757d;
     }
     .drop-zone {
+        min-height: 300px;
         display: flex;
         flex-direction: column;
     }
