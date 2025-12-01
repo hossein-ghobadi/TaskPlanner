@@ -785,7 +785,8 @@
                             @{
                                 var cards = Model.SprintIssues
                                 .Where(t => (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id)
-                                .OrderBy(t => t.Priority)
+                                .OrderByDescending(t => t.UpdatedAt)
+                                .ThenBy(t => t.Priority)
                                 .ToList();
                             }
                             @if (cards.Any())
@@ -793,7 +794,8 @@
                                 foreach (var issue in cards)
                                 {
                                     var dueDate = issue.DueDate;
-                                    var dueSoonFlag = dueDate.HasValue && dueDate.Value >= DateTime.UtcNow && dueDate.Value <= DateTime.UtcNow.AddDays(3);
+                                    var now = DateTime.UtcNow;
+                                    var dueSoonFlag = dueDate.HasValue && dueDate.Value >= now && dueDate.Value <= now.AddDays(3);
                                     <div class="task-card"
                                          draggable="true"
                                          ondragstart="onDragIssue(event, @issue.Id)"
@@ -1009,7 +1011,7 @@
         {
             <div class="available-tasks-column">
                 <div class="available-tasks-header">
-                    <span>کارهای آماده</span>
+                    <span>سبد کارها</span>
                     <span class="badge bg-primary">@Model.TotalTasks</span>
                 </div>
                 <div id="availableTasksContainer" class="available-tasks-body">
@@ -2117,10 +2119,17 @@
                     if (dropZone) {
                         const emptyMessage = dropZone.querySelector('.empty-message');
                         if (emptyMessage) {
-                            emptyMessage.style.display = 'none';
+                            emptyMessage.remove();
                         }
                         
-                        dropZone.appendChild(draggedCard);
+                        // قرار دادن کارت در ابتدای لیست (قبل از همه کارت‌های دیگر)
+                        const firstCard = dropZone.querySelector('.task-card:not(.dragging)');
+                        if (firstCard && firstCard !== draggedCard) {
+                            dropZone.insertBefore(draggedCard, firstCard);
+                        } else {
+                            // اگر کارت دیگری وجود ندارد یا این کارت اولین است، از prepend استفاده کن
+                            dropZone.insertBefore(draggedCard, dropZone.firstChild);
+                        }
                     }
                     
                     if (sourceColumn && sourceColumn !== dropZone) {

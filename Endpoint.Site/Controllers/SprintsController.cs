@@ -738,6 +738,9 @@ namespace Endpoint.Site.Controllers
                 return Json(new { success = false, message = "این تسک قبلاً در اسپرینت اضافه شده است." });
             }
 
+            // به‌روزرسانی UpdatedAt کارت تا در ابتدای لیست قرار بگیرد
+            task.UpdatedAt = DateTime.UtcNow;
+
             var sprintTask = new SprintTask
             {
                 SprintId = sprintId,
