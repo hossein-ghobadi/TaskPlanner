@@ -59,30 +59,62 @@ namespace Endpoint.Site.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RespondToInvite(int id, bool accept)
         {
-            var invite = await _context.ProjectInvitations.FindAsync(id);
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var currentUser = await _userManager.FindByIdAsync(currentUserId);
+            
+            if (currentUser == null)
+            {
+                TempData["Error"] = "کاربر یافت نشد.";
+                return RedirectToAction("Index", "Projects");
+            }
+
+            var invite = await _context.ProjectInvitations
+                .Include(i => i.Project)
+                .FirstOrDefaultAsync(i => i.Id == id);
+                
             if (invite == null)
             {
                 TempData["Error"] = "دعوت پروژه یافت نشد.";
-                return RedirectToAction("MyInvitations", "Invitations");
+                return RedirectToAction("Index", "Projects");
+            }
+
+            // بررسی اینکه دعوت برای کاربر فعلی است
+            if (invite.InviteePhone != currentUser.Phone)
+            {
+                TempData["Error"] = "شما مجاز به پاسخ به این دعوت نیستید.";
+                return RedirectToAction("Index", "Projects");
             }
 
             invite.Status = accept ? InvitationStatus.Accepted : InvitationStatus.Rejected;
             invite.RespondedAt = DateTime.UtcNow;
+            
+            // تنظیم InviteeId در صورت خالی بودن
+            if (string.IsNullOrEmpty(invite.InviteeId))
+            {
+                invite.InviteeId = currentUserId;
+            }
 
             if (accept && invite.ProjectId != null)
             {
-                _context.ProjectMembers.Add(new ProjectMember
+                // بررسی اینکه کاربر قبلاً عضو پروژه نیست
+                var existingMember = await _context.ProjectMembers
+                    .FirstOrDefaultAsync(m => m.ProjectId == invite.ProjectId.Value && m.UserId == currentUserId);
+                
+                if (existingMember == null)
                 {
-                    ProjectId = invite.ProjectId.Value,
-                    UserId = invite.InviteeId
-                });
+                    _context.ProjectMembers.Add(new ProjectMember
+                    {
+                        ProjectId = invite.ProjectId.Value,
+                        UserId = currentUserId
+                    });
+                }
             }
 
             _context.Update(invite);
             await _context.SaveChangesAsync();
 
             TempData["Success"] = accept ? "دعوت پروژه پذیرفته شد ✅" : "دعوت پروژه رد شد ❌";
-            return RedirectToAction("MyInvitations", "Invitations");
+            return RedirectToAction("Index", "Projects");
         }
 
 

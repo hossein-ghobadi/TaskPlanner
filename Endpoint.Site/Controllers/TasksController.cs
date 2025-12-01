@@ -755,6 +755,18 @@ namespace Endpoint.Site.Controllers
             if (!hasAccess)
                 return Forbid();
 
+            // 🔒 بررسی دسترسی: فقط مسئول کار و سازنده پروژه می‌توانند کارت را انتقال دهند
+            var isAssignee = !string.IsNullOrEmpty(task.AssignedUserId) && 
+                            string.Equals(task.AssignedUserId, userId, StringComparison.OrdinalIgnoreCase);
+            var isProjectCreator = task.Project != null && 
+                                  !string.IsNullOrEmpty(task.Project.CreatorUserId) &&
+                                  string.Equals(task.Project.CreatorUserId, userId, StringComparison.OrdinalIgnoreCase);
+            
+            if (!isAssignee && !isProjectCreator)
+            {
+                return BadRequest("فقط مسئول کار و سازنده پروژه می‌توانند کارت را بین ستون‌ها انتقال دهند.");
+            }
+
             int? fromStatusId = task.StatusId; // ممکن است null باشد
 
             // اگر toStatusId null است، وضعیت را حذف می‌کنیم
