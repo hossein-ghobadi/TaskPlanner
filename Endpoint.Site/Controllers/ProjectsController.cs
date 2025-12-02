@@ -1576,8 +1576,11 @@ namespace Endpoint.Site.Controllers
 
         // 📈 API برای دریافت داده‌های نمودار زمانی
         [HttpGet]
-        public async Task<IActionResult> GetTaskTimeSeriesData(int? projectId = null, string? assignedUserId = null, int days = 30)
+        public async Task<IActionResult> GetTaskTimeSeriesData(int? projectId = null, string? assignedUserId = null, string? startDate = null, string? endDate = null, string dateType = "CreatedAt")
         {
+            System.Diagnostics.Debug.WriteLine($"=== GetTaskTimeSeriesData called ===");
+            System.Diagnostics.Debug.WriteLine($"Parameters: startDate={startDate}, endDate={endDate}, dateType={dateType}, projectId={projectId}, assignedUserId={assignedUserId}");
+            
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             
             // دریافت پروژه‌های کاربر
@@ -1586,11 +1589,130 @@ namespace Endpoint.Site.Controllers
                 .Select(p => p.Id)
                 .ToListAsync();
 
-            var startDate = DateTime.UtcNow.AddDays(-days);
+            DateTime startDateValue;
+            DateTime endDateValue;
+
+            // تابع کمکی برای تبدیل اعداد فارسی به انگلیسی
+            string ConvertPersianToEnglishNumbers(string input)
+            {
+                if (string.IsNullOrEmpty(input)) return input;
+                
+                var persianDigits = new[] { '۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹' };
+                var englishDigits = new[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+                
+                for (int i = 0; i < persianDigits.Length; i++)
+                {
+                    input = input.Replace(persianDigits[i], englishDigits[i]);
+                }
+                return input;
+            }
             
-            // فیلتر بر اساس پروژه
-            var tasksQuery = _context.TaskItems
-                .Where(t => userProjectIds.Contains(t.ProjectId) && t.CreatedAt >= startDate);
+            // تبدیل تاریخ شمسی به میلادی
+            if (!string.IsNullOrEmpty(startDate))
+            {
+                try
+                {
+                    // تبدیل اعداد فارسی به انگلیسی
+                    var normalizedStartDate = ConvertPersianToEnglishNumbers(startDate);
+                    System.Diagnostics.Debug.WriteLine($"Parsing startDate: '{startDate}' -> '{normalizedStartDate}'");
+                    
+                    var pc = new System.Globalization.PersianCalendar();
+                    var parts = normalizedStartDate.Split('/');
+                    System.Diagnostics.Debug.WriteLine($"StartDate parts: [{string.Join(", ", parts)}]");
+                    if (parts.Length == 3)
+                    {
+                        var year = int.Parse(parts[0]);
+                        var month = int.Parse(parts[1]);
+                        var day = int.Parse(parts[2]);
+                        System.Diagnostics.Debug.WriteLine($"Parsed: Year={year}, Month={month}, Day={day}");
+                        // تبدیل مستقیم به DateTime بدون timezone
+                        var gregorianDate = pc.ToDateTime(year, month, day, 0, 0, 0, 0);
+                        System.Diagnostics.Debug.WriteLine($"Gregorian date: {gregorianDate:yyyy-MM-dd}");
+                        // تبدیل به UTC بدون تغییر تاریخ
+                        startDateValue = new DateTime(gregorianDate.Year, gregorianDate.Month, gregorianDate.Day, 0, 0, 0, DateTimeKind.Utc);
+                        System.Diagnostics.Debug.WriteLine($"Final startDateValue: {startDateValue:yyyy-MM-dd}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Invalid startDate format, using default");
+                        startDateValue = DateTime.UtcNow.AddDays(-30).Date;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error parsing startDate: {startDate}, Error: {ex.Message}");
+                    startDateValue = DateTime.UtcNow.AddDays(-30).Date;
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"startDate is empty, using default");
+                startDateValue = DateTime.UtcNow.AddDays(-30).Date;
+            }
+
+            if (!string.IsNullOrEmpty(endDate))
+            {
+                try
+                {
+                    // تبدیل اعداد فارسی به انگلیسی
+                    var normalizedEndDate = ConvertPersianToEnglishNumbers(endDate);
+                    System.Diagnostics.Debug.WriteLine($"Parsing endDate: '{endDate}' -> '{normalizedEndDate}'");
+                    
+                    var pc = new System.Globalization.PersianCalendar();
+                    var parts = normalizedEndDate.Split('/');
+                    System.Diagnostics.Debug.WriteLine($"EndDate parts: [{string.Join(", ", parts)}]");
+                    if (parts.Length == 3)
+                    {
+                        var year = int.Parse(parts[0]);
+                        var month = int.Parse(parts[1]);
+                        var day = int.Parse(parts[2]);
+                        System.Diagnostics.Debug.WriteLine($"Parsed: Year={year}, Month={month}, Day={day}");
+                        // تبدیل مستقیم به DateTime بدون timezone
+                        var gregorianDate = pc.ToDateTime(year, month, day, 23, 59, 59, 999);
+                        System.Diagnostics.Debug.WriteLine($"Gregorian date: {gregorianDate:yyyy-MM-dd}");
+                        // تبدیل به UTC بدون تغییر تاریخ - استفاده از آخرین لحظه همان روز
+                        endDateValue = new DateTime(gregorianDate.Year, gregorianDate.Month, gregorianDate.Day, 23, 59, 59, 999, DateTimeKind.Utc);
+                        System.Diagnostics.Debug.WriteLine($"Final endDateValue: {endDateValue:yyyy-MM-dd}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Invalid endDate format, using default");
+                        endDateValue = DateTime.UtcNow.Date.AddDays(1).AddTicks(-1);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error parsing endDate: {endDate}, Error: {ex.Message}");
+                    endDateValue = DateTime.UtcNow.Date.AddDays(1).AddTicks(-1);
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"endDate is empty, using default");
+                endDateValue = DateTime.UtcNow.Date.AddDays(1).AddTicks(-1);
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"Date Range: {startDateValue:yyyy-MM-dd HH:mm:ss} to {endDateValue:yyyy-MM-dd HH:mm:ss}");
+            
+            // فیلتر بر اساس پروژه و تاریخ (بر اساس معیار انتخاب شده)
+            IQueryable<TaskItem> tasksQuery = _context.TaskItems
+                .Where(t => userProjectIds.Contains(t.ProjectId));
+
+            // فیلتر بر اساس معیار زمانی انتخاب شده
+            if (dateType == "StartDate")
+            {
+                tasksQuery = tasksQuery.Where(t => t.StartDate >= startDateValue && t.StartDate <= endDateValue);
+            }
+            else if (dateType == "DueDate")
+            {
+                tasksQuery = tasksQuery.Where(t => t.DueDate.HasValue && 
+                                                   t.DueDate.Value >= startDateValue && 
+                                                   t.DueDate.Value <= endDateValue);
+            }
+            else // CreatedAt (پیش‌فرض)
+            {
+                tasksQuery = tasksQuery.Where(t => t.CreatedAt >= startDateValue && t.CreatedAt <= endDateValue);
+            }
 
             if (projectId.HasValue && userProjectIds.Contains(projectId.Value))
             {
@@ -1603,13 +1725,24 @@ namespace Endpoint.Site.Controllers
                 tasksQuery = tasksQuery.Where(t => t.AssignedUserId == assignedUserId);
             }
 
-            var tasks = await tasksQuery
-                .Select(t => new { t.ProjectId, t.CreatedAt })
-                .ToListAsync();
+            // انتخاب فیلد تاریخ بر اساس معیار
+            var tasks = dateType switch
+            {
+                "StartDate" => await tasksQuery
+                    .Select(t => new { t.ProjectId, Date = t.StartDate })
+                    .ToListAsync(),
+                "DueDate" => await tasksQuery
+                    .Where(t => t.DueDate.HasValue)
+                    .Select(t => new { t.ProjectId, Date = t.DueDate!.Value })
+                    .ToListAsync(),
+                _ => await tasksQuery
+                    .Select(t => new { t.ProjectId, Date = t.CreatedAt })
+                    .ToListAsync()
+            };
 
             // گروه‌بندی بر اساس تاریخ و پروژه
             var timeSeriesDataByProject = tasks
-                .GroupBy(t => new { Date = t.CreatedAt.Date, ProjectId = t.ProjectId })
+                .GroupBy(t => new { Date = t.Date.Date, ProjectId = t.ProjectId })
                 .Select(g => new
                 {
                     Date = g.Key.Date,
@@ -1621,10 +1754,16 @@ namespace Endpoint.Site.Controllers
 
             // ایجاد لیست کامل تاریخ‌ها
             var allDates = new List<DateTime>();
-            for (var date = startDate.Date; date <= DateTime.UtcNow.Date; date = date.AddDays(1))
+            var currentDate = startDateValue.Date;
+            var endDateOnly = endDateValue.Date;
+            
+            while (currentDate <= endDateOnly)
             {
-                allDates.Add(date);
+                allDates.Add(currentDate);
+                currentDate = currentDate.AddDays(1);
             }
+            
+            System.Diagnostics.Debug.WriteLine($"Total dates generated: {allDates.Count}, First: {allDates.FirstOrDefault():yyyy-MM-dd}, Last: {allDates.LastOrDefault():yyyy-MM-dd}");
 
             // ساخت داده‌های نمودار
             var result = new List<TaskTimeSeriesData>();
@@ -1669,9 +1808,16 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
+            var responseDates = result.Select(r => r.Date).ToList();
+            System.Diagnostics.Debug.WriteLine($"Response dates count: {responseDates.Count}");
+            if (responseDates.Any())
+            {
+                System.Diagnostics.Debug.WriteLine($"First date: {responseDates.First():yyyy-MM-dd}, Last date: {responseDates.Last():yyyy-MM-dd}");
+            }
+            
             return Json(new
             {
-                dates = result.Select(r => r.Date).ToList(),
+                dates = responseDates,
                 projects = projectIds.Select(id => new
                 {
                     id = id,

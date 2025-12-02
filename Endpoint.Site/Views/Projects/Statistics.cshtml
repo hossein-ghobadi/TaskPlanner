@@ -4,117 +4,407 @@
     Layout = "/Views/Shared/_Layout.cshtml";
 }
 
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-12">
-            <h2 class="mb-3">
-                <i class="bi bi-bar-chart-fill me-2"></i>
-                گزارش آماری پروژه‌ها
-            </h2>
-        </div>
-    </div>
+<style>
+    .stats-page {
+        background: #f8f9fa;
+        min-height: 100vh;
+        padding: 2rem 0;
+    }
 
-    @if (Model.Projects.Any())
-    {
-        <!-- نمودار میله‌ای -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">
-                            <i class="bi bi-graph-up me-2"></i>
-                            نمودار تعداد کارها در هر پروژه
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="tasksChart" style="max-height: 400px;"></canvas>
+    .page-header {
+        background: #495057;
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+
+    .page-header h2 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border: none;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    }
+
+    .stat-card-header {
+        background: #495057;
+        color: white;
+        padding: 1.25rem 1.5rem;
+        border: none;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .stat-card-header.success {
+        background: #28a745;
+    }
+
+    .stat-card-header.warning {
+        background: #ffc107;
+        color: #212529;
+    }
+
+    .stat-card-header.info {
+        background: #17a2b8;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        border: 2px solid #e9ecef;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+
+    .summary-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .summary-card.high {
+        background: #28a745;
+        color: white;
+        border-color: #28a745;
+    }
+
+    .summary-card.medium {
+        background: #17a2b8;
+        color: white;
+        border-color: #17a2b8;
+    }
+
+    .summary-card.low {
+        background: #ffc107;
+        color: #212529;
+        border-color: #ffc107;
+    }
+
+    .summary-card.risk {
+        background: #dc3545;
+        color: white;
+        border-color: #dc3545;
+    }
+
+    .summary-card h4 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .summary-card small {
+        font-size: 0.9rem;
+        opacity: 0.95;
+    }
+
+    .project-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        border: 2px solid #e9ecef;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        height: 100%;
+    }
+
+    .project-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        border-color: #667eea;
+    }
+
+    .project-card-title {
+        font-weight: 600;
+        font-size: 1rem;
+        color: #2d3748;
+        margin-bottom: 0.5rem;
+    }
+
+    .project-card-title a {
+        color: #2d3748;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+
+    .project-card-title a:hover {
+        color: #495057;
+    }
+
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .progress-modern {
+        height: 28px;
+        border-radius: 15px;
+        background: #e9ecef;
+        overflow: hidden;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .progress-bar-modern {
+        height: 100%;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: width 0.6s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .stats-table {
+        background: white;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    .stats-table thead {
+        background: #495057;
+        color: white;
+    }
+
+    .stats-table thead th {
+        border: none;
+        padding: 1rem;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .stats-table tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .stats-table tbody tr:hover {
+        background: #f8f9fa;
+        transform: scale(1.01);
+    }
+
+    .stats-table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .filter-controls {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .filter-controls select {
+        border-radius: 8px;
+        border: 2px solid #e9ecef;
+        padding: 0.5rem 1rem;
+        transition: all 0.3s ease;
+        background: white;
+    }
+
+    .filter-controls select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+
+    .badge-modern {
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    .task-stats {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .task-stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .empty-state {
+        background: white;
+        border-radius: 15px;
+        padding: 4rem 2rem;
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: #cbd5e0;
+        margin-bottom: 1rem;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .stat-card, .summary-card, .project-card {
+        animation: fadeIn 0.6s ease;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 400px;
+        padding: 1rem;
+    }
+
+    .date-filter-btn {
+        border-radius: 6px;
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+        transition: all 0.2s ease;
+    }
+
+    .date-filter-btn:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .date-filter-btn.active {
+        background-color: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.8);
+        font-weight: 600;
+    }
+</style>
+
+<div class="stats-page">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="page-header">
+            <h2>
+                <i class="bi bi-bar-chart-fill me-2"></i>
+                داشبورد آماری پروژه‌ها
+            </h2>
+            <p class="mb-0 mt-2 opacity-90">نمای کلی از وضعیت و عملکرد پروژه‌های شما</p>
+        </div>
+
+        @if (Model.Projects.Any())
+        {
+            <!-- نمودار میله‌ای -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <i class="bi bi-graph-up-arrow me-2"></i>
+                            توزیع کارها در پروژه‌ها
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="chart-container">
+                                <canvas id="tasksChart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- احتمال موفقیت پروژه‌ها -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-warning text-dark">
-                        <h5 class="mb-0">
+            <!-- احتمال موفقیت پروژه‌ها -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="stat-card">
+                        <div class="stat-card-header warning">
                             <i class="bi bi-speedometer2 me-2"></i>
-                            وضعیت احتمال موفقیت و شکست پروژه‌ها
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        @{
-                            var highSuccess = Model.Projects.Count(p => p.SuccessProbability >= 80);
-                            var mediumSuccess = Model.Projects.Count(p => p.SuccessProbability >= 50 && p.SuccessProbability < 80);
-                            var lowSuccess = Model.Projects.Count(p => p.SuccessProbability >= 30 && p.SuccessProbability < 50);
-                            var atRisk = Model.Projects.Count(p => p.SuccessProbability < 30);
-                        }
-                        <div class="row mb-3">
-                            <div class="col-md-3 col-sm-6 mb-2">
-                                <div class="card bg-success text-white">
-                                    <div class="card-body text-center">
-                                        <h4 class="mb-0">@highSuccess</h4>
-                                        <small>موفقیت بالا (≥80%)</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-2">
-                                <div class="card bg-info text-white">
-                                    <div class="card-body text-center">
-                                        <h4 class="mb-0">@mediumSuccess</h4>
-                                        <small>موفقیت متوسط (50-79%)</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-2">
-                                <div class="card bg-warning text-dark">
-                                    <div class="card-body text-center">
-                                        <h4 class="mb-0">@lowSuccess</h4>
-                                        <small>موفقیت پایین (30-49%)</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-2">
-                                <div class="card bg-danger text-white">
-                                    <div class="card-body text-center">
-                                        <h4 class="mb-0">@atRisk</h4>
-                                        <small>در معرض شکست (&lt;30%)</small>
-                                    </div>
-                                </div>
-                            </div>
+                            تحلیل احتمال موفقیت پروژه‌ها
                         </div>
-                        <div class="row">
-                            @foreach (var project in Model.Projects.OrderByDescending(p => p.SuccessProbability))
-                            {
-                                var badgeClass = project.SuccessProbability >= 80 ? "bg-success" 
-                                    : project.SuccessProbability >= 50 ? "bg-info" 
-                                    : project.SuccessProbability >= 30 ? "bg-warning" 
-                                    : "bg-danger";
-                                
-                                var progressBarClass = project.SuccessProbability >= 80 ? "bg-success" 
-                                    : project.SuccessProbability >= 50 ? "bg-info" 
-                                    : project.SuccessProbability >= 30 ? "bg-warning" 
-                                    : "bg-danger";
+                        <div class="card-body p-4">
+                            @{
+                                var highSuccess = Model.Projects.Count(p => p.SuccessProbability >= 80);
+                                var mediumSuccess = Model.Projects.Count(p => p.SuccessProbability >= 50 && p.SuccessProbability < 80);
+                                var lowSuccess = Model.Projects.Count(p => p.SuccessProbability >= 30 && p.SuccessProbability < 50);
+                                var atRisk = Model.Projects.Count(p => p.SuccessProbability < 30);
+                            }
+                            <div class="row mb-4">
+                                <div class="col-md-3 col-sm-6 mb-3">
+                                    <div class="summary-card high">
+                                        <h4>@highSuccess</h4>
+                                        <small><i class="bi bi-check-circle-fill me-1"></i>موفقیت بالا (≥80%)</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6 mb-3">
+                                    <div class="summary-card medium">
+                                        <h4>@mediumSuccess</h4>
+                                        <small><i class="bi bi-info-circle-fill me-1"></i>موفقیت متوسط (50-79%)</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6 mb-3">
+                                    <div class="summary-card low">
+                                        <h4>@lowSuccess</h4>
+                                        <small><i class="bi bi-exclamation-triangle-fill me-1"></i>موفقیت پایین (30-49%)</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6 mb-3">
+                                    <div class="summary-card risk">
+                                        <h4>@atRisk</h4>
+                                        <small><i class="bi bi-x-circle-fill me-1"></i>در معرض شکست (&lt;30%)</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                @foreach (var project in Model.Projects.OrderByDescending(p => p.SuccessProbability))
+                                {
+                                    var badgeClass = project.SuccessProbability >= 80 ? "bg-success" 
+                                        : project.SuccessProbability >= 50 ? "bg-info" 
+                                        : project.SuccessProbability >= 30 ? "bg-warning" 
+                                        : "bg-danger";
+                                    
+                                    var progressBarClass = project.SuccessProbability >= 80 ? "bg-success" 
+                                        : project.SuccessProbability >= 50 ? "bg-info" 
+                                        : project.SuccessProbability >= 30 ? "bg-warning" 
+                                        : "bg-danger";
 
-                                <div class="col-md-6 col-lg-4 mb-3">
-                                    <div class="card h-100 border">
-                                        <div class="card-body">
-                                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                                <h6 class="card-title mb-0">
-                                                    <a href="/Projects/Details/@project.ProjectId" class="text-decoration-none">
-                                                        <i class="bi bi-folder-fill me-2"></i>
+                                    <div class="col-md-6 col-lg-4 mb-3">
+                                        <div class="project-card">
+                                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                                <h6 class="project-card-title mb-0 flex-grow-1">
+                                                    <a href="/Projects/Details/@project.ProjectId">
+                                                        <i class="bi bi-folder-fill me-2" style="color: #495057;"></i>
                                                         @project.ProjectName
                                                     </a>
                                                 </h6>
-                                                <span class="badge @badgeClass">@project.SuccessProbability%</span>
+                                                <span class="badge @badgeClass status-badge">@project.SuccessProbability%</span>
                                             </div>
-                                            <p class="text-muted small mb-2">
+                                            <p class="text-muted small mb-3">
                                                 <i class="bi bi-info-circle me-1"></i>
                                                 @project.SuccessStatus
                                             </p>
-                                            <div class="progress mb-2" style="height: 20px;">
-                                                <div class="progress-bar @progressBarClass" 
+                                            <div class="progress-modern mb-3">
+                                                <div class="progress-bar-modern @progressBarClass" 
                                                      role="progressbar" 
                                                      style="width: @project.SuccessProbability%" 
                                                      aria-valuenow="@project.SuccessProbability" 
@@ -123,184 +413,218 @@
                                                     @project.SuccessProbability%
                                                 </div>
                                             </div>
-                                            <div class="small text-muted">
-                                                <div class="d-flex justify-content-between">
-                                                    <span>
-                                                        <i class="bi bi-check-circle text-success me-1"></i>
-                                                        تکمیل شده: @project.CompletedTasks
-                                                    </span>
-                                                    <span>
-                                                        <i class="bi bi-x-circle text-danger me-1"></i>
-                                                        عقب‌مانده: @project.OverdueTasks
-                                                    </span>
+                                            <div class="task-stats">
+                                                <div class="task-stat-item">
+                                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                                    <span class="text-muted">@project.CompletedTasks</span>
+                                                </div>
+                                                <div class="task-stat-item">
+                                                    <i class="bi bi-x-circle-fill text-danger"></i>
+                                                    <span class="text-muted">@project.OverdueTasks</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- نمودار زمانی -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-success text-white">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                <i class="bi bi-calendar-event me-2"></i>
-                                نمودار تعداد کارها نسبت به زمان
-                            </h5>
-                            <div class="d-flex gap-2">
-                                <select id="timeRangeSelect" class="form-select form-select-sm" style="width: auto;">
-                                    <option value="7">7 روز گذشته</option>
-                                    <option value="30" selected>30 روز گذشته</option>
-                                    <option value="90">90 روز گذشته</option>
-                                    <option value="180">180 روز گذشته</option>
-                                </select>
-                                <select id="projectFilterSelect" class="form-select form-select-sm" style="width: auto;">
-                                    <option value="">همه پروژه‌ها</option>
-                                    @foreach (var project in Model.ProjectOptions)
-                                    {
-                                        <option value="@project.Id">@project.Name</option>
-                                    }
-                                </select>
-                                <select id="userFilterSelect" class="form-select form-select-sm" style="width: auto;">
-                                    <option value="">همه کاربران</option>
-                                    @foreach (var user in Model.UserOptions)
-                                    {
-                                        <option value="@user.Id">@user.Name</option>
-                                    }
-                                </select>
+                                }
                             </div>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <canvas id="timeSeriesChart" style="max-height: 400px;"></canvas>
-                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- جدول آمار -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">
-                            <i class="bi bi-table me-2"></i>
-                            آمار تفصیلی پروژه‌ها
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>نام پروژه</th>
-                                        <th class="text-center">کل کارها</th>
-                                        <th class="text-center">کارهای تکمیل شده</th>
-                                        <th class="text-center">کارهای عقب‌مانده</th>
-                                        <th class="text-center">کارهای باقیمانده</th>
-                                        <th class="text-center">درصد پیشرفت</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var project in Model.Projects)
-                                    {
-                                        var progressPercentage = project.TotalTasks > 0 
-                                            ? (int)((double)project.CompletedTasks / project.TotalTasks * 100) 
-                                            : 0;
-                                        <tr>
-                                            <td>
-                                                <a href="/Projects/Details/@project.ProjectId" class="text-decoration-none">
-                                                    <i class="bi bi-folder-fill me-2"></i>
-                                                    @project.ProjectName
-                                                </a>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-secondary">@project.TotalTasks</span>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-success">@project.CompletedTasks</span>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-danger">@project.OverdueTasks</span>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-warning text-dark">@project.RemainingTasks</span>
-                                            </td>
-                                            <td class="text-center">
-                                                <div class="progress" style="height: 25px;">
-                                                    <div class="progress-bar @(progressPercentage == 100 ? "bg-success" : progressPercentage >= 50 ? "bg-info" : "bg-warning")" 
-                                                         role="progressbar" 
-                                                         style="width: @progressPercentage%" 
-                                                         aria-valuenow="@progressPercentage" 
-                                                         aria-valuemin="0" 
-                                                         aria-valuemax="100">
-                                                        @progressPercentage%
-                                                    </div>
+            <!-- نمودار زمانی -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="stat-card">
+                        <div class="stat-card-header success">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                <div>
+                                    <i class="bi bi-calendar-event me-2"></i>
+                                    <span id="chartHeaderTitle">روند زمانی ایجاد کارها</span>
+                                </div>
+                                <div class="filter-controls mt-2 mt-md-0">
+                                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                                        <div>
+                                            <label class="form-label small mb-1 text-white">معیار زمان:</label>
+                                            <select id="dateTypeSelect" class="form-select form-select-sm">
+                                                <option value="CreatedAt" selected>تاریخ ایجاد</option>
+                                                <option value="StartDate">تاریخ شروع</option>
+                                                <option value="DueDate">تاریخ پایان</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="form-label small mb-1 text-white">بازه زمانی:</label>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="lastWeek">هفته اخیر</button>
+                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="lastMonth">ماه گذشته</button>
+                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="lastYear">سال گذشته</button>
+                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="nextWeek">هفته آینده</button>
+                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="nextMonth">ماه آینده</button>
+                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="nextYear">سال آینده</button>
+                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="custom" id="customDateBtn">
+                                                    <i class="bi bi-calendar3"></i> سفارشی
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div id="customDateRange" class="d-none">
+                                            <div class="d-flex gap-2 align-items-center">
+                                                <div>
+                                                    <label class="form-label small mb-1 text-white">از:</label>
+                                                    <input type="text" id="startDateInput" class="form-control form-control-sm" placeholder="تاریخ شروع" style="width: 120px;" />
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                                <tfoot class="table-light">
-                                    <tr>
-                                        <th>جمع کل</th>
-                                        <th class="text-center">
-                                            <span class="badge bg-secondary">@Model.Projects.Sum(p => p.TotalTasks)</span>
-                                        </th>
-                                        <th class="text-center">
-                                            <span class="badge bg-success">@Model.Projects.Sum(p => p.CompletedTasks)</span>
-                                        </th>
-                                        <th class="text-center">
-                                            <span class="badge bg-danger">@Model.Projects.Sum(p => p.OverdueTasks)</span>
-                                        </th>
-                                        <th class="text-center">
-                                            <span class="badge bg-warning text-dark">@Model.Projects.Sum(p => p.RemainingTasks)</span>
-                                        </th>
-                                        <th class="text-center">
-                                            @{
-                                                var totalTasks = Model.Projects.Sum(p => p.TotalTasks);
-                                                var totalCompleted = Model.Projects.Sum(p => p.CompletedTasks);
-                                                var totalProgress = totalTasks > 0 ? (int)((double)totalCompleted / totalTasks * 100) : 0;
-                                            }
-                                            <div class="progress" style="height: 25px;">
-                                                <div class="progress-bar @(totalProgress == 100 ? "bg-success" : totalProgress >= 50 ? "bg-info" : "bg-warning")" 
-                                                     role="progressbar" 
-                                                     style="width: @totalProgress%" 
-                                                     aria-valuenow="@totalProgress" 
-                                                     aria-valuemin="0" 
-                                                     aria-valuemax="100">
-                                                    @totalProgress%
+                                                <div>
+                                                    <label class="form-label small mb-1 text-white">تا:</label>
+                                                    <input type="text" id="endDateInput" class="form-control form-control-sm" placeholder="تاریخ پایان" style="width: 120px;" />
+                                                </div>
+                                                <div class="mt-4">
+                                                    <button type="button" class="btn btn-sm btn-light" id="applyCustomDateBtn">
+                                                        <i class="bi bi-check-lg"></i> اعمال
+                                                    </button>
                                                 </div>
                                             </div>
-                                        </th>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                                        </div>
+                                        <select id="projectFilterSelect" class="form-select form-select-sm">
+                                            <option value="">همه پروژه‌ها</option>
+                                            @foreach (var project in Model.ProjectOptions)
+                                            {
+                                                <option value="@project.Id">@project.Name</option>
+                                            }
+                                        </select>
+                                        <select id="userFilterSelect" class="form-select form-select-sm">
+                                            <option value="">همه کاربران</option>
+                                            @foreach (var user in Model.UserOptions)
+                                            {
+                                                <option value="@user.Id">@user.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="chart-container">
+                                <canvas id="timeSeriesChart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    }
-    else
-    {
-        <div class="row">
-            <div class="col-12">
-                <div class="alert alert-info text-center">
-                    <i class="bi bi-info-circle me-2"></i>
-                    هیچ پروژه‌ای یافت نشد.
+
+            <!-- جدول آمار -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="stat-card">
+                        <div class="stat-card-header info">
+                            <i class="bi bi-table me-2"></i>
+                            گزارش تفصیلی پروژه‌ها
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table stats-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>نام پروژه</th>
+                                            <th class="text-center">کل کارها</th>
+                                            <th class="text-center">تکمیل شده</th>
+                                            <th class="text-center">عقب‌مانده</th>
+                                            <th class="text-center">باقیمانده</th>
+                                            <th class="text-center">پیشرفت</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var project in Model.Projects)
+                                        {
+                                            var progressPercentage = project.TotalTasks > 0 
+                                                ? (int)((double)project.CompletedTasks / project.TotalTasks * 100) 
+                                                : 0;
+                                            <tr>
+                                                <td>
+                                                <a href="/Projects/Details/@project.ProjectId" class="text-decoration-none fw-semibold">
+                                                    <i class="bi bi-folder-fill me-2" style="color: #495057;"></i>
+                                                    @project.ProjectName
+                                                </a>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge badge-modern bg-secondary">@project.TotalTasks</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge badge-modern bg-success">@project.CompletedTasks</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge badge-modern bg-danger">@project.OverdueTasks</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge badge-modern bg-warning text-dark">@project.RemainingTasks</span>
+                                                </td>
+                                                <td class="text-center" style="min-width: 150px;">
+                                                    <div class="progress-modern">
+                                                        <div class="progress-bar-modern @(progressPercentage == 100 ? "bg-success" : progressPercentage >= 50 ? "bg-info" : "bg-warning")" 
+                                                             role="progressbar" 
+                                                             style="width: @progressPercentage%" 
+                                                             aria-valuenow="@progressPercentage" 
+                                                             aria-valuemin="0" 
+                                                             aria-valuemax="100">
+                                                            @progressPercentage%
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <th class="fw-bold">جمع کل</th>
+                                            <th class="text-center">
+                                                <span class="badge badge-modern bg-secondary">@Model.Projects.Sum(p => p.TotalTasks)</span>
+                                            </th>
+                                            <th class="text-center">
+                                                <span class="badge badge-modern bg-success">@Model.Projects.Sum(p => p.CompletedTasks)</span>
+                                            </th>
+                                            <th class="text-center">
+                                                <span class="badge badge-modern bg-danger">@Model.Projects.Sum(p => p.OverdueTasks)</span>
+                                            </th>
+                                            <th class="text-center">
+                                                <span class="badge badge-modern bg-warning text-dark">@Model.Projects.Sum(p => p.RemainingTasks)</span>
+                                            </th>
+                                            <th class="text-center">
+                                                @{
+                                                    var totalTasks = Model.Projects.Sum(p => p.TotalTasks);
+                                                    var totalCompleted = Model.Projects.Sum(p => p.CompletedTasks);
+                                                    var totalProgress = totalTasks > 0 ? (int)((double)totalCompleted / totalTasks * 100) : 0;
+                                                }
+                                                <div class="progress-modern">
+                                                    <div class="progress-bar-modern @(totalProgress == 100 ? "bg-success" : totalProgress >= 50 ? "bg-info" : "bg-warning")" 
+                                                         role="progressbar" 
+                                                         style="width: @totalProgress%" 
+                                                         aria-valuenow="@totalProgress" 
+                                                         aria-valuemin="0" 
+                                                         aria-valuemax="100">
+                                                        @totalProgress%
+                                                    </div>
+                                                </div>
+                                            </th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    }
+        }
+        else
+        {
+            <div class="row">
+                <div class="col-12">
+                    <div class="empty-state">
+                        <i class="bi bi-inbox"></i>
+                        <h4 class="text-muted">هیچ پروژه‌ای یافت نشد</h4>
+                        <p class="text-muted">برای شروع، یک پروژه جدید ایجاد کنید</p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
 </div>
 
 @section Scripts {
@@ -329,49 +653,84 @@
                                 data: totalTasks,
                                 backgroundColor: 'rgba(108, 117, 125, 0.8)',
                                 borderColor: 'rgba(108, 117, 125, 1)',
-                                borderWidth: 1
+                                borderWidth: 2,
+                                borderRadius: 8
                             },
                             {
                                 label: 'کارهای تکمیل شده',
                                 data: completedTasks,
                                 backgroundColor: 'rgba(25, 135, 84, 0.8)',
                                 borderColor: 'rgba(25, 135, 84, 1)',
-                                borderWidth: 1
+                                borderWidth: 2,
+                                borderRadius: 8
                             },
                             {
                                 label: 'کارهای عقب‌مانده',
                                 data: overdueTasks,
                                 backgroundColor: 'rgba(220, 53, 69, 0.8)',
                                 borderColor: 'rgba(220, 53, 69, 1)',
-                                borderWidth: 1
+                                borderWidth: 2,
+                                borderRadius: 8
                             },
                             {
                                 label: 'کارهای باقیمانده',
                                 data: remainingTasks,
                                 backgroundColor: 'rgba(255, 193, 7, 0.8)',
                                 borderColor: 'rgba(255, 193, 7, 1)',
-                                borderWidth: 1
+                                borderWidth: 2,
+                                borderRadius: 8
                             }
                         ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                rtl: true,
+                                labels: {
+                                    padding: 15,
+                                    font: {
+                                        size: 12,
+                                        weight: '600'
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                rtl: true,
+                                padding: 12,
+                                titleFont: {
+                                    size: 14,
+                                    weight: '600'
+                                },
+                                bodyFont: {
+                                    size: 13
+                                }
+                            }
+                        },
                         scales: {
                             y: {
                                 beginAtZero: true,
                                 ticks: {
-                                    stepSize: 1
+                                    stepSize: 1,
+                                    font: {
+                                        size: 11
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(0,0,0,0.05)'
                                 }
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                                rtl: true
                             },
-                            title: {
-                                display: false
+                            x: {
+                                ticks: {
+                                    font: {
+                                        size: 11
+                                    }
+                                },
+                                grid: {
+                                    display: false
+                                }
                             }
                         }
                     }
@@ -382,29 +741,159 @@
                 const timeSeriesCtx = document.getElementById('timeSeriesChart').getContext('2d');
                 const projectFilterSelect = document.getElementById('projectFilterSelect');
                 const userFilterSelect = document.getElementById('userFilterSelect');
-                const timeRangeSelect = document.getElementById('timeRangeSelect');
+                const dateTypeSelect = document.getElementById('dateTypeSelect');
+                const dateFilterButtons = document.querySelectorAll('.date-filter-btn');
+                const customDateRange = document.getElementById('customDateRange');
+                const startDateInput = document.getElementById('startDateInput');
+                const endDateInput = document.getElementById('endDateInput');
+                const applyCustomDateBtn = document.getElementById('applyCustomDateBtn');
+                
+                // متغیرهای global برای ذخیره تاریخ‌های انتخاب شده
+                let selectedStartDate = '';
+                let selectedEndDate = '';
+                let currentFilter = 'lastMonth'; // پیش‌فرض: ماه گذشته
+                
+                // راه‌اندازی datepicker فارسی
+                $(startDateInput).persianDatepicker({
+                    format: 'YYYY/MM/DD',
+                    autoClose: true,
+                    initialValueType: 'persian',
+                    observer: true,
+                    timePicker: { enabled: false },
+                    calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+                });
 
-                // رنگ‌های مختلف برای پروژه‌ها
+                $(endDateInput).persianDatepicker({
+                    format: 'YYYY/MM/DD',
+                    autoClose: true,
+                    initialValueType: 'persian',
+                    observer: true,
+                    timePicker: { enabled: false },
+                    calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+                });
+
+                // تابع برای محاسبه تاریخ بر اساس فیلتر
+                function calculateDateRange(filter) {
+                    const today = new Date();
+                    const pc = new Intl.DateTimeFormat('fa-IR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        calendar: 'persian'
+                    });
+                    
+                    let startDate, endDate;
+                    
+                    switch(filter) {
+                        case 'lastWeek':
+                            startDate = new Date(today);
+                            startDate.setDate(today.getDate() - 7);
+                            endDate = new Date(today);
+                            break;
+                        case 'lastMonth':
+                            startDate = new Date(today);
+                            startDate.setMonth(today.getMonth() - 1);
+                            endDate = new Date(today);
+                            break;
+                        case 'lastYear':
+                            startDate = new Date(today);
+                            startDate.setFullYear(today.getFullYear() - 1);
+                            endDate = new Date(today);
+                            break;
+                        case 'nextWeek':
+                            startDate = new Date(today);
+                            endDate = new Date(today);
+                            endDate.setDate(today.getDate() + 7);
+                            break;
+                        case 'nextMonth':
+                            startDate = new Date(today);
+                            endDate = new Date(today);
+                            endDate.setMonth(today.getMonth() + 1);
+                            break;
+                        case 'nextYear':
+                            startDate = new Date(today);
+                            endDate = new Date(today);
+                            endDate.setFullYear(today.getFullYear() + 1);
+                            break;
+                        default:
+                            startDate = new Date(today);
+                            startDate.setMonth(today.getMonth() - 1);
+                            endDate = new Date(today);
+                    }
+                    
+                    // تبدیل به تاریخ شمسی
+                    const startPersian = pc.format(startDate);
+                    const endPersian = pc.format(endDate);
+                    
+                    console.log('calculateDateRange:', {
+                        filter,
+                        startDate: startDate.toISOString(),
+                        endDate: endDate.toISOString(),
+                        startPersian,
+                        endPersian
+                    });
+                    
+                    return {
+                        start: startPersian,
+                        end: endPersian
+                    };
+                }
+
+                // تنظیم تاریخ پیش‌فرض (ماه گذشته)
+                const defaultRange = calculateDateRange('lastMonth');
+                selectedStartDate = defaultRange.start;
+                selectedEndDate = defaultRange.end;
+                
+                // فعال کردن دکمه پیش‌فرض
+                document.querySelector('.date-filter-btn[data-filter="lastMonth"]').classList.add('active');
+
+                // رنگ‌های ساده برای پروژه‌ها
                 const projectColors = [
-                    { bg: 'rgba(59, 130, 246, 0.5)', border: 'rgba(59, 130, 246, 1)' },
-                    { bg: 'rgba(16, 185, 129, 0.5)', border: 'rgba(16, 185, 129, 1)' },
-                    { bg: 'rgba(245, 101, 101, 0.5)', border: 'rgba(245, 101, 101, 1)' },
-                    { bg: 'rgba(251, 191, 36, 0.5)', border: 'rgba(251, 191, 36, 1)' },
-                    { bg: 'rgba(139, 92, 246, 0.5)', border: 'rgba(139, 92, 246, 1)' },
-                    { bg: 'rgba(236, 72, 153, 0.5)', border: 'rgba(236, 72, 153, 1)' },
-                    { bg: 'rgba(20, 184, 166, 0.5)', border: 'rgba(20, 184, 166, 1)' }
+                    { bg: 'rgba(73, 80, 87, 0.3)', border: 'rgba(73, 80, 87, 1)' },
+                    { bg: 'rgba(40, 167, 69, 0.3)', border: 'rgba(40, 167, 69, 1)' },
+                    { bg: 'rgba(23, 162, 184, 0.3)', border: 'rgba(23, 162, 184, 1)' },
+                    { bg: 'rgba(255, 193, 7, 0.3)', border: 'rgba(255, 193, 7, 1)' },
+                    { bg: 'rgba(220, 53, 69, 0.3)', border: 'rgba(220, 53, 69, 1)' }
                 ];
 
                 function loadTimeSeriesData() {
                     const projectId = projectFilterSelect.value || null;
                     const assignedUserId = userFilterSelect.value || null;
-                    const days = parseInt(timeRangeSelect.value);
-
-                    const url = `/Projects/GetTaskTimeSeriesData?projectId=${projectId || ''}&assignedUserId=${assignedUserId || ''}&days=${days}`;
+                    const dateType = dateTypeSelect.value || 'CreatedAt';
+                    
+                    // استفاده از تاریخ‌های انتخاب شده از فیلتر
+                    const startDateStr = selectedStartDate;
+                    const endDateStr = selectedEndDate;
+                    
+                    console.log('=== loadTimeSeriesData ===');
+                    console.log('Current filter:', currentFilter);
+                    console.log('Selected dates:', { startDateStr, endDateStr });
+                    
+                    // ساخت URL با پارامترهای تاریخ
+                    let url = `/Projects/GetTaskTimeSeriesData?projectId=${projectId || ''}&assignedUserId=${assignedUserId || ''}&dateType=${dateType}`;
+                    
+                    if (startDateStr) {
+                        url += `&startDate=${encodeURIComponent(startDateStr)}`;
+                    }
+                    if (endDateStr) {
+                        url += `&endDate=${encodeURIComponent(endDateStr)}`;
+                    }
+                    
+                    console.log('Request URL:', url);
                     
                     fetch(url)
                         .then(response => response.json())
                         .then(data => {
+                            console.log('API Response:', data);
+                            console.log('Dates received:', data.dates);
+                            console.log('Number of dates:', data.dates ? data.dates.length : 0);
+                            console.log('Data received:', data.data);
+                            
+                            if (!data.dates || data.dates.length === 0) {
+                                console.error('No dates received from API!');
+                                return;
+                            }
+                            
                             // تبدیل تاریخ‌ها به فرمت فارسی
                             const persianDates = data.dates.map(date => {
                                 const d = new Date(date);
@@ -415,23 +904,52 @@
                                 });
                                 return pc.format(d);
                             });
+                            
+                            console.log('Persian dates:', persianDates);
+                            console.log('First date:', persianDates[0]);
+                            console.log('Last date:', persianDates[persianDates.length - 1]);
 
                             // ساخت label برای عنوان نمودار
-                            let chartTitle = 'تعداد کارها نسبت به زمان';
+                            const dateTypeLabels = {
+                                'CreatedAt': 'تاریخ ایجاد',
+                                'StartDate': 'تاریخ شروع',
+                                'DueDate': 'تاریخ پایان'
+                            };
+                            const dateTypeLabel = dateTypeLabels[dateType] || 'زمان';
+                            let chartTitle = `تعداد کارها بر اساس ${dateTypeLabel}`;
                             if (data.selectedUserName) {
-                                chartTitle = `کارهای ${data.selectedUserName} نسبت به زمان`;
+                                chartTitle = `کارهای ${data.selectedUserName} بر اساس ${dateTypeLabel}`;
+                            }
+                            
+                            // به‌روزرسانی عنوان header
+                            const headerTitle = document.getElementById('chartHeaderTitle');
+                            if (headerTitle) {
+                                headerTitle.textContent = `روند زمانی بر اساس ${dateTypeLabel}`;
                             }
 
+                            // ساخت یک dictionary از data.data برای دسترسی سریع
+                            const dataByDate = {};
+                            data.data.forEach(item => {
+                                dataByDate[item.date] = item.counts;
+                            });
+                            
+                            // ساخت datasets با استفاده از data.dates برای اطمینان از هماهنگی
                             const datasets = data.projects.map((project, index) => {
                                 const color = projectColors[index % projectColors.length];
                                 return {
                                     label: project.name,
-                                    data: data.data.map(item => item.counts[project.id] || 0),
+                                    data: data.dates.map(date => {
+                                        return dataByDate[date] && dataByDate[date][project.id] 
+                                            ? dataByDate[date][project.id] 
+                                            : 0;
+                                    }),
                                     backgroundColor: color.bg,
                                     borderColor: color.border,
-                                    borderWidth: 2,
+                                    borderWidth: 3,
                                     fill: false,
-                                    tension: 0.4
+                                    tension: 0.4,
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6
                                 };
                             });
 
@@ -456,20 +974,39 @@
                                         y: {
                                             beginAtZero: true,
                                             ticks: {
-                                                stepSize: 1
+                                                stepSize: 1,
+                                                font: {
+                                                    size: 11
+                                                }
+                                            },
+                                            grid: {
+                                                color: 'rgba(0,0,0,0.05)'
                                             }
                                         },
                                         x: {
                                             ticks: {
                                                 maxRotation: 45,
-                                                minRotation: 45
+                                                minRotation: 45,
+                                                font: {
+                                                    size: 10
+                                                }
+                                            },
+                                            grid: {
+                                                display: false
                                             }
                                         }
                                     },
                                     plugins: {
                                         legend: {
                                             position: 'top',
-                                            rtl: true
+                                            rtl: true,
+                                            labels: {
+                                                padding: 15,
+                                                font: {
+                                                    size: 12,
+                                                    weight: '600'
+                                                }
+                                            }
                                         },
                                         title: {
                                             display: true,
@@ -477,11 +1014,21 @@
                                             position: 'top',
                                             rtl: true,
                                             font: {
-                                                size: 16
-                                            }
+                                                size: 16,
+                                                weight: '700'
+                                            },
+                                            padding: 20
                                         },
                                         tooltip: {
                                             rtl: true,
+                                            padding: 12,
+                                            titleFont: {
+                                                size: 14,
+                                                weight: '600'
+                                            },
+                                            bodyFont: {
+                                                size: 13
+                                            },
                                             callbacks: {
                                                 title: function(context) {
                                                     return 'تاریخ: ' + context[0].label;
@@ -500,16 +1047,69 @@
                         });
                 }
 
-                // بارگذاری اولیه
-                loadTimeSeriesData();
-
                 // رویداد تغییر فیلتر
                 projectFilterSelect.addEventListener('change', loadTimeSeriesData);
                 userFilterSelect.addEventListener('change', loadTimeSeriesData);
-                timeRangeSelect.addEventListener('change', loadTimeSeriesData);
+                dateTypeSelect.addEventListener('change', loadTimeSeriesData);
+                
+                // Event listener برای دکمه‌های فیلتر تاریخ
+                dateFilterButtons.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        // حذف کلاس active از همه دکمه‌ها
+                        dateFilterButtons.forEach(b => b.classList.remove('active'));
+                        // اضافه کردن کلاس active به دکمه انتخاب شده
+                        this.classList.add('active');
+                        
+                        // دریافت نوع فیلتر
+                        const filter = this.getAttribute('data-filter');
+                        currentFilter = filter;
+                        
+                        // اگر فیلتر سفارشی انتخاب شده، نمایش بخش تقویم
+                        if (filter === 'custom') {
+                            customDateRange.classList.remove('d-none');
+                            return; // منتظر کلیک دکمه اعمال می‌مانیم
+                        } else {
+                            customDateRange.classList.add('d-none');
+                        }
+                        
+                        // محاسبه تاریخ‌ها
+                        const dateRange = calculateDateRange(filter);
+                        selectedStartDate = dateRange.start;
+                        selectedEndDate = dateRange.end;
+                        
+                        console.log('=== Date filter selected ===');
+                        console.log('Filter:', filter);
+                        console.log('Date range:', dateRange);
+                        console.log('Selected dates:', { selectedStartDate, selectedEndDate });
+                        
+                        // بارگذاری داده‌ها
+                        loadTimeSeriesData();
+                    });
+                });
+                
+                // Event listener برای دکمه اعمال تاریخ سفارشی
+                applyCustomDateBtn.addEventListener('click', function() {
+                    const startVal = $(startDateInput).val() || startDateInput.value || '';
+                    const endVal = $(endDateInput).val() || endDateInput.value || '';
+                    
+                    if (startVal && endVal) {
+                        selectedStartDate = startVal.trim();
+                        selectedEndDate = endVal.trim();
+                        
+                        console.log('=== Custom date applied ===');
+                        console.log('Selected dates:', { selectedStartDate, selectedEndDate });
+                        
+                        // بارگذاری داده‌ها
+                        loadTimeSeriesData();
+                    } else {
+                        alert('لطفاً هر دو تاریخ را انتخاب کنید.');
+                    }
+                });
+                
+                // بارگذاری اولیه
+                loadTimeSeriesData();
                 </text>
             }
         });
     </script>
 }
-
