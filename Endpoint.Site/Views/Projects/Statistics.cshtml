@@ -502,6 +502,16 @@
                             </div>
                         </div>
                         <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    برای زوم: با Ctrl+اسکرول موس یا کشیدن روی نمودار | برای جابجایی: Ctrl+کلیک و کشیدن
+                                </small>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="resetZoomBtn">
+                                    <i class="bi bi-arrows-angle-expand me-1"></i>
+                                    بازنشانی زوم
+                                </button>
+                            </div>
                             <div class="chart-container">
                                 <canvas id="timeSeriesChart"></canvas>
                             </div>
@@ -629,6 +639,8 @@
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             @if (Model.Projects.Any())
@@ -1037,6 +1049,29 @@
                                                     return context.dataset.label + ': ' + context.parsed.y + ' کار';
                                                 }
                                             }
+                                        },
+                                        zoom: {
+                                            pan: {
+                                                enabled: true,
+                                                mode: 'x',
+                                                modifierKey: 'ctrl'
+                                            },
+                                            zoom: {
+                                                wheel: {
+                                                    enabled: true,
+                                                    modifierKey: 'ctrl'
+                                                },
+                                                pinch: {
+                                                    enabled: true
+                                                },
+                                                drag: {
+                                                    enabled: true,
+                                                    backgroundColor: 'rgba(73, 80, 87, 0.2)',
+                                                    borderColor: 'rgba(73, 80, 87, 0.8)',
+                                                    borderWidth: 1
+                                                },
+                                                mode: 'x'
+                                            }
                                         }
                                     }
                                 }
@@ -1103,6 +1138,14 @@
                         loadTimeSeriesData();
                     } else {
                         alert('لطفاً هر دو تاریخ را انتخاب کنید.');
+                    }
+                });
+                
+                // Event listener برای دکمه بازنشانی زوم
+                const resetZoomBtn = document.getElementById('resetZoomBtn');
+                resetZoomBtn.addEventListener('click', function() {
+                    if (timeSeriesChart) {
+                        timeSeriesChart.resetZoom();
                     }
                 });
                 
