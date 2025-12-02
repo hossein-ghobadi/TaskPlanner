@@ -1410,5 +1410,152 @@ namespace Endpoint.Site.Controllers
             public int Order { get; set; }
         }
 
+        // 📊 گزارش آماری پروژه‌ها
+        [HttpGet]
+        public async Task<IActionResult> Statistics()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            
+            // دریافت پروژه‌های کاربر
+            var projects = await _context.Projects
+                .Where(p => p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId))
+                .Select(p => new { p.Id, p.Name })
+                .ToListAsync();
+
+            var now = DateTime.UtcNow;
+            var statistics = new List<ProjectStatisticItem>();
+
+            foreach (var project in projects)
+            {
+                var tasks = await _context.TaskItems
+                    .Where(t => t.ProjectId == project.Id)
+                    .ToListAsync();
+
+                var totalTasks = tasks.Count;
+                var completedTasks = tasks.Count(t => t.IsCompleted);
+                var overdueTasks = tasks.Count(t => 
+                    !t.IsCompleted && 
+                    t.DueDate.HasValue && 
+                    t.DueDate.Value < now);
+                var remainingTasks = totalTasks - completedTasks;
+
+                statistics.Add(new ProjectStatisticItem
+                {
+                    ProjectId = project.Id,
+                    ProjectName = project.Name,
+                    TotalTasks = totalTasks,
+                    CompletedTasks = completedTasks,
+                    OverdueTasks = overdueTasks,
+                    RemainingTasks = remainingTasks
+                });
+            }
+
+            var vm = new ProjectStatisticsVm
+            {
+                Projects = statistics,
+                ProjectOptions = projects.Select(p => new ProjectOption
+                {
+                    Id = p.Id,
+                    Name = p.Name
+                }).ToList()
+            };
+
+            return View(vm);
+        }
+
+        // 📈 API برای دریافت داده‌های نمودار زمانی
+        [HttpGet]
+        public async Task<IActionResult> GetTaskTimeSeriesData(int? projectId = null, int days = 30)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            
+            // دریافت پروژه‌های کاربر
+            var userProjectIds = await _context.Projects
+                .Where(p => p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId))
+                .Select(p => p.Id)
+                .ToListAsync();
+
+            var startDate = DateTime.UtcNow.AddDays(-days);
+            
+            // فیلتر بر اساس پروژه
+            var tasksQuery = _context.TaskItems
+                .Where(t => userProjectIds.Contains(t.ProjectId) && t.CreatedAt >= startDate);
+
+            if (projectId.HasValue && userProjectIds.Contains(projectId.Value))
+            {
+                tasksQuery = tasksQuery.Where(t => t.ProjectId == projectId.Value);
+            }
+
+            var tasks = await tasksQuery
+                .Select(t => new { t.ProjectId, t.CreatedAt })
+                .ToListAsync();
+
+            // گروه‌بندی بر اساس تاریخ و پروژه
+            var timeSeriesData = tasks
+                .GroupBy(t => new { Date = t.CreatedAt.Date, ProjectId = t.ProjectId })
+                .Select(g => new
+                {
+                    Date = g.Key.Date,
+                    ProjectId = g.Key.ProjectId,
+                    Count = g.Count()
+                })
+                .OrderBy(x => x.Date)
+                .ToList();
+
+            // ایجاد لیست کامل تاریخ‌ها
+            var allDates = new List<DateTime>();
+            for (var date = startDate.Date; date <= DateTime.UtcNow.Date; date = date.AddDays(1))
+            {
+                allDates.Add(date);
+            }
+
+            // ساخت داده‌های نمودار
+            var result = new List<TaskTimeSeriesData>();
+            var projectIds = projectId.HasValue 
+                ? new List<int> { projectId.Value }
+                : userProjectIds;
+
+            foreach (var date in allDates)
+            {
+                var dateData = new TaskTimeSeriesData
+                {
+                    Date = date.ToString("yyyy-MM-dd"),
+                    ProjectTaskCounts = new Dictionary<int, int>()
+                };
+
+                foreach (var pid in projectIds)
+                {
+                    var count = timeSeriesData
+                        .FirstOrDefault(t => t.Date.Date == date.Date && t.ProjectId == pid)?.Count ?? 0;
+                    dateData.ProjectTaskCounts[pid] = count;
+                }
+
+                result.Add(dateData);
+            }
+
+            // دریافت نام پروژه‌ها
+            var projectNames = await _context.Projects
+                .Where(p => projectIds.Contains(p.Id))
+                .ToDictionaryAsync(p => p.Id, p => p.Name);
+
+            return Json(new
+            {
+                dates = result.Select(r => r.Date).ToList(),
+                projects = projectIds.Select(id => new
+                {
+                    id = id,
+                    name = projectNames.ContainsKey(id) ? projectNames[id] : $"پروژه {id}"
+                }).ToList(),
+                data = result.Select(r => new
+                {
+                    date = r.Date,
+                    counts = projectIds.ToDictionary(
+                        pid => pid,
+                        pid => r.ProjectTaskCounts.ContainsKey(pid) ? r.ProjectTaskCounts[pid] : 0
+                    )
+                }).ToList()
+            });
+        }
+
     }
 }

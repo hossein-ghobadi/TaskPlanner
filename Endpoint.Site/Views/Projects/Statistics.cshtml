@@ -1,0 +1,376 @@
+@model Endpoint.Site.Models.ProjectStatisticsVm
+@{
+    ViewData["Title"] = "گزارش آماری پروژه‌ها";
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="bi bi-bar-chart-fill me-2"></i>
+                گزارش آماری پروژه‌ها
+            </h2>
+        </div>
+    </div>
+
+    @if (Model.Projects.Any())
+    {
+        <!-- نمودار میله‌ای -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-graph-up me-2"></i>
+                            نمودار تعداد کارها در هر پروژه
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="tasksChart" style="max-height: 400px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- نمودار زمانی -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-calendar-event me-2"></i>
+                                نمودار تعداد کارها نسبت به زمان
+                            </h5>
+                            <div class="d-flex gap-2">
+                                <select id="timeRangeSelect" class="form-select form-select-sm" style="width: auto;">
+                                    <option value="7">7 روز گذشته</option>
+                                    <option value="30" selected>30 روز گذشته</option>
+                                    <option value="90">90 روز گذشته</option>
+                                    <option value="180">180 روز گذشته</option>
+                                </select>
+                                <select id="projectFilterSelect" class="form-select form-select-sm" style="width: auto;">
+                                    <option value="">همه پروژه‌ها</option>
+                                    @foreach (var project in Model.ProjectOptions)
+                                    {
+                                        <option value="@project.Id">@project.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="timeSeriesChart" style="max-height: 400px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- جدول آمار -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-table me-2"></i>
+                            آمار تفصیلی پروژه‌ها
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>نام پروژه</th>
+                                        <th class="text-center">کل کارها</th>
+                                        <th class="text-center">کارهای تکمیل شده</th>
+                                        <th class="text-center">کارهای عقب‌مانده</th>
+                                        <th class="text-center">کارهای باقیمانده</th>
+                                        <th class="text-center">درصد پیشرفت</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var project in Model.Projects)
+                                    {
+                                        var progressPercentage = project.TotalTasks > 0 
+                                            ? (int)((double)project.CompletedTasks / project.TotalTasks * 100) 
+                                            : 0;
+                                        <tr>
+                                            <td>
+                                                <a href="/Projects/Details/@project.ProjectId" class="text-decoration-none">
+                                                    <i class="bi bi-folder-fill me-2"></i>
+                                                    @project.ProjectName
+                                                </a>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-secondary">@project.TotalTasks</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-success">@project.CompletedTasks</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-danger">@project.OverdueTasks</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-warning text-dark">@project.RemainingTasks</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="progress" style="height: 25px;">
+                                                    <div class="progress-bar @(progressPercentage == 100 ? "bg-success" : progressPercentage >= 50 ? "bg-info" : "bg-warning")" 
+                                                         role="progressbar" 
+                                                         style="width: @progressPercentage%" 
+                                                         aria-valuenow="@progressPercentage" 
+                                                         aria-valuemin="0" 
+                                                         aria-valuemax="100">
+                                                        @progressPercentage%
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <th>جمع کل</th>
+                                        <th class="text-center">
+                                            <span class="badge bg-secondary">@Model.Projects.Sum(p => p.TotalTasks)</span>
+                                        </th>
+                                        <th class="text-center">
+                                            <span class="badge bg-success">@Model.Projects.Sum(p => p.CompletedTasks)</span>
+                                        </th>
+                                        <th class="text-center">
+                                            <span class="badge bg-danger">@Model.Projects.Sum(p => p.OverdueTasks)</span>
+                                        </th>
+                                        <th class="text-center">
+                                            <span class="badge bg-warning text-dark">@Model.Projects.Sum(p => p.RemainingTasks)</span>
+                                        </th>
+                                        <th class="text-center">
+                                            @{
+                                                var totalTasks = Model.Projects.Sum(p => p.TotalTasks);
+                                                var totalCompleted = Model.Projects.Sum(p => p.CompletedTasks);
+                                                var totalProgress = totalTasks > 0 ? (int)((double)totalCompleted / totalTasks * 100) : 0;
+                                            }
+                                            <div class="progress" style="height: 25px;">
+                                                <div class="progress-bar @(totalProgress == 100 ? "bg-success" : totalProgress >= 50 ? "bg-info" : "bg-warning")" 
+                                                     role="progressbar" 
+                                                     style="width: @totalProgress%" 
+                                                     aria-valuenow="@totalProgress" 
+                                                     aria-valuemin="0" 
+                                                     aria-valuemax="100">
+                                                    @totalProgress%
+                                                </div>
+                                            </div>
+                                        </th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info text-center">
+                    <i class="bi bi-info-circle me-2"></i>
+                    هیچ پروژه‌ای یافت نشد.
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            @if (Model.Projects.Any())
+            {
+                <text>
+                // نمودار میله‌ای اول
+                const ctx = document.getElementById('tasksChart').getContext('2d');
+                
+                const projectNames = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Projects.Select(p => p.ProjectName)));
+                const totalTasks = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Projects.Select(p => p.TotalTasks)));
+                const completedTasks = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Projects.Select(p => p.CompletedTasks)));
+                const overdueTasks = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Projects.Select(p => p.OverdueTasks)));
+                const remainingTasks = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Projects.Select(p => p.RemainingTasks)));
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: projectNames,
+                        datasets: [
+                            {
+                                label: 'کل کارها',
+                                data: totalTasks,
+                                backgroundColor: 'rgba(108, 117, 125, 0.8)',
+                                borderColor: 'rgba(108, 117, 125, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'کارهای تکمیل شده',
+                                data: completedTasks,
+                                backgroundColor: 'rgba(25, 135, 84, 0.8)',
+                                borderColor: 'rgba(25, 135, 84, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'کارهای عقب‌مانده',
+                                data: overdueTasks,
+                                backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                                borderColor: 'rgba(220, 53, 69, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'کارهای باقیمانده',
+                                data: remainingTasks,
+                                backgroundColor: 'rgba(255, 193, 7, 0.8)',
+                                borderColor: 'rgba(255, 193, 7, 1)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                rtl: true
+                            },
+                            title: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+
+                // نمودار زمانی
+                let timeSeriesChart = null;
+                const timeSeriesCtx = document.getElementById('timeSeriesChart').getContext('2d');
+                const projectFilterSelect = document.getElementById('projectFilterSelect');
+                const timeRangeSelect = document.getElementById('timeRangeSelect');
+
+                // رنگ‌های مختلف برای هر پروژه
+                const colors = [
+                    { bg: 'rgba(59, 130, 246, 0.5)', border: 'rgba(59, 130, 246, 1)' },
+                    { bg: 'rgba(16, 185, 129, 0.5)', border: 'rgba(16, 185, 129, 1)' },
+                    { bg: 'rgba(245, 101, 101, 0.5)', border: 'rgba(245, 101, 101, 1)' },
+                    { bg: 'rgba(251, 191, 36, 0.5)', border: 'rgba(251, 191, 36, 1)' },
+                    { bg: 'rgba(139, 92, 246, 0.5)', border: 'rgba(139, 92, 246, 1)' },
+                    { bg: 'rgba(236, 72, 153, 0.5)', border: 'rgba(236, 72, 153, 1)' },
+                    { bg: 'rgba(20, 184, 166, 0.5)', border: 'rgba(20, 184, 166, 1)' }
+                ];
+
+                function loadTimeSeriesData() {
+                    const projectId = projectFilterSelect.value || null;
+                    const days = parseInt(timeRangeSelect.value);
+
+                    fetch(`/Projects/GetTaskTimeSeriesData?projectId=${projectId || ''}&days=${days}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            // تبدیل تاریخ‌ها به فرمت فارسی
+                            const persianDates = data.dates.map(date => {
+                                const d = new Date(date);
+                                const pc = new Intl.DateTimeFormat('fa-IR', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit'
+                                });
+                                return pc.format(d);
+                            });
+
+                            const datasets = data.projects.map((project, index) => {
+                                const color = colors[index % colors.length];
+                                return {
+                                    label: project.name,
+                                    data: data.data.map(item => item.counts[project.id] || 0),
+                                    backgroundColor: color.bg,
+                                    borderColor: color.border,
+                                    borderWidth: 2,
+                                    fill: false,
+                                    tension: 0.4
+                                };
+                            });
+
+                            if (timeSeriesChart) {
+                                timeSeriesChart.destroy();
+                            }
+
+                            timeSeriesChart = new Chart(timeSeriesCtx, {
+                                type: 'line',
+                                data: {
+                                    labels: persianDates,
+                                    datasets: datasets
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: true,
+                                    interaction: {
+                                        mode: 'index',
+                                        intersect: false
+                                    },
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            ticks: {
+                                                stepSize: 1
+                                            }
+                                        },
+                                        x: {
+                                            ticks: {
+                                                maxRotation: 45,
+                                                minRotation: 45
+                                            }
+                                        }
+                                    },
+                                    plugins: {
+                                        legend: {
+                                            position: 'top',
+                                            rtl: true
+                                        },
+                                        tooltip: {
+                                            rtl: true,
+                                            callbacks: {
+                                                title: function(context) {
+                                                    return 'تاریخ: ' + context[0].label;
+                                                },
+                                                label: function(context) {
+                                                    return context.dataset.label + ': ' + context.parsed.y + ' کار';
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        })
+                        .catch(error => {
+                            console.error('خطا در دریافت داده‌های نمودار:', error);
+                        });
+                }
+
+                // بارگذاری اولیه
+                loadTimeSeriesData();
+
+                // رویداد تغییر فیلتر
+                projectFilterSelect.addEventListener('change', loadTimeSeriesData);
+                timeRangeSelect.addEventListener('change', loadTimeSeriesData);
+                </text>
+            }
+        });
+    </script>
+}
+
