@@ -33,6 +33,118 @@
             </div>
         </div>
 
+        <!-- احتمال موفقیت پروژه‌ها -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="bi bi-speedometer2 me-2"></i>
+                            وضعیت احتمال موفقیت و شکست پروژه‌ها
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @{
+                            var highSuccess = Model.Projects.Count(p => p.SuccessProbability >= 80);
+                            var mediumSuccess = Model.Projects.Count(p => p.SuccessProbability >= 50 && p.SuccessProbability < 80);
+                            var lowSuccess = Model.Projects.Count(p => p.SuccessProbability >= 30 && p.SuccessProbability < 50);
+                            var atRisk = Model.Projects.Count(p => p.SuccessProbability < 30);
+                        }
+                        <div class="row mb-3">
+                            <div class="col-md-3 col-sm-6 mb-2">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body text-center">
+                                        <h4 class="mb-0">@highSuccess</h4>
+                                        <small>موفقیت بالا (≥80%)</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-2">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body text-center">
+                                        <h4 class="mb-0">@mediumSuccess</h4>
+                                        <small>موفقیت متوسط (50-79%)</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-2">
+                                <div class="card bg-warning text-dark">
+                                    <div class="card-body text-center">
+                                        <h4 class="mb-0">@lowSuccess</h4>
+                                        <small>موفقیت پایین (30-49%)</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-sm-6 mb-2">
+                                <div class="card bg-danger text-white">
+                                    <div class="card-body text-center">
+                                        <h4 class="mb-0">@atRisk</h4>
+                                        <small>در معرض شکست (&lt;30%)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            @foreach (var project in Model.Projects.OrderByDescending(p => p.SuccessProbability))
+                            {
+                                var badgeClass = project.SuccessProbability >= 80 ? "bg-success" 
+                                    : project.SuccessProbability >= 50 ? "bg-info" 
+                                    : project.SuccessProbability >= 30 ? "bg-warning" 
+                                    : "bg-danger";
+                                
+                                var progressBarClass = project.SuccessProbability >= 80 ? "bg-success" 
+                                    : project.SuccessProbability >= 50 ? "bg-info" 
+                                    : project.SuccessProbability >= 30 ? "bg-warning" 
+                                    : "bg-danger";
+
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card h-100 border">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <h6 class="card-title mb-0">
+                                                    <a href="/Projects/Details/@project.ProjectId" class="text-decoration-none">
+                                                        <i class="bi bi-folder-fill me-2"></i>
+                                                        @project.ProjectName
+                                                    </a>
+                                                </h6>
+                                                <span class="badge @badgeClass">@project.SuccessProbability%</span>
+                                            </div>
+                                            <p class="text-muted small mb-2">
+                                                <i class="bi bi-info-circle me-1"></i>
+                                                @project.SuccessStatus
+                                            </p>
+                                            <div class="progress mb-2" style="height: 20px;">
+                                                <div class="progress-bar @progressBarClass" 
+                                                     role="progressbar" 
+                                                     style="width: @project.SuccessProbability%" 
+                                                     aria-valuenow="@project.SuccessProbability" 
+                                                     aria-valuemin="0" 
+                                                     aria-valuemax="100">
+                                                    @project.SuccessProbability%
+                                                </div>
+                                            </div>
+                                            <div class="small text-muted">
+                                                <div class="d-flex justify-content-between">
+                                                    <span>
+                                                        <i class="bi bi-check-circle text-success me-1"></i>
+                                                        تکمیل شده: @project.CompletedTasks
+                                                    </span>
+                                                    <span>
+                                                        <i class="bi bi-x-circle text-danger me-1"></i>
+                                                        عقب‌مانده: @project.OverdueTasks
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- نمودار زمانی -->
         <div class="row mb-4">
             <div class="col-12">
@@ -55,6 +167,13 @@
                                     @foreach (var project in Model.ProjectOptions)
                                     {
                                         <option value="@project.Id">@project.Name</option>
+                                    }
+                                </select>
+                                <select id="userFilterSelect" class="form-select form-select-sm" style="width: auto;">
+                                    <option value="">همه کاربران</option>
+                                    @foreach (var user in Model.UserOptions)
+                                    {
+                                        <option value="@user.Id">@user.Name</option>
                                     }
                                 </select>
                             </div>
@@ -262,10 +381,11 @@
                 let timeSeriesChart = null;
                 const timeSeriesCtx = document.getElementById('timeSeriesChart').getContext('2d');
                 const projectFilterSelect = document.getElementById('projectFilterSelect');
+                const userFilterSelect = document.getElementById('userFilterSelect');
                 const timeRangeSelect = document.getElementById('timeRangeSelect');
 
-                // رنگ‌های مختلف برای هر پروژه
-                const colors = [
+                // رنگ‌های مختلف برای پروژه‌ها
+                const projectColors = [
                     { bg: 'rgba(59, 130, 246, 0.5)', border: 'rgba(59, 130, 246, 1)' },
                     { bg: 'rgba(16, 185, 129, 0.5)', border: 'rgba(16, 185, 129, 1)' },
                     { bg: 'rgba(245, 101, 101, 0.5)', border: 'rgba(245, 101, 101, 1)' },
@@ -277,9 +397,12 @@
 
                 function loadTimeSeriesData() {
                     const projectId = projectFilterSelect.value || null;
+                    const assignedUserId = userFilterSelect.value || null;
                     const days = parseInt(timeRangeSelect.value);
 
-                    fetch(`/Projects/GetTaskTimeSeriesData?projectId=${projectId || ''}&days=${days}`)
+                    const url = `/Projects/GetTaskTimeSeriesData?projectId=${projectId || ''}&assignedUserId=${assignedUserId || ''}&days=${days}`;
+                    
+                    fetch(url)
                         .then(response => response.json())
                         .then(data => {
                             // تبدیل تاریخ‌ها به فرمت فارسی
@@ -293,8 +416,14 @@
                                 return pc.format(d);
                             });
 
+                            // ساخت label برای عنوان نمودار
+                            let chartTitle = 'تعداد کارها نسبت به زمان';
+                            if (data.selectedUserName) {
+                                chartTitle = `کارهای ${data.selectedUserName} نسبت به زمان`;
+                            }
+
                             const datasets = data.projects.map((project, index) => {
-                                const color = colors[index % colors.length];
+                                const color = projectColors[index % projectColors.length];
                                 return {
                                     label: project.name,
                                     data: data.data.map(item => item.counts[project.id] || 0),
@@ -342,6 +471,15 @@
                                             position: 'top',
                                             rtl: true
                                         },
+                                        title: {
+                                            display: true,
+                                            text: chartTitle,
+                                            position: 'top',
+                                            rtl: true,
+                                            font: {
+                                                size: 16
+                                            }
+                                        },
                                         tooltip: {
                                             rtl: true,
                                             callbacks: {
@@ -367,6 +505,7 @@
 
                 // رویداد تغییر فیلتر
                 projectFilterSelect.addEventListener('change', loadTimeSeriesData);
+                userFilterSelect.addEventListener('change', loadTimeSeriesData);
                 timeRangeSelect.addEventListener('change', loadTimeSeriesData);
                 </text>
             }

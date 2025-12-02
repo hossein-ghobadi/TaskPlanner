@@ -1439,6 +1439,97 @@ namespace Endpoint.Site.Controllers
                     t.DueDate.Value < now);
                 var remainingTasks = totalTasks - completedTasks;
 
+                // محاسبه احتمال موفقیت پروژه
+                int successProbability = 0;
+                string successStatus = "نامشخص";
+                
+                if (totalTasks == 0)
+                {
+                    successProbability = 100;
+                    successStatus = "بدون کار";
+                }
+                else
+                {
+                    // درصد کارهای تکمیل شده
+                    var completionRate = (double)completedTasks / totalTasks * 100;
+                    
+                    // درصد کارهای عقب‌مانده نسبت به کل
+                    var overdueRate = (double)overdueTasks / totalTasks * 100;
+                    
+                    // محاسبه احتمال موفقیت بر اساس فرمول بهبود یافته
+                    // استفاده از نسبت کارهای تکمیل شده به کل و تاثیر کارهای عقب‌مانده
+                    
+                    // امتیاز پایه از کارهای تکمیل شده (0-100)
+                    var baseScore = completionRate;
+                    
+                    // ضریب کاهش بر اساس کارهای عقب‌مانده
+                    // اگر کارهای عقب‌مانده بیشتر از 50% باشد، کاهش شدید
+                    // اگر بین 30-50% باشد، کاهش متوسط
+                    // اگر کمتر از 30% باشد، کاهش کم
+                    double reductionFactor = 1.0;
+                    
+                    if (overdueRate > 50)
+                    {
+                        // کاهش شدید: ضریب 0.3 تا 0.5
+                        reductionFactor = Math.Max(0.3, 1.0 - (overdueRate / 100) * 0.7);
+                    }
+                    else if (overdueRate > 30)
+                    {
+                        // کاهش متوسط: ضریب 0.5 تا 0.7
+                        reductionFactor = 0.7 - ((overdueRate - 30) / 20) * 0.2;
+                    }
+                    else if (overdueRate > 10)
+                    {
+                        // کاهش کم: ضریب 0.7 تا 0.9
+                        reductionFactor = 0.9 - ((overdueRate - 10) / 20) * 0.2;
+                    }
+                    
+                    // محاسبه نهایی
+                    successProbability = (int)(baseScore * reductionFactor);
+                    
+                    // اگر کارهایی تکمیل شده وجود دارد، حداقل بر اساس نسبت تکمیل شده در نظر بگیر
+                    if (completedTasks > 0)
+                    {
+                        // حداقل امتیاز: 20% از درصد تکمیل شده (حداقل 5%)
+                        var minScore = Math.Max(completionRate * 0.2, 5);
+                        successProbability = Math.Max((int)minScore, successProbability);
+                    }
+                    
+                    // اگر همه کارها تکمیل شده باشند
+                    if (completedTasks == totalTasks)
+                    {
+                        successProbability = 100;
+                        successStatus = "موفق";
+                    }
+                    // اگر احتمال موفقیت بالا باشد
+                    else if (successProbability >= 80)
+                    {
+                        successStatus = "احتمال موفقیت بالا";
+                    }
+                    // اگر احتمال موفقیت متوسط باشد
+                    else if (successProbability >= 50)
+                    {
+                        successStatus = "احتمال موفقیت متوسط";
+                    }
+                    // اگر احتمال موفقیت پایین باشد
+                    else if (successProbability >= 30)
+                    {
+                        successStatus = "احتمال موفقیت پایین";
+                    }
+                    // اگر احتمال شکست بالا باشد
+                    else if (successProbability >= 15)
+                    {
+                        successStatus = "در معرض شکست";
+                    }
+                    else
+                    {
+                        successStatus = "خطر بالا";
+                    }
+                    
+                    // محدود کردن به بازه 0-100
+                    successProbability = Math.Max(0, Math.Min(100, successProbability));
+                }
+
                 statistics.Add(new ProjectStatisticItem
                 {
                     ProjectId = project.Id,
@@ -1446,9 +1537,28 @@ namespace Endpoint.Site.Controllers
                     TotalTasks = totalTasks,
                     CompletedTasks = completedTasks,
                     OverdueTasks = overdueTasks,
-                    RemainingTasks = remainingTasks
+                    RemainingTasks = remainingTasks,
+                    SuccessProbability = successProbability,
+                    SuccessStatus = successStatus
                 });
             }
+
+            // دریافت کاربران مرتبط با پروژه‌ها
+            var projectIds = projects.Select(p => p.Id).ToList();
+            var assignedUserIds = await _context.TaskItems
+                .Where(t => projectIds.Contains(t.ProjectId) && t.AssignedUserId != null)
+                .Select(t => t.AssignedUserId)
+                .Distinct()
+                .ToListAsync();
+
+            var users = await _userManager.Users
+                .Where(u => assignedUserIds.Contains(u.Id))
+                .Select(u => new UserOption
+                {
+                    Id = u.Id,
+                    Name = !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : (u.UserName ?? "کاربر ناشناس")
+                })
+                .ToListAsync();
 
             var vm = new ProjectStatisticsVm
             {
@@ -1457,7 +1567,8 @@ namespace Endpoint.Site.Controllers
                 {
                     Id = p.Id,
                     Name = p.Name
-                }).ToList()
+                }).ToList(),
+                UserOptions = users
             };
 
             return View(vm);
@@ -1465,7 +1576,7 @@ namespace Endpoint.Site.Controllers
 
         // 📈 API برای دریافت داده‌های نمودار زمانی
         [HttpGet]
-        public async Task<IActionResult> GetTaskTimeSeriesData(int? projectId = null, int days = 30)
+        public async Task<IActionResult> GetTaskTimeSeriesData(int? projectId = null, string? assignedUserId = null, int days = 30)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             
@@ -1486,12 +1597,18 @@ namespace Endpoint.Site.Controllers
                 tasksQuery = tasksQuery.Where(t => t.ProjectId == projectId.Value);
             }
 
+            // فیلتر بر اساس کاربر
+            if (!string.IsNullOrEmpty(assignedUserId))
+            {
+                tasksQuery = tasksQuery.Where(t => t.AssignedUserId == assignedUserId);
+            }
+
             var tasks = await tasksQuery
                 .Select(t => new { t.ProjectId, t.CreatedAt })
                 .ToListAsync();
 
             // گروه‌بندی بر اساس تاریخ و پروژه
-            var timeSeriesData = tasks
+            var timeSeriesDataByProject = tasks
                 .GroupBy(t => new { Date = t.CreatedAt.Date, ProjectId = t.ProjectId })
                 .Select(g => new
                 {
@@ -1523,9 +1640,10 @@ namespace Endpoint.Site.Controllers
                     ProjectTaskCounts = new Dictionary<int, int>()
                 };
 
+                // محاسبه تعداد کارها بر اساس پروژه
                 foreach (var pid in projectIds)
                 {
-                    var count = timeSeriesData
+                    var count = timeSeriesDataByProject
                         .FirstOrDefault(t => t.Date.Date == date.Date && t.ProjectId == pid)?.Count ?? 0;
                     dateData.ProjectTaskCounts[pid] = count;
                 }
@@ -1538,6 +1656,19 @@ namespace Endpoint.Site.Controllers
                 .Where(p => projectIds.Contains(p.Id))
                 .ToDictionaryAsync(p => p.Id, p => p.Name);
 
+            // دریافت نام کاربر انتخاب شده (اگر انتخاب شده باشد)
+            string? selectedUserName = null;
+            if (!string.IsNullOrEmpty(assignedUserId))
+            {
+                var selectedUser = await _userManager.FindByIdAsync(assignedUserId);
+                if (selectedUser != null)
+                {
+                    selectedUserName = !string.IsNullOrWhiteSpace(selectedUser.FullName) 
+                        ? selectedUser.FullName 
+                        : (selectedUser.UserName ?? "کاربر ناشناس");
+                }
+            }
+
             return Json(new
             {
                 dates = result.Select(r => r.Date).ToList(),
@@ -1546,6 +1677,8 @@ namespace Endpoint.Site.Controllers
                     id = id,
                     name = projectNames.ContainsKey(id) ? projectNames[id] : $"پروژه {id}"
                 }).ToList(),
+                selectedUserId = assignedUserId,
+                selectedUserName = selectedUserName,
                 data = result.Select(r => new
                 {
                     date = r.Date,
