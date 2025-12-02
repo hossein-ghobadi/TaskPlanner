@@ -1743,48 +1743,28 @@ namespace Endpoint.Site.Controllers
             return View(vm);
         }
 
+        // ویرایش کار از تخته کانبان (فقط JSON)
         [HttpPost]
         [IgnoreAntiforgeryToken]
-        public async Task<IActionResult> Edit([FromBody] TaskEditVm vmJson = null)
+        public async Task<IActionResult> EditFromBoard([FromBody] TaskEditVm vm)
         {
-            // بررسی اینکه آیا درخواست JSON است یا فرم معمولی
-            var isJsonRequest = Request.ContentType?.Contains("application/json") == true;
-            
-            TaskEditVm vm;
-            
-            if (isJsonRequest)
+            if (vm == null || vm.Id == 0)
             {
-                // برای JSON، از [FromBody] استفاده می‌کنیم
-                vm = vmJson;
-                
-                // اگر model bind نشد، از Request body بخوان
-                if (vm == null || vm.Id == 0)
-                {
-                    try
-                    {
-                        Request.EnableBuffering();
-                        Request.Body.Position = 0;
-                        using var reader = new System.IO.StreamReader(Request.Body, System.Text.Encoding.UTF8, leaveOpen: true);
-                        var body = await reader.ReadToEndAsync();
-                        Request.Body.Position = 0;
-                        
-                        if (!string.IsNullOrEmpty(body))
-                        {
-                            vm = System.Text.Json.JsonSerializer.Deserialize<TaskEditVm>(body, new System.Text.Json.JsonSerializerOptions
-                            {
-                                PropertyNameCaseInsensitive = true
-                            });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        return Json(new { success = false, message = $"خطا در خواندن اطلاعات: {ex.Message}" });
-                    }
-                }
+                return Json(new { success = false, message = "اطلاعات کار نامعتبر است." });
             }
-            else
+
+            return await SaveTaskEditAsync(vm, isJsonRequest: true);
+        }
+
+        // ویرایش کار از فرم معمولی (فقط Form Data)
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> Edit(TaskEditVm vm = null)
+        {
+            // برای فرم‌های معمولی، از model binding استفاده می‌کنیم
+            // اگر model binding کار نکرد، دستی parse کن
+            if (vm == null || vm.Id == 0)
             {
-                // برای فرم‌های معمولی، از Form data استفاده می‌کنیم
                 vm = new TaskEditVm
                 {
                     Id = int.TryParse(Request.Form["Id"].FirstOrDefault(), out var id) ? id : 0,
@@ -1803,16 +1783,24 @@ namespace Endpoint.Site.Controllers
             
             if (vm == null || vm.Id == 0)
             {
-                if (isJsonRequest)
-                {
-                    return Json(new { success = false, message = "اطلاعات کار نامعتبر است." });
-                }
                 TempData["Error"] = "اطلاعات کار نامعتبر است.";
                 return RedirectToAction(nameof(Index));
             }
             
+            return await SaveTaskEditAsync(vm, isJsonRequest: false);
+        }
+
+        // متد کمکی برای ذخیره ویرایش کار
+        private async Task<IActionResult> SaveTaskEditAsync(TaskEditVm vm, bool isJsonRequest)
+        {
             if (!ModelState.IsValid)
             {
+                if (isJsonRequest)
+                {
+                    var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                    return Json(new { success = false, message = string.Join("; ", errors) });
+                }
+
                 // بارگذاری مجدد ViewBag برای نمایش خطا
                 var taskForError = await _context.TaskItems
                     .Include(t => t.Project)
@@ -1891,6 +1879,10 @@ namespace Endpoint.Site.Controllers
 
             if (!hasAccess)
             {
+                if (isJsonRequest)
+                {
+                    return Json(new { success = false, message = "شما به این تسک دسترسی ندارید." });
+                }
                 TempData["Error"] = "شما به این تسک دسترسی ندارید.";
                 return RedirectToAction(nameof(Index), new { projectId = task.ProjectId });
             }
@@ -1898,6 +1890,10 @@ namespace Endpoint.Site.Controllers
             // 🔒 جلوگیری از تغییر پروژه - ProjectId نباید تغییر کند
             if (vm.ProjectId != task.ProjectId)
             {
+                if (isJsonRequest)
+                {
+                    return Json(new { success = false, message = "تغییر پروژه تسک مجاز نیست." });
+                }
                 ModelState.AddModelError(nameof(vm.ProjectId), "تغییر پروژه تسک مجاز نیست.");
                 ViewBag.Categories = await _context.TaskCategories
                     .Where(c => c.ProjectId == task.ProjectId)
@@ -1948,6 +1944,10 @@ namespace Endpoint.Site.Controllers
 
                 if (!categoryIsValid)
                 {
+                    if (isJsonRequest)
+                    {
+                        return Json(new { success = false, message = "دسته‌بندی انتخاب‌شده متعلق به این پروژه نیست." });
+                    }
                     ModelState.AddModelError(nameof(vm.CategoryId), "دسته‌بندی انتخاب‌شده متعلق به این پروژه نیست.");
                     ViewBag.Categories = await _context.TaskCategories
                         .Where(c => c.ProjectId == task.ProjectId)
@@ -1994,6 +1994,10 @@ namespace Endpoint.Site.Controllers
                 var project = task.Project ?? await _context.Projects.FindAsync(task.ProjectId);
                 if (project == null)
                 {
+                    if (isJsonRequest)
+                    {
+                        return Json(new { success = false, message = "پروژه یافت نشد." });
+                    }
                     ModelState.AddModelError(nameof(vm.ProjectId), "پروژه یافت نشد.");
                     ViewBag.Categories = await _context.TaskCategories
                         .Where(c => c.ProjectId == task.ProjectId)
@@ -2047,6 +2051,10 @@ namespace Endpoint.Site.Controllers
 
                 if (!isCreator && !isMember && !isAcceptedInvitee)
                 {
+                    if (isJsonRequest)
+                    {
+                        return Json(new { success = false, message = "کاربر انتخاب‌شده عضو این پروژه نیست." });
+                    }
                     ModelState.AddModelError(nameof(vm.AssignedUserId), "کاربر انتخاب‌شده عضو این پروژه نیست.");
                     ViewBag.Categories = await _context.TaskCategories
                         .Where(c => c.ProjectId == task.ProjectId)
@@ -2096,6 +2104,10 @@ namespace Endpoint.Site.Controllers
 
                 if (selectedProjectIssueType == null)
                 {
+                    if (isJsonRequest)
+                    {
+                        return Json(new { success = false, message = "نوع کار انتخاب‌شده معتبر نیست." });
+                    }
                     ModelState.AddModelError(nameof(vm.ProjectIssueTypeId), "نوع کار انتخاب‌شده معتبر نیست.");
                     ViewBag.Categories = await _context.TaskCategories
                         .Where(c => c.ProjectId == task.ProjectId)
@@ -2194,8 +2206,7 @@ namespace Endpoint.Site.Controllers
             }
             await _notificationService.TrySendDueSoonNotificationAsync(task, task.Project?.Name);
             
-            // بررسی اینکه آیا درخواست JSON است
-            if (Request.ContentType?.Contains("application/json") == true)
+            if (isJsonRequest)
             {
                 return Json(new { success = true, message = "کار با موفقیت ویرایش شد." });
             }

@@ -2580,7 +2580,7 @@
                 const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
                 const token = tokenInput ? tokenInput.value : '';
                 
-                const response = await fetch('/Tasks/Edit', {
+                const response = await fetch('/Tasks/EditFromBoard', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
