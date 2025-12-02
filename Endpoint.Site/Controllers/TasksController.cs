@@ -48,6 +48,7 @@ namespace Endpoint.Site.Controllers
                 .ToListAsync();
 
             // اگر projectId داده شده، دسترسی را بررسی و فیلتر کن
+            Project? selectedProject = null;
             if (projectId.HasValue)
             {
                 if (!userProjectIds.Contains(projectId.Value))
@@ -55,9 +56,14 @@ namespace Endpoint.Site.Controllers
                     return Forbid();
                 }
                 userProjectIds = new List<int> { projectId.Value };
+                
+                // دریافت اطلاعات پروژه برای نمایش نام
+                selectedProject = await _context.Projects
+                    .FirstOrDefaultAsync(p => p.Id == projectId.Value);
             }
 
-            var tasks = await _context.TaskItems
+            // ساخت شرط فیلتر: اگر projectId مشخص است، فقط کارهای همان پروژه را بگیر
+            var tasksQuery = _context.TaskItems
                 .Include(t => t.Project)
                 .Include(t => t.Category)
                 .Include(t => t.Sprint)
@@ -67,7 +73,20 @@ namespace Endpoint.Site.Controllers
                     .ThenInclude(st => st.ProjectIssueType)
                 .Include(t => t.ChildIssues)
                     .ThenInclude(st => st.ChildIssues)
-                .Where(t => userProjectIds.Contains(t.ProjectId) || t.AssignedUserId == userId)
+                .AsQueryable();
+
+            if (projectId.HasValue)
+            {
+                // اگر projectId مشخص است، فقط کارهای همان پروژه را بگیر
+                tasksQuery = tasksQuery.Where(t => t.ProjectId == projectId.Value);
+            }
+            else
+            {
+                // در غیر این صورت، کارهای همه پروژه‌های کاربر یا کارهای اختصاص داده شده به کاربر
+                tasksQuery = tasksQuery.Where(t => userProjectIds.Contains(t.ProjectId) || t.AssignedUserId == userId);
+            }
+
+            var tasks = await tasksQuery
                 .OrderBy(t => t.StartDate)
                 .ToListAsync();
 
@@ -106,6 +125,10 @@ namespace Endpoint.Site.Controllers
                     .OrderBy(pit => pit.Order)
                     .ToListAsync();
             }
+
+            // ارسال اطلاعات پروژه به ویو
+            ViewBag.SelectedProjectId = projectId;
+            ViewBag.SelectedProjectName = selectedProject?.Name;
 
             return View(tasks);
         }

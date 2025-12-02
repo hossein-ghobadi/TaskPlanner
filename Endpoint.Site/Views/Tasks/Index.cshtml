@@ -16,9 +16,10 @@
     var rootTasks = allTasks.Where(t => t.ParentTaskId == null).ToList();
     var activeRootTasks = rootTasks.Where(t => !t.IsCompleted).ToList();
     var activeRootTrackableCount = rootTasks.Count(t => !t.IsCompleted && IsTrackable(t));
-    var firstTask = allTasks.FirstOrDefault();
     var hasProjectFilter = projectIdInt.HasValue;
-    var projectName = firstTask?.Project?.Name ?? "پروژه";
+    // استفاده از ViewBag برای دریافت نام پروژه از کنترلر
+    var projectName = ViewBag.SelectedProjectName as string ?? 
+                      (allTasks.FirstOrDefault()?.Project?.Name ?? "پروژه");
     var headerTitle = hasProjectFilter ? $"کارهای پروژه «{projectName}»" : "همه کارها";
 
     var totalTasks = allTasks.Count(IsTrackable);
@@ -100,21 +101,6 @@
         background: #fff;
         border: 1px solid rgba(0, 0, 0, 0.06);
         padding: 1.5rem;
-        overflow: visible !important;
-    }
-    
-    /* اجازه به dropdown ها برای خروج از محدودیت overflow */
-    .task-node {
-        overflow: visible !important;
-    }
-    
-    /* اطمینان از نمایش کامل dropdown منوها */
-    .task-card .dropdown-menu {
-        z-index: 1070 !important;
-    }
-    
-    .task-card .dropdown.show .dropdown-menu {
-        position: fixed !important;
     }
     .search-input::placeholder {
         color: #98a1b3;
@@ -264,7 +250,7 @@
     </div>
     
     <div class="d-flex gap-2">
-        <a class="btn btn-info text-white" asp-controller="Tasks" asp-action="Weekly" asp-route-projectId="@projectIdInt">
+        <a class="btn btn-info text-white" asp-controller="Tasks" asp-action="Weekly">
             <i class="bi bi-calendar-week"></i> برنامه هفتگی
         </a>
         <a class="btn btn-outline-success"
@@ -523,7 +509,7 @@ else
             else {
                 issueTypeField.style.display = 'none';
                 storyPointsField.style.display = 'none';
-                modalTitle.textContent = '➕ افزودن کارک';
+                modalTitle.textContent = '➕ افزودن Subtask';
             }
             
             const modal = new bootstrap.Modal(document.getElementById('subTaskModal'));
@@ -708,7 +694,7 @@ else
                             }
                         }
                     </select>
-                    <small class="text-muted">Epic فقط می‌تواند کار (یا انواع سفارشی) داشته باشد</small>
+                    <small class="text-muted">Epic فقط می‌تواند Story-level types (کار یا انواع سفارشی) داشته باشد</small>
                 </div>
 
                 <div class="mb-3">
