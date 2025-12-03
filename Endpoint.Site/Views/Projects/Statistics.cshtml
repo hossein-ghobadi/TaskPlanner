@@ -302,6 +302,213 @@
         border-color: rgba(255, 255, 255, 0.8);
         font-weight: 600;
     }
+
+    /* Responsive Styles */
+    @@media (max-width: 1200px) {
+        .page-header {
+            padding: 1.5rem;
+        }
+        .page-header h2 {
+            font-size: 1.75rem;
+        }
+        .chart-container {
+            height: 350px;
+        }
+    }
+
+    @@media (max-width: 992px) {
+        .stats-page {
+            padding: 1rem 0;
+        }
+        .page-header {
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        .page-header h2 {
+            font-size: 1.5rem;
+        }
+        .stat-card-header {
+            padding: 1rem;
+            font-size: 1rem;
+        }
+        .summary-card h4 {
+            font-size: 2rem;
+        }
+        .chart-container {
+            height: 300px;
+            padding: 0.75rem;
+        }
+        .filter-controls {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .filter-controls > div {
+            width: 100%;
+        }
+        .filter-controls select {
+            width: 100%;
+        }
+        .btn-group {
+            flex-wrap: wrap;
+            width: 100%;
+        }
+        .btn-group .date-filter-btn {
+            flex: 1 1 auto;
+            min-width: calc(50% - 0.25rem);
+            font-size: 0.75rem;
+            padding: 0.35rem 0.6rem;
+        }
+        .customDateRange {
+            width: 100%;
+        }
+        .customDateRange .d-flex {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .customDateRange input {
+            width: 100% !important;
+        }
+        .stats-table thead th {
+            padding: 0.75rem 0.5rem;
+            font-size: 0.85rem;
+        }
+        .stats-table tbody td {
+            padding: 0.75rem 0.5rem;
+            font-size: 0.85rem;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .page-header {
+            padding: 1rem;
+            border-radius: 10px;
+        }
+        .page-header h2 {
+            font-size: 1.25rem;
+        }
+        .stat-card {
+            margin-bottom: 1.5rem;
+            border-radius: 10px;
+        }
+        .stat-card-header {
+            padding: 0.875rem;
+            font-size: 0.95rem;
+        }
+        .card-body {
+            padding: 1rem !important;
+        }
+        .summary-card {
+            padding: 1.25rem;
+        }
+        .summary-card h4 {
+            font-size: 1.75rem;
+        }
+        .summary-card small {
+            font-size: 0.8rem;
+        }
+        .project-card {
+            padding: 1rem;
+        }
+        .project-card-title {
+            font-size: 0.9rem;
+        }
+        .chart-container {
+            height: 250px;
+            padding: 0.5rem;
+        }
+        .filter-controls {
+            gap: 0.75rem;
+        }
+        .filter-controls > div {
+            margin-bottom: 0.5rem;
+        }
+        .btn-group .date-filter-btn {
+            min-width: calc(33.333% - 0.25rem);
+            font-size: 0.7rem;
+            padding: 0.3rem 0.5rem;
+        }
+        .stats-table {
+            font-size: 0.8rem;
+        }
+        .stats-table thead th {
+            padding: 0.5rem 0.25rem;
+            font-size: 0.75rem;
+        }
+        .stats-table tbody td {
+            padding: 0.5rem 0.25rem;
+            font-size: 0.75rem;
+        }
+        .progress-modern {
+            height: 24px;
+        }
+        .progress-bar-modern {
+            font-size: 0.75rem;
+        }
+        .badge-modern {
+            padding: 0.35rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        .task-stats {
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+        .empty-state {
+            padding: 2rem 1rem;
+        }
+        .empty-state i {
+            font-size: 3rem;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .stats-page {
+            padding: 0.5rem 0;
+        }
+        .page-header {
+            padding: 0.875rem;
+            margin-bottom: 1rem;
+        }
+        .page-header h2 {
+            font-size: 1.1rem;
+        }
+        .page-header p {
+            font-size: 0.85rem;
+        }
+        .stat-card-header {
+            padding: 0.75rem;
+            font-size: 0.875rem;
+        }
+        .summary-card {
+            padding: 1rem;
+        }
+        .summary-card h4 {
+            font-size: 1.5rem;
+        }
+        .chart-container {
+            height: 200px;
+            padding: 0.25rem;
+        }
+        .btn-group .date-filter-btn {
+            min-width: calc(50% - 0.25rem);
+            font-size: 0.65rem;
+            padding: 0.25rem 0.4rem;
+        }
+        .stats-table thead th,
+        .stats-table tbody td {
+            padding: 0.4rem 0.2rem;
+            font-size: 0.7rem;
+        }
+        .stats-table tbody td {
+            word-break: break-word;
+        }
+        .progress-modern {
+            height: 20px;
+        }
+        .progress-bar-modern {
+            font-size: 0.7rem;
+        }
+    }
 </style>
 
 <div class="stats-page">
@@ -437,79 +644,99 @@
                 <div class="col-12">
                     <div class="stat-card">
                         <div class="stat-card-header success">
-                            <div class="d-flex justify-content-between align-items-center flex-wrap">
-                                <div>
+                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                                <div class="flex-grow-1">
                                     <i class="bi bi-calendar-event me-2"></i>
                                     <span id="chartHeaderTitle">روند زمانی ایجاد کارها</span>
                                 </div>
-                                <div class="filter-controls mt-2 mt-md-0">
-                                    <div class="d-flex gap-2 align-items-center flex-wrap">
-                                        <div>
-                                            <label class="form-label small mb-1 text-white">معیار زمان:</label>
-                                            <select id="dateTypeSelect" class="form-select form-select-sm">
+                                <div class="filter-controls w-100 w-md-auto mt-2 mt-md-0">
+                                    <div class="d-flex gap-2 align-items-start flex-wrap">
+                                        <div class="w-100 w-md-auto">
+                                            <label class="form-label small mb-1 text-white d-block">معیار زمان:</label>
+                                            <select id="dateTypeSelect" class="form-select form-select-sm w-100">
                                                 <option value="CreatedAt" selected>تاریخ ایجاد</option>
                                                 <option value="StartDate">تاریخ شروع</option>
                                                 <option value="DueDate">تاریخ پایان</option>
                                             </select>
                                         </div>
-                                        <div>
-                                            <label class="form-label small mb-1 text-white">بازه زمانی:</label>
-                                            <div class="btn-group" role="group">
-                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="lastWeek">هفته اخیر</button>
-                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="lastMonth">ماه گذشته</button>
-                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="lastYear">سال گذشته</button>
-                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="nextWeek">هفته آینده</button>
-                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="nextMonth">ماه آینده</button>
-                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="nextYear">سال آینده</button>
+                                        <div class="w-100 w-md-auto">
+                                            <label class="form-label small mb-1 text-white d-block">بازه زمانی:</label>
+                                            <div class="btn-group w-100 w-md-auto" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="lastWeek">
+                                                    <span class="d-none d-lg-inline">هفته اخیر</span><span class="d-lg-none">هفته</span>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="lastMonth">
+                                                    <span class="d-none d-lg-inline">ماه گذشته</span><span class="d-lg-none">ماه</span>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="lastYear">
+                                                    <span class="d-none d-lg-inline">سال گذشته</span><span class="d-lg-none">سال</span>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="nextWeek">
+                                                    <span class="d-none d-lg-inline">هفته آینده</span><span class="d-lg-none">هفته+</span>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="nextMonth">
+                                                    <span class="d-none d-lg-inline">ماه آینده</span><span class="d-lg-none">ماه+</span>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="nextYear">
+                                                    <span class="d-none d-lg-inline">سال آینده</span><span class="d-lg-none">سال+</span>
+                                                </button>
                                                 <button type="button" class="btn btn-sm btn-outline-light date-filter-btn" data-filter="custom" id="customDateBtn">
-                                                    <i class="bi bi-calendar3"></i> سفارشی
+                                                    <i class="bi bi-calendar3"></i> <span class="d-none d-md-inline">سفارشی</span>
                                                 </button>
                                             </div>
                                         </div>
-                                        <div id="customDateRange" class="d-none">
-                                            <div class="d-flex gap-2 align-items-center">
-                                                <div>
-                                                    <label class="form-label small mb-1 text-white">از:</label>
-                                                    <input type="text" id="startDateInput" class="form-control form-control-sm" placeholder="تاریخ شروع" style="width: 120px;" />
+                                        <div id="customDateRange" class="d-none w-100">
+                                            <div class="d-flex gap-2 align-items-end flex-wrap">
+                                                <div class="flex-grow-1">
+                                                    <label class="form-label small mb-1 text-white d-block">از:</label>
+                                                    <input type="text" id="startDateInput" class="form-control form-control-sm w-100" placeholder="تاریخ شروع" />
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <label class="form-label small mb-1 text-white d-block">تا:</label>
+                                                    <input type="text" id="endDateInput" class="form-control form-control-sm w-100" placeholder="تاریخ پایان" />
                                                 </div>
                                                 <div>
-                                                    <label class="form-label small mb-1 text-white">تا:</label>
-                                                    <input type="text" id="endDateInput" class="form-control form-control-sm" placeholder="تاریخ پایان" style="width: 120px;" />
-                                                </div>
-                                                <div class="mt-4">
                                                     <button type="button" class="btn btn-sm btn-light" id="applyCustomDateBtn">
-                                                        <i class="bi bi-check-lg"></i> اعمال
+                                                        <i class="bi bi-check-lg"></i> <span class="d-none d-sm-inline">اعمال</span>
                                                     </button>
                                                 </div>
                                             </div>
                                         </div>
-                                        <select id="projectFilterSelect" class="form-select form-select-sm">
-                                            <option value="">همه پروژه‌ها</option>
-                                            @foreach (var project in Model.ProjectOptions)
-                                            {
-                                                <option value="@project.Id">@project.Name</option>
-                                            }
-                                        </select>
-                                        <select id="userFilterSelect" class="form-select form-select-sm">
-                                            <option value="">همه کاربران</option>
-                                            @foreach (var user in Model.UserOptions)
-                                            {
-                                                <option value="@user.Id">@user.Name</option>
-                                            }
-                                        </select>
+                                        <div class="w-100 w-md-auto">
+                                            <label class="form-label small mb-1 text-white d-block d-md-none">پروژه:</label>
+                                            <select id="projectFilterSelect" class="form-select form-select-sm w-100">
+                                                <option value="">همه پروژه‌ها</option>
+                                                @foreach (var project in Model.ProjectOptions)
+                                                {
+                                                    <option value="@project.Id">@project.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="w-100 w-md-auto">
+                                            <label class="form-label small mb-1 text-white d-block d-md-none">کاربر:</label>
+                                            <select id="userFilterSelect" class="form-select form-select-sm w-100">
+                                                <option value="">همه کاربران</option>
+                                                @foreach (var user in Model.UserOptions)
+                                                {
+                                                    <option value="@user.Id">@user.Name</option>
+                                                }
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="card-body p-4">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <small class="text-muted">
+                            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                                <small class="text-muted small">
                                     <i class="bi bi-info-circle me-1"></i>
-                                    برای زوم: با Ctrl+اسکرول موس یا کشیدن روی نمودار | برای جابجایی: Ctrl+کلیک و کشیدن
+                                    <span class="d-none d-md-inline">برای زوم: با Ctrl+اسکرول موس یا کشیدن روی نمودار | برای جابجایی: Ctrl+کلیک و کشیدن</span>
+                                    <span class="d-md-none">Ctrl+اسکرول برای زوم</span>
                                 </small>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" id="resetZoomBtn">
                                     <i class="bi bi-arrows-angle-expand me-1"></i>
-                                    بازنشانی زوم
+                                    <span class="d-none d-sm-inline">بازنشانی زوم</span>
+                                    <span class="d-sm-none">بازنشانی</span>
                                 </button>
                             </div>
                             <div class="chart-container">
