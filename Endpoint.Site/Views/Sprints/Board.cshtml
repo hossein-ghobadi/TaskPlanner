@@ -140,6 +140,13 @@
         gap: 0.75rem;
         padding: 0.5rem 0;
         overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        /* برای بهبود scroll در موبایل */
+        scroll-snap-type: x proximity;
+        /* جلوگیری از scroll عمودی هنگام drag */
+        overscroll-behavior-x: contain;
     }
     .kanban-column {
         flex: 1;
@@ -151,6 +158,8 @@
         flex-direction: column;
         position: relative;
         overflow: visible;
+        /* برای بهبود scroll در موبایل */
+        scroll-snap-align: start;
     }
     .kanban-column.column-dragging {
         opacity: 0.6;
@@ -186,6 +195,9 @@
         transition: all 0.2s;
         position: relative;
         z-index: 1;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        -webkit-user-select: none;
     }
     .task-card:hover {
         box-shadow: 0 2px 6px rgba(0,0,0,0.1);
@@ -763,13 +775,22 @@
             text-align: center;
         }
         .kanban-board {
+            flex-direction: row;
             overflow-x: auto;
+            overflow-y: hidden;
             -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
             padding: 0.25rem 0;
+            gap: 0.75rem;
+            /* برای بهبود scroll در موبایل */
+            scroll-snap-type: x proximity;
         }
         .kanban-column {
-            min-width: 240px;
-            flex: 0 0 240px;
+            min-width: 280px;
+            width: 280px;
+            flex: 0 0 280px;
+            /* برای بهبود scroll در موبایل */
+            scroll-snap-align: start;
         }
         .kanban-column-header {
             padding: 0.6rem;
@@ -875,9 +896,13 @@
             font-size: 0.8rem;
             padding: 0.4rem 0.5rem;
         }
+        .kanban-board {
+            gap: 0.6rem;
+        }
         .kanban-column {
-            min-width: 200px;
-            flex: 0 0 200px;
+            min-width: 260px;
+            width: 260px;
+            flex: 0 0 260px;
         }
         .kanban-column-header {
             padding: 0.5rem;
@@ -972,9 +997,13 @@
     }
 
     @@media (max-width: 400px) {
+        .kanban-board {
+            gap: 0.5rem;
+        }
         .kanban-column {
-            min-width: 180px;
-            flex: 0 0 180px;
+            min-width: 240px;
+            width: 240px;
+            flex: 0 0 240px;
         }
         .task-card {
             padding: 0.4rem;
@@ -2426,6 +2455,15 @@
             window.location.href = '/Tasks/Details/' + issueId;
         }
 
+        // متغیرهای touch برای موبایل
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+        let touchCard = null;
+        let touchScrollStartX = 0;
+        let touchScrollStartY = 0;
+        let isTouchScrolling = false;
+
         // ثبت موقعیت mouse down برای تشخیص drag vs click
         document.addEventListener('mousedown', function(e) {
             if (e.target.closest('.task-card')) {
@@ -2453,6 +2491,223 @@
                 mouseDownY = 0;
             }
         });
+
+        // Touch events برای موبایل
+        document.addEventListener('touchstart', function(e) {
+            const card = e.target.closest('.task-card');
+            if (!card || !card.draggable) return;
+            
+            // اگر روی دکمه یا لینک کلیک شده، drag نکن
+            if (e.target.closest('button') || e.target.closest('a')) {
+                return;
+            }
+            
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchStartTime = Date.now();
+            touchCard = card;
+            touchScrollStartX = touch.clientX;
+            touchScrollStartY = touch.clientY;
+            isTouchScrolling = false;
+        }, { passive: true });
+
+        document.addEventListener('touchmove', function(e) {
+            if (!touchCard) return;
+            
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - touchStartX;
+            const deltaY = touch.clientY - touchStartY;
+            const absDeltaX = Math.abs(deltaX);
+            const absDeltaY = Math.abs(deltaY);
+            
+            // اگر حرکت کمتر از 10 پیکسل باشد، هنوز تصمیم نگرفته‌ایم
+            if (absDeltaX < 10 && absDeltaY < 10) {
+                return;
+            }
+            
+            // اگر حرکت عمودی بیشتر باشد، این scroll است
+            if (absDeltaY > absDeltaX && absDeltaY > 15) {
+                isTouchScrolling = true;
+                touchCard = null;
+                return;
+            }
+            
+            // اگر حرکت افقی بیشتر باشد و هنوز scroll نشده، این drag است
+            if (absDeltaX > absDeltaY && absDeltaX > 15 && !isTouchScrolling) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                touchCard.classList.add('dragging');
+                touchCard.style.opacity = '0.6';
+                touchCard.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+                touchCard.style.zIndex = '1000';
+                touchCard.style.position = 'relative';
+                touchCard.style.transition = 'none';
+                
+                // پیدا کردن ستون هدف
+                const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                const targetColumn = elementBelow?.closest('.kanban-column-body');
+                const currentColumn = touchCard.closest('.kanban-column-body');
+                
+                // پاک کردن highlight قبلی
+                document.querySelectorAll('.kanban-column-body').forEach(zone => {
+                    if (zone !== targetColumn) {
+                        highlightDropZone(zone, false);
+                    }
+                });
+                
+                if (targetColumn && targetColumn !== currentColumn) {
+                    highlightDropZone(targetColumn, true);
+                }
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', function(e) {
+            if (!touchCard) return;
+            
+            const touch = e.changedTouches[0];
+            const deltaX = touch.clientX - touchStartX;
+            const deltaY = touch.clientY - touchStartY;
+            const deltaTime = Date.now() - touchStartTime;
+            const absDeltaX = Math.abs(deltaX);
+            const absDeltaY = Math.abs(deltaY);
+            
+            // اگر drag انجام شده (نه scroll و نه tap)
+            if (!isTouchScrolling && (absDeltaX > 30 || absDeltaY > 30)) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // پیدا کردن ستون هدف
+                const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                const targetColumnBody = elementBelow?.closest('.kanban-column-body');
+                const currentColumnBody = touchCard.closest('.kanban-column-body');
+                
+                if (targetColumnBody && targetColumnBody !== currentColumnBody) {
+                    const targetStatusId = parseInt(targetColumnBody.dataset.statusId);
+                    const issueId = parseInt(touchCard.dataset.issueId);
+                    
+                    if (targetStatusId && issueId) {
+                        // انتقال task
+                        handleTouchDrop(issueId, targetStatusId, touchCard, targetColumnBody);
+                    } else {
+                        // اگر انتقال انجام نشد، استایل را برگردان
+                        touchCard.classList.remove('dragging');
+                        touchCard.style.opacity = '';
+                        touchCard.style.transform = '';
+                        touchCard.style.zIndex = '';
+                        touchCard.style.position = '';
+                        touchCard.style.transition = '';
+                    }
+                } else {
+                    // اگر ستون هدف پیدا نشد، استایل را برگردان
+                    touchCard.classList.remove('dragging');
+                    touchCard.style.opacity = '';
+                    touchCard.style.transform = '';
+                    touchCard.style.zIndex = '';
+                    touchCard.style.position = '';
+                    touchCard.style.transition = '';
+                }
+            } else if (deltaTime < 300 && absDeltaX < 10 && absDeltaY < 10) {
+                // این یک tap است، نه drag - به جزئیات برو
+                const issueId = parseInt(touchCard.dataset.issueId);
+                if (issueId && !e.target.closest('button') && !e.target.closest('a')) {
+                    window.location.href = '/Tasks/Details/' + issueId;
+                }
+            } else {
+                // اگر drag نبود، استایل را برگردان
+                touchCard.classList.remove('dragging');
+                touchCard.style.opacity = '';
+                touchCard.style.transform = '';
+                touchCard.style.zIndex = '';
+                touchCard.style.position = '';
+                touchCard.style.transition = '';
+            }
+            
+            // پاک کردن highlight
+            document.querySelectorAll('.kanban-column-body').forEach(zone => {
+                highlightDropZone(zone, false);
+            });
+            
+            // Reset
+            touchCard = null;
+            touchStartX = 0;
+            touchStartY = 0;
+            isTouchScrolling = false;
+        }, { passive: false });
+
+        // تابع helper برای handle کردن drop در touch
+        async function handleTouchDrop(issueId, toStatusId, card, dropZone) {
+            if (!issueId || !toStatusId) return;
+            
+            card.style.opacity = '0.5';
+            
+            try {
+                const res = await fetch('/Tasks/MoveIssue', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: JSON.stringify({ 
+                        taskId: issueId, 
+                        toStatusId: toStatusId,
+                        reason: 'تماس از تخته کانبان (موبایل)'
+                    })
+                });
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    showNotification('خطا: ' + (errorText || 'خطا در انتقال وضعیت'), 'error');
+                    card.style.opacity = '1';
+                    return;
+                }
+
+                const result = await res.json();
+                
+                card.classList.remove('dragging');
+                card.style.opacity = '1';
+                card.style.transform = '';
+                
+                const sourceColumn = card.closest('.kanban-column-body');
+                
+                if (dropZone) {
+                    const emptyMessage = dropZone.querySelector('.empty-message');
+                    if (emptyMessage) {
+                        emptyMessage.remove();
+                    }
+                    
+                    const firstCard = dropZone.querySelector('.task-card:not(.dragging)');
+                    if (firstCard && firstCard !== card) {
+                        dropZone.insertBefore(card, firstCard);
+                    } else {
+                        dropZone.insertBefore(card, dropZone.firstChild);
+                    }
+                }
+                
+                if (sourceColumn && sourceColumn !== dropZone) {
+                    const sourceCards = sourceColumn.querySelectorAll('.task-card');
+                    if (sourceCards.length === 0) {
+                        const sourceEmptyMessage = sourceColumn.querySelector('.empty-message');
+                        if (sourceEmptyMessage) {
+                            sourceEmptyMessage.style.display = 'block';
+                        } else {
+                            const emptyMsg = document.createElement('div');
+                            emptyMsg.className = 'empty-message text-muted text-center small p-4';
+                            emptyMsg.innerHTML = '<i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد';
+                            sourceColumn.appendChild(emptyMsg);
+                        }
+                    }
+                }
+                
+                updateIssueCounts();
+                showNotification('کار با موفقیت منتقل شد', 'success');
+            } catch (err) {
+                console.error('Error:', err);
+                showNotification('خطای شبکه: ' + err.message, 'error');
+                card.style.opacity = '1';
+            }
+        }
 
         function getDropZoneElement(element) {
             if (!element) return null;
