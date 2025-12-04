@@ -301,6 +301,12 @@ namespace Endpoint.Site.Controllers
 
                 ViewBag.Collaborators = availableCollaborators;
                 
+                // تعداد یادداشت‌های پروژه
+                var notesCount = await _context.ProjectNotes
+                    .Where(n => n.ProjectId == id)
+                    .CountAsync();
+                ViewBag.NotesCount = notesCount;
+                
                 return View(vm);
             }
             catch (InvalidOperationException)

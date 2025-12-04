@@ -2131,8 +2131,9 @@ namespace Endpoint.Site.Controllers
             task.Description = vm.Description;
             task.CategoryId = vm.CategoryId;
             task.ParentTaskId = vm.ParentId;
-            task.IssueType = vm.IssueType;
-            task.ProjectIssueTypeId = selectedProjectIssueType?.Id;
+            // 🔒 IssueType تغییر نمی‌کند - نوع کار قابل ویرایش نیست
+            // task.IssueType = vm.IssueType; // ❌ حذف شد - نوع کار قابل تغییر نیست
+            // task.ProjectIssueTypeId = selectedProjectIssueType?.Id; // ❌ حذف شد - نوع کار قابل تغییر نیست
             // 🔒 ProjectId تغییر نمی‌کند - همیشه همان پروژه اصلی تسک باقی می‌ماند
             // task.ProjectId = vm.ProjectId; // ❌ حذف شد - پروژه قابل تغییر نیست
             task.StartDate = vm.StartDateSh.ToGregorianDateTime()!.Value;

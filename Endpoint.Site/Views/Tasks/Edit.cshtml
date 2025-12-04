@@ -195,6 +195,7 @@
     <form asp-action="Edit" method="post">
         @Html.HiddenFor(m => m.Id)
         <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
+        <input type="hidden" asp-for="IssueType" id="issueTypeHidden" />
         @Html.HiddenFor(m => m.ProjectId)
         @if (Context.Request.Query.ContainsKey("fromModal") && Context.Request.Query["fromModal"] == "true")
         {
@@ -219,7 +220,7 @@
                     نوع کار
                     <span class="text-danger">*</span>
                 </label>
-                <select asp-for="IssueType" class="form-select" id="issueTypeSelect">
+                <select asp-for="IssueType" class="form-select" id="issueTypeSelect" disabled>
                     @foreach (var issueType in availableIssueTypes)
                     {
                         var isSelected = Model.ProjectIssueTypeId == issueType.Id || 
@@ -232,6 +233,7 @@
                         </option>
             }
         </select>
+                <small class="text-muted small">نوع کار قابل تغییر نیست</small>
                 <span asp-validation-for="IssueType" class="text-danger small"></span>
             </div>
 
