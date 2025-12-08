@@ -321,6 +321,10 @@ namespace TaskPlanner.Persistence.Contexts
             modelBuilder.Entity<BoardStatus>()
                 .HasIndex(bs => bs.BoardId);
 
+            // Ignore the Tasks navigation property on BoardStatus since we use Status string field instead
+            modelBuilder.Entity<BoardStatus>()
+                .Ignore(bs => bs.Tasks);
+
             modelBuilder.Entity<BoardMember>()
                 .HasOne(bm => bm.Board)
                 .WithMany(b => b.Members)
