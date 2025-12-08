@@ -1,0 +1,235 @@
+@model IEnumerable<TaskPlanner.Domain.Entities.Boards.Board>
+@using TaskPlanner.Domain.Entities.Boards
+@using System.Security.Claims
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{
+    ViewData["Title"] = "تخته‌های من";
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="section-title">
+        <i class="bi bi-kanban me-2"></i>
+        تخته‌های من
+    </h2>
+</div>
+
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
+    <!-- کارت افزودن تخته جدید -->
+    <div class="col">
+        <a href="/Boards/Create" class="text-decoration-none">
+            <div class="project-card project-card-add">
+                <div class="card-body d-flex flex-column align-items-center justify-content-center" style="min-height: 200px;">
+                    <div class="add-project-icon mb-3">
+                        <i class="bi bi-plus-circle"></i>
+                    </div>
+                    <h5 class="card-title fw-bold mb-2">تخته جدید</h5>
+                    <p class="card-text text-muted text-center mb-0">ایجاد یک تخته جدید</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    @if (Model != null && Model.Any())
+    {
+        @foreach (var board in Model)
+        {
+            <div class="col">
+                <div class="project-card">
+                    <a asp-action="Details" asp-route-id="@board.Id" class="text-decoration-none text-dark">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="card-title fw-bold mb-0">@board.Name</h5>
+                                <span class="badge bg-primary">
+                                    @{
+                                        var taskCount = board.Tasks?.Count ?? 0;
+                                    }
+                                    @taskCount کار
+                                </span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(board.Description))
+                            {
+                                <p class="card-text text-muted description-text">
+                                    @board.Description
+                                </p>
+                            }
+                            else
+                            {
+                                <p class="card-text text-muted">بدون توضیحات</p>
+                            }
+                        </div>
+                    </a>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="bi bi-clock"></i>
+                                @board.UpdatedAt.ToString("yyyy/MM/dd")
+                            </small>
+                            @if (board.CreatorUserId == currentUserId)
+                            {
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openEditBoardModal(@board.Id)" title="ویرایش">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@board.Id" title="حذف" onclick="event.stopPropagation();">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle me-2"></i>
+                هنوز تخته‌ای ایجاد نکرده‌اید. برای شروع، یک تخته جدید ایجاد کنید.
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal برای ویرایش تخته -->
+<div class="modal fade" id="editBoardModal" tabindex="-1" aria-labelledby="editBoardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editBoardModalLabel">ویرایش تخته</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editBoardFormModal">
+                    <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
+                    <input type="hidden" id="editBoardId" name="Id" />
+                    
+                    <div class="mb-3">
+                        <label for="editBoardName" class="form-label">نام تخته <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="editBoardName" name="Name" required placeholder="نام تخته" />
+                        <span class="text-danger" id="editBoardNameError"></span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editBoardDescription" class="form-label">توضیحات</label>
+                        <textarea class="form-control" id="editBoardDescription" name="Description" rows="3" placeholder="توضیحات اختیاری"></textarea>
+                        <span class="text-danger" id="editBoardDescriptionError"></span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditBoard()">
+                    <i class="bi bi-check-circle me-2"></i>
+                    ذخیره تغییرات
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // باز کردن Modal ویرایش تخته
+    async function openEditBoardModal(boardId) {
+        try {
+            const response = await fetch('@Url.Action("GetBoard", "Boards")?id=' + boardId);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                document.getElementById('editBoardId').value = result.board.id;
+                document.getElementById('editBoardName').value = result.board.name || '';
+                document.getElementById('editBoardDescription').value = result.board.description || '';
+                
+                // پاک کردن خطاهای قبلی
+                document.getElementById('editBoardNameError').textContent = '';
+                document.getElementById('editBoardDescriptionError').textContent = '';
+                
+                const modal = new bootstrap.Modal(document.getElementById('editBoardModal'));
+                modal.show();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در دریافت اطلاعات تخته'));
+            }
+        } catch (error) {
+            console.error('خطا در دریافت اطلاعات تخته:', error);
+            alert('خطا در دریافت اطلاعات تخته: ' + error.message);
+        }
+    }
+
+    // ارسال فرم ویرایش تخته
+    async function submitEditBoard() {
+        const name = document.getElementById('editBoardName').value.trim();
+        const description = document.getElementById('editBoardDescription').value.trim();
+        const boardId = document.getElementById('editBoardId').value;
+
+        if (!name) {
+            document.getElementById('editBoardNameError').textContent = 'نام تخته الزامی است';
+            return;
+        }
+
+        // پاک کردن خطاهای قبلی
+        document.getElementById('editBoardNameError').textContent = '';
+        document.getElementById('editBoardDescriptionError').textContent = '';
+
+        const submitBtn = document.querySelector('#editBoardModal .btn-primary');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>در حال ذخیره...';
+
+        try {
+            const formData = new FormData();
+            formData.append('Id', boardId);
+            formData.append('Name', name);
+            formData.append('Description', description);
+            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+
+            const response = await fetch('@Url.Action("Edit", "Boards")?id=' + boardId, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': '@antiforgeryToken',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editBoardModal'));
+                modal.hide();
+                location.reload();
+            } else {
+                // نمایش خطاهای اعتبارسنجی
+                if (result.errors) {
+                    if (result.errors.Name) {
+                        document.getElementById('editBoardNameError').textContent = result.errors.Name[0] || '';
+                    }
+                    if (result.errors.Description) {
+                        document.getElementById('editBoardDescriptionError').textContent = result.errors.Description[0] || '';
+                    }
+                }
+                alert('خطا: ' + (result.message || 'خطا در ویرایش تخته'));
+            }
+        } catch (error) {
+            console.error('خطا در ویرایش تخته:', error);
+            alert('خطا در ویرایش تخته: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    }
+</script>
+

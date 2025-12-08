@@ -1,0 +1,1853 @@
+@model Endpoint.Site.Models.BoardDetailsVm
+@using TaskPlanner.Domain.Entities.Boards
+@using System.Security.Claims
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{
+    ViewData["Title"] = Model.Name;
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var availableUsers = ViewBag.AvailableUsers as dynamic;
+    var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+    
+    // استفاده از وضعیت‌های دیتابیس
+    var allStatusesList = Model.Statuses.OrderBy(s => s.Order).ToList();
+    var allStatuses = allStatusesList.Select(s => s.Name).ToList();
+    if (!allStatuses.Any())
+    {
+        // اگر وضعیتی وجود ندارد، فقط "To Do" را نمایش بده
+        allStatuses = new[] { "To Do" }.ToList();
+        allStatusesList = new List<BoardStatus>();
+    }
+    
+    // اطمینان از اینکه "To Do" اول باشد (برای نمایش در سمت چپ)
+    var toDoStatus = allStatusesList.FirstOrDefault(s => s.Name.Equals("To Do", StringComparison.OrdinalIgnoreCase));
+    if (toDoStatus != null)
+    {
+        allStatusesList.Remove(toDoStatus);
+        allStatusesList.Insert(0, toDoStatus); // اضافه کردن به اول برای نمایش در سمت چپ
+    }
+}
+
+<style>
+    .board-container {
+        direction: rtl;
+        padding: 1rem;
+    }
+    .board-header {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .board-header h2 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    .board-columns {
+        display: flex;
+        flex-direction: row;
+        gap: 1rem;
+        overflow-x: auto;
+        padding-bottom: 1rem;
+    }
+    .board-column {
+        min-width: 300px;
+        background: #f4f5f7;
+        border-radius: 8px;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 250px);
+    }
+    .column-header {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #ddd;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .column-tasks {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .task-card {
+        background: white;
+        border-radius: 6px;
+        padding: 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        cursor: grab;
+        transition: box-shadow 0.2s;
+        user-select: none;
+    }
+    .task-card:hover {
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    .task-card.dragging {
+        opacity: 0.5;
+        cursor: grabbing;
+    }
+    .column-tasks.drag-over {
+        background-color: #e3f2fd;
+        border-radius: 4px;
+    }
+    .board-column.drag-over {
+        background-color: #e8f5e9;
+    }
+    .task-title {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    .task-description {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+    }
+    .task-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    .add-task-btn {
+        margin-top: 0.5rem;
+        width: 100%;
+        border: 2px dashed #ddd;
+        background: transparent;
+        color: #6c757d;
+        padding: 2rem 1rem;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        cursor: pointer;
+    }
+    .add-task-btn i {
+        font-size: 2.5rem;
+        opacity: 0.5;
+        transition: all 0.3s ease;
+    }
+    .add-task-btn span {
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    .add-task-btn:hover {
+        border-color: #007bff;
+        color: #007bff;
+        background: #f0f8ff;
+        transform: scale(1.02);
+    }
+    .add-task-btn:hover i {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+    .task-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .badge-assigned {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    .subtask-container {
+        margin-top: 0.5rem;
+        padding-right: 1rem;
+        border-right: 2px solid #e0e0e0;
+    }
+    .subtask-item {
+        font-size: 0.85rem;
+        color: #6c757d;
+        padding: 0.25rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .subtask-item::before {
+        content: "▸";
+        color: #999;
+    }
+    .add-subtask-btn {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+        border: 1px dashed #ccc;
+        background: transparent;
+        color: #6c757d;
+        border-radius: 4px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .add-subtask-btn:hover {
+        border-color: #007bff;
+        color: #007bff;
+    }
+    .status-item {
+        transition: background-color 0.2s;
+    }
+    .status-item:hover {
+        background-color: #f8f9fa;
+    }
+    .status-item.dragging {
+        opacity: 0.5;
+        background-color: #e3f2fd;
+    }
+    .status-column.dragging {
+        opacity: 0.5;
+        transform: rotate(2deg);
+    }
+    .board-columns.drag-over {
+        background-color: #e8f5e9;
+    }
+    .status-column {
+        cursor: move;
+    }
+    .add-status-column {
+        cursor: default;
+        pointer-events: auto;
+    }
+    .add-status-column * {
+        pointer-events: auto;
+    }
+</style>
+
+<div class="board-container">
+    <div class="board-header">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h2>@Model.Name</h2>
+                @if (!string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    <p class="text-muted mb-2">@Model.Description</p>
+                }
+                <div class="d-flex gap-3 align-items-center">
+                    <small class="text-muted">
+                        <i class="bi bi-person"></i>
+                        سازنده: @Model.CreatorUserName
+                    </small>
+                    <small class="text-muted">
+                        <i class="bi bi-list-task"></i>
+                        @Model.TotalTasks کار
+                    </small>
+                    <small class="text-muted">
+                        <i class="bi bi-check-circle"></i>
+                        @Model.CompletedTasks انجام شده
+                    </small>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-right"></i>
+                    بازگشت به لیست
+                </a>
+                <a asp-action="Invite" asp-route-boardId="@Model.Id" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-person-plus"></i>
+                    دعوت کاربر
+                </a>
+                @if (Model.CreatorUserId == currentUserId)
+                {
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditBoardModal()">
+                        <i class="bi bi-pencil"></i>
+                        ویرایش
+                    </button>
+                }
+            </div>
+        </div>
+        
+        <!-- لیست اعضا -->
+        @if (Model.Members.Any())
+        {
+            <div class="mt-3">
+                <small class="text-muted d-block mb-2">اعضای تخته:</small>
+                <div class="d-flex gap-2 flex-wrap">
+                    @foreach (var member in Model.Members)
+                    {
+                        <span class="badge bg-secondary">@member.DisplayName</span>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- ستون‌های تخته -->
+    <div class="board-columns" id="boardColumns" ondrop="handleStatusColumnDrop(event)" ondragover="handleStatusColumnDragOver(event)">
+        @foreach (var statusObj in allStatusesList)
+        {
+            var status = statusObj.Name;
+            var tasks = Model.TasksByStatus.ContainsKey(status) ? Model.TasksByStatus[status] : new List<BoardTask>();
+            var isToDo = status.Equals("To Do", StringComparison.OrdinalIgnoreCase);
+            <div class="board-column status-column @(isToDo ? "to-do-column" : "")" 
+                 data-status="@status" 
+                 data-status-id="@statusObj.Id"
+                 draggable="@(!isToDo ? "true" : "false")"
+                 ondragstart="@(!isToDo ? "handleStatusColumnDragStart(event)" : "")"
+                 ondragend="@(!isToDo ? "handleStatusColumnDragEnd(event)" : "")">
+                <div class="column-header">
+                    <div class="d-flex align-items-center gap-2">
+                        @if (!isToDo)
+                        {
+                            <i class="bi bi-grip-vertical text-muted" style="cursor: grab;"></i>
+                        }
+                        <span>@status</span>
+                        <span class="badge bg-primary">@tasks.Count</span>
+                    </div>
+                    @if (!isToDo)
+                    {
+                        <div class="d-flex gap-1">
+                            <button type="button" class="btn btn-sm btn-outline-danger p-1 delete-status-btn" 
+                                    data-status-id="@statusObj.Id" 
+                                    data-status-name="@status" 
+                                    title="حذف وضعیت">
+                                <i class="bi bi-trash" style="font-size: 0.8rem;"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+                <div class="column-tasks" id="tasks-@status" data-status="@status" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    @foreach (var task in tasks.OrderBy(t => t.Order).ThenBy(t => t.CreatedAt))
+                    {
+                        var isSubtask = task.ParentTaskId.HasValue;
+                        <div class="task-card" draggable="@(!isSubtask ? "true" : "false")" data-task-id="@task.Id" data-status="@task.Status" data-parent-task-id="@(task.ParentTaskId?.ToString() ?? "")" ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)" style="@(isSubtask ? "cursor: default;" : "")">
+                            <div onclick="if(!event.target.closest('a, button')) openEditTaskModal(@task.Id)" style="cursor: pointer;">
+                                <div class="task-title">@task.Title</div>
+                                @if (!string.IsNullOrWhiteSpace(task.Description))
+                                {
+                                    <div class="task-description">@(task.Description.Length > 100 ? task.Description.Substring(0, 100) + "..." : task.Description)</div>
+                                }
+                                <div class="task-footer">
+                                    @if (!string.IsNullOrWhiteSpace(task.AssignedUserId))
+                                    {
+                                        <span class="task-badge badge-assigned">
+                                            <i class="bi bi-person"></i>
+                                            اختصاص داده شده
+                                        </span>
+                                    }
+                                    <small>@task.CreatedAt.ToString("MM/dd")</small>
+                                </div>
+                            </div>
+                            
+                            <!-- نمایش کارک‌ها -->
+                            @if (task.ChildTasks != null && task.ChildTasks.Any())
+                            {
+                                <div class="subtask-container">
+                                    @foreach (var subtask in task.ChildTasks.OrderBy(st => st.Order).ThenBy(st => st.CreatedAt))
+                                    {
+                                        <div class="subtask-item" onclick="openEditTaskModal(@subtask.Id)" style="cursor: pointer;">
+                                            @subtask.Title
+                                            @if (subtask.Status == "Done")
+                                            {
+                                                <span class="badge bg-success" style="font-size: 0.7rem;">✓</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            
+                            <!-- دکمه افزودن کارک -->
+                            <button type="button" class="add-subtask-btn border-0 bg-transparent" onclick="event.stopPropagation(); openAddSubtaskModal(@task.Id, '@task.Status', @Model.Id)">
+                                <i class="bi bi-plus-circle"></i>
+                                افزودن کارک
+                            </button>
+                            
+                            <!-- دکمه‌های عملیات -->
+                            <div class="d-flex gap-2 mt-2" onclick="event.stopPropagation();">
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="openTaskModal(@task.Id, '@task.Title')" title="یادداشت و پیوست">
+                                    <i class="bi bi-chat-left-text"></i>
+                                    یادداشت
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteTaskDirectly(@task.Id)" title="حذف کار">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <button type="button" class="add-task-btn text-decoration-none border-0 bg-transparent w-100" onclick="openAddTaskModal('@status', @Model.Id)">
+                    <i class="bi bi-plus-circle-fill"></i>
+                    <span>افزودن کار</span>
+                </button>
+            </div>
+        }
+        
+        <!-- دکمه افزودن وضعیت جدید -->
+        <div class="board-column add-status-column" style="min-width: 200px; background: #e9ecef; border: 2px dashed #ccc; display: flex; flex-direction: column; justify-content: center; align-items: center;" draggable="false">
+            <div class="p-3 text-center">
+                <button type="button" class="btn btn-outline-primary" onclick="openAddStatusModal()">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    افزودن وضعیت
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal برای افزودن کار -->
+<div class="modal fade" id="addTaskModal" tabindex="-1" aria-labelledby="addTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addTaskModalLabel">افزودن کار جدید</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addTaskForm">
+                    <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
+                    <input type="hidden" id="addTaskBoardId" name="BoardId" value="@Model.Id" />
+                    <input type="hidden" id="addTaskStatus" name="Status" />
+                    <input type="hidden" id="addTaskParentTaskId" name="ParentTaskId" />
+                    
+                    <div class="mb-3">
+                        <label for="addTaskTitle" class="form-label">عنوان کار <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="addTaskTitle" name="Title" required />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="addTaskDescription" class="form-label">توضیحات</label>
+                        <textarea class="form-control" id="addTaskDescription" name="Description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="addTaskStatusDisplay" class="form-label">وضعیت</label>
+                        <input type="text" class="form-control" id="addTaskStatusDisplay" readonly disabled />
+                        <input type="hidden" id="addTaskStatusSelect" name="Status" />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="addTaskAssignedUserId" class="form-label">اختصاص به</label>
+                        <select class="form-select" id="addTaskAssignedUserId" name="AssignedUserId">
+                            <option value="">بدون اختصاص</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddTask()">
+                    <i class="bi bi-check-circle me-2"></i>
+                    ایجاد کار
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal برای ویرایش کار -->
+<div class="modal fade" id="editTaskModal" tabindex="-1" aria-labelledby="editTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editTaskModalLabel">ویرایش کار</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editTaskForm">
+                    <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
+                    <input type="hidden" id="editTaskId" name="Id" />
+                    <input type="hidden" id="editTaskBoardId" name="BoardId" />
+                    
+                    <div class="mb-3">
+                        <label for="editTaskTitle" class="form-label">عنوان کار <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="editTaskTitle" name="Title" required />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editTaskDescription" class="form-label">توضیحات</label>
+                        <textarea class="form-control" id="editTaskDescription" name="Description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editTaskStatusSelect" class="form-label">وضعیت</label>
+                        <select class="form-select" id="editTaskStatusSelect" name="Status">
+                            <option value="To Do">To Do</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Done">Done</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editTaskAssignedUserId" class="form-label">اختصاص به</label>
+                        <select class="form-select" id="editTaskAssignedUserId" name="AssignedUserId">
+                            <option value="">بدون اختصاص</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger me-auto" onclick="deleteTaskFromModal()">
+                    <i class="bi bi-trash me-2"></i>
+                    حذف کار
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditTask()">
+                    <i class="bi bi-check-circle me-2"></i>
+                    ذخیره تغییرات
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal برای مدیریت وضعیت‌ها -->
+<div class="modal fade" id="manageStatusesModal" tabindex="-1" aria-labelledby="manageStatusesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="manageStatusesModalLabel">مدیریت وضعیت‌ها</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>افزودن وضعیت جدید</h6>
+                    <form id="addStatusForm" class="row g-2">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="newStatusName" placeholder="نام وضعیت" required />
+                        </div>
+                        <div class="col-md-4">
+                            <input type="color" class="form-control form-control-color" id="newStatusColor" value="#6c757d" title="انتخاب رنگ" />
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-plus-circle me-2"></i>
+                                افزودن
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <hr />
+                <div>
+                    <h6>وضعیت‌های موجود (برای تغییر ترتیب، بکشید و رها کنید)</h6>
+                    <div id="statusesList" class="list-group" style="min-height: 100px;">
+                        <!-- وضعیت‌ها اینجا نمایش داده می‌شوند -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal برای افزودن وضعیت -->
+<div class="modal fade" id="addStatusModal" tabindex="-1" aria-labelledby="addStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addStatusModalLabel">افزودن وضعیت جدید</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addStatusFormModal">
+                    <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
+                    
+                    <div class="mb-3">
+                        <label for="addStatusName" class="form-label">نام وضعیت <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="addStatusName" name="name" required placeholder="مثلاً: در حال بررسی" onkeypress="if(event.key === 'Enter') { event.preventDefault(); submitAddStatus(); }" />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="addStatusDescription" class="form-label">توضیحات</label>
+                        <textarea class="form-control" id="addStatusDescription" name="description" rows="3" placeholder="توضیحات اختیاری"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="addStatusColor" class="form-label">رنگ</label>
+                        <input type="color" class="form-control form-control-color" id="addStatusColor" name="color" value="#6c757d" title="انتخاب رنگ" />
+                        <small class="form-text text-muted">رنگ پیش‌فرض: #6c757d</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddStatus()">
+                    <i class="bi bi-check-circle me-2"></i>
+                    افزودن وضعیت
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal برای ویرایش تخته -->
+<div class="modal fade" id="editBoardModal" tabindex="-1" aria-labelledby="editBoardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editBoardModalLabel">ویرایش تخته</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editBoardFormModal">
+                    <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
+                    <input type="hidden" id="editBoardId" name="Id" value="@Model.Id" />
+                    
+                    <div class="mb-3">
+                        <label for="editBoardName" class="form-label">نام تخته <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="editBoardName" name="Name" required placeholder="نام تخته" />
+                        <span class="text-danger" id="editBoardNameError"></span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editBoardDescription" class="form-label">توضیحات</label>
+                        <textarea class="form-control" id="editBoardDescription" name="Description" rows="3" placeholder="توضیحات اختیاری"></textarea>
+                        <span class="text-danger" id="editBoardDescriptionError"></span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditBoard()">
+                    <i class="bi bi-check-circle me-2"></i>
+                    ذخیره تغییرات
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal برای یادداشت و پیوست -->
+<div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="taskModalLabel">یادداشت و پیوست</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6 id="taskTitleInModal"></h6>
+                </div>
+                
+                <!-- فرم افزودن یادداشت -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">افزودن یادداشت</h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="commentForm" enctype="multipart/form-data">
+                            <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
+                            <input type="hidden" id="taskIdForComment" name="BoardTaskId" />
+                            <div class="mb-3">
+                                <label for="commentMessage" class="form-label">یادداشت</label>
+                                <textarea class="form-control" id="commentMessage" name="Message" rows="3"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="commentAttachments" class="form-label">فایل‌های پیوست</label>
+                                <input type="file" class="form-control" id="commentAttachments" name="Attachments" multiple />
+                                <small class="form-text text-muted">می‌توانید چند فایل انتخاب کنید</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i>
+                                ارسال
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- لیست یادداشت‌ها -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">یادداشت‌ها</h6>
+                    </div>
+                    <div class="card-body" id="commentsContainer" style="max-height: 400px; overflow-y: auto;">
+                        <div class="text-center text-muted py-3">
+                            <i class="bi bi-hourglass-split"></i>
+                            در حال بارگذاری...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let draggedTask = null;
+    let draggedTaskElement = null;
+
+    function handleDragStart(e) {
+        // اگر کارک است، اجازه drag نده
+        if (e.target.dataset.parentTaskId && e.target.dataset.parentTaskId !== '') {
+            e.preventDefault();
+            return false;
+        }
+
+        draggedTask = {
+            id: parseInt(e.target.dataset.taskId),
+            status: e.target.dataset.status,
+            element: e.target
+        };
+        draggedTaskElement = e.target;
+        e.target.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', e.target.outerHTML);
+    }
+
+    function handleDragEnd(e) {
+        e.target.classList.remove('dragging');
+        document.querySelectorAll('.column-tasks').forEach(col => {
+            col.classList.remove('drag-over');
+        });
+        document.querySelectorAll('.board-column').forEach(col => {
+            col.classList.remove('drag-over');
+        });
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        
+        const columnTasks = e.currentTarget;
+        columnTasks.classList.add('drag-over');
+        
+        const column = columnTasks.closest('.board-column');
+        if (column) {
+            column.classList.add('drag-over');
+        }
+    }
+
+    function handleDragLeave(e) {
+        const columnTasks = e.currentTarget;
+        columnTasks.classList.remove('drag-over');
+        
+        const column = columnTasks.closest('.board-column');
+        if (column) {
+            column.classList.remove('drag-over');
+        }
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const columnTasks = e.currentTarget;
+        const newStatus = columnTasks.dataset.status;
+        columnTasks.classList.remove('drag-over');
+        
+        const column = columnTasks.closest('.board-column');
+        if (column) {
+            column.classList.remove('drag-over');
+        }
+
+        if (!draggedTask) return;
+
+        // اگر کارک است، اجازه جابجایی نده
+        if (draggedTaskElement.dataset.parentTaskId && draggedTaskElement.dataset.parentTaskId !== '') {
+            alert('کارک‌ها قابل جابجایی نیستند');
+            draggedTaskElement.classList.remove('dragging');
+            draggedTask = null;
+            draggedTaskElement = null;
+            return;
+        }
+
+        // اگر در همان ستون است، فقط ترتیب را تغییر بده
+        const isSameColumn = draggedTask.status === newStatus;
+        
+        // حذف کار از مکان قبلی
+        const oldColumn = document.querySelector(`#tasks-${draggedTask.status}`);
+        draggedTaskElement.remove();
+
+        // اضافه کردن کار به مکان جدید
+        const tasks = Array.from(columnTasks.querySelectorAll('.task-card:not(.dragging)'));
+        
+        // پیدا کردن موقعیت درج
+        let insertBefore = null;
+        const afterElement = e.target.closest('.task-card');
+        if (afterElement && afterElement !== draggedTaskElement) {
+            insertBefore = afterElement;
+        }
+
+        // ایجاد عنصر جدید
+        const newTaskElement = draggedTaskElement.cloneNode(true);
+        newTaskElement.classList.remove('dragging');
+        newTaskElement.setAttribute('data-status', newStatus);
+        newTaskElement.setAttribute('draggable', 'true');
+        newTaskElement.addEventListener('dragstart', handleDragStart);
+        newTaskElement.addEventListener('dragend', handleDragEnd);
+
+        if (insertBefore) {
+            columnTasks.insertBefore(newTaskElement, insertBefore);
+        } else {
+            columnTasks.appendChild(newTaskElement);
+        }
+
+        // محاسبه ترتیب جدید
+        const taskOrders = [];
+        const allTasks = Array.from(columnTasks.querySelectorAll('.task-card'));
+        allTasks.forEach((taskEl, index) => {
+            const taskId = parseInt(taskEl.dataset.taskId);
+            if (taskId) {
+                taskOrders.push({
+                    taskId: taskId,
+                    status: newStatus,
+                    order: index + 1
+                });
+            }
+        });
+
+        // اگر ستون تغییر کرده، کارهای ستون قبلی را هم به‌روزرسانی کن
+        if (!isSameColumn && oldColumn) {
+            const oldTasks = Array.from(oldColumn.querySelectorAll('.task-card'));
+            oldTasks.forEach((taskEl, index) => {
+                const taskId = parseInt(taskEl.dataset.taskId);
+                if (taskId) {
+                    taskOrders.push({
+                        taskId: taskId,
+                        status: draggedTask.status,
+                        order: index + 1
+                    });
+                }
+            });
+        }
+
+        // ارسال درخواست به سرور
+        updateTaskOrder(taskOrders);
+
+        draggedTask = null;
+        draggedTaskElement = null;
+    }
+
+    async function updateTaskOrder(taskOrders) {
+        try {
+            const response = await fetch('@Url.Action("UpdateTaskOrder", "BoardTasks")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': '@antiforgeryToken'
+                },
+                body: JSON.stringify({ taskOrders: taskOrders })
+            });
+
+            const result = await response.json();
+            if (!result.success) {
+                console.error('خطا در به‌روزرسانی ترتیب:', result.message);
+                // بارگذاری مجدد صفحه در صورت خطا
+                location.reload();
+            }
+        } catch (error) {
+            console.error('خطا در ارسال درخواست:', error);
+            location.reload();
+        }
+    }
+
+    // جلوگیری از کلیک هنگام drag
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.task-card').forEach(card => {
+            card.addEventListener('mousedown', function(e) {
+                // اگر روی دکمه یا لینک کلیک شده، drag را غیرفعال کن
+                if (e.target.closest('a, button')) {
+                    this.draggable = false;
+                    setTimeout(() => {
+                        this.draggable = true;
+                    }, 100);
+                }
+            });
+        });
+    });
+
+    // مدیریت Modal افزودن کار
+    let currentBoardId = @Model.Id;
+    let availableUsers = [];
+
+    async function loadAvailableUsers(boardId) {
+        if (availableUsers.length > 0) return availableUsers;
+        
+        try {
+            const response = await fetch('@Url.Action("GetAvailableUsers", "BoardTasks")?boardId=' + boardId);
+            const result = await response.json();
+            
+            if (result.success) {
+                availableUsers = result.users;
+                return availableUsers;
+            }
+        } catch (error) {
+            console.error('خطا در بارگذاری کاربران:', error);
+        }
+        return [];
+    }
+
+    async function openAddTaskModal(status, boardId) {
+        const modal = new bootstrap.Modal(document.getElementById('addTaskModal'));
+        document.getElementById('addTaskModalLabel').textContent = 'افزودن کار جدید';
+        document.getElementById('addTaskForm').reset();
+        document.getElementById('addTaskBoardId').value = boardId;
+        document.getElementById('addTaskStatus').value = status;
+        document.getElementById('addTaskStatusSelect').value = status;
+        document.getElementById('addTaskStatusDisplay').value = status;
+        document.getElementById('addTaskParentTaskId').value = '';
+        
+        // بارگذاری لیست کاربران
+        const users = await loadAvailableUsers(boardId);
+        const select = document.getElementById('addTaskAssignedUserId');
+        select.innerHTML = '<option value="">بدون اختصاص</option>';
+        users.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.textContent = user.displayName;
+            select.appendChild(option);
+        });
+        
+        modal.show();
+    }
+
+    async function openAddSubtaskModal(parentTaskId, status, boardId) {
+        const modal = new bootstrap.Modal(document.getElementById('addTaskModal'));
+        document.getElementById('addTaskModalLabel').textContent = 'افزودن کارک جدید';
+        document.getElementById('addTaskForm').reset();
+        document.getElementById('addTaskBoardId').value = boardId;
+        document.getElementById('addTaskStatus').value = status;
+        document.getElementById('addTaskStatusSelect').value = status;
+        document.getElementById('addTaskStatusDisplay').value = status;
+        document.getElementById('addTaskParentTaskId').value = parentTaskId;
+        
+        // بارگذاری لیست کاربران
+        const users = await loadAvailableUsers(boardId);
+        const select = document.getElementById('addTaskAssignedUserId');
+        select.innerHTML = '<option value="">بدون اختصاص</option>';
+        users.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.textContent = user.displayName;
+            select.appendChild(option);
+        });
+        
+        modal.show();
+    }
+
+    async function submitAddTask() {
+        const form = document.getElementById('addTaskForm');
+        const formData = new FormData(form);
+        
+        // اطمینان از اینکه Status از select گرفته می‌شود
+        formData.set('Status', document.getElementById('addTaskStatusSelect').value);
+        
+        const submitBtn = document.querySelector('#addTaskModal .btn-primary');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>در حال ایجاد...';
+        
+        try {
+            const response = await fetch('@Url.Action("CreateTask", "BoardTasks")', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addTaskModal'));
+                modal.hide();
+                form.reset();
+                // بارگذاری مجدد صفحه
+                location.reload();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در ایجاد کار'));
+            }
+        } catch (error) {
+            console.error('خطا در ایجاد کار:', error);
+            alert('خطا در ایجاد کار: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    }
+
+    // Reset modal title when closed
+    document.getElementById('addTaskModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('addTaskModalLabel').textContent = 'افزودن کار جدید';
+    });
+
+    // مدیریت Modal ویرایش کار
+    async function openEditTaskModal(taskId) {
+        const modal = new bootstrap.Modal(document.getElementById('editTaskModal'));
+        
+        // بارگذاری اطلاعات کار
+        try {
+            const response = await fetch('@Url.Action("GetTask", "BoardTasks")?id=' + taskId);
+            const result = await response.json();
+            
+            if (result.success) {
+                const task = result.task;
+                document.getElementById('editTaskId').value = task.id;
+                document.getElementById('editTaskBoardId').value = task.boardId;
+                document.getElementById('editTaskTitle').value = task.title || '';
+                document.getElementById('editTaskDescription').value = task.description || '';
+                document.getElementById('editTaskStatusSelect').value = task.status;
+                
+                // بارگذاری لیست کاربران
+                const users = await loadAvailableUsers(task.boardId);
+                const select = document.getElementById('editTaskAssignedUserId');
+                select.innerHTML = '<option value="">بدون اختصاص</option>';
+                users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = user.displayName;
+                    if (user.id === task.assignedUserId) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+                
+                modal.show();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در بارگذاری اطلاعات کار'));
+            }
+        } catch (error) {
+            console.error('خطا در بارگذاری اطلاعات کار:', error);
+            alert('خطا در بارگذاری اطلاعات کار: ' + error.message);
+        }
+    }
+
+    async function submitEditTask() {
+        const form = document.getElementById('editTaskForm');
+        const formData = new FormData(form);
+        
+        const submitBtn = document.querySelector('#editTaskModal .btn-primary');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>در حال ذخیره...';
+        
+        try {
+            const response = await fetch('@Url.Action("UpdateTask", "BoardTasks")', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editTaskModal'));
+                modal.hide();
+                // بارگذاری مجدد صفحه
+                location.reload();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در ویرایش کار'));
+            }
+        } catch (error) {
+            console.error('خطا در ویرایش کار:', error);
+            alert('خطا در ویرایش کار: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    }
+
+    async function deleteTaskFromModal() {
+        const taskId = document.getElementById('editTaskId').value;
+        
+        if (!taskId) {
+            alert('خطا: شناسه کار یافت نشد');
+            return;
+        }
+
+        await deleteTaskById(taskId, true);
+    }
+
+    async function deleteTaskDirectly(taskId) {
+        await deleteTaskById(taskId, false);
+    }
+
+    // مدیریت وضعیت‌ها
+    let boardStatuses = [];
+
+    async function openManageStatusesModal() {
+        const modal = new bootstrap.Modal(document.getElementById('manageStatusesModal'));
+        await loadStatuses();
+        modal.show();
+    }
+
+    async function loadStatuses() {
+        try {
+            const response = await fetch('@Url.Action("GetStatuses", "Boards")?boardId=@Model.Id');
+            const result = await response.json();
+            
+            if (result.success) {
+                boardStatuses = result.statuses;
+                displayStatuses();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در بارگذاری وضعیت‌ها'));
+            }
+        } catch (error) {
+            console.error('خطا در بارگذاری وضعیت‌ها:', error);
+            alert('خطا در بارگذاری وضعیت‌ها: ' + error.message);
+        }
+    }
+
+    function displayStatuses() {
+        const container = document.getElementById('statusesList');
+        if (!boardStatuses || boardStatuses.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-3">هنوز وضعیتی تعریف نشده است</div>';
+            return;
+        }
+
+        let html = '';
+        boardStatuses.forEach((status, index) => {
+            html += `
+                <div class="list-group-item d-flex justify-content-between align-items-center status-item" 
+                     draggable="true" 
+                     data-status-id="${status.id}"
+                     data-order="${status.order}"
+                     ondragstart="handleStatusDragStart(event)"
+                     ondragover="handleStatusDragOver(event)"
+                     ondrop="handleStatusDrop(event)"
+                     ondragend="handleStatusDragEnd(event)"
+                     style="cursor: move; user-select: none;">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-grip-vertical text-muted" style="cursor: grab;"></i>
+                        <span class="badge" style="background-color: ${status.color || '#6c757d'}">${escapeHtml(status.name)}</span>
+                        ${status.description ? `<small class="text-muted">${escapeHtml(status.description)}</small>` : ''}
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteStatus(${status.id}, '${escapeHtml(status.name)}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    let draggedStatusElement = null;
+    let draggedStatusId = null;
+
+    function handleStatusDragStart(e) {
+        draggedStatusElement = e.currentTarget;
+        draggedStatusId = parseInt(e.currentTarget.dataset.statusId);
+        e.currentTarget.style.opacity = '0.5';
+        e.currentTarget.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleStatusDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        
+        const afterElement = getDragAfterElement(e.currentTarget.parentElement, e.clientY);
+        const dragging = document.querySelector('.status-item.dragging');
+        
+        if (afterElement == null) {
+            e.currentTarget.parentElement.appendChild(draggedStatusElement);
+        } else {
+            e.currentTarget.parentElement.insertBefore(draggedStatusElement, afterElement);
+        }
+    }
+
+    function handleStatusDrop(e) {
+        e.preventDefault();
+        updateStatusOrder();
+    }
+
+    function handleStatusDragEnd(e) {
+        e.currentTarget.style.opacity = '1';
+        e.currentTarget.classList.remove('dragging');
+    }
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.status-item:not(.dragging)')];
+        
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    async function updateStatusOrder() {
+        const statusItems = Array.from(document.querySelectorAll('.status-item'));
+        const statusOrders = statusItems.map((item, index) => ({
+            statusId: parseInt(item.dataset.statusId),
+            order: index + 1
+        }));
+
+        try {
+            const response = await fetch('@Url.Action("UpdateStatusOrder", "Boards")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': '@antiforgeryToken'
+                },
+                body: JSON.stringify({ boardId: @Model.Id, statusOrders: statusOrders })
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                await loadStatuses();
+                // بارگذاری مجدد صفحه برای به‌روزرسانی ستون‌ها
+                location.reload();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در تغییر ترتیب وضعیت‌ها'));
+                await loadStatuses(); // بازگشت به حالت قبلی
+            }
+        } catch (error) {
+            console.error('خطا در تغییر ترتیب وضعیت‌ها:', error);
+            alert('خطا در تغییر ترتیب وضعیت‌ها: ' + error.message);
+            await loadStatuses(); // بازگشت به حالت قبلی
+        }
+    }
+
+    document.getElementById('addStatusForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const name = document.getElementById('newStatusName').value.trim();
+        const color = document.getElementById('newStatusColor').value;
+        
+        if (!name) {
+            alert('نام وضعیت الزامی است');
+            return;
+        }
+
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>در حال افزودن...';
+        
+        try {
+            const response = await fetch('@Url.Action("AddStatus", "Boards")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': '@antiforgeryToken'
+                },
+                body: `boardId=@Model.Id&name=${encodeURIComponent(name)}&color=${encodeURIComponent(color)}`
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                document.getElementById('newStatusName').value = '';
+                document.getElementById('newStatusColor').value = '#6c757d';
+                await loadStatuses();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در افزودن وضعیت'));
+            }
+        } catch (error) {
+            console.error('خطا در افزودن وضعیت:', error);
+            alert('خطا در افزودن وضعیت: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    });
+
+    async function deleteStatus(statusId, statusName) {
+        if (!confirm(`آیا از حذف وضعیت "${statusName}" اطمینان دارید؟`)) {
+            return;
+        }
+        await deleteStatusById(statusId);
+    }
+
+    async function deleteStatusFromColumn(statusId, statusName) {
+        console.log('deleteStatusFromColumn called:', statusId, statusName);
+        
+        if (!confirm(`آیا از حذف وضعیت "${statusName}" اطمینان دارید؟`)) {
+            console.log('User cancelled deletion');
+            return;
+        }
+        
+        console.log('Calling deleteStatusById with statusId:', statusId);
+        await deleteStatusById(statusId);
+    }
+
+    async function deleteStatusById(statusId) {
+        console.log('deleteStatusById called with statusId:', statusId);
+        
+        try {
+            const formData = new FormData();
+            formData.append('statusId', statusId);
+            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+
+            console.log('Sending delete request to:', '@Url.Action("DeleteStatus", "Boards")');
+            
+            const response = await fetch('@Url.Action("DeleteStatus", "Boards")', {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': '@antiforgeryToken'
+                },
+                body: formData
+            });
+            
+            console.log('Response status:', response.status);
+            console.log('Response ok:', response.ok);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Response error:', errorText);
+                alert('خطا در حذف وضعیت: ' + errorText);
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log('Response result:', result);
+            
+            if (result.success) {
+                alert('وضعیت با موفقیت حذف شد');
+                location.reload();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در حذف وضعیت'));
+            }
+        } catch (error) {
+            console.error('خطا در حذف وضعیت:', error);
+            alert('خطا در حذف وضعیت: ' + error.message);
+        }
+    }
+
+    async function deleteTaskById(taskId, closeModal) {
+        if (!confirm('آیا از حذف این کار اطمینان دارید؟ این عمل قابل بازگشت نیست.')) {
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('id', taskId);
+            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+
+            const response = await fetch('@Url.Action("DeleteTask", "BoardTasks")?id=' + taskId, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': '@antiforgeryToken'
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                if (closeModal) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editTaskModal'));
+                    if (modal) modal.hide();
+                }
+                // بارگذاری مجدد صفحه
+                location.reload();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در حذف کار'));
+            }
+        } catch (error) {
+            console.error('خطا در حذف کار:', error);
+            alert('خطا در حذف کار: ' + error.message);
+        }
+    }
+
+    // مدیریت Modal یادداشت
+    let currentTaskId = null;
+    const currentUserId = '@currentUserId';
+
+    function openTaskModal(taskId, taskTitle) {
+        currentTaskId = taskId;
+        document.getElementById('taskIdForComment').value = taskId;
+        document.getElementById('taskTitleInModal').textContent = taskTitle;
+        document.getElementById('commentForm').reset();
+        document.getElementById('commentsContainer').innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-hourglass-split"></i> در حال بارگذاری...</div>';
+        
+        const modal = new bootstrap.Modal(document.getElementById('taskModal'));
+        modal.show();
+        
+        loadComments(taskId);
+    }
+
+    async function loadComments(taskId) {
+        try {
+            const response = await fetch('@Url.Action("GetComments", "BoardTasks")?taskId=' + taskId);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                displayComments(result.comments);
+            } else {
+                document.getElementById('commentsContainer').innerHTML = 
+                    `<div class="alert alert-danger">${result.message || 'خطا در بارگذاری یادداشت‌ها'}</div>`;
+            }
+        } catch (error) {
+            console.error('خطا در بارگذاری یادداشت‌ها:', error);
+            document.getElementById('commentsContainer').innerHTML = 
+                `<div class="alert alert-danger">خطا در بارگذاری یادداشت‌ها: ${error.message}</div>`;
+        }
+    }
+
+    function displayComments(comments) {
+        const container = document.getElementById('commentsContainer');
+        
+        if (!comments || comments.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-3">هنوز یادداشتی ثبت نشده است</div>';
+            return;
+        }
+
+        let html = '';
+        comments.forEach(comment => {
+            html += `
+                <div class="border-bottom pb-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <strong>${escapeHtml(comment.userName)}</strong>
+                            <small class="text-muted ms-2">${formatDate(comment.createdAt)}</small>
+                            ${comment.isEdited ? '<span class="badge bg-secondary">ویرایش شده</span>' : ''}
+                        </div>
+                        ${comment.userId === currentUserId ? `
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteComment(${comment.id})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                    ${comment.message ? `<p class="mb-2">${escapeHtml(comment.message)}</p>` : ''}
+                    ${comment.attachments && comment.attachments.length > 0 ? `
+                        <div class="attachments mt-2">
+                            ${comment.attachments.map(att => `
+                                <a href="/${att.filePath}" target="_blank" class="badge bg-info text-decoration-none me-1">
+                                    <i class="bi bi-paperclip"></i> ${escapeHtml(att.fileName)}
+                                </a>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+
+    document.getElementById('commentForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> در حال ارسال...';
+        
+        try {
+            const response = await fetch('@Url.Action("AddComment", "BoardTasks")', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.reset();
+                await loadComments(currentTaskId);
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در ارسال یادداشت'));
+            }
+        } catch (error) {
+            console.error('خطا در ارسال یادداشت:', error);
+            alert('خطا در ارسال یادداشت: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    });
+
+    async function deleteComment(commentId) {
+        if (!confirm('آیا از حذف این یادداشت اطمینان دارید؟')) {
+            return;
+        }
+        
+        try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '@antiforgeryToken';
+            const response = await fetch('@Url.Action("DeleteComment", "BoardTasks")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token,
+                    'X-CSRF-TOKEN': token
+                },
+                body: JSON.stringify({ commentId: commentId })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                await loadComments(currentTaskId);
+            } else {
+                alert('خطا: ' + result.message);
+            }
+        } catch (error) {
+            console.error('خطا:', error);
+            alert('خطا در حذف یادداشت');
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('fa-IR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    // مدیریت Drag and Drop برای ستون‌های وضعیت
+    let draggedStatusColumn = null;
+
+    function handleStatusColumnDragStart(e) {
+        if (!e.currentTarget.classList.contains('status-column')) return;
+        // جلوگیری از drag کردن "To Do"
+        if (e.currentTarget.classList.contains('to-do-column')) {
+            e.preventDefault();
+            return false;
+        }
+        draggedStatusColumn = e.currentTarget;
+        e.currentTarget.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleStatusColumnDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        
+        const container = document.getElementById('boardColumns');
+        if (!container || !draggedStatusColumn) return;
+        
+        // جلوگیری از drop روی کارت افزودن وضعیت
+        const addStatusColumn = container.querySelector('.add-status-column');
+        if (addStatusColumn && (e.target === addStatusColumn || addStatusColumn.contains(e.target))) {
+            return;
+        }
+        
+        const afterElement = getDragAfterStatusColumn(container, e.clientX);
+        
+        // اطمینان از اینکه روی کارت افزودن وضعیت drop نمی‌شود
+        if (afterElement && afterElement.classList.contains('add-status-column')) {
+            const addStatusIndex = Array.from(container.children).indexOf(addStatusColumn);
+            const draggedIndex = Array.from(container.children).indexOf(draggedStatusColumn);
+            
+            if (draggedIndex < addStatusIndex) {
+                // اگر قبل از کارت افزودن وضعیت است، بعد از آخرین وضعیت قرار بگیرد
+                const statusColumns = Array.from(container.querySelectorAll('.status-column:not(.dragging)'));
+                if (statusColumns.length > 0) {
+                    container.insertBefore(draggedStatusColumn, statusColumns[statusColumns.length - 1].nextSibling);
+                } else {
+                    container.insertBefore(draggedStatusColumn, addStatusColumn);
+                }
+            } else {
+                // اگر بعد از کارت افزودن وضعیت است، قبل از آن قرار بگیرد
+                container.insertBefore(draggedStatusColumn, addStatusColumn);
+            }
+            return;
+        }
+        
+        if (afterElement == null) {
+            // اگر بعد از همه است، قبل از کارت افزودن وضعیت قرار بگیرد
+            if (addStatusColumn) {
+                container.insertBefore(draggedStatusColumn, addStatusColumn);
+            } else {
+                container.appendChild(draggedStatusColumn);
+            }
+        } else {
+            container.insertBefore(draggedStatusColumn, afterElement);
+        }
+    }
+
+    function handleStatusColumnDrop(e) {
+        e.preventDefault();
+        if (draggedStatusColumn) {
+            updateStatusColumnOrder();
+        }
+    }
+
+    function handleStatusColumnDragEnd(e) {
+        if (e.currentTarget.classList.contains('status-column')) {
+            e.currentTarget.classList.remove('dragging');
+        }
+        draggedStatusColumn = null;
+    }
+
+    function getDragAfterStatusColumn(container, x) {
+        // فقط وضعیت‌ها را در نظر بگیر، نه کارت افزودن وضعیت
+        const draggableElements = [...container.querySelectorAll('.status-column:not(.dragging):not(.add-status-column)')];
+        
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = x - box.left - box.width / 2;
+            
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    async function updateStatusColumnOrder() {
+        // فقط وضعیت‌ها را در نظر بگیر، نه کارت افزودن وضعیت
+        const statusColumns = Array.from(document.querySelectorAll('.status-column:not(.add-status-column)'));
+        
+        // جدا کردن "To Do" از بقیه
+        const toDoColumn = statusColumns.find(col => col.dataset.status && col.dataset.status.toLowerCase() === 'to do');
+        const otherColumns = statusColumns.filter(col => !col.dataset.status || col.dataset.status.toLowerCase() !== 'to do');
+        
+        // اطمینان از اینکه "To Do" اول باشد
+        const orderedColumns = toDoColumn ? [toDoColumn, ...otherColumns] : otherColumns;
+        
+        const statusOrders = orderedColumns
+            .filter(col => col.dataset.statusId) // فقط آنهایی که statusId دارند
+            .map((column, index) => ({
+                statusId: parseInt(column.dataset.statusId),
+                order: index + 1
+            }));
+
+        if (statusOrders.length === 0) return;
+
+        try {
+            const response = await fetch('@Url.Action("UpdateStatusOrder", "Boards")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': '@antiforgeryToken'
+                },
+                body: JSON.stringify({ boardId: @Model.Id, statusOrders: statusOrders })
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                location.reload();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در تغییر ترتیب وضعیت‌ها'));
+                location.reload();
+            }
+        } catch (error) {
+            console.error('خطا در تغییر ترتیب وضعیت‌ها:', error);
+            alert('خطا در تغییر ترتیب وضعیت‌ها: ' + error.message);
+            location.reload();
+        }
+    }
+
+    // باز کردن Modal افزودن وضعیت
+    function openAddStatusModal() {
+        const modal = new bootstrap.Modal(document.getElementById('addStatusModal'));
+        document.getElementById('addStatusFormModal').reset();
+        document.getElementById('addStatusColor').value = '#6c757d';
+        modal.show();
+    }
+
+    // ارسال فرم افزودن وضعیت
+    async function submitAddStatus() {
+        const name = document.getElementById('addStatusName').value.trim();
+        const description = document.getElementById('addStatusDescription').value.trim();
+        const color = document.getElementById('addStatusColor').value || '#6c757d';
+
+        if (!name) {
+            alert('لطفاً نام وضعیت را وارد کنید');
+            return;
+        }
+
+        const submitBtn = document.querySelector('#addStatusModal .btn-primary');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>در حال افزودن...';
+
+        try {
+            const response = await fetch('@Url.Action("AddStatus", "Boards")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': '@antiforgeryToken'
+                },
+                body: `boardId=@Model.Id&name=${encodeURIComponent(name)}&description=${encodeURIComponent(description)}&color=${encodeURIComponent(color)}`
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addStatusModal'));
+                modal.hide();
+                location.reload();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در افزودن وضعیت'));
+            }
+        } catch (error) {
+            console.error('خطا در افزودن وضعیت:', error);
+            alert('خطا در افزودن وضعیت: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    }
+
+    // Event listener for delete status buttons
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteButtons = document.querySelectorAll('.delete-status-btn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                const statusId = parseInt(this.getAttribute('data-status-id'));
+                const statusName = this.getAttribute('data-status-name');
+                console.log('Delete button clicked:', statusId, statusName);
+                deleteStatusFromColumn(statusId, statusName);
+            });
+        });
+    });
+
+    // باز کردن Modal ویرایش تخته
+    async function openEditBoardModal() {
+        try {
+            const response = await fetch('@Url.Action("GetBoard", "Boards")?id=@Model.Id');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                document.getElementById('editBoardId').value = result.board.id;
+                document.getElementById('editBoardName').value = result.board.name || '';
+                document.getElementById('editBoardDescription').value = result.board.description || '';
+                
+                // پاک کردن خطاهای قبلی
+                document.getElementById('editBoardNameError').textContent = '';
+                document.getElementById('editBoardDescriptionError').textContent = '';
+                
+                const modal = new bootstrap.Modal(document.getElementById('editBoardModal'));
+                modal.show();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در دریافت اطلاعات تخته'));
+            }
+        } catch (error) {
+            console.error('خطا در دریافت اطلاعات تخته:', error);
+            alert('خطا در دریافت اطلاعات تخته: ' + error.message);
+        }
+    }
+
+    // ارسال فرم ویرایش تخته
+    async function submitEditBoard() {
+        const name = document.getElementById('editBoardName').value.trim();
+        const description = document.getElementById('editBoardDescription').value.trim();
+        const boardId = document.getElementById('editBoardId').value;
+
+        if (!name) {
+            document.getElementById('editBoardNameError').textContent = 'نام تخته الزامی است';
+            return;
+        }
+
+        // پاک کردن خطاهای قبلی
+        document.getElementById('editBoardNameError').textContent = '';
+        document.getElementById('editBoardDescriptionError').textContent = '';
+
+        const submitBtn = document.querySelector('#editBoardModal .btn-primary');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>در حال ذخیره...';
+
+        try {
+            const formData = new FormData();
+            formData.append('Id', boardId);
+            formData.append('Name', name);
+            formData.append('Description', description);
+            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+
+            const response = await fetch('@Url.Action("Edit", "Boards")?id=' + boardId, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': '@antiforgeryToken',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editBoardModal'));
+                modal.hide();
+                location.reload();
+            } else {
+                // نمایش خطاهای اعتبارسنجی
+                if (result.errors) {
+                    if (result.errors.Name) {
+                        document.getElementById('editBoardNameError').textContent = result.errors.Name[0] || '';
+                    }
+                    if (result.errors.Description) {
+                        document.getElementById('editBoardDescriptionError').textContent = result.errors.Description[0] || '';
+                    }
+                }
+                alert('خطا: ' + (result.message || 'خطا در ویرایش تخته'));
+            }
+        } catch (error) {
+            console.error('خطا در ویرایش تخته:', error);
+            alert('خطا در ویرایش تخته: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    }
+</script>
+

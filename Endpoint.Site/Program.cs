@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Identity;
 using TaskPlanner.Domain.Entities.Users;
 using Microsoft.Extensions.Options;
 using TaskPlanner.Application.Services;
+using Microsoft.Extensions.Logging;
 
 
 Env.Load();
@@ -63,6 +64,32 @@ builder.Services.AddHttpClient();  // برای IHttpClientFactory
 
 
 var app = builder.Build();
+
+// Ensure ParentTaskId column exists in BoardTasks table
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<MVPTestDatabaseContext>();
+    try
+    {
+        // Check if ParentTaskId column exists
+        var sql = @"
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[BoardTasks]') AND name = 'ParentTaskId')
+            BEGIN
+                ALTER TABLE [BoardTasks] ADD [ParentTaskId] int NULL;
+                CREATE INDEX [IX_BoardTasks_ParentTaskId] ON [BoardTasks] ([ParentTaskId]);
+                ALTER TABLE [BoardTasks] ADD CONSTRAINT [FK_BoardTasks_BoardTasks_ParentTaskId] 
+                FOREIGN KEY ([ParentTaskId]) REFERENCES [BoardTasks] ([Id]) ON DELETE NO ACTION;
+            END";
+        await context.Database.ExecuteSqlRawAsync(sql);
+    }
+    catch (Exception ex)
+    {
+        // Log error but don't stop application startup
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(ex, "Failed to ensure ParentTaskId column exists. Please run the SQL script manually.");
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {

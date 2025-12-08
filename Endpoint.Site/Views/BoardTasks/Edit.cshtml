@@ -1,0 +1,86 @@
+@model Endpoint.Site.Models.BoardTaskEditVm
+@{
+    ViewData["Title"] = "ویرایش کار";
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var availableUsers = ViewBag.AvailableUsers as dynamic;
+    var boardName = ViewBag.BoardName as string;
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="bi bi-pencil me-2"></i>
+                        ویرایش کار در تخته: @boardName
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Edit" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        <input type="hidden" asp-for="BoardId" />
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Title" class="form-label"></label>
+                            <input asp-for="Title" class="form-control" />
+                            <span asp-validation-for="Title" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Description" class="form-label"></label>
+                            <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Status" class="form-label"></label>
+                            <select asp-for="Status" class="form-select">
+                                <option value="To Do">To Do</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Done">Done</option>
+                            </select>
+                            <span asp-validation-for="Status" class="text-danger"></span>
+                        </div>
+
+                        @if (availableUsers != null && ((IEnumerable<dynamic>)availableUsers).Any())
+                        {
+                            <div class="mb-3">
+                                <label asp-for="AssignedUserId" class="form-label"></label>
+                                <select asp-for="AssignedUserId" class="form-select">
+                                    <option value="">بدون اختصاص</option>
+                                    @foreach (var user in (IEnumerable<dynamic>)availableUsers)
+                                    {
+                                        <option value="@user.Id">@user.DisplayName</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="AssignedUserId" class="text-danger"></span>
+                            </div>
+                        }
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-2"></i>
+                                ذخیره تغییرات
+                            </button>
+                            <a asp-controller="Boards" asp-action="Details" asp-route-id="@Model.BoardId" class="btn btn-secondary">
+                                <i class="bi bi-x-circle me-2"></i>
+                                انصراف
+                            </a>
+                            <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">
+                                <i class="bi bi-trash me-2"></i>
+                                حذف
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

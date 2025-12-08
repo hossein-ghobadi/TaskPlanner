@@ -1,0 +1,57 @@
+@model TaskPlanner.Domain.Entities.Boards.BoardTask
+@{
+    ViewData["Title"] = "حذف کار";
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        حذف کار
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        آیا از حذف این کار اطمینان دارید؟
+                    </div>
+
+                    <dl class="row">
+                        <dt class="col-sm-3">عنوان:</dt>
+                        <dd class="col-sm-9">@Model.Title</dd>
+
+                        @if (!string.IsNullOrWhiteSpace(Model.Description))
+                        {
+                            <dt class="col-sm-3">توضیحات:</dt>
+                            <dd class="col-sm-9">@Model.Description</dd>
+                        }
+
+                        <dt class="col-sm-3">وضعیت:</dt>
+                        <dd class="col-sm-9">
+                            <span class="badge bg-primary">@Model.Status</span>
+                        </dd>
+                    </dl>
+
+                    <form asp-action="Delete" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-2"></i>
+                                بله، حذف کن
+                            </button>
+                            <a asp-controller="Boards" asp-action="Details" asp-route-id="@Model.BoardId" class="btn btn-secondary">
+                                <i class="bi bi-x-circle me-2"></i>
+                                انصراف
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

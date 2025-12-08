@@ -801,7 +801,11 @@ namespace Endpoint.Site.Controllers
                 .Where(s => s.SprintId == dto.SprintId.Value)
                 .ToListAsync();
 
-            if (statuses.Count != statusIds.Count || dto.StatusOrders.Count != statuses.Count)
+            var statusesCount = statuses.Count;
+            var statusIdsCount = statusIds.Count;
+            var statusOrdersCount = dto.StatusOrders.Count;
+
+            if (statusesCount != statusIdsCount || statusOrdersCount != statusesCount)
             {
                 return BadRequest(new { success = false, message = "لیست وضعیت‌ها کامل نیست" });
             }
@@ -828,10 +832,10 @@ namespace Endpoint.Site.Controllers
     public class UpdateStatusOrderDto
     {
         public int? SprintId { get; set; }
-        public List<StatusOrderItem> StatusOrders { get; set; } = new();
+        public List<WorkflowStatusOrderItem> StatusOrders { get; set; } = new();
     }
 
-    public class StatusOrderItem
+    public class WorkflowStatusOrderItem
     {
         public int StatusId { get; set; }
         public int Order { get; set; }

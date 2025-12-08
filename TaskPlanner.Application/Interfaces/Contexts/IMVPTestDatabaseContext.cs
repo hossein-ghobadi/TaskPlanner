@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Notifications;
+using TaskPlanner.Domain.Entities.Boards;
 
 namespace TaskPlanner.Application.Interfaces.Contexts
 {
@@ -34,6 +35,14 @@ namespace TaskPlanner.Application.Interfaces.Contexts
         DbSet<IssueStatusHistory> IssueStatusHistories { get; set; }
         DbSet<Notification> Notifications { get; set; }
         DbSet<ProjectIssueType> ProjectIssueTypes { get; set; }
+        
+        // Board entities (separate from TaskPlanner)
+        DbSet<Board> Boards { get; set; }
+        DbSet<BoardMember> BoardMembers { get; set; }
+        DbSet<BoardStatus> BoardStatuses { get; set; }
+        DbSet<BoardTask> BoardTasks { get; set; }
+        DbSet<BoardTaskComment> BoardTaskComments { get; set; }
+        DbSet<BoardTaskCommentAttachment> BoardTaskCommentAttachments { get; set; }
 
 
         void MarkAsModified<T>(T entity) where T : class;

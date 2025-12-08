@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Notifications;
 using TaskPlanner.Domain.Entities.Users;
+using TaskPlanner.Domain.Entities.Boards;
 using TaskPlanner.Application.Interfaces.Contexts;
 
 
@@ -42,6 +43,14 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<IssueStatusHistory> IssueStatusHistories { get; set; }
         public DbSet<ProjectIssueType> ProjectIssueTypes { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        
+        // Board entities (separate from TaskPlanner)
+        public DbSet<Board> Boards { get; set; }
+        public DbSet<BoardMember> BoardMembers { get; set; }
+        public DbSet<BoardStatus> BoardStatuses { get; set; }
+        public DbSet<BoardTask> BoardTasks { get; set; }
+        public DbSet<BoardTaskComment> BoardTaskComments { get; set; }
+        public DbSet<BoardTaskCommentAttachment> BoardTaskCommentAttachments { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -294,6 +303,98 @@ namespace TaskPlanner.Persistence.Contexts
 
             modelBuilder.Entity<Notification>()
                 .HasIndex(n => n.CreatedAt);
+
+            // Board configurations (separate from TaskPlanner)
+            modelBuilder.Entity<Board>()
+                .Property(b => b.CreatorUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<BoardStatus>()
+                .HasOne(bs => bs.Board)
+                .WithMany(b => b.Statuses)
+                .HasForeignKey(bs => bs.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<BoardStatus>()
+                .HasIndex(bs => new { bs.BoardId, bs.Order });
+
+            modelBuilder.Entity<BoardStatus>()
+                .HasIndex(bs => bs.BoardId);
+
+            modelBuilder.Entity<BoardMember>()
+                .HasOne(bm => bm.Board)
+                .WithMany(b => b.Members)
+                .HasForeignKey(bm => bm.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<BoardMember>()
+                .HasIndex(bm => new { bm.BoardId, bm.UserId })
+                .IsUnique();
+
+            modelBuilder.Entity<BoardTask>()
+                .HasOne(bt => bt.Board)
+                .WithMany(b => b.Tasks)
+                .HasForeignKey(bt => bt.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<BoardTask>()
+                .Property(bt => bt.CreatorUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<BoardTask>()
+                .Property(bt => bt.AssignedUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<BoardTask>()
+                .HasIndex(bt => bt.BoardId);
+
+            // رابطه parent-child برای BoardTask (کارک‌ها)
+            modelBuilder.Entity<BoardTask>()
+                .HasOne(bt => bt.ParentTask)
+                .WithMany(bt => bt.ChildTasks)
+                .HasForeignKey(bt => bt.ParentTaskId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // BoardTaskComment configurations
+            modelBuilder.Entity<BoardTaskComment>()
+                .HasOne(c => c.BoardTask)
+                .WithMany(t => t.Comments)
+                .HasForeignKey(c => c.BoardTaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<BoardTaskComment>()
+                .Property(c => c.UserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<BoardTaskComment>()
+                .Property(c => c.UserName)
+                .HasMaxLength(200);
+
+            modelBuilder.Entity<BoardTaskComment>()
+                .HasIndex(c => c.BoardTaskId);
+
+            // BoardTaskCommentAttachment configurations
+            modelBuilder.Entity<BoardTaskCommentAttachment>()
+                .HasOne(a => a.BoardTaskComment)
+                .WithMany(c => c.Attachments)
+                .HasForeignKey(a => a.BoardTaskCommentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<BoardTaskCommentAttachment>()
+                .Property(a => a.FileName)
+                .HasMaxLength(500);
+
+            modelBuilder.Entity<BoardTaskCommentAttachment>()
+                .Property(a => a.FilePath)
+                .HasMaxLength(1000);
+
+            modelBuilder.Entity<BoardTaskCommentAttachment>()
+                .Property(a => a.FileType)
+                .HasMaxLength(50);
+
+            modelBuilder.Entity<BoardTaskCommentAttachment>()
+                .Property(a => a.MimeType)
+                .HasMaxLength(100);
         }
         public void MarkAsModified<T>(T entity) where T : class
         {
