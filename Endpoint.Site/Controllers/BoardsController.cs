@@ -478,9 +478,9 @@ namespace Endpoint.Site.Controllers
             if (board == null)
                 return Json(new { success = false, message = "تخته یافت نشد" });
 
-            // بررسی دسترسی
-            if (board.CreatorUserId != userId && !board.Members.Any(m => m.UserId == userId))
-                return Json(new { success = false, message = "دسترسی ندارید" });
+            // بررسی دسترسی - فقط سازنده می‌تواند وضعیت اضافه کند
+            if (board.CreatorUserId != userId)
+                return Json(new { success = false, message = "فقط سازنده تخته می‌تواند وضعیت اضافه کند" });
 
             // بررسی تکراری نبودن نام
             var existingStatus = await _context.BoardStatuses
@@ -558,20 +558,33 @@ namespace Endpoint.Site.Controllers
             if (status == null)
                 return Json(new { success = false, message = "وضعیت یافت نشد" });
 
-            // بررسی دسترسی
-            if (status.Board.CreatorUserId != userId && !status.Board.Members.Any(m => m.UserId == userId))
-                return Json(new { success = false, message = "دسترسی ندارید" });
+            // بررسی دسترسی - فقط سازنده می‌تواند وضعیت حذف کند
+            if (status.Board.CreatorUserId != userId)
+                return Json(new { success = false, message = "فقط سازنده تخته می‌تواند وضعیت حذف کند" });
 
             // جلوگیری از حذف وضعیت "To Do"
             if (status.Name.ToLower() == "to do")
                 return Json(new { success = false, message = "وضعیت 'To Do' قابل حذف نیست" });
 
-            // بررسی اینکه آیا کار در این وضعیت وجود دارد
-            var tasksCount = await _context.BoardTasks
-                .CountAsync(t => t.BoardId == status.BoardId && t.Status == status.Name && t.ParentTaskId == null);
+            // پیدا کردن وضعیت "To Do" برای انتقال کارها
+            var toDoStatus = await _context.BoardStatuses
+                .FirstOrDefaultAsync(s => s.BoardId == status.BoardId && s.Name.ToLower() == "to do");
             
-            if (tasksCount > 0)
-                return Json(new { success = false, message = $"نمی‌توان این وضعیت را حذف کرد. {tasksCount} کار در این وضعیت وجود دارد." });
+            if (toDoStatus == null)
+                return Json(new { success = false, message = "وضعیت 'To Do' یافت نشد" });
+
+            // انتقال تمام کارهای این وضعیت به "To Do" (شامل main tasks و subtasks)
+            var tasksInStatus = await _context.BoardTasks
+                .Where(t => t.BoardId == status.BoardId && t.Status == status.Name)
+                .ToListAsync();
+            
+            var tasksCount = tasksInStatus.Count;
+            
+            foreach (var task in tasksInStatus)
+            {
+                task.Status = toDoStatus.Name;
+                task.UpdatedAt = DateTime.UtcNow;
+            }
 
             _context.BoardStatuses.Remove(status);
             await _context.SaveChangesAsync();

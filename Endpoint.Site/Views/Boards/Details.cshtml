@@ -204,15 +204,21 @@
         opacity: 0.5;
         background-color: #e3f2fd;
     }
+    .status-column {
+        cursor: move;
+        transition: transform 0.3s ease, opacity 0.3s ease;
+    }
     .status-column.dragging {
-        opacity: 0.5;
-        transform: rotate(2deg);
+        opacity: 0.6;
+        transform: rotate(2deg) scale(1.05);
+        z-index: 1000;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
     }
     .board-columns.drag-over {
         background-color: #e8f5e9;
     }
-    .status-column {
-        cursor: move;
+    .board-column {
+        transition: transform 0.2s ease-out, opacity 0.2s ease-out;
     }
     .add-status-column {
         cursor: default;
@@ -303,7 +309,7 @@
                         <span>@status</span>
                         <span class="badge bg-primary">@tasks.Count</span>
                     </div>
-                    @if (!isToDo)
+                    @if (!isToDo && Model.CreatorUserId == currentUserId)
                     {
                         <div class="d-flex gap-1">
                             <button type="button" class="btn btn-sm btn-outline-danger p-1 delete-status-btn" 
@@ -381,15 +387,18 @@
             </div>
         }
         
-        <!-- دکمه افزودن وضعیت جدید -->
-        <div class="board-column add-status-column" style="min-width: 200px; background: #e9ecef; border: 2px dashed #ccc; display: flex; flex-direction: column; justify-content: center; align-items: center;" draggable="false">
-            <div class="p-3 text-center">
-                <button type="button" class="btn btn-outline-primary" onclick="openAddStatusModal()">
-                    <i class="bi bi-plus-circle me-2"></i>
-                    افزودن وضعیت
-                </button>
+        <!-- دکمه افزودن وضعیت جدید - فقط برای سازنده -->
+        @if (Model.CreatorUserId == currentUserId)
+        {
+            <div class="board-column add-status-column" style="min-width: 200px; background: #e9ecef; border: 2px dashed #ccc; display: flex; flex-direction: column; justify-content: center; align-items: center;" draggable="false">
+                <div class="p-3 text-center">
+                    <button type="button" class="btn btn-outline-primary" onclick="openAddStatusModal()">
+                        <i class="bi bi-plus-circle me-2"></i>
+                        افزودن وضعیت
+                    </button>
+                </div>
             </div>
-        </div>
+        }
     </div>
 </div>
 
@@ -1539,6 +1548,8 @@
 
     // مدیریت Drag and Drop برای ستون‌های وضعیت
     let draggedStatusColumn = null;
+    let lastDragOverTime = 0;
+    let lastInsertedBefore = null;
 
     function handleStatusColumnDragStart(e) {
         if (!e.currentTarget.classList.contains('status-column')) return;
@@ -1550,6 +1561,7 @@
         draggedStatusColumn = e.currentTarget;
         e.currentTarget.classList.add('dragging');
         e.dataTransfer.effectAllowed = 'move';
+        lastInsertedBefore = null; // reset
     }
 
     function handleStatusColumnDragOver(e) {
@@ -1565,38 +1577,112 @@
             return;
         }
         
-        const afterElement = getDragAfterStatusColumn(container, e.clientX);
+        // استفاده از throttle برای کاهش تعداد عملیات
+        const now = Date.now();
+        if (now - lastDragOverTime < 150) { // throttle با 150ms delay
+            return;
+        }
+        lastDragOverTime = now;
         
-        // اطمینان از اینکه روی کارت افزودن وضعیت drop نمی‌شود
-        if (afterElement && afterElement.classList.contains('add-status-column')) {
-            const addStatusIndex = Array.from(container.children).indexOf(addStatusColumn);
-            const draggedIndex = Array.from(container.children).indexOf(draggedStatusColumn);
+        // دریافت تمام وضعیت‌ها (به جز dragged و add-status)
+        const allColumns = Array.from(container.children);
+        const statusColumns = allColumns.filter(col => 
+            col.classList.contains('status-column') && 
+            !col.classList.contains('dragging') && 
+            !col.classList.contains('add-status-column')
+        );
+        
+        // پیدا کردن موقعیت ماوس نسبت به مرکز هر ستون
+        const mouseX = e.clientX;
+        let insertBeforeElement = null;
+        
+        // پیدا کردن نزدیک‌ترین ستون به ماوس
+        let closestColumn = null;
+        let closestDistance = Infinity;
+        
+        for (let i = 0; i < statusColumns.length; i++) {
+            const column = statusColumns[i];
+            const rect = column.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const distance = Math.abs(mouseX - centerX);
             
-            if (draggedIndex < addStatusIndex) {
-                // اگر قبل از کارت افزودن وضعیت است، بعد از آخرین وضعیت قرار بگیرد
-                const statusColumns = Array.from(container.querySelectorAll('.status-column:not(.dragging)'));
-                if (statusColumns.length > 0) {
-                    container.insertBefore(draggedStatusColumn, statusColumns[statusColumns.length - 1].nextSibling);
-                } else {
-                    container.insertBefore(draggedStatusColumn, addStatusColumn);
-                }
-            } else {
-                // اگر بعد از کارت افزودن وضعیت است، قبل از آن قرار بگیرد
-                container.insertBefore(draggedStatusColumn, addStatusColumn);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestColumn = column;
             }
+        }
+        
+        // اگر ستون نزدیکی پیدا شد
+        if (closestColumn) {
+            const rect = closestColumn.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            
+            // اگر ماوس در سمت راست مرکز ستون باشد، بعد از آن قرار بگیرد
+            if (mouseX > centerX) {
+                insertBeforeElement = closestColumn.nextSibling;
+            } 
+            // اگر ماوس در سمت چپ مرکز ستون باشد، قبل از آن قرار بگیرد
+            else {
+                insertBeforeElement = closestColumn;
+            }
+        } 
+        // اگر هیچ ستونی پیدا نشد، بعد از آخرین ستون یا قبل از add-status قرار بگیرد
+        else {
+            if (statusColumns.length > 0) {
+                const lastStatusColumn = statusColumns[statusColumns.length - 1];
+                insertBeforeElement = lastStatusColumn.nextSibling;
+            } else if (addStatusColumn) {
+                insertBeforeElement = addStatusColumn;
+            }
+        }
+        
+        // بررسی اینکه آیا واقعاً باید جابجا شود
+        // جلوگیری از جابجایی غیرضروری - فقط اگر موقعیت تغییر کرده باشد
+        if (insertBeforeElement === lastInsertedBefore) {
             return;
         }
         
-        if (afterElement == null) {
-            // اگر بعد از همه است، قبل از کارت افزودن وضعیت قرار بگیرد
+        // بررسی موقعیت فعلی draggedStatusColumn
+        const currentIndex = Array.from(container.children).indexOf(draggedStatusColumn);
+        let targetIndex = -1;
+        
+        if (insertBeforeElement) {
+            targetIndex = Array.from(container.children).indexOf(insertBeforeElement);
+            // اگر insertBeforeElement بعد از draggedStatusColumn است، targetIndex باید یک واحد کمتر باشد
+            if (targetIndex > currentIndex) {
+                targetIndex = targetIndex - 1;
+            }
+        } else {
+            // اگر null است، به آخر می‌رود
+            targetIndex = container.children.length - 1;
+            if (addStatusColumn) {
+                targetIndex = targetIndex - 1; // قبل از add-status
+            }
+        }
+        
+        // اگر موقعیت تغییر نکرده، جابجا نکن
+        if (targetIndex === currentIndex) {
+            return;
+        }
+        
+        // جلوگیری از جابجایی روی خودش
+        if (insertBeforeElement === draggedStatusColumn) {
+            return;
+        }
+        
+        // جابجایی فقط در صورت نیاز
+        if (insertBeforeElement) {
+            container.insertBefore(draggedStatusColumn, insertBeforeElement);
+        } else {
+            // اگر insertBeforeElement null است، به آخر اضافه کن (قبل از add-status)
             if (addStatusColumn) {
                 container.insertBefore(draggedStatusColumn, addStatusColumn);
             } else {
                 container.appendChild(draggedStatusColumn);
             }
-        } else {
-            container.insertBefore(draggedStatusColumn, afterElement);
         }
+        
+        lastInsertedBefore = insertBeforeElement;
     }
 
     function handleStatusColumnDrop(e) {
@@ -1607,6 +1693,9 @@
     }
 
     function handleStatusColumnDragEnd(e) {
+        lastDragOverTime = 0; // reset throttle
+        lastInsertedBefore = null; // reset
+        
         if (e.currentTarget.classList.contains('status-column')) {
             e.currentTarget.classList.remove('dragging');
         }
