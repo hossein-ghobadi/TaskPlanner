@@ -343,18 +343,49 @@ namespace Endpoint.Site.Controllers
             if (board.CreatorUserId != userId && !board.Members.Any(m => m.UserId == userId))
                 return Forbid();
 
-            // لیست کاربران موجود (به جز اعضای فعلی)
+            // لیست اعضای فعلی تخته
             var existingMemberIds = board.Members.Select(m => m.UserId).ToList();
             existingMemberIds.Add(board.CreatorUserId);
 
-            var availableUsers = await _userManager.Users
-                .Where(u => !existingMemberIds.Contains(u.Id))
+            // دریافت پروژه‌هایی که کاربر فعلی در آنها عضو است یا سازنده آنهاست
+            var userProjectIds = await _context.Projects
+                .Where(p => p.CreatorUserId == userId)
+                .Select(p => p.Id)
+                .Concat(
+                    _context.ProjectMembers
+                        .Where(pm => pm.UserId == userId && pm.ProjectId.HasValue)
+                        .Select(pm => pm.ProjectId.Value)
+                )
+                .Distinct()
+                .ToListAsync();
+
+            // دریافت ID کاربرانی که در پروژه‌های مشترک با کاربر فعلی هستند
+            var projectCollaboratorIds = new List<string>();
+            
+            if (userProjectIds.Any())
+            {
+                projectCollaboratorIds = await _context.ProjectMembers
+                    .Where(pm => pm.ProjectId.HasValue && userProjectIds.Contains(pm.ProjectId.Value) && pm.UserId != userId)
+                    .Select(pm => pm.UserId)
+                    .Concat(
+                        _context.Projects
+                            .Where(p => userProjectIds.Contains(p.Id) && p.CreatorUserId != userId)
+                            .Select(p => p.CreatorUserId)
+                    )
+                    .Distinct()
+                    .ToListAsync();
+            }
+
+            // فقط همکاران پروژه‌ای (به جز اعضای فعلی تخته)
+            var projectCollaborators = await _userManager.Users
+                .Where(u => projectCollaboratorIds.Contains(u.Id) && !existingMemberIds.Contains(u.Id))
                 .Select(u => new { u.Id, DisplayName = u.FullName ?? u.UserName ?? "ناشناس" })
+                .OrderBy(u => u.DisplayName)
                 .ToListAsync();
 
             ViewBag.BoardId = boardId;
             ViewBag.BoardName = board.Name;
-            ViewBag.AvailableUsers = availableUsers;
+            ViewBag.ProjectCollaborators = projectCollaborators;
 
             return View();
         }

@@ -3,12 +3,14 @@
     Layout = "/Views/Shared/_Layout.cshtml";
     var boardId = ViewBag.BoardId as int?;
     var boardName = ViewBag.BoardName as string;
-    var availableUsers = ViewBag.AvailableUsers as dynamic;
+    var projectCollaborators = ViewBag.ProjectCollaborators as IEnumerable<dynamic>;
+    
+    var hasProjectCollaborators = projectCollaborators != null && projectCollaborators.Any();
 }
 
 <div class="container mt-4">
     <div class="row justify-content-center">
-        <div class="col-md-8">
+        <div class="col-md-10">
             <div class="card">
                 <div class="card-header">
                     <h4 class="mb-0">
@@ -19,33 +21,38 @@
                 <div class="card-body">
                     <form asp-action="Invite" method="post">
                         <input type="hidden" name="boardId" value="@boardId" />
-                        <div class="mb-3">
-                            <label class="form-label">انتخاب کاربران</label>
-                            @if (availableUsers != null && ((IEnumerable<dynamic>)availableUsers).Any())
-                            {
+                        
+                        @if (hasProjectCollaborators)
+                        {
+                            <div class="mb-4">
+                                <h5 class="mb-3">
+                                    <i class="bi bi-people-fill me-2 text-primary"></i>
+                                    همکاران پروژه‌ای
+                                </h5>
                                 <div class="list-group">
-                                    @foreach (var user in (IEnumerable<dynamic>)availableUsers)
+                                    @foreach (var user in projectCollaborators)
                                     {
                                         <label class="list-group-item">
                                             <input type="checkbox" name="selectedUserIds" value="@user.Id" class="form-check-input me-2">
+                                            <span class="badge bg-primary me-2">پروژه</span>
                                             @user.DisplayName
                                         </label>
                                     }
                                 </div>
-                            }
-                            else
-                            {
-                                <div class="alert alert-info">
-                                    <i class="bi bi-info-circle me-2"></i>
-                                    کاربری برای دعوت وجود ندارد.
-                                </div>
-                            }
-                        </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                همکاری برای دعوت وجود ندارد. برای دعوت کاربران، ابتدا باید در پروژه‌های مشترک با آن‌ها باشید.
+                            </div>
+                        }
 
                         <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary" @(availableUsers == null || !((IEnumerable<dynamic>)availableUsers).Any() ? "disabled" : "")>
+                            <button type="submit" class="btn btn-primary" @(!hasProjectCollaborators ? "disabled" : "")>
                                 <i class="bi bi-check-circle me-2"></i>
-                                دعوت کاربران
+                                دعوت همکاران انتخاب شده
                             </button>
                             <a asp-action="Details" asp-route-id="@boardId" class="btn btn-secondary">
                                 <i class="bi bi-x-circle me-2"></i>
