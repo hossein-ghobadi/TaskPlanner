@@ -120,37 +120,73 @@
     .add-task-btn {
         margin-top: 0.5rem;
         width: 100%;
-        border: 2px dashed #ddd;
+        border: none;
         background: transparent;
         color: #6c757d;
-        padding: 2rem 1rem;
-        border-radius: 8px;
-        transition: all 0.3s ease;
+        padding: 0.75rem;
+        border-radius: 6px;
+        transition: all 0.2s ease;
         display: flex;
-        flex-direction: column;
         align-items: center;
-        justify-content: center;
         gap: 0.5rem;
         cursor: pointer;
-    }
-    .add-task-btn i {
-        font-size: 2.5rem;
-        opacity: 0.5;
-        transition: all 0.3s ease;
-    }
-    .add-task-btn span {
         font-size: 0.9rem;
         font-weight: 500;
     }
     .add-task-btn:hover {
-        border-color: #007bff;
+        background: rgba(0, 0, 0, 0.05);
         color: #007bff;
-        background: #f0f8ff;
-        transform: scale(1.02);
     }
-    .add-task-btn:hover i {
-        opacity: 1;
-        transform: scale(1.15);
+    .add-task-btn i {
+        font-size: 1.1rem;
+    }
+    .quick-add-task-form {
+        margin-top: 0.5rem;
+        display: none;
+    }
+    .quick-add-task-form.active {
+        display: block;
+    }
+    .quick-add-task-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #007bff;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        outline: none;
+        transition: all 0.2s ease;
+    }
+    .quick-add-task-input:focus {
+        border-color: #0056b3;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    }
+    .quick-add-task-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        direction: rtl;
+    }
+    .quick-add-task-actions button {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .btn-add-task {
+        background: #007bff;
+        color: white;
+    }
+    .btn-add-task:hover {
+        background: #0056b3;
+    }
+    .btn-cancel-task {
+        background: #6c757d;
+        color: white;
+    }
+    .btn-cancel-task:hover {
+        background: #5a6268;
     }
     .task-badge {
         display: inline-block;
@@ -224,9 +260,90 @@
     .add-status-column {
         cursor: default;
         pointer-events: auto;
+        min-width: 200px;
+        background: #e9ecef;
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
     }
     .add-status-column * {
         pointer-events: auto;
+    }
+    .quick-add-status-form {
+        display: none;
+        width: 100%;
+    }
+    .quick-add-status-form.active {
+        display: block;
+    }
+    .quick-add-status-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #007bff;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        outline: none;
+        transition: all 0.2s ease;
+        background: white;
+    }
+    .quick-add-status-input:focus {
+        border-color: #0056b3;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    }
+    .quick-add-status-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        direction: rtl;
+    }
+    .quick-add-status-actions button {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .btn-add-status {
+        background: #007bff;
+        color: white;
+    }
+    .btn-add-status:hover {
+        background: #0056b3;
+    }
+    .btn-cancel-status {
+        background: #6c757d;
+        color: white;
+    }
+    .btn-cancel-status:hover {
+        background: #5a6268;
+    }
+    .add-status-btn {
+        width: 100%;
+        border: none;
+        background: transparent;
+        color: #6c757d;
+        padding: 0.75rem;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    .add-status-btn:hover {
+        background: rgba(0, 0, 0, 0.05);
+        color: #007bff;
+    }
+    .add-status-btn i {
+        font-size: 1.1rem;
     }
 </style>
 
@@ -381,22 +498,54 @@
                         </div>
                     }
                 </div>
-                <button type="button" class="add-task-btn text-decoration-none border-0 bg-transparent w-100" onclick="openAddTaskModal('@status', @Model.Id)">
-                    <i class="bi bi-plus-circle-fill"></i>
+                <!-- دکمه افزودن کار -->
+                <button type="button" class="add-task-btn" onclick="showQuickAddTask(event, '@status', @Model.Id, @statusObj.Id)">
+                    <i class="bi bi-plus"></i>
                     <span>افزودن کار</span>
                 </button>
+                <!-- فرم سریع افزودن کار -->
+                <div class="quick-add-task-form" id="quick-add-form-@statusObj.Id">
+                    <input type="text" 
+                           class="quick-add-task-input" 
+                           id="quick-add-input-@statusObj.Id"
+                           placeholder="عنوان کار را وارد کنید..."
+                           onkeypress="handleQuickAddKeyPress(event, '@status', @Model.Id, @statusObj.Id)" />
+                    <div class="quick-add-task-actions">
+                        <button type="button" class="btn-add-task" onclick="submitQuickAddTask('@status', @Model.Id, @statusObj.Id)">
+                            افزودن
+                        </button>
+                        <button type="button" class="btn-cancel-task" onclick="hideQuickAddTask(@statusObj.Id)">
+                            انصراف
+                        </button>
+                    </div>
+                </div>
             </div>
         }
         
         <!-- دکمه افزودن وضعیت جدید - فقط برای سازنده -->
         @if (Model.CreatorUserId == currentUserId)
         {
-            <div class="board-column add-status-column" style="min-width: 200px; background: #e9ecef; border: 2px dashed #ccc; display: flex; flex-direction: column; justify-content: center; align-items: center;" draggable="false">
-                <div class="p-3 text-center">
-                    <button type="button" class="btn btn-outline-primary" onclick="openAddStatusModal()">
-                        <i class="bi bi-plus-circle me-2"></i>
-                        افزودن وضعیت
-                    </button>
+            <div class="board-column add-status-column" draggable="false">
+                <!-- دکمه افزودن وضعیت -->
+                <button type="button" class="add-status-btn" onclick="showQuickAddStatus(event, @Model.Id)">
+                    <i class="bi bi-plus"></i>
+                    <span>افزودن وضعیت</span>
+                </button>
+                <!-- فرم سریع افزودن وضعیت -->
+                <div class="quick-add-status-form" id="quick-add-status-form">
+                    <input type="text" 
+                           class="quick-add-status-input" 
+                           id="quick-add-status-input"
+                           placeholder="نام وضعیت را وارد کنید..."
+                           onkeypress="handleQuickAddStatusKeyPress(event, @Model.Id)" />
+                    <div class="quick-add-status-actions">
+                        <button type="button" class="btn-add-status" onclick="submitQuickAddStatus(@Model.Id)">
+                            افزودن
+                        </button>
+                        <button type="button" class="btn-cancel-status" onclick="hideQuickAddStatus()">
+                            انصراف
+                        </button>
+                    </div>
                 </div>
             </div>
         }
@@ -889,6 +1038,114 @@
             console.error('خطا در بارگذاری کاربران:', error);
         }
         return [];
+    }
+
+    // نمایش فرم سریع افزودن کار
+    function showQuickAddTask(event, status, boardId, statusId) {
+        const form = document.getElementById(`quick-add-form-${statusId}`);
+        const input = document.getElementById(`quick-add-input-${statusId}`);
+        const button = event.target.closest('.add-task-btn');
+        
+        if (form && input) {
+            form.classList.add('active');
+            input.focus();
+            if (button) {
+                button.style.display = 'none';
+            }
+        }
+    }
+
+    // مخفی کردن فرم سریع افزودن کار
+    function hideQuickAddTask(statusId) {
+        const form = document.getElementById(`quick-add-form-${statusId}`);
+        const input = document.getElementById(`quick-add-input-${statusId}`);
+        const button = form?.previousElementSibling;
+        
+        if (form && input) {
+            form.classList.remove('active');
+            input.value = '';
+            if (button && button.classList.contains('add-task-btn')) {
+                button.style.display = 'flex';
+            }
+        }
+    }
+
+    // مدیریت کلید Enter در فرم سریع
+    function handleQuickAddKeyPress(event, status, boardId, statusId) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            submitQuickAddTask(status, boardId, statusId);
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            hideQuickAddTask(statusId);
+        }
+    }
+
+    // ارسال فرم سریع افزودن کار
+    async function submitQuickAddTask(status, boardId, statusId) {
+        const input = document.getElementById(`quick-add-input-${statusId}`);
+        const title = input?.value.trim();
+        
+        if (!title) {
+            alert('لطفاً عنوان کار را وارد کنید');
+            return;
+        }
+
+        const form = document.getElementById(`quick-add-form-${statusId}`);
+        const button = form?.previousElementSibling;
+        
+        // غیرفعال کردن input
+        if (input) {
+            input.disabled = true;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('BoardId', boardId);
+            formData.append('Title', title);
+            formData.append('Status', status);
+            formData.append('Description', '');
+            formData.append('AssignedUserId', '');
+            formData.append('ParentTaskId', '');
+            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+
+            const response = await fetch('@Url.Action("CreateTask", "BoardTasks")', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // پاک کردن input و مخفی کردن فرم
+                if (input) {
+                    input.value = '';
+                    input.disabled = false;
+                }
+                hideQuickAddTask(statusId);
+                
+                // بارگذاری مجدد صفحه برای نمایش کار جدید
+                location.reload();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در ایجاد کار'));
+                if (input) {
+                    input.disabled = false;
+                    input.focus();
+                }
+            }
+        } catch (error) {
+            console.error('خطا در ایجاد کار:', error);
+            alert('خطا در ایجاد کار: ' + error.message);
+            if (input) {
+                input.disabled = false;
+                input.focus();
+            }
+        }
     }
 
     async function openAddTaskModal(status, boardId) {
@@ -1776,7 +2033,110 @@
         }
     }
 
-    // باز کردن Modal افزودن وضعیت
+    // نمایش فرم سریع افزودن وضعیت
+    function showQuickAddStatus(event, boardId) {
+        const form = document.getElementById('quick-add-status-form');
+        const input = document.getElementById('quick-add-status-input');
+        const button = event.target.closest('.add-status-btn');
+        
+        if (form && input) {
+            form.classList.add('active');
+            input.focus();
+            if (button) {
+                button.style.display = 'none';
+            }
+        }
+    }
+
+    // مخفی کردن فرم سریع افزودن وضعیت
+    function hideQuickAddStatus() {
+        const form = document.getElementById('quick-add-status-form');
+        const input = document.getElementById('quick-add-status-input');
+        const button = form?.previousElementSibling;
+        
+        if (form && input) {
+            form.classList.remove('active');
+            input.value = '';
+            if (button && button.classList.contains('add-status-btn')) {
+                button.style.display = 'flex';
+            }
+        }
+    }
+
+    // مدیریت کلید Enter در فرم سریع افزودن وضعیت
+    function handleQuickAddStatusKeyPress(event, boardId) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            submitQuickAddStatus(boardId);
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            hideQuickAddStatus();
+        }
+    }
+
+    // ارسال فرم سریع افزودن وضعیت
+    async function submitQuickAddStatus(boardId) {
+        const input = document.getElementById('quick-add-status-input');
+        const name = input?.value.trim();
+        
+        if (!name) {
+            alert('لطفاً نام وضعیت را وارد کنید');
+            return;
+        }
+
+        const form = document.getElementById('quick-add-status-form');
+        const button = form?.previousElementSibling;
+        
+        // غیرفعال کردن input
+        if (input) {
+            input.disabled = true;
+        }
+
+        try {
+            const response = await fetch('@Url.Action("AddStatus", "Boards")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': '@antiforgeryToken'
+                },
+                body: `boardId=${boardId}&name=${encodeURIComponent(name)}&description=&color=#6c757d`
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // پاک کردن input و مخفی کردن فرم
+                if (input) {
+                    input.value = '';
+                    input.disabled = false;
+                }
+                hideQuickAddStatus();
+                
+                // بارگذاری مجدد صفحه برای نمایش وضعیت جدید
+                location.reload();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در افزودن وضعیت'));
+                if (input) {
+                    input.disabled = false;
+                    input.focus();
+                }
+            }
+        } catch (error) {
+            console.error('خطا در افزودن وضعیت:', error);
+            alert('خطا در افزودن وضعیت: ' + error.message);
+            if (input) {
+                input.disabled = false;
+                input.focus();
+            }
+        }
+    }
+
+    // باز کردن Modal افزودن وضعیت (برای استفاده در صورت نیاز به فرم کامل)
     function openAddStatusModal() {
         const modal = new bootstrap.Modal(document.getElementById('addStatusModal'));
         document.getElementById('addStatusFormModal').reset();
