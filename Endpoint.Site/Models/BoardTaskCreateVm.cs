@@ -26,6 +26,12 @@ namespace Endpoint.Site.Models
         public string? AssignedUserId { get; set; }
 
         /// <summary>
+        /// تاریخ سررسید (اختیاری)
+        /// </summary>
+        [Display(Name = "تاریخ سررسید")]
+        public DateTime? DueDate { get; set; }
+
+        /// <summary>
         /// کار والد (برای ایجاد کارک)
         /// </summary>
         [Display(Name = "کار والد")]

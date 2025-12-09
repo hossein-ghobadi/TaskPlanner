@@ -45,6 +45,21 @@ namespace TaskPlanner.Domain.Entities.Boards
         [StringLength(450)]
         public string? AssignedUserId { get; set; }
 
+        /// <summary>
+        /// تاریخ سررسید/خاتمه کار (اختیاری)
+        /// </summary>
+        public DateTime? DueDate { get; set; }
+
+        /// <summary>
+        /// آیا کار تکمیل شده است؟ (مستقل از وضعیت)
+        /// </summary>
+        public bool IsCompleted { get; set; } = false;
+
+        /// <summary>
+        /// تاریخ تکمیل کار
+        /// </summary>
+        public DateTime? CompletedAt { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

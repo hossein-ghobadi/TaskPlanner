@@ -127,6 +127,7 @@ namespace Endpoint.Site.Controllers
                 Order = maxOrder + 1,
                 CreatorUserId = userId,
                 AssignedUserId = vm.AssignedUserId,
+                DueDate = vm.DueDate,
                 ParentTaskId = vm.ParentTaskId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -187,6 +188,7 @@ namespace Endpoint.Site.Controllers
                 Order = maxOrder + 1,
                 CreatorUserId = userId,
                 AssignedUserId = vm.AssignedUserId,
+                DueDate = vm.DueDate,
                 ParentTaskId = vm.ParentTaskId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -241,7 +243,8 @@ namespace Endpoint.Site.Controllers
                 Description = task.Description,
                 Status = task.Status,
                 Order = task.Order,
-                AssignedUserId = task.AssignedUserId
+                AssignedUserId = task.AssignedUserId,
+                DueDate = task.DueDate
             };
 
             // لیست کاربران برای اختصاص
@@ -316,6 +319,7 @@ namespace Endpoint.Site.Controllers
             taskToUpdate.Status = vm.Status;
             taskToUpdate.Order = vm.Order;
             taskToUpdate.AssignedUserId = vm.AssignedUserId;
+            taskToUpdate.DueDate = vm.DueDate;
             taskToUpdate.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -352,6 +356,9 @@ namespace Endpoint.Site.Controllers
                     status = task.Status,
                     order = task.Order,
                     assignedUserId = task.AssignedUserId,
+                    dueDate = task.DueDate,
+                    isCompleted = task.IsCompleted,
+                    completedAt = task.CompletedAt,
                     parentTaskId = task.ParentTaskId,
                     createdAt = task.CreatedAt,
                     subtasks = task.ChildTasks.OrderBy(st => st.Order).ThenBy(st => st.CreatedAt).Select(st => new {
@@ -366,7 +373,7 @@ namespace Endpoint.Site.Controllers
 
         // POST: ویرایش کار (API برای Modal)
         [HttpPost]
-        public async Task<IActionResult> UpdateTask([FromForm] BoardTaskEditVm vm)
+        public async Task<IActionResult> UpdateTask([FromForm] BoardTaskPartialUpdateVm vm)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -392,11 +399,11 @@ namespace Endpoint.Site.Controllers
             var oldOrder = taskToUpdate.Order;
 
             // اگر وضعیت تغییر کرده، ترتیب را در ستون جدید تنظیم کن (فقط برای کارهای اصلی)
-            if (taskToUpdate.Status != vm.Status && taskToUpdate.ParentTaskId == null)
+            if (!string.IsNullOrEmpty(vm.Status) && taskToUpdate.Status != vm.Status && taskToUpdate.ParentTaskId == null)
             {
                 // حذف از ستون قبلی
                 var tasksInOldStatus = await _context.BoardTasks
-                    .Where(t => t.BoardId == vm.BoardId && t.Status == oldStatus && t.ParentTaskId == null && t.Order > oldOrder)
+                    .Where(t => t.BoardId == taskToUpdate.BoardId && t.Status == oldStatus && t.ParentTaskId == null && t.Order > oldOrder)
                     .ToListAsync();
                 
                 foreach (var t in tasksInOldStatus)
@@ -406,16 +413,31 @@ namespace Endpoint.Site.Controllers
 
                 // افزودن به ستون جدید
                 var maxOrder = await _context.BoardTasks
-                    .Where(t => t.BoardId == vm.BoardId && t.Status == vm.Status && t.ParentTaskId == null && t.Id != vm.Id)
+                    .Where(t => t.BoardId == taskToUpdate.BoardId && t.Status == vm.Status && t.ParentTaskId == null && t.Id != vm.Id)
                     .MaxAsync(t => (int?)t.Order) ?? 0;
                 
                 taskToUpdate.Order = maxOrder + 1;
             }
 
-            taskToUpdate.Title = vm.Title;
-            taskToUpdate.Description = vm.Description;
-            taskToUpdate.Status = vm.Status;
-            taskToUpdate.AssignedUserId = vm.AssignedUserId;
+            // فقط فیلدهای ارسال‌شده را به‌روزرسانی کن
+            if (!string.IsNullOrEmpty(vm.Title))
+                taskToUpdate.Title = vm.Title;
+            
+            if (vm.Description != null) // null check به جای string.IsNullOrEmpty چون ممکنه بخوایم توضیحات رو خالی کنیم
+                taskToUpdate.Description = vm.Description;
+            
+            if (!string.IsNullOrEmpty(vm.Status))
+                taskToUpdate.Status = vm.Status;
+            
+            if (vm.AssignedUserId != null) // فقط اگر ارسال شده باشد
+                taskToUpdate.AssignedUserId = vm.AssignedUserId;
+            
+            if (vm.DueDate.HasValue || Request.Form.ContainsKey("DueDate")) // اگر DueDate ارسال شده (حتی null)
+                taskToUpdate.DueDate = vm.DueDate;
+            
+            if (vm.Order.HasValue)
+                taskToUpdate.Order = vm.Order.Value;
+            
             taskToUpdate.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -470,6 +492,61 @@ namespace Endpoint.Site.Controllers
             await _context.SaveChangesAsync();
 
             return RedirectToAction("Details", "Boards", new { id = boardId });
+        }
+
+        // POST: تغییر وضعیت تکمیل کار
+        [HttpPost]
+        public async Task<IActionResult> ToggleComplete(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var task = await _context.BoardTasks
+                .Include(t => t.Board)
+                .ThenInclude(b => b.Members)
+                .Include(t => t.ChildTasks) // بارگذاری کارک‌ها (چک لیست)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (task == null)
+                return Json(new { success = false, message = "کار یافت نشد" });
+
+            // بررسی دسترسی
+            if (task.Board.CreatorUserId != userId && !task.Board.Members.Any(m => m.UserId == userId))
+                return Json(new { success = false, message = "دسترسی ندارید" });
+
+            task.IsCompleted = !task.IsCompleted;
+            task.CompletedAt = task.IsCompleted ? DateTime.UtcNow : null;
+            task.UpdatedAt = DateTime.UtcNow;
+
+            // اگر کار تکمیل شد، همه کارک‌ها رو هم تکمیل کن
+            if (task.IsCompleted)
+            {
+                foreach (var subtask in task.ChildTasks)
+                {
+                    subtask.Status = "Done";
+                    subtask.IsCompleted = true;
+                    subtask.CompletedAt = DateTime.UtcNow;
+                    subtask.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+            // اگر کار uncomplete شد، همه کارک‌ها رو هم uncomplete کن
+            else
+            {
+                foreach (var subtask in task.ChildTasks)
+                {
+                    subtask.Status = "To Do";
+                    subtask.IsCompleted = false;
+                    subtask.CompletedAt = null;
+                    subtask.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Json(new { 
+                success = true, 
+                isCompleted = task.IsCompleted,
+                completedAt = task.CompletedAt
+            });
         }
 
         // POST: حذف کار (API برای Modal)

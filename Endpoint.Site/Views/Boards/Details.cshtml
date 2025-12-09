@@ -84,22 +84,37 @@
         padding: 1rem;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         cursor: grab;
-        transition: box-shadow 0.2s;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
         user-select: none;
+        position: relative;
     }
     .task-card:hover {
         box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
     .task-card.dragging {
-        opacity: 0.5;
+        opacity: 0.4;
         cursor: grabbing;
+        transform: scale(0.95);
+    }
+    .task-card.task-completed {
+        border-right: 4px solid #28a745;
+    }
+    .task-card.task-completed .task-title {
+        opacity: 0.8;
+    }
+    .task-card.drag-placeholder {
+        opacity: 0.3;
+        border: 2px dashed #007bff;
+        background-color: #e3f2fd;
     }
     .column-tasks.drag-over {
-        background-color: #e3f2fd;
+        background-color: #f0f7ff;
         border-radius: 4px;
+        transition: background-color 0.2s ease;
     }
     .board-column.drag-over {
         background-color: #e8f5e9;
+        transition: background-color 0.2s ease;
     }
     .task-title {
         font-weight: 500;
@@ -483,9 +498,23 @@
                     @foreach (var task in tasks.OrderBy(t => t.Order).ThenBy(t => t.CreatedAt))
                     {
                         var isSubtask = task.ParentTaskId.HasValue;
-                        <div class="task-card" draggable="@(!isSubtask ? "true" : "false")" data-task-id="@task.Id" data-status="@task.Status" data-parent-task-id="@(task.ParentTaskId?.ToString() ?? "")" ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)" style="@(isSubtask ? "cursor: default;" : "")">
+                        var completedStyle = task.IsCompleted ? "opacity: 0.7; background: #f8f9fa;" : "";
+                        <div class="task-card @(task.IsCompleted ? "task-completed" : "")" draggable="@(!isSubtask ? "true" : "false")" data-task-id="@task.Id" data-status="@task.Status" data-parent-task-id="@(task.ParentTaskId?.ToString() ?? "")" ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)" style="@(isSubtask ? "cursor: default;" : "") @completedStyle">
                             <div onclick="if(!event.target.closest('a, button')) openTaskDetailsModal(@task.Id)" style="cursor: pointer;">
-                                <div class="task-title">@task.Title</div>
+                                @if (task.IsCompleted)
+                                {
+                                    <div class="mb-2">
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle-fill"></i>
+                                            تکمیل شده
+                                        </span>
+                                        @if (task.CompletedAt.HasValue)
+                                        {
+                                            <small class="text-muted ms-2">@task.CompletedAt.Value.ToShortPersianDateString().ToPersianNumbers()</small>
+                                        }
+                                    </div>
+                                }
+                                <div class="task-title" style="@(task.IsCompleted ? "text-decoration: line-through; color: #6c757d;" : "")">@task.Title</div>
                                 @if (!string.IsNullOrWhiteSpace(task.Description))
                                 {
                                     <div class="task-description">@(task.Description.Length > 100 ? task.Description.Substring(0, 100) + "..." : task.Description)</div>
@@ -501,23 +530,6 @@
                                     <small>@task.CreatedAt.ToShortPersianDateString().ToPersianNumbers()</small>
                                 </div>
                             </div>
-                            
-                            <!-- نمایش کارک‌ها -->
-                            @if (task.ChildTasks != null && task.ChildTasks.Any())
-                            {
-                                <div class="subtask-container">
-                                    @foreach (var subtask in task.ChildTasks.OrderBy(st => st.Order).ThenBy(st => st.CreatedAt))
-                                    {
-                                        <div class="subtask-item" onclick="event.stopPropagation(); openTaskDetailsModal(@task.Id)" style="cursor: pointer;">
-                                            @subtask.Title
-                                            @if (subtask.Status == "Done")
-                                            {
-                                                <span class="badge bg-success" style="font-size: 0.7rem;">✓</span>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-                            }
                             
                             <!-- دکمه‌های عملیات -->
                             <div class="d-flex gap-2 mt-2" onclick="event.stopPropagation();">
@@ -822,7 +834,16 @@
                     <div class="col-md-8">
                         <!-- عنوان کار -->
                         <div class="mb-3">
-                            <h4 id="taskDetailsTitle" class="mb-2"></h4>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="taskDetailsCompleteCheckbox" 
+                                           onchange="toggleTaskComplete()" style="width: 24px; height: 24px; cursor: pointer;">
+                                    <label class="form-check-label fw-bold ms-2" for="taskDetailsCompleteCheckbox" style="cursor: pointer;">
+                                        علامت‌گذاری به عنوان تکمیل‌شده
+                                    </label>
+                                </div>
+                            </div>
+                            <h4 id="taskDetailsTitle" class="mb-2 mt-2"></h4>
                         </div>
                         
                         <!-- توضیحات کار -->
@@ -931,6 +952,13 @@
                                     </select>
                                 </div>
                                 
+                                <!-- تاریخ سررسید -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">تاریخ سررسید</label>
+                                    <input type="date" class="form-control form-control-sm" id="taskDetailsDueDate" onchange="updateTaskDueDateFromDetails()" />
+                                    <small class="text-muted" id="taskDetailsDueDateStatus"></small>
+                                </div>
+                                
                                 <!-- تاریخ ایجاد -->
                                 <div class="mb-3">
                                     <label class="form-label fw-bold small">تاریخ ایجاد</label>
@@ -1030,13 +1058,32 @@
             element: e.target
         };
         draggedTaskElement = e.target;
-        e.target.classList.add('dragging');
+        
+        // تاخیر کوچک برای اضافه کردن کلاس dragging
+        setTimeout(() => {
+            if (draggedTaskElement) {
+                draggedTaskElement.classList.add('dragging');
+            }
+        }, 0);
+        
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', e.target.outerHTML);
+        e.dataTransfer.setData('text/plain', e.target.dataset.taskId);
+        
+        // تصویر شفاف برای drag ghost
+        const dragImage = e.target.cloneNode(true);
+        dragImage.style.opacity = '0.8';
+        dragImage.style.transform = 'rotate(-3deg)';
+        document.body.appendChild(dragImage);
+        dragImage.style.position = 'absolute';
+        dragImage.style.top = '-1000px';
+        e.dataTransfer.setDragImage(dragImage, 0, 0);
+        setTimeout(() => dragImage.remove(), 0);
     }
 
     function handleDragEnd(e) {
-        e.target.classList.remove('dragging');
+        if (e.target) {
+            e.target.classList.remove('dragging');
+        }
         document.querySelectorAll('.column-tasks').forEach(col => {
             col.classList.remove('drag-over');
         });
@@ -1045,9 +1092,27 @@
         });
     }
 
+    // تابع کمکی برای یافتن موقعیت درج بر اساس موقعیت موس
+    function getDragAfterTask(container, y) {
+        const draggableElements = [...container.querySelectorAll('.task-card:not(.dragging)')];
+        
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
     function handleDragOver(e) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
+        
+        if (!draggedTaskElement) return;
         
         const columnTasks = e.currentTarget;
         columnTasks.classList.add('drag-over');
@@ -1056,9 +1121,35 @@
         if (column) {
             column.classList.add('drag-over');
         }
+
+        // نمایش پیش‌نمایش محل درج
+        const afterElement = getDragAfterTask(columnTasks, e.clientY);
+        
+        // حذف کارت از موقعیت فعلی اگر در همان ستون است
+        if (draggedTaskElement.parentElement === columnTasks) {
+            draggedTaskElement.remove();
+        }
+        
+        // درج کارت در موقعیت جدید
+        if (afterElement == null) {
+            // اگر هیچ المنتی بعد از موقعیت فعلی نیست، به آخر اضافه کن
+            if (!columnTasks.contains(draggedTaskElement)) {
+                columnTasks.appendChild(draggedTaskElement);
+            }
+        } else {
+            // درج قبل از المنت هدف
+            if (!columnTasks.contains(draggedTaskElement) || draggedTaskElement.nextSibling !== afterElement) {
+                columnTasks.insertBefore(draggedTaskElement, afterElement);
+            }
+        }
     }
 
     function handleDragLeave(e) {
+        // فقط زمانی که از ستون خارج می‌شویم
+        if (e.currentTarget.contains(e.relatedTarget)) {
+            return;
+        }
+        
         const columnTasks = e.currentTarget;
         columnTasks.classList.remove('drag-over');
         
@@ -1081,7 +1172,7 @@
             column.classList.remove('drag-over');
         }
 
-        if (!draggedTask) return;
+        if (!draggedTask || !draggedTaskElement) return;
 
         // اگر کارک است، اجازه جابجایی نده
         if (draggedTaskElement.dataset.parentTaskId && draggedTaskElement.dataset.parentTaskId !== '') {
@@ -1092,36 +1183,17 @@
             return;
         }
 
+        // حذف کلاس dragging
+        draggedTaskElement.classList.remove('dragging');
+        
+        // به‌روزرسانی وضعیت
+        draggedTaskElement.setAttribute('data-status', newStatus);
+        
         // اگر در همان ستون است، فقط ترتیب را تغییر بده
         const isSameColumn = draggedTask.status === newStatus;
         
-        // حذف کار از مکان قبلی
+        // حذف کار از مکان قبلی در DOM (اگر در ستون دیگری است)
         const oldColumn = document.querySelector(`#tasks-${draggedTask.status}`);
-        draggedTaskElement.remove();
-
-        // اضافه کردن کار به مکان جدید
-        const tasks = Array.from(columnTasks.querySelectorAll('.task-card:not(.dragging)'));
-        
-        // پیدا کردن موقعیت درج
-        let insertBefore = null;
-        const afterElement = e.target.closest('.task-card');
-        if (afterElement && afterElement !== draggedTaskElement) {
-            insertBefore = afterElement;
-        }
-
-        // ایجاد عنصر جدید
-        const newTaskElement = draggedTaskElement.cloneNode(true);
-        newTaskElement.classList.remove('dragging');
-        newTaskElement.setAttribute('data-status', newStatus);
-        newTaskElement.setAttribute('draggable', 'true');
-        newTaskElement.addEventListener('dragstart', handleDragStart);
-        newTaskElement.addEventListener('dragend', handleDragEnd);
-
-        if (insertBefore) {
-            columnTasks.insertBefore(newTaskElement, insertBefore);
-        } else {
-            columnTasks.appendChild(newTaskElement);
-        }
 
         // محاسبه ترتیب جدید
         const taskOrders = [];
@@ -1425,6 +1497,7 @@
     // مدیریت Modal جزئیات کار (مثل Trello)
     let currentTaskDetailsId = null;
     const currentUserId = '@currentUserId';
+    let isTogglingFromParent = false; // برای جلوگیری از toggle مکرر
     
     async function openTaskDetailsModal(taskId) {
         currentTaskDetailsId = taskId;
@@ -1444,8 +1517,22 @@
             if (result.success) {
                 const task = result.task;
                 
+                // نمایش وضعیت تکمیل
+                const completeCheckbox = document.getElementById('taskDetailsCompleteCheckbox');
+                completeCheckbox.checked = task.isCompleted || false;
+                
                 // نمایش عنوان
-                document.getElementById('taskDetailsTitle').textContent = task.title || 'بدون عنوان';
+                const titleElement = document.getElementById('taskDetailsTitle');
+                titleElement.textContent = task.title || 'بدون عنوان';
+                
+                // اعمال استایل برای عنوان کارهای تکمیل‌شده
+                if (task.isCompleted) {
+                    titleElement.style.textDecoration = 'line-through';
+                    titleElement.style.color = '#6c757d';
+                } else {
+                    titleElement.style.textDecoration = 'none';
+                    titleElement.style.color = '';
+                }
                 
                 // نمایش توضیحات
                 const descriptionText = task.description || '';
@@ -1467,6 +1554,35 @@
                 // نمایش اختصاص به
                 await loadUsersForDetails(task.boardId);
                 document.getElementById('taskDetailsAssignedUser').value = task.assignedUserId || '';
+                
+                // نمایش تاریخ سررسید
+                const dueDateInput = document.getElementById('taskDetailsDueDate');
+                const dueDateStatus = document.getElementById('taskDetailsDueDateStatus');
+                if (task.dueDate) {
+                    const dueDate = new Date(task.dueDate);
+                    dueDateInput.value = dueDate.toISOString().split('T')[0];
+                    
+                    // محاسبه وضعیت تاریخ
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const dueDateOnly = new Date(dueDate);
+                    dueDateOnly.setHours(0, 0, 0, 0);
+                    
+                    if (dueDateOnly < today) {
+                        dueDateStatus.textContent = '⚠️ سررسید گذشته';
+                        dueDateStatus.className = 'text-danger small';
+                    } else if (dueDateOnly.getTime() === today.getTime()) {
+                        dueDateStatus.textContent = '⏰ امروز';
+                        dueDateStatus.className = 'text-warning small';
+                    } else {
+                        const daysLeft = Math.ceil((dueDateOnly - today) / (1000 * 60 * 60 * 24));
+                        dueDateStatus.textContent = `📅 ${daysLeft} روز مانده`;
+                        dueDateStatus.className = 'text-success small';
+                    }
+                } else {
+                    dueDateInput.value = '';
+                    dueDateStatus.textContent = '';
+                }
                 
                 // نمایش تاریخ ایجاد
                 if (task.createdAt) {
@@ -1560,6 +1676,9 @@
             if (result.success) {
                 // به‌روزرسانی نمایش
                 await loadSubtasks(currentTaskDetailsId);
+                
+                // بررسی اینکه آیا همه کارک‌ها تکمیل شدن
+                await checkAndUpdateParentTaskCompletion();
             } else {
                 alert('خطا: ' + (result.message || 'خطا در تغییر وضعیت کارک'));
                 // بازگشت به حالت قبلی
@@ -1569,6 +1688,74 @@
             console.error('خطا در تغییر وضعیت کارک:', error);
             alert('خطا در تغییر وضعیت کارک: ' + error.message);
             await loadSubtasks(currentTaskDetailsId);
+        }
+    }
+    
+    async function checkAndUpdateParentTaskCompletion() {
+        // اگر toggle از طریق کار اصلی انجام شده، کاری نکن
+        if (isTogglingFromParent) return;
+        
+        try {
+            // دریافت اطلاعات کار و کارک‌های آن
+            const response = await fetch('@Url.Action("GetTask", "BoardTasks")?id=' + currentTaskDetailsId);
+            const result = await response.json();
+            
+            if (!result.success) return;
+            
+            const task = result.task;
+            const subtasks = task.subtasks || [];
+            
+            // اگر کارکی وجود نداشته باشد، کاری نکن
+            if (subtasks.length === 0) return;
+            
+            // بررسی اینکه آیا همه کارک‌ها Done هستند
+            const allCompleted = subtasks.every(st => st.status === 'Done');
+            const currentlyCompleted = task.isCompleted || false;
+            
+            // اگر وضعیت تغییر کرده باشد، به‌روزرسانی کن
+            if (allCompleted && !currentlyCompleted) {
+                // همه کارک‌ها تکمیل شدن، کار اصلی رو هم تکمیل کن
+                await toggleTaskCompleteWithoutReload(true);
+            } else if (!allCompleted && currentlyCompleted) {
+                // حداقل یک کارک incomplete شده، کار اصلی رو هم uncomplete کن
+                await toggleTaskCompleteWithoutReload(false);
+            }
+        } catch (error) {
+            console.error('خطا در بررسی وضعیت کار والد:', error);
+        }
+    }
+    
+    async function toggleTaskCompleteWithoutReload(shouldComplete) {
+        try {
+            const response = await fetch('@Url.Action("ToggleComplete", "BoardTasks")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'id': currentTaskDetailsId,
+                    '__RequestVerificationToken': '@antiforgeryToken'
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // فقط checkbox رو به‌روزرسانی کن بدون reload
+                document.getElementById('taskDetailsCompleteCheckbox').checked = result.isCompleted;
+                
+                // به‌روزرسانی استایل عنوان
+                const titleElement = document.getElementById('taskDetailsTitle');
+                if (result.isCompleted) {
+                    titleElement.style.textDecoration = 'line-through';
+                    titleElement.style.color = '#6c757d';
+                } else {
+                    titleElement.style.textDecoration = 'none';
+                    titleElement.style.color = '';
+                }
+            }
+        } catch (error) {
+            console.error('خطا در تغییر وضعیت تکمیل:', error);
         }
     }
     
@@ -1771,6 +1958,53 @@
         await updateTaskField('AssignedUserId', newAssignee);
     }
     
+    async function updateTaskDueDateFromDetails() {
+        const dueDateInput = document.getElementById('taskDetailsDueDate');
+        const dueDate = dueDateInput.value || null;
+        await updateTaskField('DueDate', dueDate);
+        // به‌روزرسانی نمایش
+        await loadTaskDetails(currentTaskDetailsId);
+    }
+    
+    async function toggleTaskComplete() {
+        if (!currentTaskDetailsId) return;
+        
+        // ست کردن flag برای جلوگیری از auto-toggle از طریق کارک‌ها
+        isTogglingFromParent = true;
+        
+        try {
+            const response = await fetch('@Url.Action("ToggleComplete", "BoardTasks")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'id': currentTaskDetailsId,
+                    '__RequestVerificationToken': '@antiforgeryToken'
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // به‌روزرسانی نمایش کامل (شامل کارک‌ها)
+                await loadTaskDetails(currentTaskDetailsId);
+                // بارگذاری مجدد صفحه برای به‌روزرسانی کارت‌ها
+                location.reload();
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در تغییر وضعیت تکمیل'));
+                // بازگشت به حالت قبلی
+                await loadTaskDetails(currentTaskDetailsId);
+            }
+        } catch (error) {
+            console.error('خطا در تغییر وضعیت تکمیل:', error);
+            alert('خطا در تغییر وضعیت تکمیل: ' + error.message);
+            await loadTaskDetails(currentTaskDetailsId);
+        } finally {
+            isTogglingFromParent = false;
+        }
+    }
+    
     async function updateTaskField(fieldName, fieldValue) {
         if (!currentTaskDetailsId) return;
         
@@ -1786,11 +2020,18 @@
             const task = taskResult.task;
             const formData = new FormData();
             formData.append('Id', currentTaskDetailsId);
-            formData.append('Title', task.title || '');
-            formData.append('Description', task.description || '');
-            formData.append('Status', fieldName === 'Status' ? fieldValue : task.status);
-            formData.append('BoardId', task.boardId);
-            formData.append('AssignedUserId', fieldName === 'AssignedUserId' ? fieldValue : (task.assignedUserId || ''));
+            
+            // فقط فیلد تغییر یافته را ارسال می‌کنیم
+            if (fieldName === 'AssignedUserId') {
+                formData.append('AssignedUserId', fieldValue);
+            } else if (fieldName === 'DueDate') {
+                if (fieldValue) {
+                    formData.append('DueDate', fieldValue);
+                }
+            } else if (fieldName === 'Status') {
+                formData.append('Status', fieldValue);
+            }
+            
             formData.append('__RequestVerificationToken', '@antiforgeryToken');
             
             const response = await fetch('@Url.Action("UpdateTask", "BoardTasks")', {
@@ -1846,11 +2087,7 @@
             const task = taskResult.task;
             const formData = new FormData();
             formData.append('Id', currentTaskDetailsId);
-            formData.append('Title', task.title || '');
             formData.append('Description', description);
-            formData.append('Status', task.status || 'To Do');
-            formData.append('BoardId', task.boardId);
-            formData.append('AssignedUserId', task.assignedUserId || '');
             formData.append('__RequestVerificationToken', '@antiforgeryToken');
             
             const response = await fetch('@Url.Action("UpdateTask", "BoardTasks")', {
