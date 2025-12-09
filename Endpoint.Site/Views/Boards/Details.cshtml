@@ -350,6 +350,41 @@
     .add-status-btn i {
         font-size: 1.1rem;
     }
+    /* استایل چک لیست کارک‌ها */
+    .checklist-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem;
+        margin-bottom: 0.5rem;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+    .checklist-item:hover {
+        background-color: #f8f9fa;
+    }
+    .checklist-item input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        margin-left: 0.75rem;
+        cursor: pointer;
+    }
+    .checklist-item-text {
+        flex: 1;
+        margin-right: 0.75rem;
+        cursor: pointer;
+    }
+    .checklist-item-text.completed {
+        text-decoration: line-through;
+        color: #6c757d;
+    }
+    .checklist-item-actions {
+        display: flex;
+        gap: 0.25rem;
+    }
+    .checklist-item-actions button {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
 </style>
 
 <div class="board-container">
@@ -449,7 +484,7 @@
                     {
                         var isSubtask = task.ParentTaskId.HasValue;
                         <div class="task-card" draggable="@(!isSubtask ? "true" : "false")" data-task-id="@task.Id" data-status="@task.Status" data-parent-task-id="@(task.ParentTaskId?.ToString() ?? "")" ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)" style="@(isSubtask ? "cursor: default;" : "")">
-                            <div onclick="if(!event.target.closest('a, button')) openEditTaskModal(@task.Id)" style="cursor: pointer;">
+                            <div onclick="if(!event.target.closest('a, button')) openTaskDetailsModal(@task.Id)" style="cursor: pointer;">
                                 <div class="task-title">@task.Title</div>
                                 @if (!string.IsNullOrWhiteSpace(task.Description))
                                 {
@@ -473,7 +508,7 @@
                                 <div class="subtask-container">
                                     @foreach (var subtask in task.ChildTasks.OrderBy(st => st.Order).ThenBy(st => st.CreatedAt))
                                     {
-                                        <div class="subtask-item" onclick="openEditTaskModal(@subtask.Id)" style="cursor: pointer;">
+                                        <div class="subtask-item" onclick="event.stopPropagation(); openTaskDetailsModal(@task.Id)" style="cursor: pointer;">
                                             @subtask.Title
                                             @if (subtask.Status == "Done")
                                             {
@@ -484,18 +519,8 @@
                                 </div>
                             }
                             
-                            <!-- دکمه افزودن کارک -->
-                            <button type="button" class="add-subtask-btn border-0 bg-transparent" onclick="event.stopPropagation(); openAddSubtaskModal(@task.Id, '@task.Status', @Model.Id)">
-                                <i class="bi bi-plus-circle"></i>
-                                افزودن کارک
-                            </button>
-                            
                             <!-- دکمه‌های عملیات -->
                             <div class="d-flex gap-2 mt-2" onclick="event.stopPropagation();">
-                                <button type="button" class="btn btn-sm btn-outline-info" onclick="openTaskModal(@task.Id, '@task.Title')" title="یادداشت و پیوست">
-                                    <i class="bi bi-chat-left-text"></i>
-                                    یادداشت
-                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteTaskDirectly(@task.Id)" title="حذف کار">
                                     <i class="bi bi-trash"></i>
                                 </button>
@@ -776,6 +801,154 @@
                     <i class="bi bi-check-circle me-2"></i>
                     ذخیره تغییرات
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal برای جزئیات کار (مثل Trello) -->
+<div class="modal fade" id="taskDetailsModal" tabindex="-1" aria-labelledby="taskDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="taskDetailsModalLabel">
+                    <i class="bi bi-list-check me-2"></i>
+                    جزئیات کار
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <!-- عنوان کار -->
+                        <div class="mb-3">
+                            <h4 id="taskDetailsTitle" class="mb-2"></h4>
+                        </div>
+                        
+                        <!-- توضیحات کار -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="bi bi-card-text me-2"></i>
+                                توضیحات
+                            </label>
+                            <div id="taskDetailsDescription" class="p-3 bg-light rounded border" style="min-height: 100px; cursor: pointer;" onclick="editTaskDescription()">
+                                <span id="taskDetailsDescriptionText" class="text-muted">افزودن توضیحات بیشتر...</span>
+                            </div>
+                            <div id="taskDetailsDescriptionEdit" style="display: none;" class="mt-2">
+                                <textarea class="form-control" id="taskDetailsDescriptionInput" rows="4"></textarea>
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="saveTaskDescription()">ذخیره</button>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="cancelEditTaskDescription()">انصراف</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- چک لیست کارک‌ها -->
+                        <div class="mb-4">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <label class="form-label fw-bold mb-0">
+                                    <i class="bi bi-list-check me-2"></i>
+                                    چک لیست
+                                </label>
+                                <span id="taskDetailsChecklistProgress" class="badge bg-secondary">0/0</span>
+                            </div>
+                            <div id="taskDetailsChecklist" class="border rounded p-3 bg-white">
+                                <!-- کارک‌ها اینجا نمایش داده می‌شوند -->
+                            </div>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="showAddSubtaskInput()">
+                                    <i class="bi bi-plus-circle me-1"></i>
+                                    افزودن به چک لیست
+                                </button>
+                            </div>
+                            <div id="addSubtaskInputContainer" style="display: none;" class="mt-2">
+                                <input type="text" class="form-control" id="addSubtaskInput" placeholder="عنوان آیتم چک لیست را وارد کنید..." onkeypress="handleAddSubtaskKeyPress(event)" />
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="addSubtaskFromDetails()">افزودن</button>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="hideAddSubtaskInput()">انصراف</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- یادداشت‌ها -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="bi bi-chat-left-text me-2"></i>
+                                یادداشت‌ها
+                            </label>
+                            
+                            <!-- فرم افزودن یادداشت -->
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <form id="taskDetailsCommentForm" enctype="multipart/form-data">
+                                        <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
+                                        <input type="hidden" id="taskDetailsTaskIdForComment" name="BoardTaskId" />
+                                        <div class="mb-3">
+                                            <label for="taskDetailsCommentMessage" class="form-label">یادداشت</label>
+                                            <textarea class="form-control" id="taskDetailsCommentMessage" name="Message" rows="3" placeholder="یادداشت خود را وارد کنید..."></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="taskDetailsCommentAttachments" class="form-label">فایل‌های پیوست</label>
+                                            <input type="file" class="form-control" id="taskDetailsCommentAttachments" name="Attachments" multiple />
+                                            <small class="form-text text-muted">می‌توانید چند فایل انتخاب کنید</small>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            <i class="bi bi-send me-1"></i>
+                                            ارسال یادداشت
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            
+                            <!-- لیست یادداشت‌ها -->
+                            <div id="taskDetailsComments" class="border rounded p-3 bg-white" style="max-height: 300px; overflow-y: auto;">
+                                <!-- یادداشت‌ها اینجا نمایش داده می‌شوند -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <!-- اطلاعات اضافی -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">اطلاعات</h6>
+                            </div>
+                            <div class="card-body">
+                                <!-- وضعیت -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">وضعیت</label>
+                                    <div class="form-control form-control-sm bg-light" id="taskDetailsStatusDisplay" style="cursor: default;">
+                                        <!-- وضعیت اینجا نمایش داده می‌شود -->
+                                    </div>
+                                    <input type="hidden" id="taskDetailsStatus" />
+                                </div>
+                                
+                                <!-- اختصاص به -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">اختصاص به</label>
+                                    <select class="form-select form-select-sm" id="taskDetailsAssignedUser" onchange="updateTaskAssigneeFromDetails()">
+                                        <!-- کاربران اینجا بارگذاری می‌شوند -->
+                                    </select>
+                                </div>
+                                
+                                <!-- تاریخ ایجاد -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">تاریخ ایجاد</label>
+                                    <div class="text-muted small" id="taskDetailsCreatedAt"></div>
+                                </div>
+                                
+                                <!-- دکمه‌های عملیات -->
+                                <hr />
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteTaskFromDetailsModal()">
+                                        <i class="bi bi-trash me-1"></i>
+                                        حذف کار
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1249,6 +1422,606 @@
         document.getElementById('addTaskModalLabel').textContent = 'افزودن کار جدید';
     });
 
+    // مدیریت Modal جزئیات کار (مثل Trello)
+    let currentTaskDetailsId = null;
+    const currentUserId = '@currentUserId';
+    
+    async function openTaskDetailsModal(taskId) {
+        currentTaskDetailsId = taskId;
+        const modal = new bootstrap.Modal(document.getElementById('taskDetailsModal'));
+        
+        // بارگذاری اطلاعات کار
+        await loadTaskDetails(taskId);
+        
+        modal.show();
+    }
+    
+    async function loadTaskDetails(taskId) {
+        try {
+            const response = await fetch('@Url.Action("GetTask", "BoardTasks")?id=' + taskId);
+            const result = await response.json();
+            
+            if (result.success) {
+                const task = result.task;
+                
+                // نمایش عنوان
+                document.getElementById('taskDetailsTitle').textContent = task.title || 'بدون عنوان';
+                
+                // نمایش توضیحات
+                const descriptionText = task.description || '';
+                const descriptionElement = document.getElementById('taskDetailsDescriptionText');
+                if (descriptionText) {
+                    descriptionElement.textContent = descriptionText;
+                    descriptionElement.classList.remove('text-muted');
+                } else {
+                    descriptionElement.textContent = 'افزودن توضیحات بیشتر...';
+                    descriptionElement.classList.add('text-muted');
+                }
+                document.getElementById('taskDetailsDescriptionInput').value = descriptionText;
+                
+                // نمایش وضعیت (فقط خواندنی)
+                const statusDisplay = document.getElementById('taskDetailsStatusDisplay');
+                statusDisplay.textContent = task.status || 'To Do';
+                document.getElementById('taskDetailsStatus').value = task.status || 'To Do';
+                
+                // نمایش اختصاص به
+                await loadUsersForDetails(task.boardId);
+                document.getElementById('taskDetailsAssignedUser').value = task.assignedUserId || '';
+                
+                // نمایش تاریخ ایجاد
+                if (task.createdAt) {
+                    const date = new Date(task.createdAt);
+                    document.getElementById('taskDetailsCreatedAt').textContent = date.toLocaleDateString('fa-IR');
+                }
+                
+                // بارگذاری کارک‌ها
+                await loadSubtasks(taskId);
+                
+                // بارگذاری یادداشت‌ها
+                await loadCommentsForDetails(taskId);
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در بارگذاری اطلاعات کار'));
+            }
+        } catch (error) {
+            console.error('خطا در بارگذاری اطلاعات کار:', error);
+            alert('خطا در بارگذاری اطلاعات کار: ' + error.message);
+        }
+    }
+    
+    async function loadSubtasks(taskId) {
+        try {
+            const response = await fetch('@Url.Action("GetTask", "BoardTasks")?id=' + taskId);
+            const result = await response.json();
+            
+            if (result.success) {
+                const subtasks = result.task.subtasks || [];
+                renderChecklist(subtasks);
+            } else {
+                renderChecklist([]);
+            }
+        } catch (error) {
+            console.error('خطا در بارگذاری کارک‌ها:', error);
+            renderChecklist([]);
+        }
+    }
+    
+    function renderChecklist(subtasks) {
+        const container = document.getElementById('taskDetailsChecklist');
+        const progressElement = document.getElementById('taskDetailsChecklistProgress');
+        
+        if (!subtasks || subtasks.length === 0) {
+            container.innerHTML = '<div class="text-muted text-center py-3">هنوز کارکی اضافه نشده است</div>';
+            progressElement.textContent = '0/0';
+            return;
+        }
+        
+        const completedCount = subtasks.filter(st => st.status === 'Done').length;
+        progressElement.textContent = `${completedCount}/${subtasks.length}`;
+        
+        let html = '';
+        subtasks.forEach(subtask => {
+            const isCompleted = subtask.status === 'Done';
+            html += `
+                <div class="checklist-item" data-subtask-id="${subtask.id}">
+                    <input type="checkbox" ${isCompleted ? 'checked' : ''} 
+                           onchange="toggleSubtaskStatus(${subtask.id}, this.checked)" />
+                    <span class="checklist-item-text ${isCompleted ? 'completed' : ''}" 
+                          onclick="editSubtaskInline(${subtask.id}, ${JSON.stringify(subtask.title)})">
+                        ${escapeHtml(subtask.title)}
+                    </span>
+                    <div class="checklist-item-actions">
+                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                onclick="deleteSubtaskFromDetails(${subtask.id})" title="حذف">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    async function toggleSubtaskStatus(subtaskId, isChecked) {
+        try {
+            const newStatus = isChecked ? 'Done' : 'To Do';
+            const formData = new FormData();
+            formData.append('Id', subtaskId);
+            formData.append('Status', newStatus);
+            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+            
+            const response = await fetch('@Url.Action("UpdateTask", "BoardTasks")', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // به‌روزرسانی نمایش
+                await loadSubtasks(currentTaskDetailsId);
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در تغییر وضعیت کارک'));
+                // بازگشت به حالت قبلی
+                await loadSubtasks(currentTaskDetailsId);
+            }
+        } catch (error) {
+            console.error('خطا در تغییر وضعیت کارک:', error);
+            alert('خطا در تغییر وضعیت کارک: ' + error.message);
+            await loadSubtasks(currentTaskDetailsId);
+        }
+    }
+    
+    function showAddSubtaskInput() {
+        document.getElementById('addSubtaskInputContainer').style.display = 'block';
+        document.getElementById('addSubtaskInput').focus();
+    }
+    
+    function hideAddSubtaskInput() {
+        document.getElementById('addSubtaskInputContainer').style.display = 'none';
+        document.getElementById('addSubtaskInput').value = '';
+    }
+    
+    function handleAddSubtaskKeyPress(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            addSubtaskFromDetails();
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            hideAddSubtaskInput();
+        }
+    }
+    
+    async function addSubtaskFromDetails() {
+        const input = document.getElementById('addSubtaskInput');
+        const title = input?.value.trim();
+        
+        if (!title) {
+            alert('لطفاً عنوان آیتم چک لیست را وارد کنید');
+            return;
+        }
+        
+        if (!currentTaskDetailsId) {
+            alert('خطا: شناسه کار یافت نشد');
+            return;
+        }
+        
+        // دریافت اطلاعات کار اصلی
+        try {
+            const taskResponse = await fetch('@Url.Action("GetTask", "BoardTasks")?id=' + currentTaskDetailsId);
+            const taskResult = await taskResponse.json();
+            
+            if (!taskResult.success) {
+                alert('خطا در دریافت اطلاعات کار');
+                return;
+            }
+            
+            const task = taskResult.task;
+            
+            // افزودن کارک
+            const formData = new FormData();
+            formData.append('BoardId', task.boardId);
+            formData.append('Title', title);
+            formData.append('Status', task.status || 'To Do');
+            formData.append('Description', '');
+            formData.append('AssignedUserId', '');
+            formData.append('ParentTaskId', currentTaskDetailsId);
+            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+            
+            const response = await fetch('@Url.Action("CreateTask", "BoardTasks")', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                input.value = '';
+                hideAddSubtaskInput();
+                await loadSubtasks(currentTaskDetailsId);
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در ایجاد کارک'));
+            }
+        } catch (error) {
+            console.error('خطا در ایجاد کارک:', error);
+            alert('خطا در ایجاد کارک: ' + error.message);
+        }
+    }
+    
+    async function deleteSubtaskFromDetails(subtaskId) {
+        if (!confirm('آیا از حذف این کارک اطمینان دارید؟')) {
+            return;
+        }
+        
+        try {
+            const formData = new FormData();
+            formData.append('id', subtaskId);
+            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+            
+            const response = await fetch('@Url.Action("DeleteTask", "BoardTasks")?id=' + subtaskId, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': '@antiforgeryToken'
+                },
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                await loadSubtasks(currentTaskDetailsId);
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در حذف کارک'));
+            }
+        } catch (error) {
+            console.error('خطا در حذف کارک:', error);
+            alert('خطا در حذف کارک: ' + error.message);
+        }
+    }
+    
+    function editSubtaskInline(subtaskId, currentTitle) {
+        const item = document.querySelector(`[data-subtask-id="${subtaskId}"]`);
+        if (!item) return;
+        
+        const textElement = item.querySelector('.checklist-item-text');
+        const currentText = textElement.textContent;
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-control form-control-sm';
+        input.value = currentText;
+        input.onblur = () => saveSubtaskTitle(subtaskId, input.value);
+        input.onkeypress = (e) => {
+            if (e.key === 'Enter') {
+                input.blur();
+            } else if (e.key === 'Escape') {
+                textElement.textContent = currentText;
+                input.replaceWith(textElement);
+            }
+        };
+        
+        textElement.replaceWith(input);
+        input.focus();
+        input.select();
+    }
+    
+    async function saveSubtaskTitle(subtaskId, newTitle) {
+        if (!newTitle.trim()) {
+            await loadSubtasks(currentTaskDetailsId);
+            return;
+        }
+        
+        try {
+            const taskResponse = await fetch('@Url.Action("GetTask", "BoardTasks")?id=' + subtaskId);
+            const taskResult = await taskResponse.json();
+            
+            if (!taskResult.success) {
+                await loadSubtasks(currentTaskDetailsId);
+                return;
+            }
+            
+            const task = taskResult.task;
+            
+            const formData = new FormData();
+            formData.append('Id', subtaskId);
+            formData.append('Title', newTitle.trim());
+            formData.append('Description', task.description || '');
+            formData.append('Status', task.status || 'To Do');
+            formData.append('BoardId', task.boardId);
+            formData.append('AssignedUserId', task.assignedUserId || '');
+            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+            
+            const response = await fetch('@Url.Action("UpdateTask", "BoardTasks")', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                await loadSubtasks(currentTaskDetailsId);
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در ویرایش کارک'));
+                await loadSubtasks(currentTaskDetailsId);
+            }
+        } catch (error) {
+            console.error('خطا در ویرایش کارک:', error);
+            await loadSubtasks(currentTaskDetailsId);
+        }
+    }
+    
+    // تابع loadStatusesForDetails دیگر نیاز نیست چون وضعیت فقط خواندنی است
+    
+    async function loadUsersForDetails(boardId) {
+        const users = await loadAvailableUsers(boardId);
+        const select = document.getElementById('taskDetailsAssignedUser');
+        select.innerHTML = '<option value="">بدون اختصاص</option>';
+        users.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.textContent = user.displayName;
+            select.appendChild(option);
+        });
+    }
+    
+    // تابع updateTaskStatusFromDetails حذف شد چون وضعیت قابل تغییر نیست
+    
+    async function updateTaskAssigneeFromDetails() {
+        const newAssignee = document.getElementById('taskDetailsAssignedUser').value;
+        await updateTaskField('AssignedUserId', newAssignee);
+    }
+    
+    async function updateTaskField(fieldName, fieldValue) {
+        if (!currentTaskDetailsId) return;
+        
+        try {
+            const taskResponse = await fetch('@Url.Action("GetTask", "BoardTasks")?id=' + currentTaskDetailsId);
+            const taskResult = await taskResponse.json();
+            
+            if (!taskResult.success) {
+                alert('خطا در دریافت اطلاعات کار');
+                return;
+            }
+            
+            const task = taskResult.task;
+            const formData = new FormData();
+            formData.append('Id', currentTaskDetailsId);
+            formData.append('Title', task.title || '');
+            formData.append('Description', task.description || '');
+            formData.append('Status', fieldName === 'Status' ? fieldValue : task.status);
+            formData.append('BoardId', task.boardId);
+            formData.append('AssignedUserId', fieldName === 'AssignedUserId' ? fieldValue : (task.assignedUserId || ''));
+            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+            
+            const response = await fetch('@Url.Action("UpdateTask", "BoardTasks")', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (!result.success) {
+                alert('خطا: ' + (result.message || 'خطا در به‌روزرسانی کار'));
+                // بازگشت به حالت قبلی
+                await loadTaskDetails(currentTaskDetailsId);
+            }
+        } catch (error) {
+            console.error('خطا در به‌روزرسانی کار:', error);
+            alert('خطا در به‌روزرسانی کار: ' + error.message);
+            await loadTaskDetails(currentTaskDetailsId);
+        }
+    }
+    
+    function editTaskDescription() {
+        document.getElementById('taskDetailsDescription').style.display = 'none';
+        document.getElementById('taskDetailsDescriptionEdit').style.display = 'block';
+        document.getElementById('taskDetailsDescriptionInput').focus();
+    }
+    
+    function cancelEditTaskDescription() {
+        document.getElementById('taskDetailsDescription').style.display = 'block';
+        document.getElementById('taskDetailsDescriptionEdit').style.display = 'none';
+        // بازگشت به مقدار قبلی
+        const taskResponse = fetch('@Url.Action("GetTask", "BoardTasks")?id=' + currentTaskDetailsId)
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    document.getElementById('taskDetailsDescriptionInput').value = result.task.description || '';
+                }
+            });
+    }
+    
+    async function saveTaskDescription() {
+        const description = document.getElementById('taskDetailsDescriptionInput').value;
+        
+        try {
+            const taskResponse = await fetch('@Url.Action("GetTask", "BoardTasks")?id=' + currentTaskDetailsId);
+            const taskResult = await taskResponse.json();
+            
+            if (!taskResult.success) {
+                alert('خطا در دریافت اطلاعات کار');
+                return;
+            }
+            
+            const task = taskResult.task;
+            const formData = new FormData();
+            formData.append('Id', currentTaskDetailsId);
+            formData.append('Title', task.title || '');
+            formData.append('Description', description);
+            formData.append('Status', task.status || 'To Do');
+            formData.append('BoardId', task.boardId);
+            formData.append('AssignedUserId', task.assignedUserId || '');
+            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+            
+            const response = await fetch('@Url.Action("UpdateTask", "BoardTasks")', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                const descriptionElement = document.getElementById('taskDetailsDescriptionText');
+                if (description) {
+                    descriptionElement.textContent = description;
+                    descriptionElement.classList.remove('text-muted');
+                } else {
+                    descriptionElement.textContent = 'افزودن توضیحات بیشتر...';
+                    descriptionElement.classList.add('text-muted');
+                }
+                document.getElementById('taskDetailsDescription').style.display = 'block';
+                document.getElementById('taskDetailsDescriptionEdit').style.display = 'none';
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در ذخیره توضیحات'));
+            }
+        } catch (error) {
+            console.error('خطا در ذخیره توضیحات:', error);
+            alert('خطا در ذخیره توضیحات: ' + error.message);
+        }
+    }
+    
+    async function loadCommentsForDetails(taskId) {
+        try {
+            const response = await fetch('@Url.Action("GetComments", "BoardTasks")?taskId=' + taskId);
+            const result = await response.json();
+            
+            if (result.success) {
+                displayCommentsForDetails(result.comments);
+            } else {
+                document.getElementById('taskDetailsComments').innerHTML = 
+                    `<div class="text-muted text-center py-3">${result.message || 'خطا در بارگذاری یادداشت‌ها'}</div>`;
+            }
+        } catch (error) {
+            console.error('خطا در بارگذاری یادداشت‌ها:', error);
+            document.getElementById('taskDetailsComments').innerHTML = 
+                '<div class="text-muted text-center py-3">خطا در بارگذاری یادداشت‌ها</div>';
+        }
+    }
+    
+    function displayCommentsForDetails(comments) {
+        const container = document.getElementById('taskDetailsComments');
+        
+        if (!comments || comments.length === 0) {
+            container.innerHTML = '<div class="text-muted text-center py-3">هنوز یادداشتی ثبت نشده است</div>';
+            return;
+        }
+        
+        let html = '';
+        comments.forEach(comment => {
+            html += `
+                <div class="border-bottom pb-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <strong>${escapeHtml(comment.userName)}</strong>
+                            <small class="text-muted ms-2">${formatDate(comment.createdAt)}</small>
+                            ${comment.isEdited ? '<span class="badge bg-secondary">ویرایش شده</span>' : ''}
+                        </div>
+                        ${comment.userId === currentUserId ? `
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteCommentFromDetails(${comment.id})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                    ${comment.message ? `<p class="mb-2">${escapeHtml(comment.message)}</p>` : ''}
+                    ${comment.attachments && comment.attachments.length > 0 ? `
+                        <div class="attachments mt-2">
+                            ${comment.attachments.map(att => `
+                                <a href="/${att.filePath}" target="_blank" class="badge bg-info text-decoration-none me-1">
+                                    <i class="bi bi-paperclip"></i> ${escapeHtml(att.fileName)}
+                                </a>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    // Event listener برای فرم افزودن یادداشت در modal جزئیات کار
+    document.getElementById('taskDetailsCommentForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        if (!currentTaskDetailsId) {
+            alert('خطا: شناسه کار یافت نشد');
+            return;
+        }
+        
+        const formData = new FormData(this);
+        formData.set('BoardTaskId', currentTaskDetailsId);
+        
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> در حال ارسال...';
+        
+        try {
+            const response = await fetch('@Url.Action("AddComment", "BoardTasks")', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.reset();
+                await loadCommentsForDetails(currentTaskDetailsId);
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در ارسال یادداشت'));
+            }
+        } catch (error) {
+            console.error('خطا در ارسال یادداشت:', error);
+            alert('خطا در ارسال یادداشت: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    });
+    
+    async function deleteCommentFromDetails(commentId) {
+        if (!confirm('آیا از حذف این یادداشت اطمینان دارید؟')) {
+            return;
+        }
+        
+        try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '@antiforgeryToken';
+            const response = await fetch('@Url.Action("DeleteComment", "BoardTasks")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token,
+                    'X-CSRF-TOKEN': token
+                },
+                body: JSON.stringify({ commentId: commentId })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                await loadCommentsForDetails(currentTaskDetailsId);
+            } else {
+                alert('خطا: ' + result.message);
+            }
+        } catch (error) {
+            console.error('خطا:', error);
+            alert('خطا در حذف یادداشت');
+        }
+    }
+    
+    async function deleteTaskFromDetailsModal() {
+        if (!confirm('آیا از حذف این کار اطمینان دارید؟ این عمل قابل بازگشت نیست.')) {
+            return;
+        }
+        
+        await deleteTaskById(currentTaskDetailsId, true);
+    }
+
     // مدیریت Modal ویرایش کار
     async function openEditTaskModal(taskId) {
         const modal = new bootstrap.Modal(document.getElementById('editTaskModal'));
@@ -1646,7 +2419,6 @@
 
     // مدیریت Modal یادداشت
     let currentTaskId = null;
-    const currentUserId = '@currentUserId';
 
     function openTaskModal(taskId, taskTitle) {
         currentTaskId = taskId;

@@ -332,6 +332,7 @@ namespace Endpoint.Site.Controllers
             var task = await _context.BoardTasks
                 .Include(t => t.Board)
                 .ThenInclude(b => b.Members)
+                .Include(t => t.ChildTasks)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (task == null)
@@ -351,7 +352,14 @@ namespace Endpoint.Site.Controllers
                     status = task.Status,
                     order = task.Order,
                     assignedUserId = task.AssignedUserId,
-                    parentTaskId = task.ParentTaskId
+                    parentTaskId = task.ParentTaskId,
+                    createdAt = task.CreatedAt,
+                    subtasks = task.ChildTasks.OrderBy(st => st.Order).ThenBy(st => st.CreatedAt).Select(st => new {
+                        id = st.Id,
+                        title = st.Title,
+                        status = st.Status,
+                        order = st.Order
+                    }).ToList()
                 }
             });
         }
