@@ -261,6 +261,7 @@
         cursor: default;
         pointer-events: auto;
         min-width: 200px;
+        max-width: 200px;
         background: #e9ecef;
         border: 2px dashed #ccc;
         border-radius: 8px;
@@ -269,6 +270,10 @@
         flex-direction: column;
         justify-content: center;
         align-items: center;
+        height: fit-content;
+        max-height: calc(100vh - 250px);
+        overflow: visible;
+        flex-shrink: 0;
     }
     .add-status-column * {
         pointer-events: auto;
