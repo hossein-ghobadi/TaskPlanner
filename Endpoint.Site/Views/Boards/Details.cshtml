@@ -1,6 +1,7 @@
 @model Endpoint.Site.Models.BoardDetailsVm
 @using TaskPlanner.Domain.Entities.Boards
 @using System.Security.Claims
+@using DNTPersianUtils.Core
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     ViewData["Title"] = Model.Name;
@@ -245,11 +246,11 @@
                     </small>
                     <small class="text-muted">
                         <i class="bi bi-list-task"></i>
-                        @Model.TotalTasks کار
+                        @Model.TotalTasks.ToString().ToPersianNumbers() کار
                     </small>
                     <small class="text-muted">
                         <i class="bi bi-check-circle"></i>
-                        @Model.CompletedTasks انجام شده
+                        @Model.CompletedTasks.ToString().ToPersianNumbers() انجام شده
                     </small>
                 </div>
             </div>
@@ -307,7 +308,7 @@
                             <i class="bi bi-grip-vertical text-muted" style="cursor: grab;"></i>
                         }
                         <span>@status</span>
-                        <span class="badge bg-primary">@tasks.Count</span>
+                        <span class="badge bg-primary">@tasks.Count.ToString().ToPersianNumbers()</span>
                     </div>
                     @if (!isToDo && Model.CreatorUserId == currentUserId)
                     {
@@ -340,7 +341,7 @@
                                             اختصاص داده شده
                                         </span>
                                     }
-                                    <small>@task.CreatedAt.ToString("MM/dd")</small>
+                                    <small>@task.CreatedAt.ToShortPersianDateString().ToPersianNumbers()</small>
                                 </div>
                             </div>
                             
@@ -1535,15 +1536,22 @@
         return div.innerHTML;
     }
 
+    // تبدیل ارقام انگلیسی به فارسی
+    function toPersianNumbers(str) {
+        const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        return String(str).replace(/\d/g, (digit) => persianDigits[parseInt(digit)]);
+    }
+
     function formatDate(dateString) {
         const date = new Date(dateString);
-        return date.toLocaleDateString('fa-IR', {
+        const formatted = date.toLocaleDateString('fa-IR', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
         });
+        return toPersianNumbers(formatted);
     }
 
     // مدیریت Drag and Drop برای ستون‌های وضعیت

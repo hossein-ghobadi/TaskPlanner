@@ -315,14 +315,25 @@ namespace Endpoint.Site.Controllers
                 .FirstOrDefaultAsync(b => b.Id == id);
 
             if (board == null)
+            {
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                    return Json(new { success = false, message = "تخته یافت نشد" });
                 return NotFound();
+            }
 
             // فقط سازنده می‌تواند حذف کند
             if (board.CreatorUserId != userId)
+            {
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                    return Json(new { success = false, message = "دسترسی ندارید" });
                 return Forbid();
+            }
 
             _context.Boards.Remove(board);
             await _context.SaveChangesAsync();
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return Json(new { success = true, message = "تخته با موفقیت حذف شد" });
 
             return RedirectToAction(nameof(Index));
         }

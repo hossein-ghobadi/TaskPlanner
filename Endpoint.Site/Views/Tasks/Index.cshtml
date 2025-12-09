@@ -160,7 +160,20 @@
     .task-card__children {
         border-left: 2px dashed rgba(80, 85, 249, 0.2);
     }
+    .section-title {
+        color: #2d3748;
+        font-size: 1.75rem;
+        font-weight: 600;
+        margin: 0;
+    }
 </style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="section-title">
+        <i class="bi bi-plus-circle me-2"></i>
+        افزودن کار
+    </h2>
+</div>
 
 <div class="position-relative hero-card shadow-sm mb-4">
     <div class="overlay-pattern"></div>
@@ -461,7 +474,7 @@ else
             toast.show();
         }
 
-        // بازکردن modal هوشمند برای افزودن Child Issue
+        // بازکردن modal هوشمند برای افزودن کار فرزند
         function openChildIssueModal(parentId, parentIssueType) {
             selectedParentId = parentId;
             
@@ -478,7 +491,7 @@ else
             // اگه Parent = Epic → نمایش IssueType selector
             if (parentIssueType === 'Epic') {
                 issueTypeField.style.display = 'block';
-                modalTitle.textContent = '➕ افزودن Issue به Epic';
+                modalTitle.textContent = 'افزودن کار';
                 
                 // Listen برای تغییر IssueType → نمایش StoryPoints
                 childIssueTypeSelect.onchange = function() {
@@ -493,7 +506,7 @@ else
             else {
                 issueTypeField.style.display = 'none';
                 storyPointsField.style.display = 'none';
-                modalTitle.textContent = '➕ افزودن Subtask';
+                modalTitle.textContent = '➕ افزودن کارک';
             }
             
             const modal = new bootstrap.Modal(document.getElementById('subTaskModal'));
@@ -502,7 +515,7 @@ else
 
         let isSubmittingChildIssue = false;
 
-        // ارسال Child Issue (Smart)
+        // ارسال کار فرزند (هوشمند)
         async function submitChildIssueForm() {
             if (isSubmittingChildIssue) {
                 return;
@@ -560,11 +573,11 @@ else
                 if (response.ok) {
                     shouldResetButton = false;
                     const result = await response.json();
-                    showToast(result.message || "Issue با موفقیت افزوده شد ✅");
+                    showToast(result.message || "کار با موفقیت افزوده شد ✅");
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     const error = await response.text();
-                    showToast(error || "خطا در افزودن Issue ❌", true);
+                    showToast(error || "خطا در افزودن کار ❌", true);
                 }
             } finally {
                 if (shouldResetButton) {
@@ -631,18 +644,18 @@ else
 }
 
 
-<!-- 🔹 Modal افزودن Child Issue (Smart) -->
+<!-- 🔹 Modal افزودن کار فرزند (هوشمند) -->
 <div class="modal fade" id="subTaskModal" tabindex="-1" aria-labelledby="subTaskModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fw-bold" id="subTaskModalLabel">➕ افزودن Issue جدید</h5>
+                <h5 class="modal-title" id="subTaskModalLabel">افزودن کارک</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <!-- فیلد IssueType (فقط برای Epic نمایش داده میشه) -->
                 <div class="mb-3" id="issueTypeField" style="display:none;">
-                    <label for="childIssueType" class="form-label">نوع Issue</label>
+                    <label for="childIssueType" class="form-label">نوع کار</label>
                     <select class="form-select" id="childIssueType">
                         @{
                             var projectIssueTypes = ViewBag.ProjectIssueTypes as List<ProjectIssueType> ?? new List<ProjectIssueType>();
@@ -678,7 +691,6 @@ else
                             }
                         }
                     </select>
-                    <small class="text-muted">Epic فقط می‌تواند Story-level types (کار یا انواع سفارشی) داشته باشد</small>
                 </div>
 
                 <div class="mb-3">
@@ -688,7 +700,7 @@ else
 
                 <!-- فیلد Story Points (فقط برای Story/Task نمایش داده میشه) -->
                 <div class="mb-3" id="storyPointsField" style="display:none;">
-                    <label for="storyPoints" class="form-label">Story Points (اختیاری)</label>
+                    <label for="storyPoints" class="form-label">امتیاز کار (اختیاری)</label>
                     <input type="number" class="form-control" id="storyPoints" placeholder="1, 2, 3, 5, 8, 13..." min="0">
                     <small class="text-muted">برآورد تلاش مورد نیاز (فیبوناچی)</small>
                 </div>
@@ -706,7 +718,10 @@ else
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
-                <button type="button" class="btn btn-primary" onclick="submitChildIssueForm()">ثبت</button>
+                <button type="button" class="btn btn-primary" onclick="submitChildIssueForm()">
+                    <i class="bi bi-check-circle me-2"></i>
+                    ثبت
+                </button>
             </div>
         </div>
     </div>

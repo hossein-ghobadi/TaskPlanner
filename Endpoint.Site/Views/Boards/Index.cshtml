@@ -1,6 +1,7 @@
 @model IEnumerable<TaskPlanner.Domain.Entities.Boards.Board>
 @using TaskPlanner.Domain.Entities.Boards
 @using System.Security.Claims
+@using DNTPersianUtils.Core
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     ViewData["Title"] = "تخته‌های من";
@@ -46,7 +47,7 @@
                                     @{
                                         var taskCount = board.Tasks?.Count ?? 0;
                                     }
-                                    @taskCount کار
+                                    @taskCount.ToString().ToPersianNumbers() کار
                                 </span>
                             </div>
                             @if (!string.IsNullOrWhiteSpace(board.Description))
@@ -65,7 +66,7 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted">
                                 <i class="bi bi-clock"></i>
-                                @board.UpdatedAt.ToString("yyyy/MM/dd")
+                                @board.UpdatedAt.ToShortPersianDateString().ToPersianNumbers()
                             </small>
                             @if (board.CreatorUserId == currentUserId)
                             {
@@ -73,9 +74,9 @@
                                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openEditBoardModal(@board.Id)" title="ویرایش">
                                         <i class="bi bi-pencil"></i>
                                     </button>
-                                    <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@board.Id" title="حذف" onclick="event.stopPropagation();">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); openDeleteBoardModal(@board.Id, '@board.Name', @(board.Tasks?.Count ?? 0))" title="حذف" data-task-count="@(board.Tasks?.Count ?? 0)">
                                         <i class="bi bi-trash"></i>
-                                    </a>
+                                    </button>
                                 </div>
                             }
                         </div>
@@ -93,6 +94,44 @@
             </div>
         </div>
     }
+</div>
+
+<!-- Modal برای حذف تخته -->
+<div class="modal fade" id="deleteBoardModal" tabindex="-1" aria-labelledby="deleteBoardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteBoardModalLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    حذف تخته
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    آیا از حذف این تخته اطمینان دارید؟ تمام کارهای این تخته نیز حذف خواهند شد.
+                </div>
+                <dl class="row">
+                    <dt class="col-sm-4">نام تخته:</dt>
+                    <dd class="col-sm-8" id="deleteBoardName"></dd>
+                    <dt class="col-sm-4">تعداد کارها:</dt>
+                    <dd class="col-sm-8" id="deleteBoardTaskCount"></dd>
+                </dl>
+                <input type="hidden" id="deleteBoardId" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>
+                    انصراف
+                </button>
+                <button type="button" class="btn btn-danger" onclick="submitDeleteBoard()">
+                    <i class="bi bi-trash me-2"></i>
+                    بله، حذف کن
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Modal برای ویرایش تخته -->
@@ -133,6 +172,12 @@
 </div>
 
 <script>
+    // تبدیل ارقام انگلیسی به فارسی
+    function toPersianNumbers(str) {
+        const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        return String(str).replace(/\d/g, (digit) => persianDigits[parseInt(digit)]);
+    }
+
     // باز کردن Modal ویرایش تخته
     async function openEditBoardModal(boardId) {
         try {
@@ -226,6 +271,76 @@
         } catch (error) {
             console.error('خطا در ویرایش تخته:', error);
             alert('خطا در ویرایش تخته: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    }
+
+    // باز کردن Modal حذف تخته
+    function openDeleteBoardModal(boardId, boardName, taskCount) {
+        document.getElementById('deleteBoardId').value = boardId;
+        document.getElementById('deleteBoardName').textContent = boardName;
+        document.getElementById('deleteBoardTaskCount').textContent = toPersianNumbers(taskCount) + ' کار';
+        
+        const modal = new bootstrap.Modal(document.getElementById('deleteBoardModal'));
+        modal.show();
+    }
+
+    // ارسال درخواست حذف تخته
+    async function submitDeleteBoard() {
+        const boardId = document.getElementById('deleteBoardId').value;
+        
+        if (!boardId) {
+            alert('خطا: شناسه تخته یافت نشد');
+            return;
+        }
+
+        const submitBtn = document.querySelector('#deleteBoardModal .btn-danger');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>در حال حذف...';
+
+        try {
+            const formData = new FormData();
+            formData.append('id', boardId);
+            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+
+            const response = await fetch('@Url.Action("Delete", "Boards")?id=' + boardId, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': '@antiforgeryToken',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // اگر پاسخ HTML است (redirect)، صفحه را reload کن
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('text/html')) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('deleteBoardModal'));
+                modal.hide();
+                window.location.href = '@Url.Action("Index", "Boards")';
+                return;
+            }
+
+            const result = await response.json();
+            
+            if (result.success || response.redirected) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('deleteBoardModal'));
+                modal.hide();
+                window.location.href = '@Url.Action("Index", "Boards")';
+            } else {
+                alert('خطا: ' + (result.message || 'خطا در حذف تخته'));
+            }
+        } catch (error) {
+            console.error('خطا در حذف تخته:', error);
+            alert('خطا در حذف تخته: ' + error.message);
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
