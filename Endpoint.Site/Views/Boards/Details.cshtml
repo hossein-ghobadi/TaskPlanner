@@ -33,6 +33,44 @@
     .board-container {
         direction: rtl;
         padding: 1rem;
+        transition: background-color 0.3s ease, background-image 0.3s ease;
+    }
+    /* تم‌های پس‌زمینه */
+    .board-bg-plain {
+        background: #f7f7f9;
+    }
+    .board-bg-gradient {
+        background: linear-gradient(135deg, #f7f8ff 0%, #eef3ff 50%, #fdf7ff 100%);
+    }
+    .board-bg-soft {
+        background:
+            radial-gradient(circle at 20% 20%, rgba(0,123,255,0.08) 0, rgba(0,123,255,0.08) 18%, transparent 28%),
+            radial-gradient(circle at 80% 0%, rgba(255,193,7,0.1) 0, rgba(255,193,7,0.1) 15%, transparent 25%),
+            radial-gradient(circle at 50% 80%, rgba(40,167,69,0.08) 0, rgba(40,167,69,0.08) 14%, transparent 24%),
+            #f8f9fb;
+        background-size: cover;
+    }
+    .board-bg-pattern {
+        background-color: #f7f7f9;
+        background-image: radial-gradient(#dfe7f3 1px, transparent 1px);
+        background-size: 22px 22px;
+    }
+    .board-bg-pastel {
+        background: linear-gradient(135deg, #fff7e6 0%, #e8f5ff 50%, #f2e8ff 100%);
+    }
+    /* پس‌زمینه تصویری */
+    .board-bg-photo {
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+    .board-bg-photo-1 {
+        /* کوهستان مه‌آلود */
+        background-image: url('https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1600&q=80');
+    }
+    .board-bg-photo-2 {
+        /* ساحل آرام با غروب */
+        background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80');
     }
     .board-header {
         margin-bottom: 1.5rem;
@@ -407,7 +445,7 @@
     }
 </style>
 
-<div class="board-container">
+<div class="board-container" id="boardContainer">
     <div class="board-header">
         <div class="d-flex justify-content-between align-items-start">
             <div>
@@ -431,22 +469,36 @@
                     </small>
                 </div>
             </div>
-            <div class="d-flex gap-2">
-                <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
-                    <i class="bi bi-arrow-right"></i>
-                    بازگشت به لیست
-                </a>
-                <a asp-action="Invite" asp-route-boardId="@Model.Id" class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-person-plus"></i>
-                    دعوت کاربر
-                </a>
-                @if (Model.CreatorUserId == currentUserId)
-                {
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditBoardModal()">
-                        <i class="bi bi-pencil"></i>
-                        ویرایش
-                    </button>
-                }
+            <div class="d-flex flex-column align-items-end gap-2">
+                <div class="d-flex gap-2">
+                    <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-right"></i>
+                        بازگشت به لیست
+                    </a>
+                    <a asp-action="Invite" asp-route-boardId="@Model.Id" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-person-plus"></i>
+                        دعوت کاربر
+                    </a>
+                    @if (Model.CreatorUserId == currentUserId)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditBoardModal()">
+                            <i class="bi bi-pencil"></i>
+                            ویرایش
+                        </button>
+                    }
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <label for="boardBackgroundSelect" class="text-muted small mb-0">پس‌زمینه:</label>
+                    <select id="boardBackgroundSelect" class="form-select form-select-sm" style="min-width: 170px;" onchange="changeBoardBackground(this.value)">
+                        <option value="plain">ساده</option>
+                        <option value="gradient">گرادیان</option>
+                        <option value="soft">نرم و محو</option>
+                        <option value="pattern">الگوی نقطه‌ای</option>
+                        <option value="pastel">پاستلی</option>
+                        <option value="photo-1">عکس ۱</option>
+                        <option value="photo-2">عکس ۲</option>
+                    </select>
+                </div>
             </div>
         </div>
         
@@ -1053,6 +1105,45 @@
 <script>
     let draggedTask = null;
     let draggedTaskElement = null;
+    const boardBackgroundKey = `boardBg_${@Model.Id}`;
+    const boardBackgroundOptions = ['plain', 'gradient', 'soft', 'pattern', 'pastel', 'photo-1', 'photo-2'];
+    const boardBackgroundPhotoClasses = ['board-bg-photo-1', 'board-bg-photo-2'];
+
+    function applyBoardBackground(style) {
+        const container = document.getElementById('boardContainer');
+        if (!container) return;
+        const theme = boardBackgroundOptions.includes(style) ? style : 'plain';
+        boardBackgroundOptions.forEach(opt => container.classList.remove(`board-bg-${opt}`));
+        boardBackgroundPhotoClasses.forEach(cls => container.classList.remove(cls));
+        if (theme.startsWith('photo-')) {
+            container.classList.add('board-bg-photo', `board-bg-${theme}`);
+        } else {
+            container.classList.add(`board-bg-${theme}`);
+            container.classList.remove('board-bg-photo');
+        }
+        const select = document.getElementById('boardBackgroundSelect');
+        if (select && select.value !== theme) {
+            select.value = theme;
+        }
+    }
+
+    function changeBoardBackground(style) {
+        applyBoardBackground(style);
+        try {
+            localStorage.setItem(boardBackgroundKey, style);
+        } catch (err) {
+            console.warn('Cannot persist board background', err);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        try {
+            const saved = localStorage.getItem(boardBackgroundKey);
+            applyBoardBackground(saved || 'plain');
+        } catch {
+            applyBoardBackground('plain');
+        }
+    });
 
     function handleDragStart(e) {
         // اگر کارک است، اجازه drag نده
