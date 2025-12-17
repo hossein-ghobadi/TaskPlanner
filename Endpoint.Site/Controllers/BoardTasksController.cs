@@ -8,6 +8,8 @@ using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Persistence.Contexts;
 using TaskPlanner.Application.Services.FileUpload;
 using Microsoft.AspNetCore.Identity;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Endpoint.Site.Controllers
 {
@@ -767,7 +769,18 @@ namespace Endpoint.Site.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (string.IsNullOrWhiteSpace(vm.Message) && (vm.Attachments == null || !vm.Attachments.Any()))
+            // لاگ برای دیباگ
+            System.Diagnostics.Debug.WriteLine($"AddComment called - Message: {vm?.Message}, Attachments count: {vm?.Attachments?.Count ?? 0}");
+            
+            if (vm?.Attachments != null)
+            {
+                foreach (var file in vm.Attachments)
+                {
+                    System.Diagnostics.Debug.WriteLine($"File received: {file.FileName}, Size: {file.Length}, ContentType: {file.ContentType}");
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(vm?.Message) && (vm?.Attachments == null || !vm.Attachments.Any()))
                 return Json(new { success = false, message = "یادداشت یا فایل پیوست الزامی است" });
 
             var task = await _context.BoardTasks
@@ -800,6 +813,8 @@ namespace Endpoint.Site.Controllers
             // آپلود فایل‌های پیوست
             if (vm.Attachments != null && vm.Attachments.Any())
             {
+                var uploadErrors = new List<string>();
+                
                 foreach (var file in vm.Attachments)
                 {
                     var uploadResult = await _fileUploadService.UploadFileAsync(file, "board-task-comments");
@@ -819,9 +834,19 @@ namespace Endpoint.Site.Controllers
 
                         _context.BoardTaskCommentAttachments.Add(attachment);
                     }
+                    else
+                    {
+                        uploadErrors.Add($"{file.FileName}: {uploadResult.Error}");
+                    }
                 }
 
                 await _context.SaveChangesAsync();
+                
+                // اگر خطا در آپلود وجود داشت، پیام خطا را برگردان (اما یادداشت قبلاً ذخیره شده)
+                if (uploadErrors.Any())
+                {
+                    return Json(new { success = false, message = $"خطا در آپلود برخی فایل‌ها:\n{string.Join("\n", uploadErrors)}" });
+                }
             }
 
             // بارگذاری مجدد comment با attachments

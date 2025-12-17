@@ -2223,6 +2223,7 @@
             const result = await response.json();
             
             if (result.success) {
+                console.log('یادداشت‌ها بارگذاری شد:', result.comments);
                 displayCommentsForDetails(result.comments);
             } else {
                 document.getElementById('taskDetailsComments').innerHTML = 
@@ -2245,6 +2246,7 @@
         
         let html = '';
         comments.forEach(comment => {
+            console.log('نمایش یادداشت:', comment.id, 'تعداد فایل‌های پیوست:', comment.attachments?.length || 0);
             html += `
                 <div class="border-bottom pb-3 mb-3">
                     <div class="d-flex justify-content-between align-items-start mb-2">
@@ -2262,11 +2264,17 @@
                     ${comment.message ? `<p class="mb-2">${escapeHtml(comment.message)}</p>` : ''}
                     ${comment.attachments && comment.attachments.length > 0 ? `
                         <div class="attachments mt-2">
-                            ${comment.attachments.map(att => `
-                                <a href="/${att.filePath}" target="_blank" class="badge bg-info text-decoration-none me-1">
-                                    <i class="bi bi-paperclip"></i> ${escapeHtml(att.fileName)}
-                                </a>
-                            `).join('')}
+                            ${comment.attachments.map(att => {
+                                // اگر filePath با http شروع می‌شود، URL کامل است، در غیر این صورت مسیر نسبی است
+                                const fileUrl = att.filePath && (att.filePath.startsWith('http://') || att.filePath.startsWith('https://')) 
+                                    ? att.filePath 
+                                    : `/${att.filePath}`;
+                                return `
+                                    <a href="${fileUrl}" target="_blank" class="badge bg-info text-decoration-none me-1">
+                                        <i class="bi bi-paperclip"></i> ${escapeHtml(att.fileName)}
+                                    </a>
+                                `;
+                            }).join('')}
                         </div>
                     ` : ''}
                 </div>
@@ -2285,8 +2293,44 @@
             return;
         }
         
-        const formData = new FormData(this);
-        formData.set('BoardTaskId', currentTaskDetailsId);
+        const formData = new FormData();
+        
+        // اضافه کردن CSRF token
+        const tokenInput = this.querySelector('input[name="__RequestVerificationToken"]');
+        if (tokenInput) {
+            formData.append('__RequestVerificationToken', tokenInput.value);
+        }
+        
+        // اضافه کردن BoardTaskId
+        formData.append('BoardTaskId', currentTaskDetailsId);
+        
+        // اضافه کردن Message
+        const messageInput = this.querySelector('[name="Message"]');
+        if (messageInput && messageInput.value.trim()) {
+            formData.append('Message', messageInput.value);
+        }
+        
+        // اضافه کردن فایل‌های پیوست به صورت صحیح برای ASP.NET Core
+        const fileInput = this.querySelector('[name="Attachments"]');
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+            console.log('تعداد فایل‌های انتخاب شده:', fileInput.files.length);
+            for (let i = 0; i < fileInput.files.length; i++) {
+                console.log(`افزودن فایل ${i + 1}:`, fileInput.files[i].name, 'سایز:', fileInput.files[i].size);
+                formData.append('Attachments', fileInput.files[i]);
+            }
+        } else {
+            console.log('هیچ فایلی انتخاب نشده است');
+        }
+        
+        // بررسی محتوای FormData (برای دیباگ)
+        console.log('BoardTaskId:', currentTaskDetailsId);
+        for (let pair of formData.entries()) {
+            if (pair[1] instanceof File) {
+                console.log('فایل در FormData:', pair[0], pair[1].name, pair[1].size);
+            } else {
+                console.log('فیلد در FormData:', pair[0], pair[1]);
+            }
+        }
         
         const submitBtn = this.querySelector('button[type="submit"]');
         const originalText = submitBtn.innerHTML;
@@ -2301,15 +2345,22 @@
             
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error('خطای HTTP:', response.status, errorText);
                 throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
             }
             
             const result = await response.json();
+            console.log('نتیجه از سرور:', result);
             
             if (result.success) {
+                console.log('یادداشت با موفقیت ارسال شد:', result.comment);
+                if (result.comment && result.comment.attachments) {
+                    console.log('تعداد فایل‌های پیوست:', result.comment.attachments.length);
+                }
                 this.reset();
                 await loadCommentsForDetails(currentTaskDetailsId);
             } else {
+                console.error('خطا در ارسال:', result.message);
                 alert('خطا: ' + (result.message || 'خطا در ارسال یادداشت'));
             }
         } catch (error) {
@@ -2820,11 +2871,22 @@
                     ${comment.message ? `<p class="mb-2">${escapeHtml(comment.message)}</p>` : ''}
                     ${comment.attachments && comment.attachments.length > 0 ? `
                         <div class="attachments mt-2">
-                            ${comment.attachments.map(att => `
-                                <a href="/${att.filePath}" target="_blank" class="badge bg-info text-decoration-none me-1">
-                                    <i class="bi bi-paperclip"></i> ${escapeHtml(att.fileName)}
-                                </a>
-                            `).join('')}
+                            ${comment.attachments.map(att => {
+                                // اگر filePath با http شروع می‌شود، URL کامل است، در غیر این صورت مسیر نسبی است
+                                let fileUrl = '';
+                                if (att.filePath) {
+                                    if (att.filePath.startsWith('http://') || att.filePath.startsWith('https://')) {
+                                        fileUrl = att.filePath;
+                                    } else {
+                                        fileUrl = `/${att.filePath}`;
+                                    }
+                                }
+                                return `
+                                    <a href="${escapeHtml(fileUrl)}" target="_blank" class="badge bg-info text-decoration-none me-1">
+                                        <i class="bi bi-paperclip"></i> ${escapeHtml(att.fileName)}
+                                    </a>
+                                `;
+                            }).join('')}
                         </div>
                     ` : ''}
                 </div>
@@ -2837,7 +2899,45 @@
     document.getElementById('commentForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        const formData = new FormData(this);
+        if (!currentTaskId) {
+            alert('خطا: شناسه کار یافت نشد');
+            return;
+        }
+        
+        const formData = new FormData();
+        
+        // اضافه کردن CSRF token
+        const tokenInput = this.querySelector('input[name="__RequestVerificationToken"]');
+        if (tokenInput) {
+            formData.append('__RequestVerificationToken', tokenInput.value);
+        }
+        
+        // اضافه کردن BoardTaskId
+        const taskIdInput = this.querySelector('[name="BoardTaskId"]');
+        if (taskIdInput) {
+            formData.append('BoardTaskId', taskIdInput.value || currentTaskId);
+        } else {
+            formData.append('BoardTaskId', currentTaskId);
+        }
+        
+        // اضافه کردن Message
+        const messageInput = this.querySelector('[name="Message"]');
+        if (messageInput && messageInput.value.trim()) {
+            formData.append('Message', messageInput.value);
+        }
+        
+        // اضافه کردن فایل‌های پیوست به صورت صحیح برای ASP.NET Core
+        const fileInput = this.querySelector('[name="Attachments"]');
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+            console.log('تعداد فایل‌های انتخاب شده:', fileInput.files.length);
+            for (let i = 0; i < fileInput.files.length; i++) {
+                console.log(`افزودن فایل ${i + 1}:`, fileInput.files[i].name, 'سایز:', fileInput.files[i].size);
+                formData.append('Attachments', fileInput.files[i]);
+            }
+        } else {
+            console.log('هیچ فایلی انتخاب نشده است');
+        }
+        
         const submitBtn = this.querySelector('button[type="submit"]');
         const originalText = submitBtn.innerHTML;
         submitBtn.disabled = true;
@@ -2851,15 +2951,22 @@
             
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error('خطای HTTP:', response.status, errorText);
                 throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
             }
             
             const result = await response.json();
+            console.log('نتیجه از سرور:', result);
             
             if (result.success) {
+                console.log('یادداشت با موفقیت ارسال شد:', result.comment);
+                if (result.comment && result.comment.attachments) {
+                    console.log('تعداد فایل‌های پیوست:', result.comment.attachments.length);
+                }
                 this.reset();
                 await loadComments(currentTaskId);
             } else {
+                console.error('خطا در ارسال:', result.message);
                 alert('خطا: ' + (result.message || 'خطا در ارسال یادداشت'));
             }
         } catch (error) {
