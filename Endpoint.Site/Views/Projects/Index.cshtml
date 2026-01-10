@@ -360,10 +360,11 @@
                     @foreach (var note in recentNotes.Take(5))
                     {
                         <div class="note-item mb-2">
-                            <a href="/PersonalNotes/Details/@note.Id" class="text-decoration-none text-dark">
+                            <a href="/PersonalNotes/Details?id=@note.Id" class="text-decoration-none text-dark">
                                 <div class="d-flex align-items-start">
                                     @if (note.IsPinned)
                                     {
+                                            // ?projectId = @Model.Id
                                         <i class="bi bi-pin-angle-fill text-warning me-2 mt-1"></i>
                                     }
                                     <div class="flex-grow-1">
