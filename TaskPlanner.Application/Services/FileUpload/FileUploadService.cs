@@ -16,7 +16,7 @@ namespace TaskPlanner.Application.Services.FileUpload
         private readonly string[] _allowedDocumentExtensions = { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".zip", ".rar" };
         
         private const long MaxFileSize = 10 * 1024 * 1024; // 10 MB
-        private readonly IRemoteUploader _remoteUploader;
+        //private readonly IRemoteUploader _remoteUploader;
         private readonly IImageUploader _imageUploader;
         private readonly IVoiceUploader _voiceUploader;
         private readonly IDocumentUploader _documentUploader;
@@ -26,14 +26,14 @@ namespace TaskPlanner.Application.Services.FileUpload
             IImageUploader imageUploader,
             IVoiceUploader voiceUploader,
             IDocumentUploader documentUploader,
-            IRemoteUploader remoteUploader,
+            //IRemoteUploader remoteUploader,
             ILogger<FileUploadService> logger)
         {
             _imageUploader = imageUploader;
             _voiceUploader = voiceUploader;
             _documentUploader = documentUploader;
             _logger = logger;
-            _remoteUploader = remoteUploader;
+            //_remoteUploader = remoteUploader;
         }
 
         public async Task<(bool Success, string FilePath, string Error)> UploadFileAsync(IFormFile file, string folder)
