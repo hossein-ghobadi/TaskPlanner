@@ -10,25 +10,25 @@
         </span>
         <span>
             <a class="btn btn-sm btn-warning"
-               
                asp-controller="Tasks"
                asp-action="Edit"
                asp-route-id="@Model.Id">
+                <i class="bi bi-pencil me-1"></i>
                 ویرایش
             </a>
             <a class="btn btn-sm btn-danger"
-               
                asp-controller="Tasks"
                asp-action="Delete"
                asp-route-id="@Model.Id">
+                <i class="bi bi-trash me-1"></i>
                 حذف
             </a>
             <a class="btn btn-sm btn-info"
-               
                asp-controller="Tasks"
                asp-action="Details"
                asp-route-id="@Model.Id">
-                💬 گفتگو
+                <i class="bi bi-chat-dots me-1"></i>
+                گفتگو
             </a>
         </span>
     </div>

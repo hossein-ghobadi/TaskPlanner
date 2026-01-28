@@ -1,45 +1,218 @@
 ﻿@using Endpoint.Site.Models
 
-
 @model ProjectEditVm
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "ویرایش پروژه";
 }
-<h2>ویرایش پروژه</h2>
 
-<form asp-action="Edit" method="post">
-    <input type="hidden" asp-for="Id" />
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+                <h2 class="mb-0 fw-bold">
+                    <i class="bi bi-pencil-square me-2"></i>
+                    ویرایش پروژه
+                </h2>
+            </div>
+            <div class="card-body p-4">
+                <form asp-action="Edit" method="post">
+                    <input type="hidden" asp-for="Id" />
 
-    <div asp-validation-summary="All" class="text-danger"></div>
+                    <div asp-validation-summary="All" class="alert alert-danger">
+                        <ul class="mb-0">
+                            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                            {
+                                <li>@error.ErrorMessage</li>
+                            }
+                        </ul>
+                    </div>
 
-    <div class="mb-3">
-        <label asp-for="Name" class="form-label"></label>
-        <input asp-for="Name" class="form-control" />
-        <span asp-validation-for="Name" class="text-danger"></span>
+                    <div class="mb-4">
+                        <label asp-for="Name" class="form-label fw-semibold">
+                            <i class="bi bi-tag me-1"></i>
+                            نام پروژه <span class="text-danger">*</span>
+                        </label>
+                        <input asp-for="Name" class="form-control" placeholder="نام پروژه" />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="Description" class="form-label fw-semibold">
+                            <i class="bi bi-file-text me-1"></i>
+                            توضیحات
+                        </label>
+                        <textarea asp-for="Description" class="form-control" rows="4" placeholder="توضیحات اختیاری درباره پروژه..."></textarea>
+                        <span asp-validation-for="Description" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="card bg-light border-0 p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <label class="form-label fw-semibold mb-0">
+                                    <i class="bi bi-people me-2 text-primary"></i>
+                                    اعضای پروژه و کاربران دعوت‌شده
+                                </label>
+                                <span class="badge bg-primary" id="selectedCount">0 انتخاب شده</span>
+                            </div>
+                            
+                            <!-- جستجو -->
+                            <div class="mb-3">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white">
+                                        <i class="bi bi-search text-muted"></i>
+                                    </span>
+                                    <input type="text" id="userSearch" class="form-control" placeholder="جستجوی کاربر..." />
+                                    <button type="button" class="btn btn-outline-secondary" id="clearSearch" style="display: none;">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- لیست کاربران با checkbox -->
+                            <div class="user-selection-container" style="max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 10px; padding: 0.75rem; background: white;">
+                                @{
+                                    var users = ViewBag.Users as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+                                    var selectedIds = Model.SelectedUserIds?.ToList() ?? new List<string>();
+                                }
+                                @if (users.Any())
+                                {
+                                    @foreach (var user in users)
+                                    {
+                                        var isSelected = selectedIds.Contains(user.Id?.ToString() ?? "");
+                                        <div class="user-item mb-2" data-user-name="@(user.DisplayName?.ToString().ToLower() ?? "")">
+                                            <div class="d-flex align-items-center p-2 rounded user-item-content" style="transition: all 0.2s ease; cursor: pointer;">
+                                                <input class="form-check-input user-checkbox me-3 flex-shrink-0" 
+                                                       type="checkbox" 
+                                                       name="SelectedUserIds" 
+                                                       value="@user.Id" 
+                                                       id="user_@user.Id"
+                                                       @(isSelected ? "checked" : "")
+                                                       style="cursor: pointer; width: 1.25rem; height: 1.25rem; margin: 0;">
+                                                <label class="form-check-label d-flex align-items-center flex-grow-1 mb-0" 
+                                                       for="user_@user.Id" 
+                                                       style="cursor: pointer;">
+                                                    <i class="bi bi-person-circle me-2 text-primary flex-shrink-0" style="font-size: 1.5rem;"></i>
+                                                    <span class="fw-medium">@user.DisplayName</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="text-center text-muted py-3">
+                                        <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+                                        کاربری برای انتخاب وجود ندارد
+                                    </div>
+                                }
+                            </div>
+
+                            <small class="form-text text-muted mt-2 d-block">
+                                <i class="bi bi-info-circle me-1"></i>
+                                فقط اعضای فعلی و دعوت‌شده‌های این پروژه در لیست بالا نمایش داده می‌شوند.
+                            </small>
+                        </div>
+                    </div>
+
+                    <style>
+                        .user-item-content:hover {
+                            background-color: #f3f4f6;
+                            transform: translateX(-2px);
+                        }
+                        .user-checkbox:checked ~ .form-check-label {
+                            color: #6366f1;
+                        }
+                        .user-checkbox:checked ~ .form-check-label i {
+                            color: #6366f1 !important;
+                        }
+                        .user-selection-container::-webkit-scrollbar {
+                            width: 8px;
+                        }
+                        .user-selection-container::-webkit-scrollbar-track {
+                            background: #f1f1f1;
+                            border-radius: 10px;
+                        }
+                        .user-selection-container::-webkit-scrollbar-thumb {
+                            background: #cbd5e1;
+                            border-radius: 10px;
+                        }
+                        .user-selection-container::-webkit-scrollbar-thumb:hover {
+                            background: #94a3b8;
+                        }
+                        .user-item {
+                            border-bottom: 1px solid #f1f5f9;
+                        }
+                        .user-item:last-child {
+                            border-bottom: none;
+                        }
+                    </style>
+
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const searchInput = document.getElementById('userSearch');
+                            const clearBtn = document.getElementById('clearSearch');
+                            const userItems = document.querySelectorAll('.user-item');
+                            const checkboxes = document.querySelectorAll('.user-checkbox');
+                            const selectedCount = document.getElementById('selectedCount');
+
+                            function updateSelectedCount() {
+                                const count = document.querySelectorAll('.user-checkbox:checked').length;
+                                selectedCount.textContent = count + ' انتخاب شده';
+                                if (count > 0) {
+                                    selectedCount.classList.remove('bg-primary');
+                                    selectedCount.classList.add('bg-success');
+                                } else {
+                                    selectedCount.classList.remove('bg-success');
+                                    selectedCount.classList.add('bg-primary');
+                                }
+                            }
+
+                            function filterUsers() {
+                                const searchTerm = searchInput.value.toLowerCase().trim();
+                                let visibleCount = 0;
+
+                                userItems.forEach(item => {
+                                    const userName = item.dataset.userName || '';
+                                    if (userName.includes(searchTerm)) {
+                                        item.style.display = 'block';
+                                        visibleCount++;
+                                    } else {
+                                        item.style.display = 'none';
+                                    }
+                                });
+
+                                clearBtn.style.display = searchTerm ? 'block' : 'none';
+                            }
+
+                            searchInput.addEventListener('input', filterUsers);
+                            
+                            clearBtn.addEventListener('click', function() {
+                                searchInput.value = '';
+                                filterUsers();
+                                searchInput.focus();
+                            });
+
+                            checkboxes.forEach(checkbox => {
+                                checkbox.addEventListener('change', updateSelectedCount);
+                            });
+
+                            updateSelectedCount();
+                        });
+                    </script>
+
+                    <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                        <button type="submit" class="btn btn-warning flex-fill">
+                            <i class="bi bi-check-circle me-2"></i>
+                            ذخیره تغییرات
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="bi bi-x-circle me-2"></i>
+                            انصراف
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-
-    <div class="mb-3">
-        <label asp-for="Description" class="form-label"></label>
-        <textarea asp-for="Description" class="form-control"></textarea>
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">اعضای پروژه و کاربران دعوت‌شده</label>
-        <select asp-for="SelectedUserIds"
-                asp-items="@(new MultiSelectList(ViewBag.Users, "Id", "DisplayName", Model.SelectedUserIds))"
-                class="form-control" multiple="multiple">
-        </select>
-        <small class="form-text text-muted">
-            فقط اعضای فعلی و دعوت‌شده‌های این پروژه در لیست بالا نمایش داده می‌شوند.
-        </small>
-    </div>
-
-    <div class="d-flex gap-2 mt-3">
-        <button type="submit" class="btn btn-warning">
-            <i class="bi bi-check-circle"></i> ذخیره تغییرات
-        </button>
-        <a asp-action="Index" class="btn btn-secondary">
-            <i class="bi bi-x-circle"></i> انصراف
-        </a>
-    </div>
-</form>
+</div>

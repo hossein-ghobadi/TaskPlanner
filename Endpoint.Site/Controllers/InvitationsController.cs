@@ -34,7 +34,7 @@ namespace Endpoint.Site.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> InviteSystemUser(string phone)
         {
-            var inviterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var inviterId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrWhiteSpace(phone))
             {
@@ -142,7 +142,7 @@ namespace Endpoint.Site.Controllers
         [HttpGet]
         public async Task<IActionResult> MyInvitations()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var user = await _userManager.FindByIdAsync(userId);
             var phone = user?.Phone;
 
@@ -262,7 +262,7 @@ namespace Endpoint.Site.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RespondToSystemInvite(int id, bool accept)
         {
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var currentUser = await _userManager.FindByIdAsync(currentUserId);
             
             if (currentUser == null)
@@ -305,7 +305,7 @@ namespace Endpoint.Site.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteSystemInvite(int id)
         {
-            var inviterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var inviterId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             var invite = await _context.ProjectInvitations
                 .FirstOrDefaultAsync(i => i.Id == id && i.ProjectId == null && i.InviterId == inviterId);
@@ -336,7 +336,7 @@ namespace Endpoint.Site.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RemoveMemberFromProject(int projectId, string memberUserId)
         {
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (string.IsNullOrEmpty(memberUserId))
             {
@@ -397,6 +397,101 @@ namespace Endpoint.Site.Controllers
             catch (Exception ex)
             {
                 TempData["Error"] = $"خطا در حذف عضو: {ex.Message}";
+                return RedirectToAction("MyInvitations");
+            }
+        }
+
+        /// <summary>
+        /// حذف همکار از کل سیستم همکاری
+        /// این عمل تمام دعوت‌های سیستم را حذف می‌کند و کاربر را از تمام پروژه‌هایی که من ایجاد کرده‌ام حذف می‌کند
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveCollaboratorFromSystem(string collaboratorUserId)
+        {
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var currentUser = await _userManager.FindByIdAsync(currentUserId);
+            var collaboratorUser = await _userManager.FindByIdAsync(collaboratorUserId);
+
+            if (string.IsNullOrEmpty(collaboratorUserId))
+            {
+                TempData["Error"] = "شناسه کاربر نامعتبر است.";
+                return RedirectToAction("MyInvitations");
+            }
+
+            if (collaboratorUserId == currentUserId)
+            {
+                TempData["Error"] = "نمی‌توانید خودتان را حذف کنید.";
+                return RedirectToAction("MyInvitations");
+            }
+
+            if (currentUser == null)
+            {
+                TempData["Error"] = "کاربر فعلی یافت نشد.";
+                return RedirectToAction("MyInvitations");
+            }
+
+            if (collaboratorUser == null)
+            {
+                TempData["Error"] = "همکار مورد نظر یافت نشد.";
+                return RedirectToAction("MyInvitations");
+            }
+
+            try
+            {
+                var collaboratorPhone = collaboratorUser.Phone;
+                var currentUserPhone = currentUser.Phone;
+
+                // 1. حذف تمام دعوت‌های سیستم (ProjectId == null)
+                // دعوت‌هایی که من ارسال کرده‌ام به این کاربر
+                var systemInvitationsISent = await _context.ProjectInvitations
+                    .Where(i => i.ProjectId == null && 
+                        i.InviterId == currentUserId && 
+                        (i.InviteeId == collaboratorUserId || i.InviteePhone == collaboratorPhone))
+                    .ToListAsync();
+
+                // دعوت‌هایی که این کاربر به من ارسال کرده و من پذیرفته‌ام
+                var systemInvitationsIAccepted = await _context.ProjectInvitations
+                    .Where(i => i.ProjectId == null && 
+                        i.InviterId == collaboratorUserId && 
+                        i.InviteePhone == currentUserPhone &&
+                        i.Status == InvitationStatus.Accepted)
+                    .ToListAsync();
+
+                var allSystemInvitations = systemInvitationsISent.Concat(systemInvitationsIAccepted).Distinct().ToList();
+                _context.ProjectInvitations.RemoveRange(allSystemInvitations);
+
+                // 2. پیدا کردن تمام پروژه‌هایی که من ایجاد کرده‌ام
+                var myProjects = await _context.Projects
+                    .Where(p => p.CreatorUserId == currentUserId)
+                    .Select(p => p.Id)
+                    .ToListAsync();
+
+                // 3. حذف این کاربر از تمام پروژه‌های من
+                var projectMembers = await _context.ProjectMembers
+                    .Where(pm => myProjects.Contains(pm.ProjectId.Value) && pm.UserId == collaboratorUserId)
+                    .ToListAsync();
+
+                _context.ProjectMembers.RemoveRange(projectMembers);
+
+                // 4. حذف تمام دعوت‌های پروژه‌ای که من ارسال کرده‌ام به این کاربر
+                var projectInvitations = await _context.ProjectInvitations
+                    .Where(i => i.ProjectId.HasValue && 
+                        myProjects.Contains(i.ProjectId.Value) &&
+                        i.InviterId == currentUserId &&
+                        (i.InviteeId == collaboratorUserId || i.InviteePhone == collaboratorPhone))
+                    .ToListAsync();
+
+                _context.ProjectInvitations.RemoveRange(projectInvitations);
+
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = "همکار با موفقیت از سیستم همکاری و تمام پروژه‌های شما حذف شد.";
+                return RedirectToAction("MyInvitations");
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"خطا در حذف همکار: {ex.Message}";
                 return RedirectToAction("MyInvitations");
             }
         }

@@ -1,6 +1,7 @@
 ﻿@model Endpoint.Site.Models.CombinedInvitationsVm
 @using DNTPersianUtils.Core
 @using TaskPlanner.Domain.Entities.TaskPlanner
+@using System.Security.Claims
 
 @{
     ViewData["Title"] = "دعوت‌های من";
@@ -350,6 +351,16 @@
 <!-- 👥 لیست همکاران -->
 @{
     var collaboratorsList = ViewBag.Collaborators as List<Dictionary<string, object>> ?? new List<Dictionary<string, object>>();
+    var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    
+    // پیدا کردن پروژه‌هایی که کاربر فعلی ایجاد کرده
+    var myProjectIds = new List<int>();
+    try
+    {
+        var myProjects = ViewBag.MyProjects as List<int> ?? new List<int>();
+        myProjectIds = myProjects;
+    }
+    catch { }
 }
 <div class="card mb-4 shadow-sm">
     <div class="card-header bg-light fw-bold">
@@ -370,6 +381,7 @@
                             <th>نام</th>
                             <th>شماره تلفن</th>
                             <th>ایمیل</th>
+                            <th class="text-center">عملیات</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -401,6 +413,20 @@
                                     {
                                         <span class="text-muted">-</span>
                                     }
+                                </td>
+                                <td class="text-center">
+                                    <form asp-controller="Invitations"
+                                          asp-action="RemoveCollaboratorFromSystem"
+                                          method="post"
+                                          class="d-inline"
+                                          onsubmit="return confirm('⚠️ هشدار جدی!\n\nآیا از حذف این همکار از کل سیستم همکاری اطمینان دارید؟\n\nاین عمل:\n✅ تمام دعوت‌های سیستم را حذف می‌کند\n✅ کاربر را از تمام پروژه‌هایی که شما ایجاد کرده‌اید حذف می‌کند\n✅ تمام دعوت‌های پروژه‌ای مرتبط را حذف می‌کند\n\n⚠️ این عمل غیرقابل بازگشت است!');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="collaboratorUserId" value="@collaborator["Id"]" />
+                                        <button type="submit" class="btn btn-danger btn-sm" title="حذف از همکاری (از تمام پروژه‌های شما)">
+                                            <i class="bi bi-person-x-fill me-1"></i>
+                                            حذف از همکاری
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         }

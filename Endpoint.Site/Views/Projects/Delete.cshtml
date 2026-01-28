@@ -1,10 +1,268 @@
 ﻿@model Project
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "حذف پروژه";
+    var taskCount = Model.Tasks?.Count(t => t.CanAddToSprint) ?? 0;
+    var sprintCount = Model.Sprints?.Count ?? 0;
+    var memberCount = Model.Members?.Count ?? 0;
+}
 
-<h2>حذف پروژه</h2>
-<p>آیا از حذف پروژه <strong>@Model.Name</strong> مطمئن هستید؟</p>
+<style>
+    .delete-header {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        border-radius: 20px;
+        padding: 3rem 2.5rem;
+        color: white;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 40px rgba(239, 68, 68, 0.3);
+        position: relative;
+        overflow: hidden;
+        text-align: center;
+    }
+    
+    .delete-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+        animation: pulse 6s ease-in-out infinite;
+    }
+    
+    @@keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+    
+    .delete-icon {
+        font-size: 5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 1;
+        animation: shake 2s ease-in-out infinite;
+    }
+    
+    @@keyframes shake {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(-5deg); }
+        75% { transform: rotate(5deg); }
+    }
+    
+    .delete-title {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .warning-card {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 2px solid #f59e0b;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+    }
+    
+    .info-card {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #bae6fd;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stat-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        background: white;
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s ease;
+    }
+    
+    .stat-item:hover {
+        transform: translateX(-4px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stat-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-left: 1rem;
+        flex-shrink: 0;
+    }
+    
+    .stat-icon-primary {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        color: #2563eb;
+    }
+    
+    .stat-icon-warning {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #d97706;
+    }
+    
+    .stat-icon-danger {
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        color: #dc2626;
+    }
+    
+    .stat-content {
+        flex-grow: 1;
+    }
+    
+    .stat-label {
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin-bottom: 0.25rem;
+    }
+    
+    .stat-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1f2937;
+    }
+</style>
 
-<form asp-action="DeleteConfirmed" method="post">
-    <input type="hidden" asp-for="Id" />
-    <button type="submit" class="btn btn-danger">حذف</button>
-    <a href="/Projects/Index" class="btn btn-secondary">انصراف</a>
-</form>
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- هدر حذف -->
+        <div class="delete-header">
+            <div class="delete-icon">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <h1 class="delete-title">حذف پروژه</h1>
+            <p class="mb-0 opacity-90" style="position: relative; z-index: 1;">
+                این عمل غیرقابل بازگشت است
+            </p>
+        </div>
+
+        <!-- هشدار -->
+        <div class="warning-card">
+            <div class="d-flex align-items-start">
+                <div class="flex-shrink-0">
+                    <i class="bi bi-exclamation-triangle-fill fs-1 text-warning"></i>
+                </div>
+                <div class="flex-grow-1 me-3">
+                    <h4 class="fw-bold mb-2 text-warning">
+                        هشدار جدی!
+                    </h4>
+                    <p class="mb-2 fw-semibold">
+                        آیا از حذف پروژه <strong class="text-danger fs-5">@Model.Name</strong> مطمئن هستید؟
+                    </p>
+                    <p class="mb-0 small">
+                        با حذف این پروژه، تمام اطلاعات مرتبط شامل کارها، اسپرینت‌ها، یادداشت‌ها و اعضا به طور دائمی حذف خواهند شد و امکان بازیابی وجود ندارد.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- اطلاعات پروژه -->
+        <div class="info-card">
+            <h5 class="fw-bold mb-3 d-flex align-items-center">
+                <i class="bi bi-info-circle-fill me-2 text-primary"></i>
+                اطلاعات پروژه
+            </h5>
+            
+            <div class="stat-item">
+                <div class="stat-icon stat-icon-primary">
+                    <i class="bi bi-briefcase"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">نام پروژه</div>
+                    <div class="stat-value">@Model.Name</div>
+                </div>
+            </div>
+            
+            @if (!string.IsNullOrWhiteSpace(Model.Description))
+            {
+                <div class="stat-item">
+                    <div class="stat-icon stat-icon-primary">
+                        <i class="bi bi-file-text"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">توضیحات</div>
+                        <div class="stat-value" style="font-size: 1rem; font-weight: 500;">@Model.Description</div>
+                    </div>
+                </div>
+            }
+            
+            <div class="stat-item">
+                <div class="stat-icon stat-icon-warning">
+                    <i class="bi bi-list-task"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">تعداد کارها</div>
+                    <div class="stat-value">
+                        <span class="badge bg-warning text-dark fs-6">@taskCount کار</span>
+                    </div>
+                </div>
+            </div>
+            
+            @if (sprintCount > 0)
+            {
+                <div class="stat-item">
+                    <div class="stat-icon stat-icon-warning">
+                        <i class="bi bi-kanban"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">تعداد اسپرینت‌ها</div>
+                        <div class="stat-value">
+                            <span class="badge bg-warning text-dark fs-6">@sprintCount اسپرینت</span>
+                        </div>
+                    </div>
+                </div>
+            }
+            
+            @if (memberCount > 0)
+            {
+                <div class="stat-item">
+                    <div class="stat-icon stat-icon-danger">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-label">تعداد اعضا</div>
+                        <div class="stat-value">
+                            <span class="badge bg-danger fs-6">@memberCount عضو</span>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- دکمه‌های اقدام -->
+        <form asp-action="DeleteConfirmed" method="post">
+            <input type="hidden" asp-for="Id" />
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="d-flex gap-3">
+                        <button type="submit" class="btn btn-danger flex-fill btn-lg" style="font-weight: 600;">
+                            <i class="bi bi-trash-fill me-2"></i>
+                            بله، حذف شود
+                        </button>
+                        <a href="/Projects/Index" class="btn btn-secondary btn-lg" style="font-weight: 600;">
+                            <i class="bi bi-x-circle me-2"></i>
+                            انصراف
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
