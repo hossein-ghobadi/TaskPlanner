@@ -1,5 +1,6 @@
 @model Endpoint.Site.Models.SprintBoardVm
 @using TaskPlanner.Domain.Entities.TaskPlanner
+@using DNTPersianUtils.Core
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     var sprintId = ViewBag.SprintId as int?;
@@ -61,9 +62,52 @@
 <style>
     .board-container {
         direction: rtl;
+        padding: 1rem;
+        transition: background-color 0.3s ease, background-image 0.3s ease;
+    }
+    /* تم‌های پس‌زمینه */
+    .board-bg-plain {
+        background: #f7f7f9;
+    }
+    .board-bg-gradient {
+        background: linear-gradient(135deg, #f7f8ff 0%, #eef3ff 50%, #fdf7ff 100%);
+    }
+    .board-bg-soft {
+        background:
+            radial-gradient(circle at 20% 20%, rgba(0,123,255,0.08) 0, rgba(0,123,255,0.08) 18%, transparent 28%),
+            radial-gradient(circle at 80% 0%, rgba(255,193,7,0.1) 0, rgba(255,193,7,0.1) 15%, transparent 25%),
+            radial-gradient(circle at 50% 80%, rgba(40,167,69,0.08) 0, rgba(40,167,69,0.08) 14%, transparent 24%),
+            #f8f9fb;
+        background-size: cover;
+    }
+    .board-bg-pattern {
+        background-color: #f7f7f9;
+        background-image: radial-gradient(#dfe7f3 1px, transparent 1px);
+        background-size: 22px 22px;
+    }
+    .board-bg-pastel {
+        background: linear-gradient(135deg, #fff7e6 0%, #e8f5ff 50%, #f2e8ff 100%);
+    }
+    /* پس‌زمینه تصویری */
+    .board-bg-photo {
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+    .board-bg-photo-1 {
+        /* کوهستان مه‌آلود */
+        background-image: url('https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1600&q=80');
+    }
+    .board-bg-photo-2 {
+        /* ساحل آرام با غروب */
+        background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80');
     }
     .board-header {
         margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .board-header h2 {
         font-size: 1.5rem;
@@ -130,14 +174,11 @@
         border-color: #0d6efd;
     }
     .board-layout {
-        display: grid;
-        grid-template-columns: 1fr 280px;
-        gap: 1rem;
-        direction: ltr;
+        width: 100%;
     }
     .kanban-board {
         display: flex;
-        gap: 0.75rem;
+        gap: 1rem;
         padding: 0.5rem 0;
         overflow-x: auto;
         overflow-y: hidden;
@@ -148,16 +189,24 @@
         /* جلوگیری از scroll عمودی هنگام drag */
         overscroll-behavior-x: contain;
     }
+    .board-columns {
+        display: flex;
+        flex-direction: row;
+        gap: 1rem;
+        overflow-x: auto;
+        padding-bottom: 1rem;
+    }
     .kanban-column {
-        flex: 1;
-        min-width: 240px;
-        background: #f8f9fa;
+        min-width: 300px;
+        background: #f4f5f7;
         border-radius: 8px;
-        border: 1px solid #dee2e6;
+        padding: 1rem;
         display: flex;
         flex-direction: column;
         position: relative;
         overflow: visible;
+        max-height: calc(100vh - 250px);
+        flex-shrink: 0;
         /* برای بهبود scroll در موبایل */
         scroll-snap-align: start;
     }
@@ -167,42 +216,60 @@
     .kanban-column.column-drop-target {
         outline: 2px dashed #0d6efd;
     }
-    .kanban-column-header {
-        padding: 0.75rem;
+    .column-header {
         font-weight: 600;
-        color: white;
-        border-radius: 8px 8px 0 0;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #ddd;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        font-size: 0.9rem;
+        color: #212529;
     }
-    .kanban-column-body {
-        padding: 0.5rem;
+    .add-task-btn {
+        margin-top: 0.5rem;
+        width: 100%;
+        border: none;
+        background: transparent;
+        color: #6c757d;
+        padding: 0.75rem;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    .add-task-btn:hover {
+        background: rgba(0, 0, 0, 0.05);
+        color: #007bff;
+    }
+    .add-task-btn i {
+        font-size: 1.1rem;
+    }
+    .column-tasks {
         flex: 1;
-        min-height: 300px;
         overflow-y: auto;
-        overflow-x: hidden;
-        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
     }
     .task-card {
         background: white;
-        border: 1px solid #dee2e6;
         border-radius: 6px;
-        padding: 0.75rem;
-        margin-bottom: 0.5rem;
+        padding: 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         cursor: grab;
-        transition: all 0.2s;
-        position: relative;
-        z-index: 1;
-        -webkit-tap-highlight-color: transparent;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
         user-select: none;
-        -webkit-user-select: none;
+        position: relative;
+        border: 1px solid transparent;
     }
     .task-card:hover {
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         transform: translateY(-1px);
-        z-index: 10;
     }
     .task-card:active {
         cursor: grabbing;
@@ -487,30 +554,39 @@
         }
     }
     .task-title {
-        font-size: 0.9rem;
-        color: #212529;
+        font-weight: 500;
         margin-bottom: 0.5rem;
-        line-height: 1.4;
-        text-align: right;
     }
     .task-title a {
-        color: #0d6efd;
+        color: #212529;
         text-decoration: none;
-        font-weight: 500;
         transition: color 0.2s;
     }
     .task-title a:hover {
-        color: #0a58ca;
-        text-decoration: underline;
+        color: #0d6efd;
     }
-    .task-meta {
-        font-size: 0.75rem;
+    .task-description {
+        font-size: 0.85rem;
         color: #6c757d;
+        margin-bottom: 0.5rem;
+    }
+    .task-footer {
         display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        text-align: right;
-        align-items: flex-end;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    .task-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .badge-assigned {
+        background: #e3f2fd;
+        color: #1976d2;
     }
     .available-tasks-column {
         background: #f8f9fa;
@@ -1017,65 +1093,85 @@
     }
 </style>
 
-<div class="board-container">
+@using System.Security.Claims
+@{
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var projectMembers = ViewBag.ProjectMembers as List<ProjectMemberVm> ?? new List<ProjectMemberVm>();
+    var projectCreator = projectMembers.FirstOrDefault(m => m.FullName?.Contains("سازنده پروژه") == true);
+    var creatorName = projectCreator?.FullName?.Replace(" - سازنده پروژه", "") ?? "نامشخص";
+}
+
+<div class="board-container board-bg-plain" id="boardContainer">
     <div class="board-header">
-        <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
-            <div class="flex-grow-1">
-                <h2>تخته کانبان</h2>
-                <div class="meta">
-                    <span>اسپرینت: <strong>@Model.SprintName</strong></span>
-                    <span class="mx-2 d-none d-md-inline">|</span>
-                    <span class="d-block d-md-inline">پروژه: <a href="/Projects/Details/@Model.ProjectId">@Model.ProjectName</a></span>
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h2>@Model.SprintName</h2>
+                @if (!string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    <p class="text-muted mb-2">@Model.Description</p>
+                }
+                <div class="d-flex gap-3 align-items-center">
+                    <small class="text-muted">
+                        <i class="bi bi-person"></i>
+                        سازنده: @creatorName
+                    </small>
+                    <small class="text-muted">
+                        <i class="bi bi-folder"></i>
+                        پروژه: <a href="/Projects/Details/@Model.ProjectId" class="text-decoration-none">@Model.ProjectName</a>
+                    </small>
+                    <small class="text-muted">
+                        <i class="bi bi-list-task"></i>
+                        @Model.TotalTasks.ToString().ToPersianNumbers() کار
+                    </small>
+                    <small class="text-muted">
+                        <i class="bi bi-check-circle"></i>
+                        @Model.CompletedTasks.ToString().ToPersianNumbers() انجام شده
+                    </small>
                 </div>
             </div>
-            <div class="d-flex gap-2 flex-wrap">
-                @if (Model.Status == SprintStatus.Active)
-                {
-                    <form method="post" action="/Sprints/ChangeStatus" class="d-inline" id="completeSprintForm">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@Model.SprintId" />
-                        <input type="hidden" name="status" value="@((int)SprintStatus.Completed)" />
-                        <button type="button" class="btn btn-sm btn-danger" onclick="completeSprint()">
-                            <i class="bi bi-check-circle"></i> <span class="d-none d-sm-inline">خاتمه اسپرینت</span><span class="d-sm-none">خاتمه</span>
+            <div class="d-flex flex-column align-items-end gap-2">
+                <div class="d-flex gap-2">
+                    <a href="/Projects/Details/@Model.ProjectId" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-right"></i>
+                        بازگشت به لیست
+                    </a>
+                    @if (Model.Status == SprintStatus.Active)
+                    {
+                        <form method="post" action="/Sprints/ChangeStatus" class="d-inline" id="completeSprintForm">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.SprintId" />
+                            <input type="hidden" name="status" value="@((int)SprintStatus.Completed)" />
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="completeSprint()">
+                                <i class="bi bi-check-circle"></i>
+                                خاتمه اسپرینت
+                            </button>
+                        </form>
+                    }
+                    @if (Model.Status != SprintStatus.Completed)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="openAddStatusModal()">
+                            <i class="bi bi-plus-circle"></i>
+                            افزودن وضعیت
                         </button>
-                    </form>
-                }
-                @if (Model.Status != SprintStatus.Completed)
-                {
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="openAddStatusModal()">
-                        <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">افزودن وضعیت</span><span class="d-sm-none">وضعیت</span>
-                    </button>
-                }
-                <a class="btn btn-sm btn-outline-primary" href="/Projects/Details/@Model.ProjectId">
-                    <i class="bi bi-folder-open"></i> <span class="d-none d-sm-inline">جزئیات پروژه</span><span class="d-sm-none">پروژه</span>
-                </a>
+                    }
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <label for="boardBackgroundSelect" class="text-muted small mb-0">پس‌زمینه:</label>
+                    <select id="boardBackgroundSelect" class="form-select form-select-sm" style="min-width: 170px;" onchange="changeBoardBackground(this.value)">
+                        <option value="plain">ساده</option>
+                        <option value="gradient">گرادیان</option>
+                        <option value="soft">نرم و محو</option>
+                        <option value="pattern">الگوی نقطه‌ای</option>
+                        <option value="pastel">پاستلی</option>
+                        <option value="photo-1">عکس ۱</option>
+                        <option value="photo-2">عکس ۲</option>
+                    </select>
+                </div>
             </div>
         </div>
-
-        <div class="stats-compact">
-            <div class="stat-compact">
-                <span class="label">پیشرفت:</span>
-                <span class="value">@Model.CompletionPercentage.ToString("F1")%</span>
-            </div>
-            <div class="stat-compact">
-                <span class="label">کل:</span>
-                <span class="value">@Model.TotalTasks</span>
-            </div>
-            <div class="stat-compact">
-                <span class="label">انجام شده:</span>
-                <span class="value text-success">@Model.CompletedTasks</span>
-            </div>
-            <div class="stat-compact">
-                <span class="label">در حال انجام:</span>
-                <span class="value text-primary">@Model.InProgressTasks</span>
-            </div>
-            <div class="stat-compact">
-                <span class="label">مسدود:</span>
-                <span class="value text-danger">@Model.BlockedTasks</span>
-            </div>
-        </div>
-
-        <div class="board-toolbar">
+        
+        <!-- فیلترها (اختیاری - می‌تواند مخفی شود) -->
+        <div class="board-toolbar mt-3" id="boardToolbar" style="display: none;">
             <input type="text" id="boardSearchInput" class="form-control toolbar-input" placeholder="جستجو..." style="min-width: 200px;">
             <select id="statusFilterSelect" class="form-select toolbar-select" style="min-width: 150px;">
                 <option value="all">همه ستون‌ها</option>
@@ -1088,9 +1184,6 @@
                 <select id="assigneeFilterSelect" class="form-select toolbar-select" style="min-width: 180px;">
                     <option value="all">همه افراد</option>
                     <option value="unassigned">تخصیص نیافته</option>
-                    @{
-                        var projectMembers = ViewBag.ProjectMembers as List<ProjectMemberVm> ?? new List<ProjectMemberVm>();
-                    }
                     @foreach (var member in projectMembers)
                     {
                         <option value="@member.UserId">@(member.FullName ?? member.UserName)</option>
@@ -1104,13 +1197,20 @@
             <button type="button" id="dueSoonToggle" class="btn btn-toggle">
                 <i class="bi bi-alarm"></i> موعد نزدیک
             </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleToolbar()">
+                <i class="bi bi-x"></i> بستن فیلترها
+            </button>
+        </div>
+        <div class="mt-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="showToolbarBtn" onclick="toggleToolbar()">
+                <i class="bi bi-funnel"></i> نمایش فیلترها
+            </button>
         </div>
     </div>
 
-    <div class="board-layout">
-        <div class="kanban-board-container">
-
-            <div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
+    <!-- ستون‌های تخته -->
+    <div class="board-columns" id="boardColumns">
+        <div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
                 @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
                 {
                     <div class="kanban-column"
@@ -1118,20 +1218,24 @@
                          ondragenter="onDragEnter(event)"
                          ondragleave="onDragLeave(event)"
                          ondrop="onDropIssue(event, @status.Id)"
-                         data-status-id="@status.Id">
-                        <div class="kanban-column-header"
-                             style="background-color: @(status.Color ?? "#6c757d");"
+                         data-status-id="@status.Id"
+                         data-status-order="@status.Order">
+                        <div class="column-header"
                              draggable="@(Model.Status != SprintStatus.Completed ? "true" : "false")"
                              ondragstart="onColumnDragStart(event)"
                              ondragend="onColumnDragEnd(event)">
-                            <div>
+                            <div class="d-flex align-items-center gap-2">
+                                @if (Model.Status != SprintStatus.Completed && !status.IsDefault)
+                                {
+                                    <i class="bi bi-grip-vertical text-muted" style="cursor: grab;" title="بکشید و رها کنید برای تغییر ترتیب"></i>
+                                }
                                 <span>@status.Name</span>
-                                <span class="badge bg-light text-dark ms-1">
+                                <span class="badge bg-primary">
                                     @{
                                         var count = Model.SprintIssues.Count(t =>
                                         (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id);
                                     }
-                                    @count
+                                    @count.ToString().ToPersianNumbers()
                                 </span>
                             </div>
                             <div class="d-flex align-items-center gap-1">
@@ -1141,7 +1245,8 @@
                                             class="quick-add-column-btn"
                                             data-status-id="@status.Id"
                                             data-status-name="@status.Name"
-                                            title="افزودن سریع">
+                                            title="افزودن سریع"
+                                            onclick="event.stopPropagation();">
                                         <i class="bi bi-plus"></i>
                                     </button>
                                 }
@@ -1157,7 +1262,7 @@
                                 }
                             </div>
                         </div>
-                        <div class="kanban-column-body drop-zone" data-status-id="@status.Id">
+                        <div class="column-tasks" id="tasks-@status.Id" data-status-id="@status.Id" ondrop="onDropIssue(event, @status.Id)" ondragover="onDragOverColumn(event)" ondragleave="onDragLeave(event)">
                             @{
                                 var cards = Model.SprintIssues
                                 .Where(t => (t.StatusId ?? (Model.Statuses.FirstOrDefault(s => s.IsDefault)?.Id)) == status.Id)
@@ -1243,55 +1348,32 @@
                                         <div class="task-title">
                                             <a href="/Tasks/Details/@issue.Id" onclick="event.stopPropagation();">@issue.Title</a>
                                         </div>
-
-                                        <div class="task-meta">
-                                            <div>👤 @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص")</div>
-                                            @{
-                                                string dueText;
-                                                string dueClass;
-                                                if (!issue.DueDate.HasValue)
-                                                {
-                                                    dueText = "بدون موعد تحویل";
-                                                    dueClass = "due-badge due-none";
-                                                }
-                                                else
-                                                {
-                                                    var today = DateTime.UtcNow.Date;
-                                                    var dueDateOnly = issue.DueDate.Value.Date;
-                                                    var diffDays = (dueDateOnly - today).Days;
-                                                    if (diffDays >= 0)
-                                                    {
-                                                        var daysLeft = diffDays;
-                                                        dueText = daysLeft == 0 ? "امروز موعد تحویل" : $"{daysLeft} روز مانده";
-                                                        dueClass = "due-badge due-soon";
-                                                    }
-                                                    else
-                                                    {
-                                                        var daysPassed = Math.Abs(diffDays);
-                                                        dueText = daysPassed == 0 ? "امروز موعد تحویل" : $"{daysPassed} روز گذشته";
-                                                        dueClass = "due-badge due-past";
-                                                    }
-                                                }
-                                            }
-                                            <div class="@dueClass">
-                                                <i class="bi bi-calendar-event"></i>
-                                                @dueText
-                                            </div>
-                                            @if (issue.StoryPoints.HasValue && issue.StoryPoints > 0)
+                                        @if (!string.IsNullOrWhiteSpace(issue.Description))
+                                        {
+                                            <div class="task-description">@(issue.Description.Length > 100 ? issue.Description.Substring(0, 100) + "..." : issue.Description)</div>
+                                        }
+                                        <div class="task-footer">
+                                            @if (!string.IsNullOrWhiteSpace(issue.AssignedUserId))
                                             {
-                                                <div>⚡ @issue.StoryPoints SP</div>
+                                                <span class="task-badge badge-assigned">
+                                                    <i class="bi bi-person"></i>
+                                                    @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "اختصاص داده شده")
+                                                </span>
                                             }
-                                            @if (issue.ChildIssues != null && issue.ChildIssues.Any())
+                                            <small>@issue.CreatedAt.ToShortPersianDateString().ToPersianNumbers()</small>
+                                        </div>
+                                        
+                                        <!-- دکمه‌های عملیات -->
+                                        <div class="d-flex gap-2 mt-2" onclick="event.stopPropagation();">
+                                            @if (finalStatus != null && status.Id != finalStatus.Id)
                                             {
-                                                <div class="mt-1">
-                                                    <button class="btn btn-sm btn-outline-secondary p-0 px-2"
-                                                            onclick="event.stopPropagation(); event.preventDefault(); toggleSubtasks(@issue.Id);"
-                                                            style="font-size: 0.7rem;">
-                                                        <i class="bi bi-chevron-down" id="subtask-icon-@issue.Id"></i>
-                                                        @issue.ChildIssues.Count کارک
-                                                    </button>
-                                                </div>
+                                                <button type="button" class="btn btn-sm btn-outline-success" onclick="completeTask(@issue.Id)" title="تکمیل کار">
+                                                    <i class="bi bi-check-circle"></i>
+                                                </button>
                                             }
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteTask(@issue.Id, '@issue.Title')" title="حذف کار">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
                                         </div>
 
                                         @if (issue.ChildIssues != null && issue.ChildIssues.Any())
@@ -1373,29 +1455,22 @@
                             }
                             else
                             {
-                                <div class="empty-message">
-                                    <i class="bi bi-inbox"></i><br>
-                                    خالی
+                                <div class="empty-message text-muted text-center small p-4">
+                                    <i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد
                                 </div>
                             }
                         </div>
+                        <!-- دکمه افزودن کار -->
+                        @if (Model.Status == SprintStatus.Active)
+                        {
+                            <button type="button" class="add-task-btn" onclick="openQuickTaskModalForStatus(@status.Id, '@status.Name')">
+                                <i class="bi bi-plus"></i>
+                                <span>افزودن کار</span>
+                            </button>
+                        }
                     </div>
                 }
             </div>
-        </div>
-
-        @if (Model.Status == SprintStatus.Active)
-        {
-            <div class="available-tasks-column">
-                <div class="available-tasks-header">
-                    <span>سبد کارها</span>
-                    <span class="badge bg-primary">@Model.TotalTasks</span>
-                </div>
-                <div id="availableTasksContainer" class="available-tasks-body">
-                    <p class="text-muted text-center py-3">در حال بارگذاری...</p>
-                </div>
-            </div>
-        }
     </div>
 </div>
 
@@ -2035,7 +2110,7 @@
             if (!task || !task.statusId) {
                 return;
             }
-            const columnBody = document.querySelector(`.kanban-column-body[data-status-id="${task.statusId}"]`);
+            const columnBody = document.querySelector(`.column-tasks[data-status-id="${task.statusId}"]`);
             if (!columnBody) {
                 return;
             }
@@ -2161,7 +2236,7 @@
                 emptyMessage.remove();
             }
 
-            const sourceColumn = card.closest('.kanban-column-body');
+            const sourceColumn = card.closest('.column-tasks');
             columnBody.prepend(card);
             card.dataset.statusId = targetStatusId;
             if (targetStatusName) {
@@ -2217,7 +2292,7 @@
         }
 
         function resetDropZoneStyles() {
-            document.querySelectorAll('.drop-zone').forEach(zone => {
+            document.querySelectorAll('.column-tasks').forEach(zone => {
                 zone.style.backgroundColor = '';
                 zone.style.borderColor = '';
             });
@@ -2237,13 +2312,23 @@
                 e.preventDefault();
                 return;
             }
-            if (e.target.closest('button')) {
+            
+            // جلوگیری از drag کردن وقتی روی دکمه‌ها کلیک می‌شود
+            if (e.target.closest('button') || e.target.closest('.quick-add-column-btn') || e.target.closest('.delete-status-btn')) {
                 e.preventDefault();
                 return;
             }
 
             const column = e.currentTarget.closest('.kanban-column');
             if (!column) {
+                return;
+            }
+
+            // بررسی اینکه آیا ستون پیش‌فرض است یا نه
+            const statusId = parseInt(column.dataset.statusId);
+            if (statusId === defaultStatusId) {
+                e.preventDefault();
+                showNotification('وضعیت پیش‌فرض قابل جابجایی نیست', 'warning');
                 return;
             }
 
@@ -2272,13 +2357,23 @@
                 return;
             }
 
+            // بررسی اینکه آیا ستون پیش‌فرض است یا نه (نباید جابجا شود)
+            const draggedStatusId = parseInt(draggedColumnElement.dataset.statusId);
+            const targetStatusId = parseInt(targetColumn.dataset.statusId);
+            
+            if (draggedStatusId === defaultStatusId) {
+                showNotification('وضعیت پیش‌فرض قابل جابجایی نیست', 'warning');
+                onColumnDragEnd();
+                return;
+            }
+
             const board = document.getElementById('board');
             if (!board) {
                 onColumnDragEnd();
                 return;
             }
 
-            const columns = Array.from(board.children);
+            const columns = Array.from(board.querySelectorAll('.kanban-column'));
             const dragIndex = columns.indexOf(draggedColumnElement);
             const targetIndex = columns.indexOf(targetColumn);
 
@@ -2287,6 +2382,7 @@
                 return;
             }
 
+            // جابجایی ستون
             if (targetIndex < dragIndex) {
                 board.insertBefore(draggedColumnElement, targetColumn);
             } else {
@@ -2547,11 +2643,11 @@
                 
                 // پیدا کردن ستون هدف
                 const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-                const targetColumn = elementBelow?.closest('.kanban-column-body');
-                const currentColumn = touchCard.closest('.kanban-column-body');
+                const targetColumn = elementBelow?.closest('.column-tasks');
+                const currentColumn = touchCard.closest('.column-tasks');
                 
                 // پاک کردن highlight قبلی
-                document.querySelectorAll('.kanban-column-body').forEach(zone => {
+                document.querySelectorAll('.column-tasks').forEach(zone => {
                     if (zone !== targetColumn) {
                         highlightDropZone(zone, false);
                     }
@@ -2580,8 +2676,8 @@
                 
                 // پیدا کردن ستون هدف
                 const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-                const targetColumnBody = elementBelow?.closest('.kanban-column-body');
-                const currentColumnBody = touchCard.closest('.kanban-column-body');
+                const targetColumnBody = elementBelow?.closest('.column-tasks');
+                const currentColumnBody = touchCard.closest('.column-tasks');
                 
                 if (targetColumnBody && targetColumnBody !== currentColumnBody) {
                     const targetStatusId = parseInt(targetColumnBody.dataset.statusId);
@@ -2625,7 +2721,7 @@
             }
             
             // پاک کردن highlight
-            document.querySelectorAll('.kanban-column-body').forEach(zone => {
+            document.querySelectorAll('.column-tasks').forEach(zone => {
                 highlightDropZone(zone, false);
             });
             
@@ -2669,7 +2765,7 @@
                 card.style.opacity = '1';
                 card.style.transform = '';
                 
-                const sourceColumn = card.closest('.kanban-column-body');
+                const sourceColumn = card.closest('.column-tasks');
                 
                 if (dropZone) {
                     const emptyMessage = dropZone.querySelector('.empty-message');
@@ -2711,17 +2807,25 @@
 
         function getDropZoneElement(element) {
             if (!element) return null;
-            return element.classList?.contains('drop-zone')
+            return element.classList?.contains('column-tasks')
                 ? element
-                : element.querySelector?.('.drop-zone');
+                : element.querySelector?.('.column-tasks');
         }
 
         function onDragOverColumn(e) {
+            e.preventDefault();
             if (isColumnDragging) {
-                e.preventDefault();
+                // اگر در حال drag کردن ستون هستیم، highlight ستون مقصد
+                const targetColumn = e.currentTarget.closest('.kanban-column');
+                if (targetColumn && targetColumn !== draggedColumnElement) {
+                    highlightColumnTarget(targetColumn, true);
+                }
                 return;
             }
-            e.preventDefault();
+            // برای drag کردن کارها
+            if (e.dataTransfer) {
+                e.dataTransfer.dropEffect = 'move';
+            }
         }
 
         function highlightDropZone(element, isActive) {
@@ -2804,7 +2908,7 @@
                     draggedCard.classList.remove('dragging');
                     draggedCard.style.opacity = '1';
                     
-                    const sourceColumn = draggedCard.closest('.kanban-column-body');
+                    const sourceColumn = draggedCard.closest('.column-tasks');
                     
                     if (dropZone) {
                         const emptyMessage = dropZone.querySelector('.empty-message');
@@ -2904,9 +3008,9 @@
 
         function updateIssueCounts() {
             document.querySelectorAll('.kanban-column').forEach(column => {
-                const body = column.querySelector('.kanban-column-body');
+                const body = column.querySelector('.column-tasks');
                 const count = body ? body.querySelectorAll('.task-card').length : 0;
-                const badge = column.querySelector('.kanban-column-header .badge');
+                const badge = column.querySelector('.column-header .badge');
                 if (badge) {
                     badge.textContent = count;
                 }
@@ -3669,5 +3773,61 @@
             }
             </text>
         }
+
+        // مدیریت پس‌زمینه تخته
+        const boardBackgroundKey = `sprintBoardBg_${@Model.SprintId}`;
+        const boardBackgroundOptions = ['plain', 'gradient', 'soft', 'pattern', 'pastel', 'photo-1', 'photo-2'];
+        const boardBackgroundPhotoClasses = ['board-bg-photo-1', 'board-bg-photo-2'];
+
+        function applyBoardBackground(style) {
+            const container = document.getElementById('boardContainer');
+            if (!container) return;
+            const theme = boardBackgroundOptions.includes(style) ? style : 'plain';
+            boardBackgroundOptions.forEach(opt => container.classList.remove(`board-bg-${opt}`));
+            boardBackgroundPhotoClasses.forEach(cls => container.classList.remove(cls));
+            if (theme.startsWith('photo-')) {
+                container.classList.add('board-bg-photo', `board-bg-${theme}`);
+            } else {
+                container.classList.add(`board-bg-${theme}`);
+                container.classList.remove('board-bg-photo');
+            }
+            const select = document.getElementById('boardBackgroundSelect');
+            if (select && select.value !== theme) {
+                select.value = theme;
+            }
+        }
+
+        function changeBoardBackground(style) {
+            applyBoardBackground(style);
+            try {
+                localStorage.setItem(boardBackgroundKey, style);
+            } catch (err) {
+                console.warn('Cannot persist board background', err);
+            }
+        }
+
+        function toggleToolbar() {
+            const toolbar = document.getElementById('boardToolbar');
+            const showBtn = document.getElementById('showToolbarBtn');
+            if (toolbar && showBtn) {
+                if (toolbar.style.display === 'none' || !toolbar.style.display) {
+                    toolbar.style.display = 'flex';
+                    showBtn.style.display = 'none';
+                } else {
+                    toolbar.style.display = 'none';
+                    showBtn.style.display = 'block';
+                }
+            }
+        }
+
+        // بارگذاری پس‌زمینه ذخیره شده
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                const saved = localStorage.getItem(boardBackgroundKey);
+                applyBoardBackground(saved || 'plain');
+            } catch {
+                applyBoardBackground('plain');
+            }
+        });
     </script>
 }

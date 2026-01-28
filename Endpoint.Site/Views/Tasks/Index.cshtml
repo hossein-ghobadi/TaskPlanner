@@ -59,302 +59,342 @@
 }
 
 <style>
-    .hero-card {
-        background: linear-gradient(135deg, #1e3a8a, #2563eb);
-        border-radius: 18px;
-        color: #fff;
-        overflow: hidden;
-    }
-    .hero-card .overlay-pattern {
-        position: absolute;
-        top: -60px;
-        right: -60px;
-        width: 200px;
-        height: 200px;
-        background: radial-gradient(circle at center, rgba(96,165,250,0.45), transparent 70%);
-        filter: blur(10px);
-    }
-    .stat-card {
-        border: 1px solid rgba(80, 106, 255, 0.12);
-        border-radius: 14px;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        background: #fff;
-    }
-    .stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 14px 30px rgba(80, 85, 249, 0.12);
-    }
-    .filter-card {
-        border-radius: 14px;
-        border: 1px solid rgba(0, 0, 0, 0.06);
-        background: #fff;
-    }
-    .filter-chip {
-        background: rgba(80, 85, 249, 0.12);
-        color: #3634a5;
-        border-radius: 999px;
-        padding: 0.2rem 0.75rem;
-        font-size: 0.85rem;
-    }
-    .task-tree-wrapper {
-        border-radius: 14px;
-        background: #fff;
-        border: 1px solid rgba(0, 0, 0, 0.06);
+    /* استایل مینیمال و مدرن */
+    .page-header {
+        background: white;
+        border-radius: 12px;
         padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .search-input::placeholder {
-        color: #98a1b3;
+    .page-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+    }
+    .stats-minimal {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .stat-minimal {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        border: 1px solid #e5e7eb;
+        flex: 1;
+        min-width: 150px;
+        transition: all 0.2s ease;
+    }
+    .stat-minimal:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+    }
+    .stat-minimal-label {
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin-bottom: 0.25rem;
+    }
+    .stat-minimal-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+    }
+    .stat-minimal-value.text-danger {
+        color: #dc2626;
+    }
+    .stat-minimal-value.text-warning {
+        color: #d97706;
+    }
+    .filter-section {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e5e7eb;
+    }
+    .filter-row {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+    .filter-group label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-bottom: 0.5rem;
+        display: block;
+        font-weight: 500;
+    }
+    .filter-group .form-control,
+    .filter-group .form-select {
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+    }
+    .filter-group .form-control:focus,
+    .filter-group .form-select:focus {
+        border-color: #3b82f6;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .tasks-container {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid #e5e7eb;
     }
     .task-card {
-        position: relative;
-        background: linear-gradient(135deg, rgba(248, 249, 255, 0.9), #ffffff);
-        border: 1px solid rgba(73, 84, 255, 0.1) !important;
-        box-shadow: 0 10px 30px rgba(80, 85, 249, 0.08);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s ease;
     }
     .task-card:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 16px 40px rgba(80, 85, 249, 0.16);
+        border-color: #3b82f6;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
     }
     .task-card--completed {
-        background: linear-gradient(135deg, rgba(229, 255, 242, 0.9), #ffffff);
-        border-color: rgba(39, 174, 96, 0.18) !important;
+        opacity: 0.7;
+        background: #f9fafb;
     }
-    .task-card__accent {
-        position: absolute;
-        inset: 0;
-        opacity: 0.08;
-        background: radial-gradient(circle at top left, rgba(80, 85, 249, 0.7), transparent 55%);
-        pointer-events: none;
-    }
-    .task-card--completed .task-card__accent {
-        background: radial-gradient(circle at top left, rgba(39, 174, 96, 0.9), transparent 55%);
-    }
-    .icon-wrapper .issue-icon {
-        width: 46px;
-        height: 46px;
-        border-radius: 50%;
-        background: #fff;
+    .action-buttons {
         display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        box-shadow: inset 0 0 0 2px rgba(80, 85, 249, 0.15);
+        gap: 0.5rem;
+        margin-top: 1rem;
+        flex-wrap: wrap;
     }
-    .task-card--completed .icon-wrapper .issue-icon {
-        box-shadow: inset 0 0 0 2px rgba(39, 174, 96, 0.2);
+    .btn-minimal {
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        border: 1px solid #e5e7eb;
+        background: white;
     }
-    .task-title {
-        font-size: 1.15rem;
+    .btn-minimal:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
     }
-    .meta-row .meta-item {
-        background: rgba(255, 255, 255, 0.8);
-        border-radius: 999px;
-        padding: 0.25rem 0.75rem;
-        font-size: 0.85rem;
-        border: 1px solid rgba(0, 0, 0, 0.05);
+    .btn-minimal.btn-primary {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
     }
-    .action-group .btn {
-        border-radius: 999px;
+    .btn-minimal.btn-primary:hover {
+        background: #2563eb;
+        border-color: #2563eb;
     }
-    .task-card__children {
-        border-left: 2px dashed rgba(80, 85, 249, 0.2);
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6b7280;
     }
-    .section-title {
-        color: #2d3748;
-        font-size: 1.75rem;
-        font-weight: 600;
-        margin: 0;
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
     }
 </style>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="section-title">
-        <i class="bi bi-plus-circle me-2"></i>
-        افزودن کار
-    </h2>
+<!-- هدر ساده -->
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h1 class="page-title">
+                <i class="bi bi-list-task me-2"></i>
+                @headerTitle
+            </h1>
+            @if (hasProjectFilter)
+            {
+                <p class="text-muted mb-0 mt-2 small">
+                    <i class="bi bi-folder me-1"></i>
+                    <a href="/Projects/Details/@projectIdInt" class="text-decoration-none">@projectName</a>
+                </p>
+            }
+        </div>
+        <div class="d-flex gap-2">
+            @{
+                var activeSprintId = ViewBag.ActiveSprintId as int?;
+                var activeSprintName = ViewBag.ActiveSprintName as string;
+            }
+            @if (projectIdInt.HasValue)
+            {
+                <a class="btn btn-minimal btn-primary" href="/Tasks/Create?projectId=@projectIdInt">
+                    <i class="bi bi-plus-circle me-1"></i>
+                    افزودن کار
+                </a>
+                @if (activeSprintId.HasValue)
+                {
+                    <a class="btn btn-minimal" style="background: #f0f9ff; border-color: #3b82f6; color: #1e40af;" asp-controller="Sprints" asp-action="Board" asp-route-id="@activeSprintId">
+                        <i class="bi bi-kanban me-1"></i>
+                        تخته اسپرینت
+                        @if (!string.IsNullOrEmpty(activeSprintName))
+                        {
+                            <span class="ms-1">(@activeSprintName)</span>
+                        }
+                    </a>
+                }
+                <a class="btn btn-minimal" asp-controller="Projects" asp-action="Details" asp-route-id="@projectIdInt">
+                    <i class="bi bi-arrow-right me-1"></i>
+                    بازگشت به پروژه
+                </a>
+            }
+            else
+            {
+                <a class="btn btn-minimal" asp-controller="Projects" asp-action="Index">
+                    <i class="bi bi-grid-3x3-gap me-1"></i>
+                    پروژه‌ها
+                </a>
+            }
+        </div>
+    </div>
 </div>
 
-<div class="position-relative hero-card shadow-sm mb-4">
-    <div class="overlay-pattern"></div>
-    <div class="p-4 p-md-5">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
-            <div>
-                <span class="badge bg-light text-primary mb-2">داشبورد کارها</span>
-                <h2 class="fw-bold mb-2">🗂️ @headerTitle</h2>
-                <p class="mb-0 opacity-75">پیگیری، مدیریت و برنامه‌ریزی هوشمند کارها با فیلترهای پویا و نمای درختی چند سطحی.</p>
-            </div>
-            <div class="text-md-end">
-                <p class="mb-1 small opacity-75">آخرین بروزرسانی</p>
-                <h5 class="mb-2">@lastUpdatedText</h5>
-                <div class="d-flex align-items-center gap-2">
-                    <span class="small opacity-75">نرخ پیشرفت</span>
-                    <span class="badge bg-light text-primary fs-6">@completionRate%</span>
-                </div>
-            </div>
-        </div>
-        <div class="mt-4">
-            <div class="progress rounded-pill overflow-hidden" style="height: 8px; background-color: rgba(255,255,255,0.28);">
-                <div class="progress-bar" role="progressbar" style="width: @completionRate%; background: linear-gradient(90deg,#38bdf8,#2563eb);" aria-valuenow="@completionRate" aria-valuemin="0" aria-valuemax="100"></div>
-            </div>
-        </div>
+<!-- آمار ساده -->
+<div class="stats-minimal">
+    <div class="stat-minimal">
+        <div class="stat-minimal-label">کل کارها</div>
+        <div class="stat-minimal-value">@totalTasks</div>
+        <small class="text-muted">@activeTasks فعال</small>
     </div>
-</div>
-
-<div class="row g-3 mb-4">
-    <div class="col-6 col-md-4">
-        <div class="stat-card p-3 shadow-sm h-100">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="text-muted small">کل کارها</span>
-                <span class="badge bg-primary-subtle text-primary-emphasis">📊</span>
-            </div>
-            <h3 class="fw-bold mb-0">@totalTasks</h3>
-            <small class="text-muted">(@activeTasks فعال / @completedTasks خاتمه یافته)</small>
-        </div>
+    <div class="stat-minimal">
+        <div class="stat-minimal-label">پیشرفت</div>
+        <div class="stat-minimal-value">@completionRate%</div>
+        <small class="text-muted">@completedTasks انجام شده</small>
     </div>
-    <div class="col-6 col-md-4">
-        <div class="stat-card p-3 shadow-sm h-100">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="text-muted small">سررسید گذشته</span>
-                <span class="badge bg-danger-subtle text-danger">⏰</span>
-            </div>
-            <h3 class="fw-bold mb-0 text-danger">@overdueTasks</h3>
-                <small class="text-muted">کارهای نیازمند توجه فوری</small>
+    @if (overdueTasks > 0)
+    {
+        <div class="stat-minimal">
+            <div class="stat-minimal-label">سررسید گذشته</div>
+            <div class="stat-minimal-value text-danger">@overdueTasks</div>
+            <small class="text-muted">نیازمند توجه</small>
         </div>
-    </div>
-    <div class="col-6 col-md-4">
-        <div class="stat-card p-3 shadow-sm h-100">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="text-muted small">سررسید نزدیک</span>
-                <span class="badge bg-warning-subtle text-warning">🗓️</span>
-            </div>
-            <h3 class="fw-bold mb-0 text-warning">@dueSoonTasks</h3>
+    }
+    @if (dueSoonTasks > 0)
+    {
+        <div class="stat-minimal">
+            <div class="stat-minimal-label">سررسید نزدیک</div>
+            <div class="stat-minimal-value text-warning">@dueSoonTasks</div>
             <small class="text-muted">۳ روز آینده</small>
         </div>
-    </div>
+    }
 </div>
 
-<div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <div class="d-flex gap-2">
-        @if (projectIdInt.HasValue)
-        {
-            <a class="btn btn-success" href="/Tasks/Create?projectId=@projectIdInt">
-                <i class="bi bi-plus-circle"></i> افزودن کار جدید
-            </a>
-        }
-        else
-        {
-            <button class="btn btn-secondary" disabled title="برای افزودن کار، ابتدا یک پروژه انتخاب کنید">
-                <i class="bi bi-plus-circle"></i> افزودن کار جدید
+<!-- فیلترها -->
+<div class="filter-section">
+    <div class="filter-row">
+        <div class="filter-group" style="flex: 2;">
+            <label for="taskSearch">
+                <i class="bi bi-search me-1"></i>جستجو
+            </label>
+            <input type="text" id="taskSearch" class="form-control" placeholder="عنوان، کلید یا توضیح..." />
+        </div>
+        <div class="filter-group">
+            <label for="issueTypeFilter">نوع</label>
+            <select id="issueTypeFilter" class="form-select">
+                <option value="all">همه</option>
+                @foreach (var type in issueTypeOptions)
+                {
+                    <option value="@((int)type)">@type.GetDisplayName()</option>
+                }
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="assigneeFilter">مسئول</label>
+            <select id="assigneeFilter" class="form-select">
+                <option value="all">همه</option>
+                @foreach (var assignee in assigneeOptions)
+                {
+                    <option value="@assignee.Id.ToLowerInvariant()">@assignee.Name</option>
+                }
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="dueFilter">سررسید</label>
+            <select id="dueFilter" class="form-select">
+                <option value="all">همه</option>
+                <option value="overdue">گذشته</option>
+                <option value="soon">۳ روز آینده</option>
+                <option value="later">بیش از ۳ روز</option>
+                <option value="none">بدون موعد</option>
+            </select>
+        </div>
+        <div class="filter-group" style="flex: 0 0 auto;">
+            <label>&nbsp;</label>
+            <button type="button" id="resetFilters" class="btn btn-minimal d-block">
+                <i class="bi bi-arrow-counterclockwise"></i>
             </button>
-        }
-    </div>
-    
-    <div class="d-flex gap-2">
-        <a class="btn btn-info text-white" asp-controller="Tasks" asp-action="Weekly">
-            <i class="bi bi-calendar-week"></i> برنامه هفتگی
-        </a>
-        <a class="btn btn-outline-success"
-           asp-controller="Tasks"
-           asp-action="Completed"
-           asp-route-projectId="@projectIdInt">
-            <i class="bi bi-check2-circle"></i> کارهای خاتمه یافته
-        </a>
-        <a class="btn btn-primary" asp-controller="Projects" asp-action="Index">
-            <i class="bi bi-grid-3x3-gap"></i> پروژه‌ها
-        </a>
-    </div>
-</div>
-
-<div class="card filter-card shadow-sm mb-4">
-    <div class="card-body">
-        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
-            <div class="flex-grow-1">
-                <label for="taskSearch" class="form-label small text-muted mb-1">جست‌وجوی سریع</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-primary"></i></span>
-                    <input type="text" id="taskSearch" class="form-control border-start-0 search-input" placeholder="عنوان، کلید، مسئول یا توضیح..." />
-                </div>
-            </div>
-            <div class="d-flex flex-wrap gap-3">
-                <div>
-                    <label class="form-label small text-muted mb-1" for="issueTypeFilter">نوع فعالیت</label>
-                    <select id="issueTypeFilter" class="form-select">
-                        <option value="all">همه</option>
-                        @foreach (var type in issueTypeOptions)
-                        {
-                            <option value="@((int)type)">@type.GetDisplayName()</option>
-                        }
-                    </select>
-                </div>
-                <div>
-                    <label class="form-label small text-muted mb-1" for="assigneeFilter">مسئول</label>
-                    <select id="assigneeFilter" class="form-select">
-                        <option value="all">همه افراد</option>
-                        @foreach (var assignee in assigneeOptions)
-                        {
-                            <option value="@assignee.Id.ToLowerInvariant()">@assignee.Name</option>
-                        }
-                    </select>
-                </div>
-                <div>
-                    <label class="form-label small text-muted mb-1" for="dueFilter">وضعیت سررسید</label>
-                    <select id="dueFilter" class="form-select">
-                        <option value="all">همه</option>
-                        <option value="overdue">گذشته</option>
-                        <option value="soon">۳ روز آینده</option>
-                        <option value="later">بیش از ۳ روز</option>
-                        <option value="none">بدون موعد</option>
-                    </select>
-                </div>
-            </div>
-            <div class="text-lg-end">
-                <label class="form-label small text-muted mb-1">خلاصه فیلترها</label>
-                <div class="d-flex flex-column align-items-lg-end gap-2">
-                    <span id="filterSummary" class="filter-chip text-center">همه آیتم‌ها نمایش داده می‌شوند</span>
-                    <button type="button" id="resetFilters" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-arrow-counterclockwise"></i> بازنشانی فیلترها
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 </div>
 
-@if (Model == null || !Model.Any())
-{
-    <div class="alert alert-info">هیچ کاری ثبت نشده است.</div>
-}
-else
-{
-    if (activeRootTasks.Any())
+<!-- لیست کارها -->
+<div class="tasks-container">
+    @if (Model == null || !Model.Any())
     {
-        <div class="task-tree-wrapper">
-            <div id="taskTree" class="d-flex flex-column gap-3">
-            @foreach (var parent in activeRootTasks)
-            {
-                var titleKey = $"{parent.Title} {(parent.IssueKey ?? string.Empty)} {parent.Project?.Name ?? string.Empty}";
-                var assigneeKey = (parent.AssignedUserId ?? "none").ToLowerInvariant();
-                var nodeDueState = dueState(parent);
-                var isTrackableNode = parent.CanAddToSprint; // استفاده از property که از ProjectIssueType استفاده می‌کند
-                <div class="task-node" data-title="@titleKey.ToLowerInvariant()"
-                     data-issuetype="@((int)parent.IssueType)"
-                     data-assignee="@assigneeKey"
-                     data-due="@nodeDueState"
-                     data-trackable="@(isTrackableNode ? "true" : "false")">
-            @Html.Partial("_TaskBranch", parent)
-                </div>
-        }
-    </div>
-            <div id="noMatchMessage" class="alert alert-warning d-none mt-3">
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="bi bi-inbox"></i>
             </div>
+            <h5>هیچ کاری ثبت نشده است</h5>
+            @if (projectIdInt.HasValue)
+            {
+                <p class="text-muted">برای شروع، یک کار جدید اضافه کنید</p>
+                <a class="btn btn-minimal btn-primary mt-2" href="/Tasks/Create?projectId=@projectIdInt">
+                    <i class="bi bi-plus-circle me-1"></i>
+                    افزودن کار
+                </a>
+            }
         </div>
     }
     else
     {
-        <div class="alert alert-success">هیچ کار فعالی در این پروژه باقی نمانده است. 👏</div>
+        if (activeRootTasks.Any())
+        {
+            <div id="taskTree" class="d-flex flex-column gap-2">
+                @foreach (var parent in activeRootTasks)
+                {
+                    var titleKey = $"{parent.Title} {(parent.IssueKey ?? string.Empty)} {parent.Project?.Name ?? string.Empty}";
+                    var assigneeKey = (parent.AssignedUserId ?? "none").ToLowerInvariant();
+                    var nodeDueState = dueState(parent);
+                    var isTrackableNode = parent.CanAddToSprint;
+                    <div class="task-node" data-title="@titleKey.ToLowerInvariant()"
+                         data-issuetype="@((int)parent.IssueType)"
+                         data-assignee="@assigneeKey"
+                         data-due="@nodeDueState"
+                         data-trackable="@(isTrackableNode ? "true" : "false")">
+                        @Html.Partial("_TaskBranch", parent)
+                    </div>
+                }
+            </div>
+            <div id="noMatchMessage" class="alert alert-warning d-none mt-3">
+                هیچ موردی با فیلترهای انتخابی یافت نشد.
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <h5>همه کارها تکمیل شده‌اند</h5>
+                <p class="text-muted">عالی! همه کارهای این پروژه به پایان رسیده‌اند</p>
+            </div>
+        }
     }
-}
+</div>
 <!-- 🔔 اعلان پیام‌ها -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
     <div id="liveToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
@@ -386,7 +426,6 @@ else
                 const applyFilters = () => {
                     const nodes = document.querySelectorAll('.task-node');
                     const noMatchMessage = document.getElementById('noMatchMessage');
-                    const filterSummary = document.getElementById('filterSummary');
 
                     let visibleCount = 0;
 
@@ -407,25 +446,6 @@ else
 
                     if (noMatchMessage) {
                         noMatchMessage.classList.toggle('d-none', visibleCount > 0);
-                    }
-                    if (filterSummary) {
-                        const summaries = [];
-                        if (filterState.search) summaries.push(`جست‌وجو: «${filterState.search}»`);
-                        if (filterState.issueType !== 'all') {
-                            const selectedTypeText = issueTypeFilter.options[issueTypeFilter.selectedIndex].text;
-                            summaries.push(`نوع: ${selectedTypeText}`);
-                        }
-                        if (filterState.assignee !== 'all') {
-                            const selectedAssigneeText = assigneeFilter.options[assigneeFilter.selectedIndex].text;
-                            summaries.push(`مسئول: ${selectedAssigneeText}`);
-                        }
-                        if (filterState.due !== 'all') {
-                            const dueText = dueFilter.options[dueFilter.selectedIndex].text;
-                            summaries.push(`سررسید: ${dueText}`);
-                        }
-                        filterSummary.textContent = summaries.length
-                            ? summaries.join(' | ')
-                            : 'همه آیتم‌ها نمایش داده می‌شوند';
                     }
                 };
 

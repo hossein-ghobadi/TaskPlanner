@@ -130,6 +130,20 @@ namespace Endpoint.Site.Controllers
             ViewBag.SelectedProjectId = projectId;
             ViewBag.SelectedProjectName = selectedProject?.Name;
 
+            // پیدا کردن اسپرینت فعال برای پروژه (اگر projectId مشخص باشد)
+            if (projectId.HasValue)
+            {
+                var activeSprint = await _context.Sprints
+                    .FirstOrDefaultAsync(s => s.ProjectId == projectId.Value && s.Status == SprintStatus.Active);
+                ViewBag.ActiveSprintId = activeSprint?.Id;
+                ViewBag.ActiveSprintName = activeSprint?.Name;
+            }
+            else
+            {
+                ViewBag.ActiveSprintId = null;
+                ViewBag.ActiveSprintName = null;
+            }
+
             return View(tasks);
         }
 
@@ -1408,6 +1422,67 @@ namespace Endpoint.Site.Controllers
                     });
                 }
             }
+
+            // ✅ افزودن خودکار کار به اسپرینت فعال (اگر وجود داشته باشد)
+            var activeSprint = await _context.Sprints
+                .FirstOrDefaultAsync(s => s.ProjectId == vm.ProjectId && s.Status == SprintStatus.Active);
+
+            if (activeSprint != null)
+            {
+                // بررسی اینکه آیا کار می‌تواند به اسپرینت اضافه شود
+                bool canAddToSprint = false;
+                
+                if (selectedProjectIssueType != null)
+                {
+                    canAddToSprint = selectedProjectIssueType.CanAddToSprint;
+                }
+                else
+                {
+                    // اگر ProjectIssueType مشخص نشده، بر اساس IssueType بررسی کن
+                    canAddToSprint = newTask.IssueType == IssueType.Task || 
+                                    newTask.IssueType == IssueType.Story || 
+                                    newTask.IssueType == IssueType.Bug;
+                }
+
+                // فقط کارهای Story-level (نه Epic و Subtask) می‌توانند به اسپرینت اضافه شوند
+                if (canAddToSprint && newTask.ParentTaskId == null)
+                {
+                    // بررسی اینکه آیا کار قبلاً در اسپرینت است
+                    var existingSprintTask = await _context.SprintTasks
+                        .FirstOrDefaultAsync(st => st.SprintId == activeSprint.Id && st.TaskId == newTask.Id);
+
+                    if (existingSprintTask == null)
+                    {
+                        // دریافت وضعیت پیش‌فرض (Todo) برای اسپرینت
+                        var defaultStatus = await _context.WorkflowStatuses
+                            .Where(ws => ws.SprintId == activeSprint.Id)
+                            .OrderBy(ws => ws.IsDefault ? 0 : ws.Order)
+                            .FirstOrDefaultAsync();
+
+                        // افزودن کار به اسپرینت
+                        var sprintTask = new SprintTask
+                        {
+                            SprintId = activeSprint.Id,
+                            TaskId = newTask.Id,
+                            AddedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier),
+                            AddedAt = DateTime.UtcNow,
+                            Status = SprintTaskStatus.Pending,
+                            SprintPriority = 1
+                        };
+                        _context.SprintTasks.Add(sprintTask);
+
+                        // تنظیم وضعیت کار به Todo (وضعیت پیش‌فرض اسپرینت)
+                        if (defaultStatus != null)
+                        {
+                            newTask.StatusId = defaultStatus.Id;
+                            newTask.SprintId = activeSprint.Id;
+                        }
+
+                        await _context.SaveChangesAsync();
+                    }
+                }
+            }
+
             await _notificationService.TrySendDueSoonNotificationAsync(newTask, projectForIssueKey?.Name);
             return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId });
         }
