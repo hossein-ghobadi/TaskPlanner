@@ -1,0 +1,93 @@
+@model PersonalNoteFolder
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "حذف پوشه";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        حذف پوشه
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-info-circle-fill"></i>
+                        <strong>هشدار:</strong> آیا مطمئن هستید که می‌خواهید این پوشه را حذف کنید؟
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>
+                            <i class="bi bi-folder-fill" style="color: @(Model.Color ?? "#3b82f6");"></i>
+                            @Model.Name
+                        </h5>
+                        <hr />
+                        <dl class="row">
+                            <dt class="col-sm-4">تاریخ ایجاد:</dt>
+                            <dd class="col-sm-8">@Model.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</dd>
+
+                            @if (Model.Children.Any())
+                            {
+                                <dt class="col-sm-4">پوشه‌های زیرمجموعه:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge bg-warning text-dark">
+                                        @Model.Children.Count پوشه
+                                    </span>
+                                    <small class="text-danger d-block mt-1">
+                                        <i class="bi bi-exclamation-circle"></i>
+                                        نمی‌توانید پوشه‌ای که دارای پوشه‌های زیرمجموعه است را حذف کنید.
+                                    </small>
+                                </dd>
+                            }
+
+                            @if (Model.Notes.Any())
+                            {
+                                <dt class="col-sm-4">یادداشت‌های موجود:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge bg-info">
+                                        @Model.Notes.Count یادداشت
+                                    </span>
+                                    <small class="text-muted d-block mt-1">
+                                        یادداشت‌های موجود در این پوشه بدون پوشه می‌مانند.
+                                    </small>
+                                </dd>
+                            }
+                        </dl>
+                    </div>
+
+                    @if (Model.Children.Any())
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-x-circle-fill"></i>
+                            <strong>خطا:</strong> این پوشه دارای @Model.Children.Count پوشه زیرمجموعه است. ابتدا پوشه‌های زیرمجموعه را حذف کنید.
+                        </div>
+                    }
+
+                    <form asp-action="Delete" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="Id" />
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Index" asp-controller="PersonalNotes" class="btn btn-secondary">
+                                <i class="bi bi-arrow-right"></i>
+                                انصراف
+                            </a>
+                            @if (!Model.Children.Any())
+                            {
+                                <button type="submit" class="btn btn-danger" onclick="return confirm('آیا مطمئن هستید؟');">
+                                    <i class="bi bi-trash"></i>
+                                    حذف پوشه
+                                </button>
+                            }
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

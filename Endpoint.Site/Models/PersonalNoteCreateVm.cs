@@ -15,6 +15,9 @@ namespace Endpoint.Site.Models
 
         public bool IsPinned { get; set; } = false;
 
+        // پوشه (اختیاری)
+        public int? FolderId { get; set; }
+
         // فایل‌های پیوست
         public List<IFormFile>? Attachments { get; set; }
     }

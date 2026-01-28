@@ -22,6 +22,10 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public string? Color { get; set; }
         public bool IsPinned { get; set; } = false;
 
+        // پوشه (اختیاری)
+        public int? FolderId { get; set; }
+        public PersonalNoteFolder? Folder { get; set; }
+
         // فایل‌های پیوست
         public ICollection<PersonalNoteAttachment> Attachments { get; set; } = new List<PersonalNoteAttachment>();
     }

@@ -67,8 +67,27 @@
                             پین کردن
                         </span>
                     </label>
-    </div>
-    </div>
+                </div>
+            </div>
+
+            <!-- Folder Selection -->
+            <div class="form-group mt-3">
+                <label class="form-label">
+                    <i class="bi bi-folder"></i>
+                    پوشه (اختیاری)
+                </label>
+                <select asp-for="FolderId" class="form-select">
+                    @if (ViewBag.Folders != null)
+                    {
+                        @foreach (var folder in ViewBag.Folders as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)
+                        {
+                            <option value="@folder.Value">@folder.Text</option>
+                        }
+                    }
+                </select>
+                <small class="form-text text-muted">می‌توانید یادداشت را در یک پوشه قرار دهید</small>
+                <span asp-validation-for="FolderId" class="text-danger"></span>
+            </div>
 
             <!-- Existing Attachments -->
     @if (existingAttachments != null && existingAttachments.Any())

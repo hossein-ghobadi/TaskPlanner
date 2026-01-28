@@ -1,0 +1,307 @@
+using Endpoint.Site.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using TaskPlanner.Domain.Entities.TaskPlanner;
+using TaskPlanner.Domain.Entities.Users;
+using TaskPlanner.Persistence.Contexts;
+
+namespace Endpoint.Site.Controllers
+{
+    [Authorize]
+    [Route("[controller]/[action]")]
+    public class PersonalNoteFoldersController : Controller
+    {
+        private readonly MVPTestDatabaseContext _context;
+        private readonly UserManager<User> _userManager;
+
+        public PersonalNoteFoldersController(MVPTestDatabaseContext context, UserManager<User> userManager)
+        {
+            _context = context;
+            _userManager = userManager;
+        }
+
+        // 📁 ایجاد پوشه جدید
+        [HttpGet]
+        public async Task<IActionResult> Create(int? parentFolderId = null)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var vm = new PersonalNoteFolderCreateVm
+            {
+                ParentFolderId = parentFolderId
+            };
+
+            // لیست پوشه‌های موجود برای انتخاب به عنوان والد
+            ViewBag.Folders = await GetFoldersSelectListAsync(userId, parentFolderId);
+
+            return View(vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(PersonalNoteFolderCreateVm vm)
+        {
+            if (!ModelState.IsValid)
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                ViewBag.Folders = await GetFoldersSelectListAsync(userId, vm.ParentFolderId);
+                return View(vm);
+            }
+
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // بررسی اینکه اگر ParentFolderId مشخص شده، متعلق به کاربر باشد
+            if (vm.ParentFolderId.HasValue)
+            {
+                var parentFolder = await _context.PersonalNoteFolders
+                    .FirstOrDefaultAsync(f => f.Id == vm.ParentFolderId.Value && f.UserId == userIdClaim);
+
+                if (parentFolder == null)
+                {
+                    ModelState.AddModelError("ParentFolderId", "پوشه والد یافت نشد یا به آن دسترسی ندارید.");
+                    ViewBag.Folders = await GetFoldersSelectListAsync(userIdClaim, vm.ParentFolderId);
+                    return View(vm);
+                }
+
+                // بررسی چرخه (پوشه نمی‌تواند والد خودش باشد)
+                if (await HasCircularReferenceAsync(vm.ParentFolderId.Value, null))
+                {
+                    ModelState.AddModelError("ParentFolderId", "نمی‌توانید پوشه را در زیرمجموعه خودش قرار دهید.");
+                    ViewBag.Folders = await GetFoldersSelectListAsync(userIdClaim, vm.ParentFolderId);
+                    return View(vm);
+                }
+            }
+
+            var folder = new PersonalNoteFolder
+            {
+                Name = vm.Name,
+                ParentFolderId = vm.ParentFolderId,
+                UserId = userIdClaim!,
+                Color = vm.Color,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.PersonalNoteFolders.Add(folder);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "پوشه با موفقیت ایجاد شد.";
+            return RedirectToAction("Index", "PersonalNotes");
+        }
+
+        // 📁 ویرایش پوشه
+        [HttpGet]
+        public async Task<IActionResult> Edit(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var folder = await _context.PersonalNoteFolders
+                .FirstOrDefaultAsync(f => f.Id == id && f.UserId == userId);
+
+            if (folder == null)
+            {
+                TempData["Error"] = "پوشه یافت نشد یا به آن دسترسی ندارید.";
+                return RedirectToAction("Index", "PersonalNotes");
+            }
+
+            var vm = new PersonalNoteFolderEditVm
+            {
+                Id = folder.Id,
+                Name = folder.Name,
+                ParentFolderId = folder.ParentFolderId,
+                Color = folder.Color
+            };
+
+            // لیست پوشه‌های موجود برای انتخاب به عنوان والد (به جز خود پوشه)
+            ViewBag.Folders = await GetFoldersSelectListAsync(userId, folder.ParentFolderId, id);
+
+            return View(vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(PersonalNoteFolderEditVm vm)
+        {
+            if (!ModelState.IsValid)
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                ViewBag.Folders = await GetFoldersSelectListAsync(userId, vm.ParentFolderId, vm.Id);
+                return View(vm);
+            }
+
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var folder = await _context.PersonalNoteFolders
+                .FirstOrDefaultAsync(f => f.Id == vm.Id && f.UserId == userIdClaim);
+
+            if (folder == null)
+            {
+                TempData["Error"] = "پوشه یافت نشد یا به آن دسترسی ندارید.";
+                return RedirectToAction("Index", "PersonalNotes");
+            }
+
+            // بررسی اینکه اگر ParentFolderId تغییر کرده، متعلق به کاربر باشد
+            if (vm.ParentFolderId.HasValue && vm.ParentFolderId != folder.ParentFolderId)
+            {
+                var parentFolder = await _context.PersonalNoteFolders
+                    .FirstOrDefaultAsync(f => f.Id == vm.ParentFolderId.Value && f.UserId == userIdClaim);
+
+                if (parentFolder == null)
+                {
+                    ModelState.AddModelError("ParentFolderId", "پوشه والد یافت نشد یا به آن دسترسی ندارید.");
+                    ViewBag.Folders = await GetFoldersSelectListAsync(userIdClaim, vm.ParentFolderId, vm.Id);
+                    return View(vm);
+                }
+
+                // بررسی چرخه (پوشه نمی‌تواند والد خودش باشد)
+                if (await HasCircularReferenceAsync(vm.ParentFolderId.Value, vm.Id))
+                {
+                    ModelState.AddModelError("ParentFolderId", "نمی‌توانید پوشه را در زیرمجموعه خودش قرار دهید.");
+                    ViewBag.Folders = await GetFoldersSelectListAsync(userIdClaim, vm.ParentFolderId, vm.Id);
+                    return View(vm);
+                }
+            }
+
+            folder.Name = vm.Name;
+            folder.ParentFolderId = vm.ParentFolderId;
+            folder.Color = vm.Color;
+            folder.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "پوشه با موفقیت ویرایش شد.";
+            return RedirectToAction("Index", "PersonalNotes");
+        }
+
+        // 📁 حذف پوشه
+        [HttpGet]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var folder = await _context.PersonalNoteFolders
+                .Include(f => f.Children)
+                .Include(f => f.Notes)
+                .FirstOrDefaultAsync(f => f.Id == id && f.UserId == userId);
+
+            if (folder == null)
+            {
+                TempData["Error"] = "پوشه یافت نشد یا به آن دسترسی ندارید.";
+                return RedirectToAction("Index", "PersonalNotes");
+            }
+
+            return View(folder);
+        }
+
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var folder = await _context.PersonalNoteFolders
+                .Include(f => f.Children)
+                .Include(f => f.Notes)
+                .FirstOrDefaultAsync(f => f.Id == id && f.UserId == userId);
+
+            if (folder == null)
+            {
+                TempData["Error"] = "پوشه یافت نشد یا به آن دسترسی ندارید.";
+                return RedirectToAction("Index", "PersonalNotes");
+            }
+
+            // اگر پوشه دارای پوشه‌های فرزند است، نمی‌توان حذف کرد
+            if (folder.Children.Any())
+            {
+                TempData["Error"] = "نمی‌توانید پوشه‌ای که دارای پوشه‌های زیرمجموعه است را حذف کنید. ابتدا پوشه‌های زیرمجموعه را حذف کنید.";
+                return RedirectToAction("Index", "PersonalNotes");
+            }
+
+            // یادداشت‌های موجود در پوشه را بدون پوشه می‌کنیم (FolderId = null)
+            foreach (var note in folder.Notes)
+            {
+                note.FolderId = null;
+            }
+
+            _context.PersonalNoteFolders.Remove(folder);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "پوشه با موفقیت حذف شد.";
+            return RedirectToAction("Index", "PersonalNotes");
+        }
+
+        // Helper: لیست پوشه‌ها برای SelectList
+        private async Task<List<SelectListItem>> GetFoldersSelectListAsync(string userId, int? excludeParentId = null, int? excludeFolderId = null)
+        {
+            var folders = await _context.PersonalNoteFolders
+                .Where(f => f.UserId == userId)
+                .OrderBy(f => f.Name)
+                .ToListAsync();
+
+            var selectList = new List<SelectListItem>
+            {
+                new SelectListItem { Text = "بدون پوشه والد", Value = "", Selected = !excludeParentId.HasValue }
+            };
+
+            foreach (var folder in folders)
+            {
+                // پوشه فعلی را از لیست حذف کن
+                if (excludeFolderId.HasValue && folder.Id == excludeFolderId.Value)
+                    continue;
+
+                // اگر پوشه والد مشخص شده، آن را انتخاب کن
+                bool isSelected = excludeParentId.HasValue && folder.Id == excludeParentId.Value;
+
+                selectList.Add(new SelectListItem
+                {
+                    Text = folder.Name,
+                    Value = folder.Id.ToString(),
+                    Selected = isSelected
+                });
+            }
+
+            return selectList;
+        }
+
+        // Helper: بررسی چرخه در ساختار پوشه‌ها
+        private async Task<bool> HasCircularReferenceAsync(int parentFolderId, int? currentFolderId)
+        {
+            if (!currentFolderId.HasValue)
+                return false;
+
+            var parentFolder = await _context.PersonalNoteFolders
+                .FirstOrDefaultAsync(f => f.Id == parentFolderId);
+
+            if (parentFolder == null)
+                return false;
+
+            // اگر پوشه والد، خودش یا یکی از اجداد پوشه فعلی باشد، چرخه وجود دارد
+            var currentId = currentFolderId.Value;
+            var visited = new HashSet<int> { currentId };
+
+            while (parentFolder != null)
+            {
+                if (visited.Contains(parentFolder.Id))
+                    return true;
+
+                visited.Add(parentFolder.Id);
+
+                if (parentFolder.ParentFolderId.HasValue)
+                {
+                    parentFolder = await _context.PersonalNoteFolders
+                        .FirstOrDefaultAsync(f => f.Id == parentFolder.ParentFolderId.Value);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return false;
+        }
+    }
+}
+

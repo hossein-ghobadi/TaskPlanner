@@ -34,6 +34,7 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<ProjectNoteAttachment> ProjectNoteAttachments { get; set; }
         public DbSet<PersonalNote> PersonalNotes { get; set; }
         public DbSet<PersonalNoteAttachment> PersonalNoteAttachments { get; set; }
+        public DbSet<PersonalNoteFolder> PersonalNoteFolders { get; set; }
         public DbSet<TaskComment> TaskComments { get; set; }
         public DbSet<TaskCommentAttachment> TaskCommentAttachments { get; set; }
         public DbSet<Sprint> Sprints { get; set; }
@@ -154,6 +155,28 @@ namespace TaskPlanner.Persistence.Contexts
                 .WithMany(n => n.Attachments)
                 .HasForeignKey(a => a.PersonalNoteId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // رابطه PersonalNoteFolder با ParentFolder (تودرتو)
+            modelBuilder.Entity<PersonalNoteFolder>()
+                .HasOne(f => f.ParentFolder)
+                .WithMany(f => f.Children)
+                .HasForeignKey(f => f.ParentFolderId)
+                .OnDelete(DeleteBehavior.Restrict); // جلوگیری از حذف پوشه‌ای که پوشه‌های فرزند دارد
+
+            // رابطه PersonalNote با PersonalNoteFolder
+            modelBuilder.Entity<PersonalNote>()
+                .HasOne(n => n.Folder)
+                .WithMany(f => f.Notes)
+                .HasForeignKey(n => n.FolderId)
+                .OnDelete(DeleteBehavior.SetNull); // اگر پوشه حذف شد، یادداشت‌ها بدون پوشه می‌مانند
+
+            // Index برای UserId در PersonalNoteFolder
+            modelBuilder.Entity<PersonalNoteFolder>()
+                .HasIndex(f => f.UserId);
+
+            // Index برای ParentFolderId در PersonalNoteFolder
+            modelBuilder.Entity<PersonalNoteFolder>()
+                .HasIndex(f => f.ParentFolderId);
 
             // رابطه TaskComment با TaskItem
             modelBuilder.Entity<TaskComment>()

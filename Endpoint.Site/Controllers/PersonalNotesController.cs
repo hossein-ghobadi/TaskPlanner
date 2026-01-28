@@ -28,16 +28,43 @@ namespace Endpoint.Site.Controllers
 
         // 📌 لیست یادداشت‌های شخصی
         [HttpGet]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? folderId = null)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+            // اگر folderId مشخص شده، بررسی کن که متعلق به کاربر باشد
+            if (folderId.HasValue)
+            {
+                var folder = await _context.PersonalNoteFolders
+                    .FirstOrDefaultAsync(f => f.Id == folderId.Value && f.UserId == userId);
+
+                if (folder == null)
+                {
+                    TempData["Error"] = "پوشه یافت نشد یا به آن دسترسی ندارید.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                ViewBag.CurrentFolder = folder;
+            }
+
+            // دریافت پوشه‌ها و یادداشت‌ها
+            var folders = await _context.PersonalNoteFolders
+                .Include(f => f.Children)
+                .Include(f => f.Notes)
+                .Where(f => f.UserId == userId && f.ParentFolderId == folderId)
+                .OrderBy(f => f.Name)
+                .ToListAsync();
+
             var notes = await _context.PersonalNotes
-                .Include(n => n.Attachments) // 📎 اضافه شد برای نمایش فایل‌ها در لیست
-                .Where(n => n.UserId == userId)
+                .Include(n => n.Attachments)
+                .Include(n => n.Folder)
+                .Where(n => n.UserId == userId && n.FolderId == folderId)
                 .OrderByDescending(n => n.IsPinned)
                 .ThenByDescending(n => n.CreatedAt)
                 .ToListAsync();
+
+            ViewBag.Folders = folders;
+            ViewBag.FolderId = folderId;
 
             return View(notes);
         }
@@ -63,9 +90,32 @@ namespace Endpoint.Site.Controllers
 
         // 📌 ایجاد یادداشت جدید
         [HttpGet]
-        public IActionResult Create()
+        public async Task<IActionResult> Create(int? folderId = null)
         {
-            return View(new PersonalNoteCreateVm());
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // اگر folderId مشخص شده، بررسی کن که متعلق به کاربر باشد
+            if (folderId.HasValue)
+            {
+                var folder = await _context.PersonalNoteFolders
+                    .FirstOrDefaultAsync(f => f.Id == folderId.Value && f.UserId == userId);
+
+                if (folder == null)
+                {
+                    TempData["Error"] = "پوشه یافت نشد یا به آن دسترسی ندارید.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+
+            var vm = new PersonalNoteCreateVm
+            {
+                FolderId = folderId
+            };
+
+            // لیست پوشه‌های موجود برای انتخاب
+            ViewBag.Folders = await GetFoldersSelectListAsync(userId, folderId);
+
+            return View(vm);
         }
 
         [HttpPost]
@@ -79,12 +129,27 @@ namespace Endpoint.Site.Controllers
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+            // بررسی اینکه اگر FolderId مشخص شده، متعلق به کاربر باشد
+            if (vm.FolderId.HasValue)
+            {
+                var folder = await _context.PersonalNoteFolders
+                    .FirstOrDefaultAsync(f => f.Id == vm.FolderId.Value && f.UserId == userId);
+
+                if (folder == null)
+                {
+                    ModelState.AddModelError("FolderId", "پوشه یافت نشد یا به آن دسترسی ندارید.");
+                    ViewBag.Folders = await GetFoldersSelectListAsync(userId, vm.FolderId);
+                    return View(vm);
+                }
+            }
+
             var note = new PersonalNote
             {
                 Title = vm.Title,
                 Content = vm.Content,
                 Color = vm.Color,
                 IsPinned = vm.IsPinned,
+                FolderId = vm.FolderId,
                 UserId = userId!,
                 CreatedAt = DateTime.UtcNow
             };
@@ -163,8 +228,12 @@ namespace Endpoint.Site.Controllers
                 Title = note.Title,
                 Content = note.Content,
                 Color = note.Color,
-                IsPinned = note.IsPinned
+                IsPinned = note.IsPinned,
+                FolderId = note.FolderId
             };
+
+            // لیست پوشه‌های موجود برای انتخاب
+            ViewBag.Folders = await GetFoldersSelectListAsync(userId, note.FolderId);
 
             return View(vm);
         }
@@ -175,6 +244,10 @@ namespace Endpoint.Site.Controllers
         {
             if (!ModelState.IsValid)
             {
+                var userIdForView = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var existingNote = await _context.PersonalNotes.Include(n => n.Attachments).FirstOrDefaultAsync(n => n.Id == vm.Id);
+                ViewBag.ExistingAttachments = existingNote?.Attachments;
+                ViewBag.Folders = await GetFoldersSelectListAsync(userIdForView, vm.FolderId);
                 return View(vm);
             }
 
@@ -189,10 +262,26 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // بررسی اینکه اگر FolderId مشخص شده، متعلق به کاربر باشد
+            if (vm.FolderId.HasValue)
+            {
+                var folder = await _context.PersonalNoteFolders
+                    .FirstOrDefaultAsync(f => f.Id == vm.FolderId.Value && f.UserId == userId);
+
+                if (folder == null)
+                {
+                    ModelState.AddModelError("FolderId", "پوشه یافت نشد یا به آن دسترسی ندارید.");
+                    ViewBag.ExistingAttachments = note.Attachments;
+                    ViewBag.Folders = await GetFoldersSelectListAsync(userId, vm.FolderId);
+                    return View(vm);
+                }
+            }
+
             note.Title = vm.Title;
             note.Content = vm.Content;
             note.Color = vm.Color;
             note.IsPinned = vm.IsPinned;
+            note.FolderId = vm.FolderId;
             note.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -256,7 +345,38 @@ namespace Endpoint.Site.Controllers
             }
 
             TempData["Success"] = "یادداشت شخصی با موفقیت ویرایش شد.";
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { folderId = note.FolderId });
+        }
+
+        // Helper: لیست پوشه‌ها برای SelectList
+        private async Task<List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>> GetFoldersSelectListAsync(string userId, int? selectedFolderId = null)
+        {
+            var folders = await _context.PersonalNoteFolders
+                .Where(f => f.UserId == userId)
+                .OrderBy(f => f.Name)
+                .ToListAsync();
+
+            var selectList = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>
+            {
+                new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem 
+                { 
+                    Text = "بدون پوشه", 
+                    Value = "", 
+                    Selected = !selectedFolderId.HasValue 
+                }
+            };
+
+            foreach (var folder in folders)
+            {
+                selectList.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                {
+                    Text = folder.Name,
+                    Value = folder.Id.ToString(),
+                    Selected = selectedFolderId.HasValue && folder.Id == selectedFolderId.Value
+                });
+            }
+
+            return selectList;
         }
 
         // 📌 حذف یادداشت
