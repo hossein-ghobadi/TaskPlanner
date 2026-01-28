@@ -10,6 +10,7 @@
     var folders = ViewBag.Folders as List<PersonalNoteFolder> ?? new List<PersonalNoteFolder>();
     var currentFolder = ViewBag.CurrentFolder as PersonalNoteFolder;
     var folderId = ViewBag.FolderId as int?;
+    var folderNotesCount = ViewBag.FolderNotesCount as Dictionary<int, int> ?? new Dictionary<int, int>();
 }
 
 <div class="notes-container-wrapper">
@@ -39,11 +40,21 @@
                 var folderColor = folder.Color ?? "#3b82f6";
                 
                 <div class="folder-item-wrapper">
-                    <a href="/PersonalNotes/Index?folderId=@folder.Id" class="folder-item @(isActive ? "active" : "")" style="border-right: 3px solid @folderColor;">
-                        <i class="bi bi-folder@(isActive ? "-fill" : "")" style="color: @folderColor;"></i>
-                        <span>@folder.Name</span>
-                        <span class="folder-count">@(folder.Notes?.Count ?? 0)</span>
-                    </a>
+                    <div class="folder-item-with-actions">
+                        <a href="/PersonalNotes/Index?folderId=@folder.Id" class="folder-item @(isActive ? "active" : "")" style="border-right: 3px solid @folderColor;">
+                            <i class="bi bi-folder@(isActive ? "-fill" : "")" style="color: @folderColor;"></i>
+                            <span>@folder.Name</span>
+                            <span class="folder-count">@(folderNotesCount.ContainsKey(folder.Id) ? folderNotesCount[folder.Id] : 0)</span>
+                        </a>
+                        <div class="folder-actions" onclick="event.stopPropagation();">
+                            <a href="/PersonalNoteFolders/Edit?id=@folder.Id" class="folder-action-btn" title="ویرایش پوشه">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="/PersonalNoteFolders/Delete?id=@folder.Id" class="folder-action-btn folder-action-danger" title="حذف پوشه">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </div>
                     
                     @if (folder.Children != null && folder.Children.Any())
                     {
@@ -54,11 +65,21 @@
                                 var childColor = child.Color ?? "#3b82f6";
                                 
                                 <div class="folder-item-wrapper">
-                                    <a href="/PersonalNotes/Index?folderId=@child.Id" class="folder-item @(childIsActive ? "active" : "")" style="border-right: 3px solid @childColor;">
-                                        <i class="bi bi-folder@(childIsActive ? "-fill" : "")" style="color: @childColor;"></i>
-                                        <span>@child.Name</span>
-                                        <span class="folder-count">@(child.Notes?.Count ?? 0)</span>
-                                    </a>
+                                    <div class="folder-item-with-actions">
+                                        <a href="/PersonalNotes/Index?folderId=@child.Id" class="folder-item @(childIsActive ? "active" : "")" style="border-right: 3px solid @childColor;">
+                                            <i class="bi bi-folder@(childIsActive ? "-fill" : "")" style="color: @childColor;"></i>
+                                            <span>@child.Name</span>
+                                            <span class="folder-count">@(folderNotesCount.ContainsKey(child.Id) ? folderNotesCount[child.Id] : 0)</span>
+                                        </a>
+                                        <div class="folder-actions" onclick="event.stopPropagation();">
+                                            <a href="/PersonalNoteFolders/Edit?id=@child.Id" class="folder-action-btn" title="ویرایش پوشه">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a href="/PersonalNoteFolders/Delete?id=@child.Id" class="folder-action-btn folder-action-danger" title="حذف پوشه">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </div>
+                                    </div>
                                 </div>
                             }
                         </div>
@@ -69,10 +90,10 @@
     </div>
 
     <!-- Main Content -->
-    <div class="social-feed-container">
-        <!-- Header Section -->
-        <div class="feed-header">
-            <div class="header-content">
+<div class="social-feed-container">
+    <!-- Header Section -->
+    <div class="feed-header">
+        <div class="header-content">
                 <div class="breadcrumb-nav">
                     @if (currentFolder != null)
                     {
@@ -88,25 +109,25 @@
                     }
                     else
                     {
-                        <h1 class="feed-title">
-                            <i class="bi bi-journal-text"></i>
-                            یادداشت‌های شخصی من
-                        </h1>
+            <h1 class="feed-title">
+                <i class="bi bi-journal-text"></i>
+                یادداشت‌های شخصی من
+            </h1>
                     }
                 </div>
-                <p class="feed-subtitle">افکار، ایده‌ها و یادداشت‌های شما</p>
-            </div>
-            <div class="header-actions">
+            <p class="feed-subtitle">افکار، ایده‌ها و یادداشت‌های شما</p>
+        </div>
+        <div class="header-actions">
                 <a class="btn-create-folder" asp-action="Create" asp-controller="PersonalNoteFolders" asp-route-parentFolderId="@folderId">
                     <i class="bi bi-folder-plus"></i>
                     <span>پوشه جدید</span>
                 </a>
                 <a class="btn-create-note" asp-action="Create" asp-route-folderId="@folderId">
-                    <i class="bi bi-plus-lg"></i>
-                    <span>یادداشت جدید</span>
-                </a>
-            </div>
-        </div>
+                <i class="bi bi-plus-lg"></i>
+                <span>یادداشت جدید</span>
+        </a>
+    </div>
+</div>
 
 @if (TempData["Success"] != null)
 {
@@ -425,6 +446,47 @@ else
         margin-top: 0.25rem;
         padding-right: 1rem;
         border-right: 2px solid #e9ecef;
+    }
+
+    .folder-item-with-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.25rem;
+    }
+
+    .folder-actions {
+        display: flex;
+        gap: 0.15rem;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .folder-item-wrapper:hover .folder-actions {
+        opacity: 1;
+    }
+
+    .folder-action-btn {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        color: #6c757d;
+        transition: all 0.2s ease;
+    }
+
+    .folder-action-btn:hover {
+        background: #e9ecef;
+        color: #1a1a1a;
+    }
+
+    .folder-action-danger:hover {
+        background: #fee;
+        color: #dc3545;
     }
 
     .btn-create-folder {

@@ -28,7 +28,7 @@ namespace Endpoint.Site.Controllers
 
         // 📌 لیست یادداشت‌های یک پروژه
         [HttpGet]
-        public async Task<IActionResult> Index(int projectId)
+        public async Task<IActionResult> Index(int projectId, int? folderId = null)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -43,15 +43,57 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
+            // اگر folderId مشخص شده، بررسی کن که متعلق به همین پروژه باشد
+            if (folderId.HasValue)
+            {
+                var folder = await _context.ProjectNoteFolders
+                    .FirstOrDefaultAsync(f => f.Id == folderId.Value && f.ProjectId == projectId);
+
+                if (folder == null)
+                {
+                    TempData["Error"] = "پوشه یافت نشد یا متعلق به این پروژه نیست.";
+                    return RedirectToAction(nameof(Index), new { projectId });
+                }
+
+                ViewBag.CurrentFolder = folder;
+            }
+
             var project = await _context.Projects.FindAsync(projectId);
             ViewBag.ProjectName = project?.Name;
             ViewBag.ProjectId = projectId;
 
+            // دریافت تمام پوشه‌های پروژه برای محاسبه تعداد یادداشت‌ها
+            var allFolders = await _context.ProjectNoteFolders
+                .Where(f => f.ProjectId == projectId)
+                .ToListAsync();
+
+            // دریافت پوشه‌های سطح اول
+            var folders = allFolders
+                .Where(f => f.ParentFolderId == folderId)
+                .OrderBy(f => f.Name)
+                .ToList();
+
+            // محاسبه تعداد کل یادداشت‌ها برای هر پوشه (شامل زیرپوشه‌ها)
+            var folderNotesCount = new Dictionary<int, int>();
+            foreach (var folder in allFolders)
+            {
+                var folderIdsInTree = GetFolderTreeIds(folder.Id, allFolders);
+                var totalNotes = await _context.ProjectNotes
+                    .Where(n => n.ProjectId == projectId && n.FolderId.HasValue && folderIdsInTree.Contains(n.FolderId.Value))
+                    .CountAsync();
+                folderNotesCount[folder.Id] = totalNotes;
+            }
+
             var notes = await _context.ProjectNotes
-                .Include(n => n.Attachments) // 📎 اضافه شد برای نمایش فایل‌ها در لیست
-                .Where(n => n.ProjectId == projectId)
+                .Include(n => n.Attachments)
+                .Include(n => n.Folder)
+                .Where(n => n.ProjectId == projectId && n.FolderId == folderId)
                 .OrderByDescending(n => n.CreatedAt)
                 .ToListAsync();
+
+            ViewBag.Folders = folders;
+            ViewBag.FolderId = folderId;
+            ViewBag.FolderNotesCount = folderNotesCount;
 
             return View(notes);
         }
@@ -85,7 +127,7 @@ namespace Endpoint.Site.Controllers
 
         // 📌 ایجاد یادداشت جدید
         [HttpGet]
-        public async Task<IActionResult> Create(int projectId)
+        public async Task<IActionResult> Create(int projectId, int? folderId = null)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -100,10 +142,32 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
+            // اگر folderId مشخص شده، بررسی کن که متعلق به پروژه باشد
+            if (folderId.HasValue)
+            {
+                var folder = await _context.ProjectNoteFolders
+                    .FirstOrDefaultAsync(f => f.Id == folderId.Value && f.ProjectId == projectId);
+
+                if (folder == null)
+                {
+                    TempData["Error"] = "پوشه یافت نشد یا به آن دسترسی ندارید.";
+                    return RedirectToAction(nameof(Index), new { projectId = projectId });
+                }
+            }
+
             var project = await _context.Projects.FindAsync(projectId);
             ViewBag.ProjectName = project?.Name;
 
-            return View(new ProjectNoteCreateVm { ProjectId = projectId });
+            var vm = new ProjectNoteCreateVm 
+            { 
+                ProjectId = projectId,
+                FolderId = folderId
+            };
+
+            // لیست پوشه‌های موجود برای انتخاب
+            ViewBag.Folders = await GetFoldersSelectListAsync(projectId, userId, folderId);
+
+            return View(vm);
         }
 
         [HttpPost]
@@ -114,6 +178,7 @@ namespace Endpoint.Site.Controllers
             {
                 var project = await _context.Projects.FindAsync(vm.ProjectId);
                 ViewBag.ProjectName = project?.Name;
+                ViewBag.Folders = await GetFoldersSelectListAsync(vm.ProjectId, User.FindFirstValue(ClaimTypes.NameIdentifier), vm.FolderId);
                 return View(vm);
             }
 
@@ -130,11 +195,28 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
+            // بررسی اینکه اگر FolderId مشخص شده، متعلق به همین پروژه باشد
+            if (vm.FolderId.HasValue)
+            {
+                var folder = await _context.ProjectNoteFolders
+                    .FirstOrDefaultAsync(f => f.Id == vm.FolderId.Value && f.ProjectId == vm.ProjectId);
+
+                if (folder == null)
+                {
+                    ModelState.AddModelError("FolderId", "پوشه یافت نشد یا متعلق به این پروژه نیست.");
+                    var project = await _context.Projects.FindAsync(vm.ProjectId);
+                    ViewBag.ProjectName = project?.Name;
+                    ViewBag.Folders = await GetFoldersSelectListAsync(vm.ProjectId, userId, vm.FolderId);
+                    return View(vm);
+                }
+            }
+
             var note = new ProjectNote
             {
                 Title = vm.Title,
                 Content = vm.Content,
                 ProjectId = vm.ProjectId,
+                FolderId = vm.FolderId,
                 CreatorUserId = userId!,
                 CreatedAt = DateTime.UtcNow
             };
@@ -188,6 +270,13 @@ namespace Endpoint.Site.Controllers
             }
 
             TempData["Success"] = "یادداشت با موفقیت ایجاد شد.";
+            
+            // اگر یادداشت در یک پوشه ایجاد شده، به همان پوشه redirect کن
+            if (vm.FolderId.HasValue)
+            {
+                return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId, folderId = vm.FolderId.Value });
+            }
+            
             return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId });
         }
 
@@ -224,8 +313,12 @@ namespace Endpoint.Site.Controllers
                 Id = note.Id,
                 Title = note.Title,
                 Content = note.Content,
-                ProjectId = note.ProjectId
+                ProjectId = note.ProjectId,
+                FolderId = note.FolderId
             };
+
+            // لیست پوشه‌های موجود برای انتخاب
+            ViewBag.Folders = await GetFoldersSelectListAsync(note.ProjectId, userId, note.FolderId);
 
             return View(vm);
         }
@@ -240,6 +333,7 @@ namespace Endpoint.Site.Controllers
                 ViewBag.ProjectName = project?.Name;
                 var existingNote = await _context.ProjectNotes.Include(n => n.Attachments).FirstOrDefaultAsync(n => n.Id == vm.Id);
                 ViewBag.ExistingAttachments = existingNote?.Attachments;
+                ViewBag.Folders = await GetFoldersSelectListAsync(vm.ProjectId, User.FindFirstValue(ClaimTypes.NameIdentifier), vm.FolderId);
                 return View(vm);
             }
 
@@ -260,8 +354,26 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
+            // بررسی اینکه اگر FolderId مشخص شده، متعلق به همین پروژه باشد
+            if (vm.FolderId.HasValue)
+            {
+                var folder = await _context.ProjectNoteFolders
+                    .FirstOrDefaultAsync(f => f.Id == vm.FolderId.Value && f.ProjectId == vm.ProjectId);
+
+                if (folder == null)
+                {
+                    ModelState.AddModelError("FolderId", "پوشه یافت نشد یا متعلق به این پروژه نیست.");
+                    ViewBag.ExistingAttachments = note.Attachments;
+                    ViewBag.Folders = await GetFoldersSelectListAsync(vm.ProjectId, userId, vm.FolderId);
+                    var project = await _context.Projects.FindAsync(vm.ProjectId);
+                    ViewBag.ProjectName = project?.Name;
+                    return View(vm);
+                }
+            }
+
             note.Title = vm.Title;
             note.Content = vm.Content;
+            note.FolderId = vm.FolderId;
             note.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -327,7 +439,64 @@ namespace Endpoint.Site.Controllers
             }
 
             TempData["Success"] = "یادداشت با موفقیت ویرایش شد.";
-            return RedirectToAction(nameof(Index), new { projectId = note.ProjectId });
+            return RedirectToAction(nameof(Index), new { projectId = note.ProjectId, folderId = note.FolderId });
+        }
+
+        // Helper: محاسبه تمام IDهای پوشه‌های موجود در درخت یک پوشه
+        private HashSet<int> GetFolderTreeIds(int folderId, List<ProjectNoteFolder> allFolders)
+        {
+            var result = new HashSet<int> { folderId };
+            var stack = new Stack<int>();
+            stack.Push(folderId);
+
+            while (stack.Count > 0)
+            {
+                var currentId = stack.Pop();
+                var children = allFolders
+                    .Where(f => f.ParentFolderId == currentId)
+                    .Select(f => f.Id);
+
+                foreach (var childId in children)
+                {
+                    if (result.Add(childId))
+                    {
+                        stack.Push(childId);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        // Helper: لیست پوشه‌ها برای SelectList
+        private async Task<List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>> GetFoldersSelectListAsync(int projectId, string userId, int? selectedFolderId = null)
+        {
+            var folders = await _context.ProjectNoteFolders
+                .Where(f => f.ProjectId == projectId)
+                .OrderBy(f => f.Name)
+                .ToListAsync();
+
+            var selectList = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>
+            {
+                new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem 
+                { 
+                    Text = "بدون پوشه", 
+                    Value = "", 
+                    Selected = !selectedFolderId.HasValue 
+                }
+            };
+
+            foreach (var folder in folders)
+            {
+                selectList.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                {
+                    Text = folder.Name,
+                    Value = folder.Id.ToString(),
+                    Selected = selectedFolderId.HasValue && folder.Id == selectedFolderId.Value
+                });
+            }
+
+            return selectList;
         }
 
         // 📌 حذف یادداشت

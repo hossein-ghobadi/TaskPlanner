@@ -28,15 +28,10 @@ namespace Endpoint.Site.Controllers
         [HttpGet]
         public async Task<IActionResult> Create(int? parentFolderId = null)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
             var vm = new PersonalNoteFolderCreateVm
             {
                 ParentFolderId = parentFolderId
             };
-
-            // لیست پوشه‌های موجود برای انتخاب به عنوان والد
-            ViewBag.Folders = await GetFoldersSelectListAsync(userId, parentFolderId);
 
             return View(vm);
         }
@@ -47,8 +42,6 @@ namespace Endpoint.Site.Controllers
         {
             if (!ModelState.IsValid)
             {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                ViewBag.Folders = await GetFoldersSelectListAsync(userId, vm.ParentFolderId);
                 return View(vm);
             }
 
@@ -202,34 +195,57 @@ namespace Endpoint.Site.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var folder = await _context.PersonalNoteFolders
-                .Include(f => f.Children)
-                .Include(f => f.Notes)
-                .FirstOrDefaultAsync(f => f.Id == id && f.UserId == userId);
+            // تمام پوشه‌های کاربر را می‌گیریم تا بتوانیم زیر درخت را محاسبه کنیم
+            var allFolders = await _context.PersonalNoteFolders
+                .Where(f => f.UserId == userId)
+                .ToListAsync();
 
-            if (folder == null)
+            var rootFolder = allFolders.FirstOrDefault(f => f.Id == id);
+            if (rootFolder == null)
             {
                 TempData["Error"] = "پوشه یافت نشد یا به آن دسترسی ندارید.";
                 return RedirectToAction("Index", "PersonalNotes");
             }
 
-            // اگر پوشه دارای پوشه‌های فرزند است، نمی‌توان حذف کرد
-            if (folder.Children.Any())
+            // محاسبه تمام پوشه‌های درخت (پوشه و تمام زیرپوشه‌ها)
+            var folderIdsToDelete = new HashSet<int>();
+            var stack = new Stack<int>();
+            stack.Push(rootFolder.Id);
+            folderIdsToDelete.Add(rootFolder.Id);
+
+            while (stack.Count > 0)
             {
-                TempData["Error"] = "نمی‌توانید پوشه‌ای که دارای پوشه‌های زیرمجموعه است را حذف کنید. ابتدا پوشه‌های زیرمجموعه را حذف کنید.";
-                return RedirectToAction("Index", "PersonalNotes");
+                var currentId = stack.Pop();
+                var children = allFolders
+                    .Where(f => f.ParentFolderId == currentId)
+                    .Select(f => f.Id);
+
+                foreach (var childId in children)
+                {
+                    if (folderIdsToDelete.Add(childId))
+                    {
+                        stack.Push(childId);
+                    }
+                }
             }
 
-            // یادداشت‌های موجود در پوشه را بدون پوشه می‌کنیم (FolderId = null)
-            foreach (var note in folder.Notes)
+            // تمام یادداشت‌های موجود در این پوشه‌ها را بدون پوشه می‌کنیم
+            var notesInTree = await _context.PersonalNotes
+                .Where(n => n.UserId == userId && n.FolderId.HasValue && folderIdsToDelete.Contains(n.FolderId.Value))
+                .ToListAsync();
+
+            foreach (var note in notesInTree)
             {
                 note.FolderId = null;
             }
 
-            _context.PersonalNoteFolders.Remove(folder);
+            // تمام پوشه‌های این درخت را حذف می‌کنیم
+            var foldersToDelete = allFolders.Where(f => folderIdsToDelete.Contains(f.Id)).ToList();
+            _context.PersonalNoteFolders.RemoveRange(foldersToDelete);
+
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "پوشه با موفقیت حذف شد.";
+            TempData["Success"] = "پوشه و تمام زیرپوشه‌های آن با موفقیت حذف شدند و یادداشت‌هایشان بدون پوشه شدند.";
             return RedirectToAction("Index", "PersonalNotes");
         }
 

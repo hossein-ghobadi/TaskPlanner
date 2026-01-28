@@ -2,6 +2,7 @@
 @model PersonalNoteCreateVm
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    var initialFolderId = Model.FolderId;
 }
 
 <div class="create-note-container">
@@ -61,8 +62,8 @@
                             پین کردن
                         </span>
                     </label>
-                </div>
-            </div>
+    </div>
+    </div>
 
             <!-- Folder Selection -->
             <div class="form-group mt-3">
@@ -70,15 +71,7 @@
                     <i class="bi bi-folder"></i>
                     پوشه (اختیاری)
                 </label>
-                <select asp-for="FolderId" class="form-select">
-                    @if (ViewBag.Folders != null)
-                    {
-                        @foreach (var folder in ViewBag.Folders as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)
-                        {
-                            <option value="@folder.Value">@folder.Text</option>
-                        }
-                    }
-                </select>
+                <select asp-for="FolderId" asp-items="ViewBag.Folders" class="form-select"></select>
                 <small class="form-text text-muted">می‌توانید یادداشت را در یک پوشه قرار دهید</small>
                 <span asp-validation-for="FolderId" class="text-danger"></span>
             </div>

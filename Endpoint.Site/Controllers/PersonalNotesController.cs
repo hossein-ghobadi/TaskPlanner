@@ -47,13 +47,27 @@ namespace Endpoint.Site.Controllers
                 ViewBag.CurrentFolder = folder;
             }
 
-            // دریافت پوشه‌ها و یادداشت‌ها
-            var folders = await _context.PersonalNoteFolders
-                .Include(f => f.Children)
-                .Include(f => f.Notes)
-                .Where(f => f.UserId == userId && f.ParentFolderId == folderId)
-                .OrderBy(f => f.Name)
+            // دریافت تمام پوشه‌های کاربر برای محاسبه تعداد یادداشت‌ها
+            var allFolders = await _context.PersonalNoteFolders
+                .Where(f => f.UserId == userId)
                 .ToListAsync();
+
+            // دریافت پوشه‌های سطح اول
+            var folders = allFolders
+                .Where(f => f.ParentFolderId == folderId)
+                .OrderBy(f => f.Name)
+                .ToList();
+
+            // محاسبه تعداد کل یادداشت‌ها برای هر پوشه (شامل زیرپوشه‌ها)
+            var folderNotesCount = new Dictionary<int, int>();
+            foreach (var folder in allFolders)
+            {
+                var folderIdsInTree = GetFolderTreeIds(folder.Id, allFolders);
+                var totalNotes = await _context.PersonalNotes
+                    .Where(n => n.UserId == userId && n.FolderId.HasValue && folderIdsInTree.Contains(n.FolderId.Value))
+                    .CountAsync();
+                folderNotesCount[folder.Id] = totalNotes;
+            }
 
             var notes = await _context.PersonalNotes
                 .Include(n => n.Attachments)
@@ -65,6 +79,7 @@ namespace Endpoint.Site.Controllers
 
             ViewBag.Folders = folders;
             ViewBag.FolderId = folderId;
+            ViewBag.FolderNotesCount = folderNotesCount;
 
             return View(notes);
         }
@@ -122,12 +137,13 @@ namespace Endpoint.Site.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(PersonalNoteCreateVm vm)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
             if (!ModelState.IsValid)
             {
+                ViewBag.Folders = await GetFoldersSelectListAsync(userId, vm.FolderId);
                 return View(vm);
             }
-
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             // بررسی اینکه اگر FolderId مشخص شده، متعلق به کاربر باشد
             if (vm.FolderId.HasValue)
@@ -201,6 +217,13 @@ namespace Endpoint.Site.Controllers
             }
 
             TempData["Success"] = "یادداشت شخصی با موفقیت ایجاد شد.";
+            
+            // اگر یادداشت در یک پوشه ایجاد شده، به همان پوشه redirect کن
+            if (vm.FolderId.HasValue)
+            {
+                return RedirectToAction(nameof(Index), new { folderId = vm.FolderId.Value });
+            }
+            
             return RedirectToAction(nameof(Index));
         }
 
@@ -346,6 +369,32 @@ namespace Endpoint.Site.Controllers
 
             TempData["Success"] = "یادداشت شخصی با موفقیت ویرایش شد.";
             return RedirectToAction(nameof(Index), new { folderId = note.FolderId });
+        }
+
+        // Helper: محاسبه تمام IDهای پوشه‌های موجود در درخت یک پوشه
+        private HashSet<int> GetFolderTreeIds(int folderId, List<PersonalNoteFolder> allFolders)
+        {
+            var result = new HashSet<int> { folderId };
+            var stack = new Stack<int>();
+            stack.Push(folderId);
+
+            while (stack.Count > 0)
+            {
+                var currentId = stack.Pop();
+                var children = allFolders
+                    .Where(f => f.ParentFolderId == currentId)
+                    .Select(f => f.Id);
+
+                foreach (var childId in children)
+                {
+                    if (result.Add(childId))
+                    {
+                        stack.Push(childId);
+                    }
+                }
+            }
+
+            return result;
         }
 
         // Helper: لیست پوشه‌ها برای SelectList

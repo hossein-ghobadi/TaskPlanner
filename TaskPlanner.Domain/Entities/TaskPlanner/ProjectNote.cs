@@ -23,6 +23,10 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
 
+        // پوشه (اختیاری)
+        public int? FolderId { get; set; }
+        public ProjectNoteFolder? Folder { get; set; }
+
         // فایل‌های پیوست
         public ICollection<ProjectNoteAttachment> Attachments { get; set; } = new List<ProjectNoteAttachment>();
     }

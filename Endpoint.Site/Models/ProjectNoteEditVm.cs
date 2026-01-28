@@ -15,6 +15,9 @@ namespace Endpoint.Site.Models
 
         public int ProjectId { get; set; }
 
+        // پوشه (اختیاری)
+        public int? FolderId { get; set; }
+
         // فایل‌های پیوست جدید
         public List<IFormFile>? NewAttachments { get; set; }
         

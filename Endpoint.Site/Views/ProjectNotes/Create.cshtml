@@ -46,6 +46,17 @@
                 <span asp-validation-for="Content" class="text-danger"></span>
             </div>
 
+            <!-- Folder Selection -->
+            <div class="form-group mt-3">
+                <label class="form-label">
+                    <i class="bi bi-folder"></i>
+                    پوشه (اختیاری)
+                </label>
+                <select asp-for="FolderId" asp-items="ViewBag.Folders" class="form-select"></select>
+                <small class="form-text text-muted">می‌توانید یادداشت را در یک پوشه قرار دهید</small>
+                <span asp-validation-for="FolderId" class="text-danger"></span>
+            </div>
+
             <!-- Attachments Section -->
             <div class="attachments-section">
                 <label class="attachment-label">

@@ -1,30 +1,137 @@
 @model IEnumerable<ProjectNote>
 @using System.Globalization
+@using TaskPlanner.Domain.Entities.TaskPlanner
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
 }
 
-<div class="social-feed-container">
-    <!-- Header Section -->
-    <div class="feed-header">
-        <div class="header-content">
-            <h1 class="feed-title">
-                <i class="bi bi-journal-text"></i>
-                یادداشت‌های پروژه: @ViewBag.ProjectName
-            </h1>
-            <p class="feed-subtitle">یادداشت‌ها و نکات مربوط به این پروژه</p>
-        </div>
-        <div class="header-actions">
-            <a class="btn-create-note" href="/ProjectNotes/Create?projectId=@ViewBag.ProjectId">
+@{
+    var folders = ViewBag.Folders as List<ProjectNoteFolder> ?? new List<ProjectNoteFolder>();
+    var currentFolder = ViewBag.CurrentFolder as ProjectNoteFolder;
+    var folderId = ViewBag.FolderId as int?;
+    var projectId = ViewBag.ProjectId as int?;
+    var folderNotesCount = ViewBag.FolderNotesCount as Dictionary<int, int> ?? new Dictionary<int, int>();
+}
+
+<div class="notes-container-wrapper">
+    <!-- Sidebar for Folders -->
+    <div class="folders-sidebar">
+        <div class="sidebar-header">
+            <h3>
+                <i class="bi bi-folder-fill"></i>
+                پوشه‌ها
+            </h3>
+            <a asp-action="Create" asp-controller="ProjectNoteFolders" asp-route-projectId="@projectId" class="btn-add-folder" title="ایجاد پوشه جدید">
                 <i class="bi bi-plus-lg"></i>
-                <span>یادداشت جدید</span>
             </a>
-            <a class="btn-back-project" href="/Projects/Details/@ViewBag.ProjectId">
-                <i class="bi bi-arrow-right"></i>
-                <span>بازگشت به پروژه</span>
+        </div>
+        
+        <div class="folders-list">
+            <!-- Root Level - All Notes -->
+            <a href="/ProjectNotes/Index?projectId=@projectId" class="folder-item @(!folderId.HasValue ? "active" : "")">
+                <i class="bi bi-journal-text"></i>
+                <span>همه یادداشت‌ها</span>
             </a>
+
+            <!-- Folders Tree -->
+            @foreach (var folder in folders)
+            {
+                var isActive = folderId.HasValue && folder.Id == folderId.Value;
+                var folderColor = folder.Color ?? "#3b82f6";
+                
+                <div class="folder-item-wrapper">
+                    <div class="folder-item-with-actions">
+                        <a href="/ProjectNotes/Index?projectId=@projectId&folderId=@folder.Id" class="folder-item @(isActive ? "active" : "")" style="border-right: 3px solid @folderColor;">
+                            <i class="bi bi-folder@(isActive ? "-fill" : "")" style="color: @folderColor;"></i>
+                            <span>@folder.Name</span>
+                            <span class="folder-count">@(folderNotesCount.ContainsKey(folder.Id) ? folderNotesCount[folder.Id] : 0)</span>
+                        </a>
+                        <div class="folder-actions" onclick="event.stopPropagation();">
+                            <a href="/ProjectNoteFolders/Edit?id=@folder.Id" class="folder-action-btn" title="ویرایش پوشه">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="/ProjectNoteFolders/Delete?id=@folder.Id" class="folder-action-btn folder-action-danger" title="حذف پوشه">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    @if (folder.Children != null && folder.Children.Any())
+                    {
+                        <div class="folder-children">
+                            @foreach (var child in folder.Children.OrderBy(f => f.Name))
+                            {
+                                var childIsActive = folderId.HasValue && child.Id == folderId.Value;
+                                var childColor = child.Color ?? "#3b82f6";
+                                
+                                <div class="folder-item-wrapper">
+                                    <div class="folder-item-with-actions">
+                                        <a href="/ProjectNotes/Index?projectId=@projectId&folderId=@child.Id" class="folder-item @(childIsActive ? "active" : "")" style="border-right: 3px solid @childColor;">
+                                            <i class="bi bi-folder@(childIsActive ? "-fill" : "")" style="color: @childColor;"></i>
+                                            <span>@child.Name</span>
+                                            <span class="folder-count">@(folderNotesCount.ContainsKey(child.Id) ? folderNotesCount[child.Id] : 0)</span>
+                                        </a>
+                                        <div class="folder-actions" onclick="event.stopPropagation();">
+                                            <a href="/ProjectNoteFolders/Edit?id=@child.Id" class="folder-action-btn" title="ویرایش پوشه">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a href="/ProjectNoteFolders/Delete?id=@child.Id" class="folder-action-btn folder-action-danger" title="حذف پوشه">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
         </div>
     </div>
+
+    <!-- Main Content -->
+    <div class="social-feed-container">
+        <!-- Header Section -->
+        <div class="feed-header">
+            <div class="header-content">
+                <div class="breadcrumb-nav">
+                    @if (currentFolder != null)
+                    {
+                        <a href="/ProjectNotes/Index?projectId=@projectId" class="breadcrumb-item">
+                            <i class="bi bi-house"></i>
+                            همه یادداشت‌ها
+                        </a>
+                        <span class="breadcrumb-separator">/</span>
+                        <span class="breadcrumb-current">
+                            <i class="bi bi-folder-fill" style="color: @(currentFolder.Color ?? "#3b82f6");"></i>
+                            @currentFolder.Name
+                        </span>
+                    }
+                    else
+                    {
+                        <h1 class="feed-title">
+                            <i class="bi bi-journal-text"></i>
+                            یادداشت‌های پروژه: @ViewBag.ProjectName
+                        </h1>
+                    }
+                </div>
+                <p class="feed-subtitle">یادداشت‌ها و نکات مربوط به این پروژه</p>
+            </div>
+            <div class="header-actions">
+                <a class="btn-create-folder" asp-action="Create" asp-controller="ProjectNoteFolders" asp-route-projectId="@projectId" asp-route-parentFolderId="@folderId">
+                    <i class="bi bi-folder-plus"></i>
+                    <span>پوشه جدید</span>
+                </a>
+                <a class="btn-create-note" href="/ProjectNotes/Create?projectId=@projectId&folderId=@folderId">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>یادداشت جدید</span>
+                </a>
+                <a class="btn-back-project" href="/Projects/Details/@projectId">
+                    <i class="bi bi-arrow-right"></i>
+                    <span>بازگشت به پروژه</span>
+                </a>
+            </div>
+        </div>
 
     @if (TempData["Success"] != null)
     {
@@ -41,11 +148,11 @@
         </div>
     }
 
-@if (Model.Any())
-{
-    <!-- Social Media Feed -->
-    <div class="social-feed" id="socialFeedView">
-        @foreach (var note in Model.OrderByDescending(n => n.CreatedAt))
+        @if (Model.Any())
+        {
+            <!-- Social Media Feed -->
+            <div class="social-feed" id="socialFeedView">
+                @foreach (var note in Model.OrderByDescending(n => n.CreatedAt))
         {
             var noteColor = "#3b82f6";
             var timeAgo = GetTimeAgo(note.CreatedAt);
@@ -162,24 +269,26 @@
                         </a>
                     </div>
                 </div>
-            </article>
+                </article>
+            }
+        </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="bi bi-journal-x"></i>
+                </div>
+                <h3>هنوز یادداشتی برای این پروژه وجود ندارد</h3>
+                <p>با ایجاد اولین یادداشت خود شروع کنید</p>
+                <a href="/ProjectNotes/Create?projectId=@ViewBag.ProjectId" class="btn-create-note">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>ایجاد اولین یادداشت</span>
+                </a>
+            </div>
         }
     </div>
-}
-else
-{
-    <div class="empty-state">
-        <div class="empty-icon">
-            <i class="bi bi-journal-x"></i>
-        </div>
-        <h3>هنوز یادداشتی برای این پروژه وجود ندارد</h3>
-        <p>با ایجاد اولین یادداشت خود شروع کنید</p>
-        <a href="/ProjectNotes/Create?projectId=@ViewBag.ProjectId" class="btn-create-note">
-            <i class="bi bi-plus-lg"></i>
-            <span>ایجاد اولین یادداشت</span>
-        </a>
-    </div>
-}
+</div>
 
 @functions {
     public string GetTimeAgo(DateTime dateTime)
@@ -210,10 +319,228 @@ else
 }
 
 <style>
-    .social-feed-container {
-        max-width: 900px;
+    .notes-container-wrapper {
+        display: flex;
+        gap: 1.5rem;
+        max-width: 1400px;
         margin: 0 auto;
         padding: 2rem 1rem;
+    }
+
+    /* Folders Sidebar */
+    .folders-sidebar {
+        width: 280px;
+        flex-shrink: 0;
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        height: fit-content;
+        position: sticky;
+        top: 2rem;
+    }
+
+    .sidebar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .sidebar-header h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-add-folder {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f9fa;
+        border-radius: 8px;
+        color: #3b82f6;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-add-folder:hover {
+        background: #e9ecef;
+        color: #2563eb;
+        transform: scale(1.1);
+    }
+
+    .folders-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .folder-item-wrapper {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .folder-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        color: #4a5568;
+        transition: all 0.2s ease;
+        border-right: 3px solid transparent;
+    }
+
+    .folder-item:hover {
+        background: #f8f9fa;
+        color: #1a1a1a;
+        text-decoration: none;
+    }
+
+    .folder-item.active {
+        background: #e3f2fd;
+        color: #1976d2;
+        font-weight: 600;
+    }
+
+    .folder-item i {
+        font-size: 1.1rem;
+    }
+
+    .folder-item span:not(.folder-count) {
+        flex: 1;
+    }
+
+    .folder-count {
+        background: #e9ecef;
+        color: #6c757d;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .folder-item.active .folder-count {
+        background: #1976d2;
+        color: white;
+    }
+
+    .folder-children {
+        margin-right: 1.5rem;
+        margin-top: 0.25rem;
+        padding-right: 1rem;
+        border-right: 2px solid #e9ecef;
+    }
+
+    .folder-item-with-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.25rem;
+    }
+
+    .folder-actions {
+        display: flex;
+        gap: 0.15rem;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .folder-item-wrapper:hover .folder-actions {
+        opacity: 1;
+    }
+
+    .folder-action-btn {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        color: #6c757d;
+        transition: all 0.2s ease;
+    }
+
+    .folder-action-btn:hover {
+        background: #e9ecef;
+        color: #1a1a1a;
+    }
+
+    .folder-action-danger:hover {
+        background: #fee;
+        color: #dc3545;
+    }
+
+    .btn-create-folder {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: #f8f9fa;
+        color: #4a5568;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+
+    .btn-create-folder:hover {
+        background: #e9ecef;
+        color: #1a1a1a;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .breadcrumb-nav {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .breadcrumb-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #6c757d;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .breadcrumb-item:hover {
+        color: #3b82f6;
+        text-decoration: none;
+    }
+
+    .breadcrumb-separator {
+        color: #cbd5e0;
+    }
+
+    .breadcrumb-current {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #1a1a1a;
+        font-weight: 600;
+        font-size: 1.5rem;
+    }
+
+    .social-feed-container {
+        flex: 1;
+        min-width: 0;
     }
 
     /* Header Styles */
@@ -659,8 +986,18 @@ else
 
     /* Responsive */
     @@media (max-width: 768px) {
-        .social-feed-container {
+        .notes-container-wrapper {
+            flex-direction: column;
             padding: 1rem 0.5rem;
+        }
+
+        .folders-sidebar {
+            width: 100%;
+            position: static;
+        }
+
+        .social-feed-container {
+            padding: 0;
         }
 
         .feed-header {

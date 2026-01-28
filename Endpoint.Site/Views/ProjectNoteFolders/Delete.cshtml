@@ -1,4 +1,4 @@
-@model PersonalNoteFolder
+@model ProjectNoteFolder
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = "حذف پوشه";
@@ -27,6 +27,9 @@
                         </h5>
                         <hr />
                         <dl class="row">
+                            <dt class="col-sm-4">پروژه:</dt>
+                            <dd class="col-sm-8">@Model.Project?.Name</dd>
+
                             <dt class="col-sm-4">تاریخ ایجاد:</dt>
                             <dd class="col-sm-8">@Model.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</dd>
 
@@ -86,7 +89,7 @@
                         <input type="hidden" asp-for="Id" />
 
                         <div class="d-flex justify-content-between">
-                            <a asp-action="Index" asp-controller="PersonalNotes" class="btn btn-secondary">
+                            <a asp-action="Index" asp-controller="ProjectNotes" asp-route-projectId="@Model.ProjectId" class="btn btn-secondary">
                                 <i class="bi bi-arrow-right"></i>
                                 انصراف
                             </a>
