@@ -30,6 +30,11 @@
     }
 
     <form asp-action="Create" method="post" enctype="multipart/form-data" class="create-form">
+        <!-- حفظ folderId اولیه برای زمانی که کاربر select را تغییر نمی‌دهد -->
+        @if (Model.FolderId.HasValue)
+        {
+            <input type="hidden" name="InitialFolderId" id="initialFolderId" value="@Model.FolderId.Value" />
+        }
         <!-- Main Content Card -->
         <div class="create-card">
             <!-- Title Section -->
@@ -71,7 +76,8 @@
                     <i class="bi bi-folder"></i>
                     پوشه (اختیاری)
                 </label>
-                <select asp-for="FolderId" asp-items="ViewBag.Folders" class="form-select"></select>
+                <select asp-for="FolderId" asp-items="ViewBag.Folders" class="form-select" id="folderSelect">
+                </select>
                 <small class="form-text text-muted">می‌توانید یادداشت را در یک پوشه قرار دهید</small>
                 <span asp-validation-for="FolderId" class="text-danger"></span>
             </div>
@@ -853,6 +859,46 @@
             
             console.log('📎 Total files:', selectedFiles.length);
         }
+
+        // تنظیم مقدار اولیه select از Model
+        document.addEventListener('DOMContentLoaded', function() {
+            const folderSelect = document.getElementById('folderSelect');
+            const initialFolderId = @(Model.FolderId.HasValue ? Model.FolderId.Value.ToString() : "null");
+            
+            if (folderSelect && initialFolderId !== null) {
+                // تنظیم مقدار select به folderId اولیه
+                folderSelect.value = initialFolderId.toString();
+                console.log('📁 FolderId تنظیم شد:', initialFolderId);
+            }
+        });
+
+        // اطمینان از اینکه select مقدار صحیح را می‌فرستد
+        document.querySelector('.create-form').addEventListener('submit', function(e) {
+            const folderSelect = document.getElementById('folderSelect');
+            const initialFolderId = document.getElementById('initialFolderId');
+            
+            console.log('📤 Submit - FolderId از select:', folderSelect ? folderSelect.value : 'null');
+            console.log('📤 Submit - InitialFolderId:', initialFolderId ? initialFolderId.value : 'null');
+            
+            if (folderSelect) {
+                // اگر مقدار خالی است، مطمئن شو که value="" است
+                if (folderSelect.value === '' || folderSelect.value === '0' || !folderSelect.value) {
+                    folderSelect.value = '';
+                    // اگر initialFolderId وجود دارد و select خالی است، مقدار را از initialFolderId بگیر
+                    if (initialFolderId && initialFolderId.value) {
+                        // مقدار را در یک input hidden دیگر ذخیره کن تا Controller بتواند آن را بخواند
+                        const hiddenFolderId = document.createElement('input');
+                        hiddenFolderId.type = 'hidden';
+                        hiddenFolderId.name = 'FolderId';
+                        hiddenFolderId.value = initialFolderId.value;
+                        this.appendChild(hiddenFolderId);
+                        console.log('✅ FolderId از InitialFolderId تنظیم شد:', initialFolderId.value);
+                    }
+                } else {
+                    console.log('✅ FolderId از select استفاده می‌شود:', folderSelect.value);
+                }
+            }
+        });
     </script>
 }
 

@@ -1,0 +1,76 @@
+@model ProjectImageGalleryFolder
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "حذف پوشه";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        حذف پوشه
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        آیا مطمئن هستید که می‌خواهید این پوشه را حذف کنید؟
+                        @if (Model.Children != null && Model.Children.Any())
+                        {
+                            <strong>تمام زیرپوشه‌ها نیز حذف خواهند شد.</strong>
+                        }
+                        @if (Model.Images != null && Model.Images.Any())
+                        {
+                            <strong>عکس‌های موجود در این پوشه بدون پوشه خواهند ماند.</strong>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">نام پوشه:</label>
+                        <p>@Model.Name</p>
+                    </div>
+
+                    @if (Model.Children != null && Model.Children.Any())
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">زیرپوشه‌ها:</label>
+                            <ul>
+                                @foreach (var child in Model.Children)
+                                {
+                                    <li>@child.Name</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    @if (Model.Images != null && Model.Images.Any())
+                    {
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">تعداد عکس‌ها:</label>
+                            <p>@Model.Images.Count</p>
+                        </div>
+                    }
+
+                    <form asp-action="Delete" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <div class="d-flex justify-content-between mt-4">
+                            <a asp-action="Index" asp-controller="ProjectImageGalleries" asp-route-projectId="@Model.ProjectId" class="btn btn-secondary">
+                                <i class="bi bi-arrow-right"></i>
+                                انصراف
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i>
+                                حذف پوشه
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,581 @@
+@model IEnumerable<ProjectImageGallery>
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+@{
+    var folders = ViewBag.Folders as List<ProjectImageGalleryFolder> ?? new List<ProjectImageGalleryFolder>();
+    var currentFolder = ViewBag.CurrentFolder as ProjectImageGalleryFolder;
+    var folderId = ViewBag.FolderId as int?;
+    var projectId = ViewBag.ProjectId as int?;
+    var folderImagesCount = ViewBag.FolderImagesCount as Dictionary<int, int> ?? new Dictionary<int, int>();
+}
+
+<div class="gallery-container-wrapper">
+    <!-- Sidebar for Folders -->
+    <div class="folders-sidebar">
+        <div class="sidebar-header">
+            <h3>
+                <i class="bi bi-folder-fill"></i>
+                پوشه‌ها
+            </h3>
+            <a asp-action="Create" asp-controller="ProjectImageGalleryFolders" asp-route-projectId="@projectId" class="btn-add-folder" title="ایجاد پوشه جدید">
+                <i class="bi bi-plus-lg"></i>
+            </a>
+        </div>
+        
+        <div class="folders-list">
+            <!-- Root Level - All Images -->
+            <a href="/ProjectImageGalleries/Index?projectId=@projectId" class="folder-item @(!folderId.HasValue ? "active" : "")">
+                <i class="bi bi-images"></i>
+                <span>همه عکس‌ها</span>
+            </a>
+
+            <!-- Folders Tree -->
+            @foreach (var folder in folders)
+            {
+                var isActive = folderId.HasValue && folder.Id == folderId.Value;
+                var folderColor = folder.Color ?? "#3b82f6";
+                
+                <div class="folder-item-wrapper">
+                    <div class="folder-item-with-actions">
+                        <a href="/ProjectImageGalleries/Index?projectId=@projectId&folderId=@folder.Id" class="folder-item @(isActive ? "active" : "")" style="border-right: 3px solid @folderColor;">
+                            <i class="bi bi-folder@(isActive ? "-fill" : "")" style="color: @folderColor;"></i>
+                            <span>@folder.Name</span>
+                            <span class="folder-count">@(folderImagesCount.ContainsKey(folder.Id) ? folderImagesCount[folder.Id] : 0)</span>
+                        </a>
+                        <div class="folder-actions" onclick="event.stopPropagation();">
+                            <a href="/ProjectImageGalleryFolders/Edit?id=@folder.Id" class="folder-action-btn" title="ویرایش پوشه">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="/ProjectImageGalleryFolders/Delete?id=@folder.Id" class="folder-action-btn folder-action-danger" title="حذف پوشه">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="gallery-content">
+        <!-- Header Section -->
+        <div class="gallery-header">
+            <div class="header-content">
+                <div class="breadcrumb-nav">
+                    @if (currentFolder != null)
+                    {
+                        <a href="/ProjectImageGalleries/Index?projectId=@projectId" class="breadcrumb-item">
+                            <i class="bi bi-house"></i>
+                            همه عکس‌ها
+                        </a>
+                        <span class="breadcrumb-separator">/</span>
+                        <span class="breadcrumb-current">
+                            <i class="bi bi-folder-fill" style="color: @(currentFolder.Color ?? "#3b82f6");"></i>
+                            @currentFolder.Name
+                        </span>
+                    }
+                    else
+                    {
+                        <h1 class="gallery-title">
+                            <i class="bi bi-images"></i>
+                            گالری عکس پروژه: @ViewBag.ProjectName
+                        </h1>
+                    }
+                </div>
+                <p class="gallery-subtitle">عکس‌ها و تصاویر مربوط به این پروژه</p>
+            </div>
+            <div class="header-actions">
+                <a class="btn-create-folder" asp-action="Create" asp-controller="ProjectImageGalleryFolders" asp-route-projectId="@projectId" asp-route-parentFolderId="@folderId">
+                    <i class="bi bi-folder-plus"></i>
+                    <span>پوشه جدید</span>
+                </a>
+                <a class="btn-create-image" href="/ProjectImageGalleries/Create?projectId=@projectId&folderId=@folderId">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>افزودن عکس</span>
+                </a>
+                <a class="btn-back-project" href="/Projects/Details/@projectId">
+                    <i class="bi bi-arrow-right"></i>
+                    <span>بازگشت به پروژه</span>
+                </a>
+            </div>
+        </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-gallery" role="alert">
+            <i class="bi bi-check-circle-fill"></i>
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-gallery" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            @TempData["Error"]
+        </div>
+    }
+
+        @if (Model.Any())
+        {
+            <!-- Image Gallery Grid -->
+            <div class="image-gallery-grid">
+                @foreach (var image in Model.OrderByDescending(img => img.CreatedAt))
+                {
+                    <div class="gallery-item" onclick="window.location.href='/ProjectImageGalleries/Details?id=@image.Id'">
+                        <div class="gallery-item-image">
+                            <img src="@image.FilePath" alt="@image.Title" loading="lazy" />
+                            <div class="gallery-item-overlay">
+                                <div class="gallery-item-title">@image.Title</div>
+                                @if (!string.IsNullOrEmpty(image.Description))
+                                {
+                                    <div class="gallery-item-description">@image.Description</div>
+                                }
+                            </div>
+                        </div>
+                        <div class="gallery-item-actions" onclick="event.stopPropagation();">
+                            <a href="/ProjectImageGalleries/Edit?id=@image.Id" class="gallery-action-btn" title="ویرایش">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="/ProjectImageGalleries/Delete?id=@image.Id" class="gallery-action-btn gallery-action-danger" title="حذف">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="bi bi-image"></i>
+                </div>
+                <h3>هنوز عکسی در این گالری وجود ندارد</h3>
+                <p>با افزودن اولین عکس خود شروع کنید</p>
+                <a href="/ProjectImageGalleries/Create?projectId=@ViewBag.ProjectId" class="btn-create-image">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>افزودن اولین عکس</span>
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .gallery-container-wrapper {
+        display: flex;
+        gap: 1.5rem;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    .folders-sidebar {
+        width: 280px;
+        flex-shrink: 0;
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        height: fit-content;
+        position: sticky;
+        top: 2rem;
+    }
+
+    .sidebar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .sidebar-header h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-add-folder {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f9fa;
+        border-radius: 8px;
+        color: #3b82f6;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-add-folder:hover {
+        background: #e9ecef;
+        color: #2563eb;
+        transform: scale(1.1);
+    }
+
+    .folders-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .folder-item-wrapper {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .folder-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        color: #4a5568;
+        transition: all 0.2s ease;
+        border-right: 3px solid transparent;
+    }
+
+    .folder-item:hover {
+        background: #f8f9fa;
+        color: #1a1a1a;
+        text-decoration: none;
+    }
+
+    .folder-item.active {
+        background: #e3f2fd;
+        color: #1976d2;
+        font-weight: 600;
+    }
+
+    .folder-count {
+        background: #e9ecef;
+        color: #6c757d;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .folder-item.active .folder-count {
+        background: #1976d2;
+        color: white;
+    }
+
+    .folder-item-with-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.25rem;
+    }
+
+    .folder-actions {
+        display: flex;
+        gap: 0.15rem;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .folder-item-wrapper:hover .folder-actions {
+        opacity: 1;
+    }
+
+    .folder-action-btn {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        color: #6c757d;
+        transition: all 0.2s ease;
+    }
+
+    .folder-action-btn:hover {
+        background: #e9ecef;
+        color: #1a1a1a;
+    }
+
+    .folder-action-danger:hover {
+        background: #fee;
+        color: #dc3545;
+    }
+
+    .gallery-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .gallery-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .gallery-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0 0 0.5rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .gallery-subtitle {
+        color: #6c757d;
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .btn-create-image {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-create-image:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        color: white;
+    }
+
+    .btn-create-folder {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: #f8f9fa;
+        color: #4a5568;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+
+    .btn-create-folder:hover {
+        background: #e9ecef;
+        color: #1a1a1a;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-back-project {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: #f8f9fa;
+        color: #4a5568;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-back-project:hover {
+        background: #e9ecef;
+        color: #1a1a1a;
+        border-color: #dee2e6;
+    }
+
+    .image-gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .gallery-item {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .gallery-item:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .gallery-item-image {
+        position: relative;
+        width: 100%;
+        padding-top: 100%;
+        overflow: hidden;
+        background: #f8f9fa;
+    }
+
+    .gallery-item-image img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .gallery-item-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+        color: white;
+        padding: 1rem;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .gallery-item:hover .gallery-item-overlay {
+        opacity: 1;
+    }
+
+    .gallery-item-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .gallery-item-description {
+        font-size: 0.85rem;
+        opacity: 0.9;
+    }
+
+    .gallery-item-actions {
+        position: absolute;
+        top: 0.5rem;
+        left: 0.5rem;
+        display: flex;
+        gap: 0.5rem;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .gallery-item:hover .gallery-item-actions {
+        opacity: 1;
+    }
+
+    .gallery-action-btn {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 8px;
+        color: #4a5568;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .gallery-action-btn:hover {
+        background: white;
+        color: #1a1a1a;
+        transform: scale(1.1);
+    }
+
+    .gallery-action-danger:hover {
+        background: #fee;
+        color: #dc3545;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        color: #cbd5e0;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state h3 {
+        font-size: 1.5rem;
+        color: #1a1a1a;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+        color: #6c757d;
+        margin-bottom: 2rem;
+    }
+
+    .alert-gallery {
+        border-radius: 12px;
+        border: none;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 500;
+    }
+
+    @@media (max-width: 768px) {
+        .gallery-container-wrapper {
+            flex-direction: column;
+            padding: 1rem 0.5rem;
+        }
+
+        .folders-sidebar {
+            width: 100%;
+            position: static;
+        }
+
+        .gallery-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .header-actions {
+            width: 100%;
+            flex-direction: column;
+        }
+
+        .image-gallery-grid {
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+    }
+</style>
+

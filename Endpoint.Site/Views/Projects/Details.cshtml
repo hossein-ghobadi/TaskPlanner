@@ -416,7 +416,7 @@
 </div>
 
 <!-- لینک‌های دسترسی سریع -->
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 mb-4">
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-5 g-4 mb-4">
     <!-- لیست کارها -->
     <div class="col">
         <a asp-controller="Tasks" asp-action="Index" asp-route-projectId="@Model.Id" class="text-decoration-none">
@@ -485,6 +485,33 @@
                         else
                         {
                             <text>مدیریت یادداشت‌ها</text>
+                        }
+                    </p>
+                </div>
+            </div>
+        </a>
+    </div>
+    
+    <!-- گالری عکس -->
+    <div class="col">
+        <a href="/ProjectImageGalleries/Index?projectId=@Model.Id" class="text-decoration-none">
+            <div class="card-modern h-100 text-center" style="cursor: pointer;">
+                <div class="card-body-modern py-5">
+                    <div class="mb-3">
+                        <i class="bi bi-images" style="font-size: 3.5rem; color: #3b82f6;"></i>
+                    </div>
+                    <h5 class="mb-2">گالری عکس</h5>
+                    <p class="text-muted mb-0 small">
+                        @{
+                            var imagesCount = ViewBag.ImagesCount as int? ?? 0;
+                        }
+                        @if (imagesCount > 0)
+                        {
+                            <text>@imagesCount عکس</text>
+                        }
+                        else
+                        {
+                            <text>مدیریت گالری عکس</text>
                         }
                     </p>
                 </div>

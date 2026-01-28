@@ -186,6 +186,13 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "PersonalNotes");
             }
 
+            // بررسی اینکه پوشه "زباله" قابل حذف نیست
+            if (IsTrashFolder(folder))
+            {
+                TempData["Error"] = "پوشه \"زباله\" قابل حذف نیست.";
+                return RedirectToAction("Index", "PersonalNotes");
+            }
+
             return View(folder);
         }
 
@@ -204,6 +211,13 @@ namespace Endpoint.Site.Controllers
             if (rootFolder == null)
             {
                 TempData["Error"] = "پوشه یافت نشد یا به آن دسترسی ندارید.";
+                return RedirectToAction("Index", "PersonalNotes");
+            }
+
+            // بررسی اینکه پوشه "زباله" قابل حذف نیست
+            if (IsTrashFolder(rootFolder))
+            {
+                TempData["Error"] = "پوشه \"زباله\" قابل حذف نیست.";
                 return RedirectToAction("Index", "PersonalNotes");
             }
 
@@ -229,23 +243,41 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
-            // تمام یادداشت‌های موجود در این پوشه‌ها را بدون پوشه می‌کنیم
+            // دریافت یا ایجاد پوشه "زباله"
+            var trashFolder = await GetOrCreateTrashFolderAsync(userId);
+
+            // تمام یادداشت‌های موجود در این پوشه‌ها (شامل پوشه اصلی و تمام زیرپوشه‌ها) را به پوشه "زباله" منتقل می‌کنیم
             var notesInTree = await _context.PersonalNotes
                 .Where(n => n.UserId == userId && n.FolderId.HasValue && folderIdsToDelete.Contains(n.FolderId.Value))
                 .ToListAsync();
 
+            var notesCount = notesInTree.Count;
             foreach (var note in notesInTree)
             {
-                note.FolderId = null;
+                note.FolderId = trashFolder.Id;
+                note.UpdatedAt = DateTime.UtcNow; // به‌روزرسانی تاریخ برای نشان دادن تغییر
             }
 
             // تمام پوشه‌های این درخت را حذف می‌کنیم
             var foldersToDelete = allFolders.Where(f => folderIdsToDelete.Contains(f.Id)).ToList();
+            var foldersCount = foldersToDelete.Count;
+            
             _context.PersonalNoteFolders.RemoveRange(foldersToDelete);
 
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "پوشه و تمام زیرپوشه‌های آن با موفقیت حذف شدند و یادداشت‌هایشان بدون پوشه شدند.";
+            // پیام موفقیت با جزئیات
+            var successMessage = $"پوشه و {foldersCount - 1} زیرپوشه با موفقیت حذف شدند";
+            if (notesCount > 0)
+            {
+                successMessage += $" و {notesCount} یادداشت به پوشه \"زباله\" منتقل شد.";
+            }
+            else
+            {
+                successMessage += ".";
+            }
+
+            TempData["Success"] = successMessage;
             return RedirectToAction("Index", "PersonalNotes");
         }
 
@@ -317,6 +349,38 @@ namespace Endpoint.Site.Controllers
             }
 
             return false;
+        }
+
+        // Helper: دریافت یا ایجاد پوشه "زباله"
+        private async Task<PersonalNoteFolder> GetOrCreateTrashFolderAsync(string userId)
+        {
+            const string trashFolderName = "زباله";
+            
+            var trashFolder = await _context.PersonalNoteFolders
+                .FirstOrDefaultAsync(f => f.UserId == userId && f.Name == trashFolderName);
+
+            if (trashFolder == null)
+            {
+                trashFolder = new PersonalNoteFolder
+                {
+                    Name = trashFolderName,
+                    UserId = userId,
+                    Color = "#6c757d", // رنگ خاکستری
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.PersonalNoteFolders.Add(trashFolder);
+                await _context.SaveChangesAsync();
+            }
+
+            return trashFolder;
+        }
+
+        // Helper: بررسی اینکه آیا پوشه "زباله" است
+        private bool IsTrashFolder(PersonalNoteFolder folder)
+        {
+            return folder.Name == "زباله";
         }
     }
 }

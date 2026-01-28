@@ -139,6 +139,58 @@ namespace Endpoint.Site.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+            // بررسی مستقیم Request.Form برای FolderId
+            // این کار برای حل مشکل Model Binding با select value="" است
+            if (Request.Form.ContainsKey("FolderId"))
+            {
+                var folderIdValue = Request.Form["FolderId"].ToString();
+                if (string.IsNullOrWhiteSpace(folderIdValue) || folderIdValue == "0")
+                {
+                    // اگر select خالی است، بررسی کن که آیا InitialFolderId وجود دارد
+                    // این برای زمانی است که کاربر از یک پوشه به Create آمده اما select را تغییر نداده
+                    if (Request.Form.ContainsKey("InitialFolderId"))
+                    {
+                        var initialFolderIdValue = Request.Form["InitialFolderId"].ToString();
+                        if (!string.IsNullOrWhiteSpace(initialFolderIdValue) && int.TryParse(initialFolderIdValue, out int initialFolderId))
+                        {
+                            vm.FolderId = initialFolderId;
+                        }
+                        else
+                        {
+                            vm.FolderId = null;
+                        }
+                    }
+                    else
+                    {
+                        vm.FolderId = null;
+                    }
+                }
+                else if (int.TryParse(folderIdValue, out int folderId))
+                {
+                    vm.FolderId = folderId;
+                }
+            }
+            else
+            {
+                // اگر FolderId اصلاً ارسال نشده، بررسی InitialFolderId
+                if (Request.Form.ContainsKey("InitialFolderId"))
+                {
+                    var initialFolderIdValue = Request.Form["InitialFolderId"].ToString();
+                    if (!string.IsNullOrWhiteSpace(initialFolderIdValue) && int.TryParse(initialFolderIdValue, out int initialFolderId))
+                    {
+                        vm.FolderId = initialFolderId;
+                    }
+                    else
+                    {
+                        vm.FolderId = null;
+                    }
+                }
+                else
+                {
+                    vm.FolderId = null;
+                }
+            }
+
             if (!ModelState.IsValid)
             {
                 ViewBag.Folders = await GetFoldersSelectListAsync(userId, vm.FolderId);
@@ -494,6 +546,78 @@ namespace Endpoint.Site.Controllers
             note.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
+        }
+
+        // 📌 جابجایی یادداشت به پوشه دیگر
+        [HttpGet]
+        public async Task<IActionResult> MoveToFolder(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var note = await _context.PersonalNotes
+                .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
+
+            if (note == null)
+            {
+                TempData["Error"] = "یادداشت یافت نشد یا به آن دسترسی ندارید.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var vm = new PersonalNoteMoveVm
+            {
+                NoteId = note.Id,
+                TargetFolderId = note.FolderId
+            };
+
+            // لیست پوشه‌های موجود برای انتخاب
+            ViewBag.Folders = await GetFoldersSelectListAsync(userId, note.FolderId);
+
+            return View(vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MoveToFolder(PersonalNoteMoveVm vm)
+        {
+            if (!ModelState.IsValid)
+            {
+                var userIdForView = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                ViewBag.Folders = await GetFoldersSelectListAsync(userIdForView, vm.TargetFolderId);
+                return View(vm);
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var noteToMove = await _context.PersonalNotes
+                .FirstOrDefaultAsync(n => n.Id == vm.NoteId && n.UserId == userId);
+
+            if (noteToMove == null)
+            {
+                TempData["Error"] = "یادداشت یافت نشد یا به آن دسترسی ندارید.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // بررسی اینکه اگر TargetFolderId مشخص شده، متعلق به کاربر باشد
+            if (vm.TargetFolderId.HasValue)
+            {
+                var folder = await _context.PersonalNoteFolders
+                    .FirstOrDefaultAsync(f => f.Id == vm.TargetFolderId.Value && f.UserId == userId);
+
+                if (folder == null)
+                {
+                    ModelState.AddModelError("TargetFolderId", "پوشه یافت نشد یا به آن دسترسی ندارید.");
+                    ViewBag.Folders = await GetFoldersSelectListAsync(userId, vm.TargetFolderId);
+                    return View(vm);
+                }
+            }
+
+            noteToMove.FolderId = vm.TargetFolderId;
+            noteToMove.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "یادداشت با موفقیت جابجا شد.";
+            return RedirectToAction(nameof(Index), new { folderId = noteToMove.FolderId });
         }
     }
 }

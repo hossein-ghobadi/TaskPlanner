@@ -174,6 +174,25 @@ namespace Endpoint.Site.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ProjectNoteCreateVm vm)
         {
+            // بررسی مستقیم Request.Form برای FolderId
+            // این کار برای حل مشکل Model Binding با select value="" است
+            if (Request.Form.ContainsKey("FolderId"))
+            {
+                var folderIdValue = Request.Form["FolderId"].ToString();
+                if (string.IsNullOrWhiteSpace(folderIdValue) || folderIdValue == "0")
+                {
+                    vm.FolderId = null;
+                }
+                else if (int.TryParse(folderIdValue, out int folderId))
+                {
+                    vm.FolderId = folderId;
+                }
+            }
+            else
+            {
+                vm.FolderId = null;
+            }
+
             if (!ModelState.IsValid)
             {
                 var project = await _context.Projects.FindAsync(vm.ProjectId);
@@ -592,6 +611,104 @@ namespace Endpoint.Site.Controllers
             await _context.SaveChangesAsync();
 
             return Ok();
+        }
+
+        // 📌 جابجایی یادداشت به پوشه دیگر
+        [HttpGet]
+        public async Task<IActionResult> MoveToFolder(int id)
+        {
+            var note = await _context.ProjectNotes
+                .Include(n => n.Project)
+                .FirstOrDefaultAsync(n => n.Id == id);
+
+            if (note == null)
+                return NotFound();
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // بررسی دسترسی
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == note.ProjectId && 
+                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+            if (!hasAccess)
+            {
+                TempData["Error"] = "شما به این یادداشت دسترسی ندارید.";
+                return RedirectToAction("Index", "Projects");
+            }
+
+            var vm = new ProjectNoteMoveVm
+            {
+                NoteId = note.Id,
+                ProjectId = note.ProjectId,
+                TargetFolderId = note.FolderId
+            };
+
+            // لیست پوشه‌های موجود برای انتخاب
+            ViewBag.Folders = await GetFoldersSelectListAsync(note.ProjectId, userId, note.FolderId);
+            ViewBag.ProjectName = note.Project?.Name;
+
+            return View(vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MoveToFolder(ProjectNoteMoveVm vm)
+        {
+            if (!ModelState.IsValid)
+            {
+                var note = await _context.ProjectNotes
+                    .Include(n => n.Project)
+                    .FirstOrDefaultAsync(n => n.Id == vm.NoteId);
+                
+                if (note != null)
+                {
+                    ViewBag.Folders = await GetFoldersSelectListAsync(vm.ProjectId, User.FindFirstValue(ClaimTypes.NameIdentifier), vm.TargetFolderId);
+                    ViewBag.ProjectName = note.Project?.Name;
+                }
+                return View(vm);
+            }
+
+            var noteToMove = await _context.ProjectNotes.FindAsync(vm.NoteId);
+            if (noteToMove == null)
+                return NotFound();
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // بررسی دسترسی
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == noteToMove.ProjectId && 
+                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+            if (!hasAccess)
+            {
+                TempData["Error"] = "شما به این یادداشت دسترسی ندارید.";
+                return RedirectToAction("Index", "Projects");
+            }
+
+            // بررسی اینکه اگر TargetFolderId مشخص شده، متعلق به همین پروژه باشد
+            if (vm.TargetFolderId.HasValue)
+            {
+                var folder = await _context.ProjectNoteFolders
+                    .FirstOrDefaultAsync(f => f.Id == vm.TargetFolderId.Value && f.ProjectId == vm.ProjectId);
+
+                if (folder == null)
+                {
+                    ModelState.AddModelError("TargetFolderId", "پوشه یافت نشد یا متعلق به این پروژه نیست.");
+                    ViewBag.Folders = await GetFoldersSelectListAsync(vm.ProjectId, userId, vm.TargetFolderId);
+                    var note = await _context.ProjectNotes.Include(n => n.Project).FirstOrDefaultAsync(n => n.Id == vm.NoteId);
+                    ViewBag.ProjectName = note?.Project?.Name;
+                    return View(vm);
+                }
+            }
+
+            noteToMove.FolderId = vm.TargetFolderId;
+            noteToMove.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "یادداشت با موفقیت جابجا شد.";
+            return RedirectToAction(nameof(Index), new { projectId = noteToMove.ProjectId, folderId = noteToMove.FolderId });
         }
     }
 }

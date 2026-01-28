@@ -52,7 +52,8 @@
                     <i class="bi bi-folder"></i>
                     پوشه (اختیاری)
                 </label>
-                <select asp-for="FolderId" asp-items="ViewBag.Folders" class="form-select"></select>
+                <select asp-for="FolderId" asp-items="ViewBag.Folders" class="form-select" id="folderSelect">
+                </select>
                 <small class="form-text text-muted">می‌توانید یادداشت را در یک پوشه قرار دهید</small>
                 <span asp-validation-for="FolderId" class="text-danger"></span>
             </div>
@@ -756,5 +757,27 @@
             
             console.log('📎 Total files:', selectedFiles.length);
         }
+
+        // تنظیم مقدار اولیه select از Model
+        document.addEventListener('DOMContentLoaded', function() {
+            const folderSelect = document.getElementById('folderSelect');
+            const initialFolderId = @(Model.FolderId.HasValue ? Model.FolderId.Value.ToString() : "null");
+            
+            if (folderSelect && initialFolderId !== null) {
+                // تنظیم مقدار select به folderId اولیه
+                folderSelect.value = initialFolderId.toString();
+            }
+        });
+
+        // اطمینان از اینکه select مقدار صحیح را می‌فرستد
+        document.querySelector('.create-form').addEventListener('submit', function(e) {
+            const folderSelect = document.getElementById('folderSelect');
+            if (folderSelect) {
+                // اگر مقدار خالی است، مطمئن شو که value="" است
+                if (folderSelect.value === '' || folderSelect.value === '0' || !folderSelect.value) {
+                    folderSelect.value = '';
+                }
+            }
+        });
     </script>
 }

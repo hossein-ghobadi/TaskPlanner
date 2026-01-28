@@ -13,18 +13,20 @@ namespace Endpoint.Site.Controllers
 {
     [Authorize]
     [Route("[controller]/[action]")]
-    public class ProjectNoteFoldersController : Controller
+    public class ProjectImageGalleryFoldersController : Controller
     {
         private readonly MVPTestDatabaseContext _context;
         private readonly UserManager<User> _userManager;
 
-        public ProjectNoteFoldersController(MVPTestDatabaseContext context, UserManager<User> userManager)
+        public ProjectImageGalleryFoldersController(MVPTestDatabaseContext context, UserManager<User> userManager)
         {
             _context = context;
             _userManager = userManager;
         }
 
-        // 📁 ایجاد پوشه جدید
+        /// <summary>
+        /// ایجاد پوشه جدید برای گالری عکس پروژه
+        /// </summary>
         [HttpGet]
         public async Task<IActionResult> Create(int projectId, int? parentFolderId = null)
         {
@@ -41,7 +43,7 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
-            var vm = new ProjectNoteFolderCreateVm
+            var vm = new ProjectImageGalleryFolderCreateVm
             {
                 ProjectId = projectId,
                 ParentFolderId = parentFolderId
@@ -54,7 +56,7 @@ namespace Endpoint.Site.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(ProjectNoteFolderCreateVm vm)
+        public async Task<IActionResult> Create(ProjectImageGalleryFolderCreateVm vm)
         {
             if (!ModelState.IsValid)
             {
@@ -78,7 +80,7 @@ namespace Endpoint.Site.Controllers
             // بررسی اینکه اگر ParentFolderId مشخص شده، متعلق به همان پروژه باشد
             if (vm.ParentFolderId.HasValue)
             {
-                var parentFolder = await _context.ProjectNoteFolders
+                var parentFolder = await _context.ProjectImageGalleryFolders
                     .FirstOrDefaultAsync(f => f.Id == vm.ParentFolderId.Value && f.ProjectId == vm.ProjectId);
 
                 if (parentFolder == null)
@@ -99,7 +101,7 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
-            var folder = new ProjectNoteFolder
+            var folder = new ProjectImageGalleryFolder
             {
                 Name = vm.Name,
                 ProjectId = vm.ProjectId,
@@ -109,20 +111,22 @@ namespace Endpoint.Site.Controllers
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.ProjectNoteFolders.Add(folder);
+            _context.ProjectImageGalleryFolders.Add(folder);
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "پوشه با موفقیت ایجاد شد.";
-            return RedirectToAction("Index", "ProjectNotes", new { projectId = vm.ProjectId });
+            return RedirectToAction("Index", "ProjectImageGalleries", new { projectId = vm.ProjectId });
         }
 
-        // 📁 ویرایش پوشه
+        /// <summary>
+        /// ویرایش پوشه گالری عکس
+        /// </summary>
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var folder = await _context.ProjectNoteFolders
+            var folder = await _context.ProjectImageGalleryFolders
                 .Include(f => f.Project)
                 .FirstOrDefaultAsync(f => f.Id == id);
 
@@ -143,7 +147,7 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
-            var vm = new ProjectNoteFolderEditVm
+            var vm = new ProjectImageGalleryFolderEditVm
             {
                 Id = folder.Id,
                 ProjectId = folder.ProjectId,
@@ -161,7 +165,7 @@ namespace Endpoint.Site.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(ProjectNoteFolderEditVm vm)
+        public async Task<IActionResult> Edit(ProjectImageGalleryFolderEditVm vm)
         {
             if (!ModelState.IsValid)
             {
@@ -173,7 +177,7 @@ namespace Endpoint.Site.Controllers
 
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var folder = await _context.ProjectNoteFolders
+            var folder = await _context.ProjectImageGalleryFolders
                 .FirstOrDefaultAsync(f => f.Id == vm.Id && f.ProjectId == vm.ProjectId);
 
             if (folder == null)
@@ -196,7 +200,7 @@ namespace Endpoint.Site.Controllers
             // بررسی اینکه اگر ParentFolderId تغییر کرده، متعلق به همان پروژه باشد
             if (vm.ParentFolderId.HasValue && vm.ParentFolderId != folder.ParentFolderId)
             {
-                var parentFolder = await _context.ProjectNoteFolders
+                var parentFolder = await _context.ProjectImageGalleryFolders
                     .FirstOrDefaultAsync(f => f.Id == vm.ParentFolderId.Value && f.ProjectId == vm.ProjectId);
 
                 if (parentFolder == null)
@@ -225,18 +229,20 @@ namespace Endpoint.Site.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "پوشه با موفقیت ویرایش شد.";
-            return RedirectToAction("Index", "ProjectNotes", new { projectId = vm.ProjectId });
+            return RedirectToAction("Index", "ProjectImageGalleries", new { projectId = vm.ProjectId });
         }
 
-        // 📁 حذف پوشه
+        /// <summary>
+        /// حذف پوشه گالری عکس
+        /// </summary>
         [HttpGet]
         public async Task<IActionResult> Delete(int id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var folder = await _context.ProjectNoteFolders
+            var folder = await _context.ProjectImageGalleryFolders
                 .Include(f => f.Children)
-                .Include(f => f.Notes)
+                .Include(f => f.Images)
                 .Include(f => f.Project)
                 .FirstOrDefaultAsync(f => f.Id == id);
 
@@ -257,13 +263,6 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
-            // بررسی اینکه پوشه "زباله" قابل حذف نیست
-            if (IsTrashFolder(folder))
-            {
-                TempData["Error"] = "پوشه \"زباله\" قابل حذف نیست.";
-                return RedirectToAction("Index", "ProjectNotes", new { projectId = folder.ProjectId });
-            }
-
             return View(folder);
         }
 
@@ -274,8 +273,8 @@ namespace Endpoint.Site.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             // تمام پوشه‌های این پروژه را می‌گیریم تا بتوانیم زیر درخت را محاسبه کنیم
-            var allFolders = await _context.ProjectNoteFolders
-                .Where(f => f.ProjectId == _context.ProjectNoteFolders
+            var allFolders = await _context.ProjectImageGalleryFolders
+                .Where(f => f.ProjectId == _context.ProjectImageGalleryFolders
                     .Where(x => x.Id == id)
                     .Select(x => x.ProjectId)
                     .FirstOrDefault())
@@ -301,13 +300,6 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
-            // بررسی اینکه پوشه "زباله" قابل حذف نیست
-            if (IsTrashFolder(rootFolder))
-            {
-                TempData["Error"] = "پوشه \"زباله\" قابل حذف نیست.";
-                return RedirectToAction("Index", "ProjectNotes", new { projectId });
-            }
-
             // محاسبه تمام پوشه‌های درخت (پوشه و تمام زیرپوشه‌ها)
             var folderIdsToDelete = new HashSet<int>();
             var stack = new Stack<int>();
@@ -330,47 +322,29 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
-            // دریافت یا ایجاد پوشه "زباله"
-            var trashFolder = await GetOrCreateTrashFolderAsync(projectId);
-
-            // تمام یادداشت‌های موجود در این پوشه‌ها (شامل پوشه اصلی و تمام زیرپوشه‌ها) را به پوشه "زباله" منتقل می‌کنیم
-            var notesInTree = await _context.ProjectNotes
-                .Where(n => n.ProjectId == projectId && n.FolderId.HasValue && folderIdsToDelete.Contains(n.FolderId.Value))
+            // تمام عکس‌های موجود در این پوشه‌ها را بدون پوشه می‌کنیم
+            var imagesInTree = await _context.ProjectImageGalleries
+                .Where(img => img.ProjectId == projectId && img.FolderId.HasValue && folderIdsToDelete.Contains(img.FolderId.Value))
                 .ToListAsync();
 
-            var notesCount = notesInTree.Count;
-            foreach (var note in notesInTree)
+            foreach (var image in imagesInTree)
             {
-                note.FolderId = trashFolder.Id;
-                note.UpdatedAt = DateTime.UtcNow; // به‌روزرسانی تاریخ برای نشان دادن تغییر
+                image.FolderId = null;
             }
 
             // تمام پوشه‌های این درخت را حذف می‌کنیم
             var foldersToDelete = allFolders.Where(f => folderIdsToDelete.Contains(f.Id)).ToList();
-            var foldersCount = foldersToDelete.Count;
-            
-            _context.ProjectNoteFolders.RemoveRange(foldersToDelete);
+            _context.ProjectImageGalleryFolders.RemoveRange(foldersToDelete);
             await _context.SaveChangesAsync();
 
-            // پیام موفقیت با جزئیات
-            var successMessage = $"پوشه و {foldersCount - 1} زیرپوشه با موفقیت حذف شدند";
-            if (notesCount > 0)
-            {
-                successMessage += $" و {notesCount} یادداشت به پوشه \"زباله\" منتقل شد.";
-            }
-            else
-            {
-                successMessage += ".";
-            }
-
-            TempData["Success"] = successMessage;
-            return RedirectToAction("Index", "ProjectNotes", new { projectId });
+            TempData["Success"] = "پوشه و تمام زیرپوشه‌های آن با موفقیت حذف شدند.";
+            return RedirectToAction("Index", "ProjectImageGalleries", new { projectId });
         }
 
         // Helper: لیست پوشه‌ها برای SelectList
         private async Task<List<SelectListItem>> GetFoldersSelectListAsync(int projectId, string userId, int? excludeParentId = null, int? excludeFolderId = null)
         {
-            var folders = await _context.ProjectNoteFolders
+            var folders = await _context.ProjectImageGalleryFolders
                 .Where(f => f.ProjectId == projectId)
                 .OrderBy(f => f.Name)
                 .ToListAsync();
@@ -406,7 +380,7 @@ namespace Endpoint.Site.Controllers
             if (!currentFolderId.HasValue)
                 return false;
 
-            var parentFolder = await _context.ProjectNoteFolders
+            var parentFolder = await _context.ProjectImageGalleryFolders
                 .FirstOrDefaultAsync(f => f.Id == parentFolderId && f.ProjectId == projectId);
 
             if (parentFolder == null)
@@ -425,7 +399,7 @@ namespace Endpoint.Site.Controllers
 
                 if (parentFolder.ParentFolderId.HasValue)
                 {
-                    parentFolder = await _context.ProjectNoteFolders
+                    parentFolder = await _context.ProjectImageGalleryFolders
                         .FirstOrDefaultAsync(f => f.Id == parentFolder.ParentFolderId.Value && f.ProjectId == projectId);
                 }
                 else
@@ -435,38 +409,6 @@ namespace Endpoint.Site.Controllers
             }
 
             return false;
-        }
-
-        // Helper: دریافت یا ایجاد پوشه "زباله"
-        private async Task<ProjectNoteFolder> GetOrCreateTrashFolderAsync(int projectId)
-        {
-            const string trashFolderName = "زباله";
-            
-            var trashFolder = await _context.ProjectNoteFolders
-                .FirstOrDefaultAsync(f => f.ProjectId == projectId && f.Name == trashFolderName);
-
-            if (trashFolder == null)
-            {
-                trashFolder = new ProjectNoteFolder
-                {
-                    Name = trashFolderName,
-                    ProjectId = projectId,
-                    Color = "#6c757d", // رنگ خاکستری
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
-                _context.ProjectNoteFolders.Add(trashFolder);
-                await _context.SaveChangesAsync();
-            }
-
-            return trashFolder;
-        }
-
-        // Helper: بررسی اینکه آیا پوشه "زباله" است
-        private bool IsTrashFolder(ProjectNoteFolder folder)
-        {
-            return folder.Name == "زباله";
         }
     }
 }

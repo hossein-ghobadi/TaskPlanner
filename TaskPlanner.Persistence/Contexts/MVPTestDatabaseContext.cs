@@ -32,6 +32,7 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<ProjectInvitation> ProjectInvitations { get; set; }
         public DbSet<ProjectNote> ProjectNotes { get; set; }
         public DbSet<ProjectNoteAttachment> ProjectNoteAttachments { get; set; }
+        public DbSet<ProjectNoteFolder> ProjectNoteFolders { get; set; }
         public DbSet<PersonalNote> PersonalNotes { get; set; }
         public DbSet<PersonalNoteAttachment> PersonalNoteAttachments { get; set; }
         public DbSet<PersonalNoteFolder> PersonalNoteFolders { get; set; }
@@ -52,6 +53,10 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<BoardTask> BoardTasks { get; set; }
         public DbSet<BoardTaskComment> BoardTaskComments { get; set; }
         public DbSet<BoardTaskCommentAttachment> BoardTaskCommentAttachments { get; set; }
+        
+        // Project Image Gallery entities
+        public DbSet<ProjectImageGallery> ProjectImageGalleries { get; set; }
+        public DbSet<ProjectImageGalleryFolder> ProjectImageGalleryFolders { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -148,6 +153,35 @@ namespace TaskPlanner.Persistence.Contexts
                 .WithMany(n => n.Attachments)
                 .HasForeignKey(a => a.ProjectNoteId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // رابطه ProjectNoteFolder با ParentFolder (تودرتو)
+            modelBuilder.Entity<ProjectNoteFolder>()
+                .HasOne(f => f.ParentFolder)
+                .WithMany(f => f.Children)
+                .HasForeignKey(f => f.ParentFolderId)
+                .OnDelete(DeleteBehavior.Restrict); // جلوگیری از حذف پوشه‌ای که پوشه‌های فرزند دارد
+
+            // رابطه ProjectNoteFolder با Project
+            modelBuilder.Entity<ProjectNoteFolder>()
+                .HasOne(f => f.Project)
+                .WithMany()
+                .HasForeignKey(f => f.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade); // با حذف پروژه، پوشه‌ها هم حذف می‌شوند
+
+            // رابطه ProjectNote با ProjectNoteFolder
+            modelBuilder.Entity<ProjectNote>()
+                .HasOne(n => n.Folder)
+                .WithMany(f => f.Notes)
+                .HasForeignKey(n => n.FolderId)
+                .OnDelete(DeleteBehavior.NoAction); // جلوگیری از cascade path - باید به صورت دستی مدیریت شود
+
+            // Index برای ProjectId در ProjectNoteFolder
+            modelBuilder.Entity<ProjectNoteFolder>()
+                .HasIndex(f => f.ProjectId);
+
+            // Index برای ParentFolderId در ProjectNoteFolder
+            modelBuilder.Entity<ProjectNoteFolder>()
+                .HasIndex(f => f.ParentFolderId);
 
             // رابطه PersonalNoteAttachment با PersonalNote
             modelBuilder.Entity<PersonalNoteAttachment>()
@@ -422,6 +456,51 @@ namespace TaskPlanner.Persistence.Contexts
             modelBuilder.Entity<BoardTaskCommentAttachment>()
                 .Property(a => a.MimeType)
                 .HasMaxLength(100);
+
+            // Project Image Gallery configurations
+            // رابطه ProjectImageGallery با Project
+            modelBuilder.Entity<ProjectImageGallery>()
+                .HasOne(img => img.Project)
+                .WithMany()
+                .HasForeignKey(img => img.ProjectId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // رابطه ProjectImageGalleryFolder با ParentFolder (تودرتو)
+            modelBuilder.Entity<ProjectImageGalleryFolder>()
+                .HasOne(f => f.ParentFolder)
+                .WithMany(f => f.Children)
+                .HasForeignKey(f => f.ParentFolderId)
+                .OnDelete(DeleteBehavior.Restrict); // جلوگیری از حذف پوشه‌ای که پوشه‌های فرزند دارد
+
+            // رابطه ProjectImageGalleryFolder با Project
+            modelBuilder.Entity<ProjectImageGalleryFolder>()
+                .HasOne(f => f.Project)
+                .WithMany()
+                .HasForeignKey(f => f.ProjectId)
+                .OnDelete(DeleteBehavior.NoAction); // جلوگیری از multiple cascade paths
+
+            // رابطه ProjectImageGallery با ProjectImageGalleryFolder
+            modelBuilder.Entity<ProjectImageGallery>()
+                .HasOne(img => img.Folder)
+                .WithMany(f => f.Images)
+                .HasForeignKey(img => img.FolderId)
+                .OnDelete(DeleteBehavior.SetNull); // اگر پوشه حذف شد، عکس‌ها بدون پوشه می‌مانند
+
+            // Index برای ProjectId در ProjectImageGalleryFolder
+            modelBuilder.Entity<ProjectImageGalleryFolder>()
+                .HasIndex(f => f.ProjectId);
+
+            // Index برای ParentFolderId در ProjectImageGalleryFolder
+            modelBuilder.Entity<ProjectImageGalleryFolder>()
+                .HasIndex(f => f.ParentFolderId);
+
+            // Index برای ProjectId در ProjectImageGallery
+            modelBuilder.Entity<ProjectImageGallery>()
+                .HasIndex(img => img.ProjectId);
+
+            // Index برای FolderId در ProjectImageGallery
+            modelBuilder.Entity<ProjectImageGallery>()
+                .HasIndex(img => img.FolderId);
         }
         public void MarkAsModified<T>(T entity) where T : class
         {

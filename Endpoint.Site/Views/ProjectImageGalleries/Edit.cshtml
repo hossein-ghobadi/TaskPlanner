@@ -1,0 +1,88 @@
+@model ProjectImageGalleryEditVm
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "ویرایش عکس";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-pencil"></i>
+                        ویرایش عکس
+                    </h4>
+                </div>
+                <div class="card-body">
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            @TempData["Error"]
+                        </div>
+                    }
+
+                    <form asp-action="Edit" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="Id" />
+                        <input type="hidden" asp-for="ProjectId" />
+
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Title" class="form-label">
+                                <i class="bi bi-type"></i>
+                                عنوان عکس <span class="text-danger">*</span>
+                            </label>
+                            <input asp-for="Title" class="form-control" />
+                            <span asp-validation-for="Title" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Description" class="form-label">
+                                <i class="bi bi-card-text"></i>
+                                توضیحات (اختیاری)
+                            </label>
+                            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="FolderId" class="form-label">
+                                <i class="bi bi-folder"></i>
+                                پوشه (اختیاری)
+                            </label>
+                            <select asp-for="FolderId" asp-items="ViewBag.Folders" class="form-select">
+                            </select>
+                            <span asp-validation-for="FolderId" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">عکس فعلی</label>
+                            <div class="current-image-preview">
+                                <img src="@Model.CurrentFilePath" alt="@Model.Title" class="img-thumbnail" style="max-width: 300px;" />
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a asp-action="Index" asp-controller="ProjectImageGalleries" asp-route-projectId="@Model.ProjectId" class="btn btn-secondary">
+                                <i class="bi bi-arrow-right"></i>
+                                انصراف
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i>
+                                ذخیره تغییرات
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+

@@ -449,6 +449,12 @@ namespace Endpoint.Site.Controllers
                     .CountAsync();
                 ViewBag.NotesCount = notesCount;
                 
+                // تعداد عکس‌های گالری پروژه
+                var imagesCount = await _context.ProjectImageGalleries
+                    .Where(img => img.ProjectId == id)
+                    .CountAsync();
+                ViewBag.ImagesCount = imagesCount;
+                
                 return View(vm);
             }
             catch (InvalidOperationException)
