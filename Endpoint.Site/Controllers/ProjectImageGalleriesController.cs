@@ -680,6 +680,8 @@ namespace Endpoint.Site.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RequestSizeLimit(250_000_000)]       // 250 MB - محدودیت پیش‌فرض Kestrel (~30MB) باعث خطای 400 برای zipهای بزرگ می‌شد
+        [RequestFormLimits(MultipartBodyLengthLimit = 250_000_000)]
         public async Task<IActionResult> UploadFigmaDesign(int projectId, int? folderId, IFormFile figmaZipFile)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

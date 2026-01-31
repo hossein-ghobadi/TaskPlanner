@@ -1,4 +1,4 @@
-﻿
+
 
 using Microsoft.EntityFrameworkCore;
 
@@ -23,6 +23,10 @@ Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables(); // (اختیاری ولی صریح)
+
+// اجازه آپلود فایل‌های بزرگ (مثلاً zip طراحی فیگما) — پیش‌فرض Kestrel ~30MB است و باعث خطای 400 می‌شود
+builder.WebHost.ConfigureKestrel(opt => opt.Limits.MaxRequestBodySize = 250_000_000); // 250 MB
+
 builder.Services.AddHttpContextAccessor();
 
 // Add services to the container.
