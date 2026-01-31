@@ -294,6 +294,40 @@
         transform-origin: 0 0;
         will-change: transform;
     }
+
+    /* موبایل: اسکرول معمولی به‌جای پن با انگشت */
+    @@media (max-width: 768px) {
+        .figma-viewer-wrapper { padding: 0.75rem; }
+        .figma-viewer-header { flex-direction: column; align-items: flex-start; }
+        .figma-viewer-breadcrumb { font-size: 0.85rem; }
+        .figma-canvas-hint { display: none; }
+        .figma-zoom-bar { margin-bottom: 0.5rem; }
+        .figma-canvas-wrap {
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x pan-y;
+            min-height: 60vh;
+            max-height: 75vh;
+        }
+        .figma-viewer-wrapper.figma-is-mobile .figma-frames-container.figma-canvas {
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x pan-y;
+            cursor: default;
+            min-height: auto;
+        }
+        .figma-viewer-wrapper.figma-is-mobile .figma-frames-list {
+            position: relative;
+            padding: 16px;
+            gap: 16px;
+            transform-origin: 0 0;
+        }
+        .figma-viewer-wrapper.figma-is-mobile .figma-frame-item.figma-artboard {
+            width: 100%;
+            max-width: 280px;
+        }
+        .figma-frame-item { touch-action: manipulation; }
+    }
     .figma-frame-item.figma-artboard {
         background: #fff;
         border-radius: 4px;
@@ -437,6 +471,14 @@
 @section Scripts {
     <script>
         (function () {
+            var wrapper = document.querySelector('.figma-viewer-wrapper');
+            var isMobile = function () { return window.matchMedia('(max-width: 768px)').matches; };
+            function setMobileClass() {
+                if (wrapper) wrapper.classList.toggle('figma-is-mobile', isMobile());
+            }
+            setMobileClass();
+            window.addEventListener('resize', setMobileClass);
+
             // --- زوم گرید ---
             var gridList = document.getElementById('figmaFramesList');
             var zoomValueEl = document.getElementById('figmaZoomValue');
@@ -454,7 +496,11 @@
 
             function applyCanvasTransform() {
                 if (!gridList) return;
-                gridList.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + gridZoom + ')';
+                if (isMobile()) {
+                    gridList.style.transform = 'scale(' + gridZoom + ')';
+                } else {
+                    gridList.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + gridZoom + ')';
+                }
                 if (zoomValueEl) zoomValueEl.textContent = Math.round(gridZoom * 100) + '%';
             }
 
@@ -515,6 +561,7 @@
                 }
                 canvasContainer.addEventListener('mousedown', onPointerDown);
                 canvasContainer.addEventListener('touchstart', function (e) {
+                    if (isMobile()) return;
                     if (e.touches.length === 1 && !e.target.closest('.figma-frame-item')) {
                         panning = true;
                         startPanX = panX;
@@ -527,6 +574,7 @@
                 }, { passive: false });
                 document.addEventListener('mousemove', onPointerMove);
                 document.addEventListener('touchmove', function (e) {
+                    if (isMobile()) return;
                     if (panning && e.touches.length === 1) {
                         panX = startPanX + (e.touches[0].clientX - startMouseX);
                         panY = startPanY + (e.touches[0].clientY - startMouseY);
