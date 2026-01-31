@@ -20,6 +20,12 @@ namespace Endpoint.Site.Models
 
         // مسیر فعلی فایل (برای نمایش)
         public string CurrentFilePath { get; set; } = null!;
+
+        /// <summary>
+        /// تگ‌ها با کاما جدا (مثلاً: صفحه اصلی,لاگین,موبایل)
+        /// </summary>
+        [MaxLength(500)]
+        public string? Tags { get; set; }
     }
 }
 

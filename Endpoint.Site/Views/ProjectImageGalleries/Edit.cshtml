@@ -59,6 +59,15 @@
                         </div>
 
                         <div class="mb-3">
+                            <label asp-for="Tags" class="form-label">
+                                <i class="bi bi-tags"></i>
+                                تگ‌ها (اختیاری، با کاما جدا کنید)
+                            </label>
+                            <input asp-for="Tags" class="form-control" placeholder="مثال: صفحه اصلی، لاگین، موبایل" />
+                            <span asp-validation-for="Tags" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label">عکس فعلی</label>
                             <div class="current-image-preview">
                                 <img src="@Model.CurrentFilePath" alt="@Model.Title" class="img-thumbnail" style="max-width: 300px;" />

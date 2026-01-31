@@ -49,6 +49,12 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
 
         // Thumbnail (اختیاری - برای نمایش کوچک)
         public string? ThumbnailPath { get; set; }
+
+        /// <summary>
+        /// تگ‌ها برای دسته‌بندی و فیلتر (با کاما جدا شده، مثلاً: صفحه اصلی,لاگین,موبایل)
+        /// </summary>
+        [MaxLength(500)]
+        public string? Tags { get; set; }
     }
 }
 

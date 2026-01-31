@@ -1,4 +1,5 @@
 @model IEnumerable<TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGallery>
+@using System.Collections.Generic
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = "نمایش طراحی";
@@ -6,6 +7,8 @@
     var folderId = ViewBag.FolderId as int?;
     var folder = ViewBag.Folder as TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGalleryFolder;
     var breadcrumbFolders = ViewBag.BreadcrumbFolders as List<TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGalleryFolder> ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGalleryFolder>();
+    var allTags = ViewBag.AllTags as List<string> ?? new List<string>();
+    var selectedTagsParam = ViewBag.SelectedTagsParam as string ?? "";
 }
 
 <div class="figma-viewer-wrapper">
@@ -64,8 +67,16 @@
 
     @if (Model != null && Model.Any())
     {
-        <!-- نوار زوم و راهنما (مثل فیگما) -->
+        @Html.AntiForgeryToken()
+        <!-- نوار زوم، تعداد ردیف و راهنما (مثل فیگما) -->
         <div class="figma-zoom-bar">
+            <span class="figma-rows-toggle-group" role="group" aria-label="تعداد ردیف">
+                <span class="figma-rows-label">ردیف:</span>
+                <button type="button" class="figma-rows-btn" data-rows="1" title="۱ ردیف">۱</button>
+                <button type="button" class="figma-rows-btn" data-rows="2" title="۲ ردیف">۲</button>
+                <button type="button" class="figma-rows-btn" data-rows="3" title="۳ ردیف">۳</button>
+                <button type="button" class="figma-rows-btn active" data-rows="auto" id="figmaRowsAuto" title="خودکار (هر چند تا جا شد)">خودکار</button>
+            </span>
             <span class="figma-zoom-label">زوم:</span>
             <button type="button" class="figma-zoom-btn" id="figmaZoomOut" title="کوچک‌نمایی" aria-label="Zoom Out">
                 <i class="bi bi-dash-lg"></i>
@@ -78,16 +89,41 @@
             <span class="figma-canvas-hint">روی پس‌زمینه کلیک و بکشید برای جابه‌جایی • Ctrl+اسکرول برای زوم</span>
         </div>
 
+        @if (allTags.Any())
+        {
+            <div class="figma-tags-filter-bar">
+                <span class="figma-tags-filter-label"><i class="bi bi-tags"></i> فیلتر تگ:</span>
+                <div class="figma-tags-filter-chips" id="figmaTagsFilterChips">
+                    @foreach (var tag in allTags)
+                    {
+                        var isSelected = !string.IsNullOrWhiteSpace(selectedTagsParam) && selectedTagsParam.Split(',').Any(t => t.Trim().Equals(tag, StringComparison.OrdinalIgnoreCase));
+                        <button type="button" class="figma-tag-chip @(isSelected ? "active" : "")" data-tag="@tag" title="فیلتر بر اساس @tag">@tag</button>
+                    }
+                </div>
+                <button type="button" class="figma-tags-filter-clear" id="figmaTagsFilterClear" style="@(string.IsNullOrWhiteSpace(selectedTagsParam) ? "display:none;" : "")" title="پاک کردن فیلتر">همه</button>
+            </div>
+        }
+
         <div class="figma-canvas-wrap">
             <div class="figma-frames-container figma-canvas" id="figmaFramesContainer">
-                <div class="figma-frames-list" id="figmaFramesList">
+                <div class="figma-frames-list figma-rows-auto" id="figmaFramesList" data-rows="auto">
                     @foreach (var img in Model)
                     {
-                        <div class="figma-frame-item figma-artboard" data-src="@img.FilePath">
+                        var itemTags = (img.Tags ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim()).Where(t => t.Length > 0).ToList();
+                        <div class="figma-frame-item figma-artboard" data-src="@img.FilePath" data-id="@img.Id" data-tags="@(img.Tags ?? "")">
                             <div class="figma-frame-image-wrap">
                                 <img src="@img.FilePath" alt="@img.Title" loading="lazy" />
                             </div>
                             <div class="figma-frame-title">@img.Title</div>
+                            <div class="figma-frame-tags-row">
+                                <div class="figma-frame-tags" data-tags-container>
+                                    @foreach (var t in itemTags)
+                                    {
+                                        <span class="figma-frame-tag-pill">@t</span>
+                                    }
+                                </div>
+                                <button type="button" class="figma-frame-edit-tags" title="ویرایش تگ‌ها" aria-label="ویرایش تگ‌ها"><i class="bi bi-pencil-square"></i></button>
+                            </div>
                         </div>
                     }
                 </div>
@@ -107,6 +143,21 @@
                 <img id="figmaLightboxImg" src="" alt="" />
             </div>
             <span id="figmaLightboxTitle" class="figma-lightbox-title"></span>
+        </div>
+
+        <!-- مودال ویرایش تگ‌ها -->
+        <div id="figmaEditTagsModal" class="figma-edit-tags-modal" style="display: none;" role="dialog" aria-labelledby="figmaEditTagsModalTitle" aria-modal="true">
+            <div class="figma-edit-tags-modal-backdrop"></div>
+            <div class="figma-edit-tags-modal-content">
+                <h3 id="figmaEditTagsModalTitle" class="figma-edit-tags-modal-title"><i class="bi bi-tags"></i> ویرایش تگ‌ها</h3>
+                <p class="figma-edit-tags-modal-hint">تگ‌ها را با کاما جدا کنید (مثال: صفحه اصلی، لاگین، موبایل)</p>
+                <input type="text" id="figmaEditTagsInput" class="figma-edit-tags-input" placeholder="تگ۱، تگ۲، ..." />
+                <input type="hidden" id="figmaEditTagsItemId" />
+                <div class="figma-edit-tags-modal-actions">
+                    <button type="button" class="figma-edit-tags-cancel" id="figmaEditTagsCancel">انصراف</button>
+                    <button type="button" class="figma-edit-tags-save" id="figmaEditTagsSave"><i class="bi bi-check-lg"></i> ذخیره</button>
+                </div>
+            </div>
         </div>
     }
     else
@@ -259,6 +310,73 @@
         font-size: 0.8rem;
         margin-right: 0.75rem;
     }
+    .figma-rows-toggle-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-left: 0.5rem;
+    }
+    .figma-rows-label {
+        font-weight: 600;
+        color: #475569;
+        font-size: 0.85rem;
+    }
+    .figma-rows-btn {
+        min-width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.5rem;
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .figma-rows-btn:hover { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+    .figma-rows-btn.active {
+        background: #8B5CF6;
+        color: white;
+        border-color: #8B5CF6;
+    }
+    /* ۱ ردیف: افقی، بدون wrap */
+    .figma-frames-list.figma-rows-1 {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: flex-start;
+        align-content: flex-start;
+    }
+    /* ۲ ردیف: گرید دو ردیفه */
+    .figma-frames-list.figma-rows-2 {
+        display: grid;
+        grid-auto-flow: column;
+        grid-template-rows: repeat(2, auto);
+        grid-auto-columns: 320px;
+        align-content: flex-start;
+        justify-items: start;
+    }
+    /* ۳ ردیف: گرید سه ردیفه */
+    .figma-frames-list.figma-rows-3 {
+        display: grid;
+        grid-auto-flow: column;
+        grid-template-rows: repeat(3, auto);
+        grid-auto-columns: 320px;
+        align-content: flex-start;
+        justify-items: start;
+    }
+    /* خودکار: چند ردیف با wrap (همیشه نمایش داده شود) */
+    .figma-frames-list.figma-rows-auto {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        align-content: flex-start;
+    }
     .figma-canvas-wrap {
         border-radius: 12px;
         overflow: hidden;
@@ -378,6 +496,172 @@
         border-top: 1px solid #e5e7eb;
         font-family: inherit;
     }
+    .figma-tags-filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+    .figma-tags-filter-label {
+        font-weight: 600;
+        color: #475569;
+        font-size: 0.9rem;
+    }
+    .figma-tags-filter-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+    .figma-tag-chip {
+        padding: 0.35rem 0.75rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 999px;
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .figma-tag-chip:hover { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+    .figma-tag-chip.active {
+        background: #8B5CF6;
+        color: white;
+        border-color: #8B5CF6;
+    }
+    .figma-tags-filter-clear {
+        padding: 0.35rem 0.75rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        background: #fff;
+        color: #64748b;
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+    .figma-tags-filter-clear:hover { background: #f1f5f9; color: #1a1a1a; }
+    .figma-frame-tags-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px 10px;
+        border-top: 1px solid #e5e7eb;
+        min-height: 36px;
+    }
+    .figma-frame-tags {
+        flex: 1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        min-width: 0;
+    }
+    .figma-frame-tag-pill {
+        display: inline-block;
+        padding: 2px 8px;
+        background: #e0e7ff;
+        color: #4338ca;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .figma-frame-edit-tags {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .figma-frame-edit-tags:hover { background: #8B5CF6; color: white; border-color: #8B5CF6; }
+    .figma-frame-item.figma-artboard.figma-filtered-out {
+        display: none !important;
+    }
+    .figma-edit-tags-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    .figma-edit-tags-modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+    }
+    .figma-edit-tags-modal-content {
+        position: relative;
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        max-width: 420px;
+        width: 100%;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    }
+    .figma-edit-tags-modal-title {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.1rem;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .figma-edit-tags-modal-hint {
+        margin: 0 0 0.75rem 0;
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+    .figma-edit-tags-input {
+        width: 100%;
+        padding: 0.6rem 0.75rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+        box-sizing: border-box;
+    }
+    .figma-edit-tags-input:focus {
+        outline: none;
+        border-color: #8B5CF6;
+    }
+    .figma-edit-tags-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+    .figma-edit-tags-cancel {
+        padding: 0.5rem 1rem;
+        background: #f1f5f9;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        color: #475569;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+    .figma-edit-tags-cancel:hover { background: #e2e8f0; }
+    .figma-edit-tags-save {
+        padding: 0.5rem 1rem;
+        background: #8B5CF6;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .figma-edit-tags-save:hover { background: #7c3aed; }
     .figma-empty {
         text-align: center;
         padding: 4rem 2rem;
@@ -488,8 +772,152 @@
             var zoomInBtn = document.getElementById('figmaZoomIn');
             var zoomResetBtn = document.getElementById('figmaZoomReset');
             var canvasContainer = document.getElementById('figmaFramesContainer');
+            var ROWS_KEY = 'figmaViewerRows';
+            var rowsBtns = document.querySelectorAll('.figma-rows-btn');
 
             function isMobileView() { return window.innerWidth <= 767; }
+
+            function setRows(rows) {
+                if (!gridList) return;
+                var val = String(rows);
+                gridList.classList.remove('figma-rows-1', 'figma-rows-2', 'figma-rows-3', 'figma-rows-auto');
+                gridList.classList.add('figma-rows-' + val);
+                gridList.setAttribute('data-rows', val);
+                rowsBtns.forEach(function (btn) {
+                    var active = btn.getAttribute('data-rows') === val;
+                    btn.classList.toggle('active', active);
+                    btn.setAttribute('aria-pressed', active);
+                });
+                try { localStorage.setItem(ROWS_KEY, val); } catch (e) {}
+                applyCanvasTransform();
+            }
+
+            rowsBtns.forEach(function (btn) {
+                btn.addEventListener('click', function () { setRows(btn.getAttribute('data-rows')); });
+            });
+            var savedRows = null;
+            try { savedRows = localStorage.getItem(ROWS_KEY); } catch (e) {}
+            if (savedRows === '1' || savedRows === '2' || savedRows === '3' || savedRows === 'auto') {
+                setRows(savedRows);
+            }
+
+            // --- فیلتر بر اساس تگ ---
+            var tagChips = document.querySelectorAll('.figma-tag-chip');
+            var tagFilterClear = document.getElementById('figmaTagsFilterClear');
+            var frameItems = document.querySelectorAll('.figma-frame-item.figma-artboard');
+
+            function getSelectedTags() {
+                var selected = [];
+                tagChips.forEach(function (chip) {
+                    if (chip.classList.contains('active'))
+                        selected.push((chip.getAttribute('data-tag') || '').trim());
+                });
+                return selected.filter(Boolean);
+            }
+
+            function applyTagFilter() {
+                var selected = getSelectedTags();
+                frameItems.forEach(function (frame) {
+                    var tagsStr = (frame.getAttribute('data-tags') || '').trim();
+                    if (selected.length === 0) {
+                        frame.classList.remove('figma-filtered-out');
+                        return;
+                    }
+                    var frameTags = tagsStr ? tagsStr.split(',').map(function (t) { return t.trim(); }).filter(Boolean) : [];
+                    var hasMatch = frameTags.some(function (t) {
+                        return selected.some(function (s) { return s.toLowerCase() === t.toLowerCase(); });
+                    });
+                    frame.classList.toggle('figma-filtered-out', !hasMatch);
+                });
+                if (tagFilterClear) tagFilterClear.style.display = selected.length > 0 ? '' : 'none';
+            }
+
+            tagChips.forEach(function (chip) {
+                chip.addEventListener('click', function () {
+                    chip.classList.toggle('active');
+                    applyTagFilter();
+                });
+            });
+            if (tagFilterClear) {
+                tagFilterClear.addEventListener('click', function () {
+                    tagChips.forEach(function (c) { c.classList.remove('active'); });
+                    applyTagFilter();
+                });
+            }
+            applyTagFilter();
+
+            // --- مودال ویرایش تگ‌ها ---
+            var editTagsModal = document.getElementById('figmaEditTagsModal');
+            var editTagsInput = document.getElementById('figmaEditTagsInput');
+            var editTagsItemId = document.getElementById('figmaEditTagsItemId');
+            var editTagsCancel = document.getElementById('figmaEditTagsCancel');
+            var editTagsSave = document.getElementById('figmaEditTagsSave');
+            var editTagsBackdrop = editTagsModal ? editTagsModal.querySelector('.figma-edit-tags-modal-backdrop') : null;
+            var antiForgeryInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            var requestVerificationToken = antiForgeryInput ? antiForgeryInput.value : '';
+
+            function openEditTagsModal(frameEl) {
+                var id = frameEl.getAttribute('data-id');
+                var tags = frameEl.getAttribute('data-tags') || '';
+                if (editTagsItemId) editTagsItemId.value = id || '';
+                if (editTagsInput) editTagsInput.value = tags;
+                if (editTagsModal) editTagsModal.style.display = 'flex';
+                if (editTagsInput) { editTagsInput.focus(); }
+            }
+
+            function closeEditTagsModal() {
+                if (editTagsModal) editTagsModal.style.display = 'none';
+            }
+
+            function updateFrameTags(frameEl, tagsStr) {
+                frameEl.setAttribute('data-tags', tagsStr || '');
+                var container = frameEl.querySelector('[data-tags-container]');
+                if (!container) return;
+                container.innerHTML = '';
+                var tags = (tagsStr || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+                tags.forEach(function (t) {
+                    var pill = document.createElement('span');
+                    pill.className = 'figma-frame-tag-pill';
+                    pill.textContent = t;
+                    container.appendChild(pill);
+                });
+            }
+
+            document.querySelectorAll('.figma-frame-edit-tags').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var frame = btn.closest('.figma-frame-item');
+                    if (frame) openEditTagsModal(frame);
+                });
+            });
+
+            if (editTagsCancel) editTagsCancel.addEventListener('click', closeEditTagsModal);
+            if (editTagsBackdrop) editTagsBackdrop.addEventListener('click', closeEditTagsModal);
+
+            if (editTagsSave && editTagsItemId && editTagsInput) {
+                editTagsSave.addEventListener('click', function () {
+                    var id = editTagsItemId.value;
+                    var tags = (editTagsInput.value || '').trim();
+                    if (!id) return;
+                    var frameEl = document.querySelector('.figma-frame-item[data-id="' + id + '"]');
+                    var url = '/ProjectImageGalleries/UpdateGalleryItemTags?id=' + encodeURIComponent(id);
+                    var headers = { 'Content-Type': 'application/json' };
+                    if (requestVerificationToken) headers['RequestVerificationToken'] = requestVerificationToken;
+                    fetch(url, {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({ tags: tags })
+                    }).then(function (r) { return r.json(); }).then(function (data) {
+                        if (data.success && frameEl) {
+                            updateFrameTags(frameEl, data.tags || '');
+                            closeEditTagsModal();
+                        } else {
+                            alert(data.message || 'خطا در ذخیره تگ‌ها.');
+                        }
+                    }).catch(function () { alert('خطا در ارتباط با سرور.'); });
+                });
+            }
 
             var gridZoom = 1;
             var gridZoomMin = 0.25;

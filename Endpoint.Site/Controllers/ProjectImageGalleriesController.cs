@@ -410,7 +410,8 @@ namespace Endpoint.Site.Controllers
                 Description = image.Description,
                 ProjectId = image.ProjectId,
                 FolderId = image.FolderId,
-                CurrentFilePath = image.FilePath
+                CurrentFilePath = image.FilePath,
+                Tags = image.Tags
             };
 
             // لیست پوشه‌های موجود برای انتخاب
@@ -491,6 +492,7 @@ namespace Endpoint.Site.Controllers
             image.Title = vm.Title;
             image.Description = vm.Description;
             image.FolderId = vm.FolderId;
+            image.Tags = string.IsNullOrWhiteSpace(vm.Tags) ? null : vm.Tags.Trim();
             image.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -847,6 +849,35 @@ namespace Endpoint.Site.Controllers
 
             var images = await query.OrderBy(img => img.CreatedAt).ToListAsync();
 
+            // استخراج تمام تگ‌های یکتا از همه عکس‌ها (برای فیلتر)
+            var allTags = images
+                .SelectMany(img => (img.Tags ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
+                .Select(t => t.Trim())
+                .Where(t => t.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(t => t, StringComparer.Ordinal)
+                .ToList();
+
+            // فیلتر بر اساس تگ (پارامتر کوئری tags=تگ۱,تگ۲)
+            var selectedTagsParam = Request.Query["tags"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(selectedTagsParam))
+            {
+                var selectedTagsSet = selectedTagsParam
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(t => t.Trim())
+                    .Where(t => t.Length > 0)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                if (selectedTagsSet.Count > 0)
+                {
+                    images = images.Where(img =>
+                    {
+                        if (string.IsNullOrWhiteSpace(img.Tags)) return false;
+                        var itemTags = img.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim());
+                        return itemTags.Any(t => selectedTagsSet.Contains(t));
+                    }).ToList();
+                }
+            }
+
             var project = await _context.Projects.FindAsync(projectId);
             var folder = folderId.HasValue
                 ? await _context.ProjectImageGalleryFolders.FirstOrDefaultAsync(f => f.Id == folderId && f.ProjectId == projectId)
@@ -867,12 +898,46 @@ namespace Endpoint.Site.Controllers
                 }
             }
             ViewBag.BreadcrumbFolders = breadcrumbPath;
+            ViewBag.AllTags = allTags;
+            ViewBag.SelectedTagsParam = selectedTagsParam;
 
             ViewBag.ProjectName = project?.Name;
             ViewBag.ProjectId = projectId;
             ViewBag.FolderId = folderId;
             ViewBag.Folder = folder;
             return View(images);
+        }
+
+        /// <summary>
+        /// به‌روزرسانی تگ‌های یک آیتم گالری (برای صفحه نمایش طراحی فیگما).
+        /// </summary>
+        /// <param name="id">شناسه عکس گالری</param>
+        /// <param name="request">بدنه درخواست شامل تگ‌ها (با کاما جدا)</param>
+        /// <returns>200 در صورت موفقیت، 400/403 در صورت خطا</returns>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateGalleryItemTags(int id, [FromBody] UpdateGalleryItemTagsRequest request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var image = await _context.ProjectImageGalleries
+                .FirstOrDefaultAsync(img => img.Id == id);
+
+            if (image == null)
+                return Json(new { success = false, message = "عکس یافت نشد." });
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == image.ProjectId &&
+                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+            if (!hasAccess)
+                return Json(new { success = false, message = "دسترسی مجاز نیست." });
+
+            image.Tags = string.IsNullOrWhiteSpace(request?.Tags) ? null : request.Tags.Trim();
+            image.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, tags = image.Tags });
         }
 
         private bool IsAjaxRequest() =>
