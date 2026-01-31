@@ -264,6 +264,7 @@
         overflow: hidden;
         border: 1px solid #d1d5db;
         min-height: 70vh;
+        min-height: 70dvh; /* کاهش پرش با نوار آدرس موبایل */
     }
     .figma-frames-container.figma-canvas {
         position: relative;
@@ -273,6 +274,7 @@
         overflow: hidden;
         cursor: grab;
         min-height: 70vh;
+        min-height: 70dvh;
         touch-action: none;
     }
     .figma-frames-container.figma-canvas:active {
@@ -294,40 +296,6 @@
         transform-origin: 0 0;
         will-change: transform;
     }
-
-    /* موبایل: اسکرول معمولی به‌جای پن با انگشت */
-    @@media (max-width: 768px) {
-        .figma-viewer-wrapper { padding: 0.75rem; }
-        .figma-viewer-header { flex-direction: column; align-items: flex-start; }
-        .figma-viewer-breadcrumb { font-size: 0.85rem; }
-        .figma-canvas-hint { display: none; }
-        .figma-zoom-bar { margin-bottom: 0.5rem; }
-        .figma-canvas-wrap {
-            overflow: auto;
-            -webkit-overflow-scrolling: touch;
-            touch-action: pan-x pan-y;
-            min-height: 60vh;
-            max-height: 75vh;
-        }
-        .figma-viewer-wrapper.figma-is-mobile .figma-frames-container.figma-canvas {
-            overflow: auto;
-            -webkit-overflow-scrolling: touch;
-            touch-action: pan-x pan-y;
-            cursor: default;
-            min-height: auto;
-        }
-        .figma-viewer-wrapper.figma-is-mobile .figma-frames-list {
-            position: relative;
-            padding: 16px;
-            gap: 16px;
-            transform-origin: 0 0;
-        }
-        .figma-viewer-wrapper.figma-is-mobile .figma-frame-item.figma-artboard {
-            width: 100%;
-            max-width: 280px;
-        }
-        .figma-frame-item { touch-action: manipulation; }
-    }
     .figma-frame-item.figma-artboard {
         background: #fff;
         border-radius: 4px;
@@ -338,6 +306,49 @@
         cursor: pointer;
         width: 320px;
         flex-shrink: 0;
+    }
+    /* موبایل: اسکرول معمولی، بدون پن — بدون پرش و راحت‌تر */
+    @@media (max-width: 767px) {
+        .figma-viewer-wrapper { padding: 0.75rem; }
+        .figma-viewer-header { flex-direction: column; align-items: stretch; gap: 0.75rem; padding-bottom: 0.75rem; }
+        .figma-viewer-breadcrumb { font-size: 0.85rem; }
+        .figma-viewer-actions { justify-content: stretch; }
+        .figma-viewer-actions a { justify-content: center; }
+        .figma-zoom-bar { margin-bottom: 0.75rem; }
+        .figma-canvas-hint { display: none; }
+        .figma-canvas-wrap {
+            min-height: 50dvh;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+        .figma-frames-container.figma-canvas {
+            min-height: auto;
+            overflow: visible;
+            cursor: default;
+            touch-action: auto;
+            background: #f1f5f9;
+        }
+        .figma-frames-container.figma-canvas.panning { cursor: default; }
+        .figma-frames-list {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            transform: none !important;
+            will-change: auto;
+        }
+        .figma-frame-item.figma-artboard {
+            width: 100%;
+            max-width: 100%;
+            min-height: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .figma-frame-item.figma-artboard:active { opacity: 0.95; }
+        .figma-zoom-btn, .figma-zoom-reset { min-height: 44px; min-width: 44px; touch-action: manipulation; }
+        .figma-zoom-bar { padding: 0.5rem 0; }
     }
     .figma-frame-item.figma-artboard:hover {
         box-shadow: 0 4px 12px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);
@@ -471,37 +482,32 @@
 @section Scripts {
     <script>
         (function () {
-            var wrapper = document.querySelector('.figma-viewer-wrapper');
-            var isMobile = function () { return window.matchMedia('(max-width: 768px)').matches; };
-            function setMobileClass() {
-                if (wrapper) wrapper.classList.toggle('figma-is-mobile', isMobile());
-            }
-            setMobileClass();
-            window.addEventListener('resize', setMobileClass);
-
-            // --- زوم گرید ---
             var gridList = document.getElementById('figmaFramesList');
             var zoomValueEl = document.getElementById('figmaZoomValue');
             var zoomOutBtn = document.getElementById('figmaZoomOut');
             var zoomInBtn = document.getElementById('figmaZoomIn');
             var zoomResetBtn = document.getElementById('figmaZoomReset');
+            var canvasContainer = document.getElementById('figmaFramesContainer');
+
+            function isMobileView() { return window.innerWidth <= 767; }
 
             var gridZoom = 1;
             var gridZoomMin = 0.25;
             var gridZoomMax = 3;
             var gridZoomStep = 0.25;
             var panX = 0, panY = 0;
-
-            var canvasContainer = document.getElementById('figmaFramesContainer');
+            var rafId = null;
 
             function applyCanvasTransform() {
                 if (!gridList) return;
-                if (isMobile()) {
-                    gridList.style.transform = 'scale(' + gridZoom + ')';
-                } else {
-                    gridList.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + gridZoom + ')';
-                }
+                if (isMobileView()) { gridList.style.transform = ''; if (zoomValueEl) zoomValueEl.textContent = '100%'; return; }
+                gridList.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + gridZoom + ')';
                 if (zoomValueEl) zoomValueEl.textContent = Math.round(gridZoom * 100) + '%';
+            }
+
+            function applyCanvasTransformRAF() {
+                if (rafId) return;
+                rafId = requestAnimationFrame(function () { rafId = null; applyCanvasTransform(); });
             }
 
             function zoomTowardPoint(vx, vy, newZoom) {
@@ -514,29 +520,22 @@
             }
 
             if (zoomOutBtn) zoomOutBtn.addEventListener('click', function () {
-                if (!canvasContainer) return;
+                if (isMobileView() || !canvasContainer) return;
                 var rect = canvasContainer.getBoundingClientRect();
-                var vx = rect.width / 2;
-                var vy = rect.height / 2;
-                zoomTowardPoint(vx, vy, Math.max(gridZoomMin, gridZoom - gridZoomStep));
+                zoomTowardPoint(rect.width / 2, rect.height / 2, Math.max(gridZoomMin, gridZoom - gridZoomStep));
             });
             if (zoomInBtn) zoomInBtn.addEventListener('click', function () {
-                if (!canvasContainer) return;
+                if (isMobileView() || !canvasContainer) return;
                 var rect = canvasContainer.getBoundingClientRect();
-                var vx = rect.width / 2;
-                var vy = rect.height / 2;
-                zoomTowardPoint(vx, vy, Math.min(gridZoomMax, gridZoom + gridZoomStep));
+                zoomTowardPoint(rect.width / 2, rect.height / 2, Math.min(gridZoomMax, gridZoom + gridZoomStep));
             });
             if (zoomResetBtn) zoomResetBtn.addEventListener('click', function () {
-                panX = 0;
-                panY = 0;
-                gridZoom = 1;
+                panX = 0; panY = 0; gridZoom = 1;
                 applyCanvasTransform();
             });
             applyCanvasTransform();
 
-            // پن با دست: کشیدن از هر نقطه (به‌جز روی فریم) — مثل فیگما
-            if (canvasContainer) {
+            if (canvasContainer && !isMobileView()) {
                 var panning = false, startPanX, startPanY, startMouseX, startMouseY;
                 function onPointerDown(e) {
                     if (e.target.closest('.figma-frame-item')) return;
@@ -552,7 +551,7 @@
                     if (!panning) return;
                     panX = startPanX + (e.clientX - startMouseX);
                     panY = startPanY + (e.clientY - startMouseY);
-                    applyCanvasTransform();
+                    applyCanvasTransformRAF();
                     e.preventDefault();
                 }
                 function onPointerUp() {
@@ -561,7 +560,6 @@
                 }
                 canvasContainer.addEventListener('mousedown', onPointerDown);
                 canvasContainer.addEventListener('touchstart', function (e) {
-                    if (isMobile()) return;
                     if (e.touches.length === 1 && !e.target.closest('.figma-frame-item')) {
                         panning = true;
                         startPanX = panX;
@@ -574,11 +572,10 @@
                 }, { passive: false });
                 document.addEventListener('mousemove', onPointerMove);
                 document.addEventListener('touchmove', function (e) {
-                    if (isMobile()) return;
                     if (panning && e.touches.length === 1) {
                         panX = startPanX + (e.touches[0].clientX - startMouseX);
                         panY = startPanY + (e.touches[0].clientY - startMouseY);
-                        applyCanvasTransform();
+                        applyCanvasTransformRAF();
                         e.preventDefault();
                     }
                 }, { passive: false });
@@ -591,13 +588,12 @@
                         var rect = canvasContainer.getBoundingClientRect();
                         var vx = e.clientX - rect.left;
                         var vy = e.clientY - rect.top;
-                        var newZoom = e.deltaY < 0
-                            ? Math.min(gridZoomMax, gridZoom + gridZoomStep)
-                            : Math.max(gridZoomMin, gridZoom - gridZoomStep);
+                        var newZoom = e.deltaY < 0 ? Math.min(gridZoomMax, gridZoom + gridZoomStep) : Math.max(gridZoomMin, gridZoom - gridZoomStep);
                         zoomTowardPoint(vx, vy, newZoom);
                     }
                 }, { passive: false });
             }
+            window.addEventListener('resize', function () { applyCanvasTransform(); });
 
             // --- لایت‌باکس با زوم ---
             var lb = document.getElementById('figmaLightbox');
