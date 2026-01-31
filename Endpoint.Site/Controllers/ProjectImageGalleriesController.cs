@@ -88,10 +88,11 @@ namespace Endpoint.Site.Controllers
                 .Where(f => f.ProjectId == projectId)
                 .ToListAsync();
 
-            // دریافت پوشه‌های سطح اول
+            // دریافت پوشه‌های سطح اول (پوشه زباله همیشه در انتهای لیست)
             var folders = allFolders
                 .Where(f => f.ParentFolderId == folderId)
-                .OrderBy(f => f.Name)
+                .OrderBy(f => f.Name == "زباله")
+                .ThenBy(f => f.Name)
                 .ToList();
 
             // محاسبه تعداد کل عکس‌ها برای هر پوشه (شامل زیرپوشه‌ها)

@@ -1,7 +1,7 @@
 @model IEnumerable<TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGallery>
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
-    ViewData["Title"] = "نمایش طراحی فیگما";
+    ViewData["Title"] = "نمایش طراحی";
     var projectId = ViewBag.ProjectId as int?;
     var folderId = ViewBag.FolderId as int?;
     var folder = ViewBag.Folder as TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGalleryFolder;
@@ -39,7 +39,7 @@
             }
             else
             {
-                <span class="breadcrumb-current">نمایش طراحی فیگما</span>
+                <span class="breadcrumb-current">نمایش طراحی</span>
             }
         </div>
         <div class="figma-viewer-actions">
@@ -117,7 +117,7 @@
             <p>یک فایل zip اکسپورت فیگما آپلود کنید.</p>
             <a href="/ProjectImageGalleries/UploadFigmaDesign?projectId=@projectId&folderId=@folderId" class="btn-figma-upload">
                 <i class="bi bi-file-earmark-zip"></i>
-                آپلود طراحی فیگما
+                آپلود طراحی
             </a>
         </div>
     }
