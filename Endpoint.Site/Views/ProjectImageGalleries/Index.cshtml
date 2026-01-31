@@ -7,6 +7,7 @@
 @{
     var folders = ViewBag.Folders as List<ProjectImageGalleryFolder> ?? new List<ProjectImageGalleryFolder>();
     var currentFolder = ViewBag.CurrentFolder as ProjectImageGalleryFolder;
+    var breadcrumbFolders = ViewBag.BreadcrumbFolders as List<ProjectImageGalleryFolder> ?? new List<ProjectImageGalleryFolder>();
     var folderId = ViewBag.FolderId as int?;
     var projectId = ViewBag.ProjectId as int?;
     var folderImagesCount = ViewBag.FolderImagesCount as Dictionary<int, int> ?? new Dictionary<int, int>();
@@ -67,10 +68,24 @@
                 <div class="breadcrumb-nav">
                     @if (currentFolder != null)
                     {
-                        <a href="/ProjectImageGalleries/Index?projectId=@projectId" class="breadcrumb-item">
+                        <a href="/Projects/Details/@projectId" class="breadcrumb-item" title="بازگشت به پروژه">
+                            <i class="bi bi-folder2"></i>
+                            @ViewBag.ProjectName
+                        </a>
+                        <span class="breadcrumb-separator">/</span>
+                        <a href="/ProjectImageGalleries/Index?projectId=@projectId" class="breadcrumb-item" title="همه عکس‌های پروژه">
                             <i class="bi bi-house"></i>
                             همه عکس‌ها
                         </a>
+                        @foreach (var parentFolder in breadcrumbFolders)
+                        {
+                            var parentColor = parentFolder.Color ?? "#3b82f6";
+                            <span class="breadcrumb-separator">/</span>
+                            <a href="/ProjectImageGalleries/Index?projectId=@projectId&folderId=@parentFolder.Id" class="breadcrumb-item" title="بازگشت به پوشه @parentFolder.Name">
+                                <i class="bi bi-folder-fill" style="color: @parentColor;"></i>
+                                @parentFolder.Name
+                            </a>
+                        }
                         <span class="breadcrumb-separator">/</span>
                         <span class="breadcrumb-current">
                             <i class="bi bi-folder-fill" style="color: @(currentFolder.Color ?? "#3b82f6");"></i>
@@ -79,10 +94,15 @@
                     }
                     else
                     {
-                        <h1 class="gallery-title">
+                        <a href="/Projects/Details/@projectId" class="breadcrumb-item" title="بازگشت به پروژه">
+                            <i class="bi bi-folder2"></i>
+                            @ViewBag.ProjectName
+                        </a>
+                        <span class="breadcrumb-separator">/</span>
+                        <span class="breadcrumb-current">
                             <i class="bi bi-images"></i>
-                            گالری عکس پروژه: @ViewBag.ProjectName
-                        </h1>
+                            همه عکس‌ها
+                        </span>
                     }
                 </div>
                 <p class="gallery-subtitle">عکس‌ها و تصاویر مربوط به این پروژه</p>
@@ -163,7 +183,7 @@
                 </div>
                 <h3>هنوز عکسی در این گالری وجود ندارد</h3>
                 <p>با افزودن اولین عکس خود شروع کنید</p>
-                <a href="/ProjectImageGalleries/Create?projectId=@ViewBag.ProjectId" class="btn-create-image">
+                <a href="/ProjectImageGalleries/Create?projectId=@projectId@(folderId.HasValue ? "&folderId=" + folderId : "")" class="btn-create-image">
                     <i class="bi bi-plus-lg"></i>
                     <span>افزودن اولین عکس</span>
                 </a>
@@ -349,6 +369,40 @@
         color: #6c757d;
         margin: 0;
         font-size: 0.95rem;
+    }
+
+    .breadcrumb-nav {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.5rem;
+    }
+
+    .breadcrumb-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #3b82f6;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .breadcrumb-item:hover {
+        color: #2563eb;
+        text-decoration: underline;
+    }
+
+    .breadcrumb-separator {
+        color: #cbd5e0;
+    }
+
+    .breadcrumb-current {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #1a1a1a;
+        font-weight: 600;
     }
 
     .header-actions {

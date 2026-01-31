@@ -5,6 +5,7 @@
     var projectId = ViewBag.ProjectId as int?;
     var folderId = ViewBag.FolderId as int?;
     var folder = ViewBag.Folder as TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGalleryFolder;
+    var breadcrumbFolders = ViewBag.BreadcrumbFolders as List<TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGalleryFolder> ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGalleryFolder>();
 }
 
 <div class="figma-viewer-wrapper">
@@ -15,12 +16,26 @@
                 @ViewBag.ProjectName
             </a>
             <span class="breadcrumb-sep">/</span>
+            <a href="/ProjectImageGalleries/Index?projectId=@projectId" class="breadcrumb-link">
+                <i class="bi bi-images"></i>
+                همه عکس‌ها
+            </a>
+            @foreach (var parentFolder in breadcrumbFolders)
+            {
+                var parentColor = parentFolder.Color ?? "#3b82f6";
+                <span class="breadcrumb-sep">/</span>
+                <a href="/ProjectImageGalleries/Index?projectId=@projectId&folderId=@parentFolder.Id" class="breadcrumb-link" title="برگشت به پوشه @parentFolder.Name">
+                    <i class="bi bi-folder-fill" style="color: @parentColor;"></i>
+                    @parentFolder.Name
+                </a>
+            }
+            <span class="breadcrumb-sep">/</span>
             @if (folder != null)
             {
-                <span class="breadcrumb-current">
+                <a href="/ProjectImageGalleries/Index?projectId=@projectId&folderId=@folderId" class="breadcrumb-link breadcrumb-back" title="برگشت به گالری این پوشه">
                     <i class="bi bi-palette-fill" style="color: #8B5CF6;"></i>
                     @folder.Name
-                </span>
+                </a>
             }
             else
             {
@@ -135,6 +150,10 @@
         text-decoration: none;
     }
     .breadcrumb-link:hover { color: #8B5CF6; }
+    .breadcrumb-back {
+        font-weight: 600;
+        cursor: pointer;
+    }
     .breadcrumb-sep { color: #cbd5e0; }
     .breadcrumb-current {
         font-weight: 600;
