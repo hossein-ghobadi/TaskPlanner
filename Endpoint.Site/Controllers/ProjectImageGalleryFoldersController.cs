@@ -115,6 +115,8 @@ namespace Endpoint.Site.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "پوشه با موفقیت ایجاد شد.";
+            if (vm.ParentFolderId.HasValue)
+                return RedirectToAction("Index", "ProjectImageGalleries", new { projectId = vm.ProjectId, folderId = vm.ParentFolderId.Value });
             return RedirectToAction("Index", "ProjectImageGalleries", new { projectId = vm.ProjectId });
         }
 
@@ -229,6 +231,8 @@ namespace Endpoint.Site.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "پوشه با موفقیت ویرایش شد.";
+            if (folder.ParentFolderId.HasValue)
+                return RedirectToAction("Index", "ProjectImageGalleries", new { projectId = vm.ProjectId, folderId = folder.ParentFolderId.Value });
             return RedirectToAction("Index", "ProjectImageGalleries", new { projectId = vm.ProjectId });
         }
 
@@ -263,6 +267,13 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
+            // بررسی اینکه پوشه "زباله" قابل حذف نیست
+            if (IsTrashFolder(folder))
+            {
+                TempData["Error"] = "پوشه \"زباله\" قابل حذف نیست.";
+                return RedirectToAction("Index", "ProjectImageGalleries", new { projectId = folder.ProjectId });
+            }
+
             return View(folder);
         }
 
@@ -283,21 +294,33 @@ namespace Endpoint.Site.Controllers
             var rootFolder = allFolders.FirstOrDefault(f => f.Id == id);
             if (rootFolder == null)
             {
+                if (IsAjaxRequest(Request))
+                    return Json(new { success = false, message = "پوشه یافت نشد." });
                 TempData["Error"] = "پوشه یافت نشد.";
                 return RedirectToAction("Index", "Projects");
             }
 
             var projectId = rootFolder.ProjectId;
 
-            // بررسی دسترسی به پروژه
             var hasAccess = await _context.Projects
                 .AnyAsync(p => p.Id == projectId && 
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
             {
+                if (IsAjaxRequest(Request))
+                    return Json(new { success = false, message = "شما به این پروژه دسترسی ندارید." });
                 TempData["Error"] = "شما به این پروژه دسترسی ندارید.";
                 return RedirectToAction("Index", "Projects");
+            }
+
+            // بررسی اینکه پوشه "زباله" قابل حذف نیست
+            if (IsTrashFolder(rootFolder))
+            {
+                if (IsAjaxRequest(Request))
+                    return Json(new { success = false, message = "پوشه \"زباله\" قابل حذف نیست." });
+                TempData["Error"] = "پوشه \"زباله\" قابل حذف نیست.";
+                return RedirectToAction("Index", "ProjectImageGalleries", new { projectId });
             }
 
             // محاسبه تمام پوشه‌های درخت (پوشه و تمام زیرپوشه‌ها)
@@ -322,22 +345,39 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
-            // تمام عکس‌های موجود در این پوشه‌ها را بدون پوشه می‌کنیم
+            // دریافت یا ایجاد پوشه "زباله"
+            var trashFolder = await GetOrCreateTrashFolderAsync(projectId, userId);
+
+            // تمام عکس‌های موجود در این پوشه‌ها (شامل پوشه اصلی و تمام زیرپوشه‌ها) را به پوشه "زباله" منتقل می‌کنیم
             var imagesInTree = await _context.ProjectImageGalleries
                 .Where(img => img.ProjectId == projectId && img.FolderId.HasValue && folderIdsToDelete.Contains(img.FolderId.Value))
                 .ToListAsync();
 
+            var imagesCount = imagesInTree.Count;
             foreach (var image in imagesInTree)
             {
-                image.FolderId = null;
+                image.FolderId = trashFolder.Id;
+                image.UpdatedAt = DateTime.UtcNow;
             }
 
             // تمام پوشه‌های این درخت را حذف می‌کنیم
             var foldersToDelete = allFolders.Where(f => folderIdsToDelete.Contains(f.Id)).ToList();
+            var foldersCount = foldersToDelete.Count;
             _context.ProjectImageGalleryFolders.RemoveRange(foldersToDelete);
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "پوشه و تمام زیرپوشه‌های آن با موفقیت حذف شدند.";
+            var successMessage = foldersCount > 1
+                ? $"پوشه و {foldersCount - 1} زیرپوشه با موفقیت حذف شدند"
+                : "پوشه با موفقیت حذف شد";
+            if (imagesCount > 0)
+                successMessage += $" و {imagesCount} عکس به پوشه \"زباله\" منتقل شد.";
+            else
+                successMessage += ".";
+            if (IsAjaxRequest(Request))
+                return Json(new { success = true, message = successMessage, projectId, parentFolderId = rootFolder.ParentFolderId });
+            TempData["Success"] = successMessage;
+            if (rootFolder.ParentFolderId.HasValue)
+                return RedirectToAction("Index", "ProjectImageGalleries", new { projectId, folderId = rootFolder.ParentFolderId.Value });
             return RedirectToAction("Index", "ProjectImageGalleries", new { projectId });
         }
 
@@ -409,6 +449,46 @@ namespace Endpoint.Site.Controllers
             }
 
             return false;
+        }
+
+        private static bool IsAjaxRequest(Microsoft.AspNetCore.Http.HttpRequest request) =>
+            string.Equals(request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// دریافت یا ایجاد پوشه "زباله" برای گالری عکس پروژه
+        /// </summary>
+        private async Task<ProjectImageGalleryFolder> GetOrCreateTrashFolderAsync(int projectId, string creatorUserId)
+        {
+            const string trashFolderName = "زباله";
+
+            var trashFolder = await _context.ProjectImageGalleryFolders
+                .FirstOrDefaultAsync(f => f.ProjectId == projectId && f.Name == trashFolderName);
+
+            if (trashFolder == null)
+            {
+                trashFolder = new ProjectImageGalleryFolder
+                {
+                    Name = trashFolderName,
+                    ProjectId = projectId,
+                    ParentFolderId = null,
+                    CreatorUserId = creatorUserId,
+                    Color = "#6c757d",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.ProjectImageGalleryFolders.Add(trashFolder);
+                await _context.SaveChangesAsync();
+            }
+
+            return trashFolder;
+        }
+
+        /// <summary>
+        /// بررسی اینکه آیا پوشه "زباله" است
+        /// </summary>
+        private static bool IsTrashFolder(ProjectImageGalleryFolder folder)
+        {
+            return folder.Name == "زباله";
         }
     }
 }

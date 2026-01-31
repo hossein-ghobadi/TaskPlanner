@@ -569,9 +569,73 @@ namespace Endpoint.Site.Controllers
             await _context.SaveChangesAsync();
 
             if (IsAjaxRequest())
-                return Json(new { success = true, message = "عکس با موفقیت حذف شد.", projectId });
+                return Json(new { success = true, message = "عکس با موفقیت حذف شد.", projectId, folderId = image.FolderId });
             TempData["Success"] = "عکس با موفقیت حذف شد.";
+            if (image.FolderId.HasValue)
+                return RedirectToAction(nameof(Index), new { projectId, folderId = image.FolderId.Value });
             return RedirectToAction(nameof(Index), new { projectId });
+        }
+
+        /// <summary>
+        /// حذف دسته‌ای عکس‌های گالری.
+        /// آرایه شناسه عکس‌ها را دریافت می‌کند؛ فقط عکس‌هایی حذف می‌شوند که کاربر به پروژه مربوطه دسترسی داشته باشد.
+        /// </summary>
+        /// <param name="ids">شناسه عکس‌هایی که باید حذف شوند</param>
+        /// <returns>JSON با success، deletedCount و در صورت نیاز projectId و folderId برای به‌روزرسانی صفحه</returns>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteBatch([FromForm] List<int> ids)
+        {
+            if (ids == null || ids.Count == 0)
+            {
+                return Json(new { success = false, message = "هیچ عکسی انتخاب نشده است." });
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var images = await _context.ProjectImageGalleries
+                .Where(img => ids.Contains(img.Id))
+                .ToListAsync();
+
+            int? projectId = null;
+            int? folderId = null;
+            int deletedCount = 0;
+
+            foreach (var image in images)
+            {
+                var hasAccess = await _context.Projects
+                    .AnyAsync(p => p.Id == image.ProjectId &&
+                        (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+                if (!hasAccess)
+                    continue;
+
+                projectId = image.ProjectId;
+                folderId = image.FolderId;
+
+                _fileUploadService.DeleteFile(image.FilePath);
+                if (!string.IsNullOrEmpty(image.ThumbnailPath))
+                    _fileUploadService.DeleteFile(image.ThumbnailPath);
+
+                _context.ProjectImageGalleries.Remove(image);
+                deletedCount++;
+            }
+
+            await _context.SaveChangesAsync();
+
+            if (deletedCount == 0)
+            {
+                return Json(new { success = false, message = "شما به این عکس‌ها دسترسی ندارید یا عکسی یافت نشد." });
+            }
+
+            return Json(new
+            {
+                success = true,
+                message = deletedCount == 1 ? "عکس با موفقیت حذف شد." : $"{deletedCount} عکس با موفقیت حذف شدند.",
+                deletedCount,
+                projectId,
+                folderId
+            });
         }
 
         /// <summary>

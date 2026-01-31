@@ -50,9 +50,9 @@
                             <a href="/ProjectImageGalleryFolders/Edit?id=@folder.Id" class="folder-action-btn" title="ویرایش پوشه">
                                 <i class="bi bi-pencil"></i>
                             </a>
-                            <a href="/ProjectImageGalleryFolders/Delete?id=@folder.Id" class="folder-action-btn folder-action-danger" title="حذف پوشه">
+                            <button type="button" class="folder-action-btn folder-action-danger btn-delete-folder" title="حذف پوشه" data-folder-id="@folder.Id" data-folder-name="@folder.Name" data-bs-toggle="modal" data-bs-target="#deleteFolderModal">
                                 <i class="bi bi-trash"></i>
-                            </a>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -148,11 +148,26 @@
 
         @if (Model.Any())
         {
+            <!-- نوار انتخاب دسته‌ای -->
+            <div class="bulk-actions-bar mb-3" id="bulkActionsBar" style="display: none;">
+                <label class="bulk-select-all d-flex align-items-center gap-2">
+                    <input type="checkbox" id="selectAllGalleryImages" class="form-check-input" />
+                    <span>انتخاب همه</span>
+                </label>
+                <span class="bulk-selected-count" id="bulkSelectedCount"></span>
+                <button type="button" class="btn btn-danger btn-sm" id="btnBulkDelete" data-bs-toggle="modal" data-bs-target="#deleteBatchImageModal" title="حذف انتخاب‌شده‌ها">
+                    <i class="bi bi-trash"></i>
+                    حذف انتخاب‌شده‌ها
+                </button>
+            </div>
             <!-- Image Gallery Grid -->
             <div class="image-gallery-grid">
                 @foreach (var image in Model.OrderByDescending(img => img.CreatedAt))
                 {
                     <div class="gallery-item" data-image-id="@image.Id" onclick="window.location.href='/ProjectImageGalleries/Details?id=@image.Id'">
+                        <div class="gallery-item-checkbox-wrap" onclick="event.stopPropagation();">
+                            <input type="checkbox" class="form-check-input gallery-item-checkbox" value="@image.Id" name="ids" />
+                        </div>
                         <div class="gallery-item-image">
                             <img src="@image.FilePath" alt="@image.Title" loading="lazy" />
                             <div class="gallery-item-overlay">
@@ -264,11 +279,71 @@
     </div>
 </div>
 
+<!-- مودال تأیید حذف پوشه -->
+<div class="modal fade" id="deleteFolderModal" tabindex="-1" aria-labelledby="deleteFolderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteFolderModalLabel">
+                    <i class="bi bi-trash text-danger"></i>
+                    حذف پوشه
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+            </div>
+            <form id="deleteFolderForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="deleteFolderId" value="" />
+                <div class="modal-body">
+                    <p class="mb-0" id="deleteFolderConfirmText">آیا از حذف این پوشه و تمام زیرپوشه‌های آن اطمینان دارید؟</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger" id="deleteFolderSubmitBtn">
+                        <i class="bi bi-trash"></i>
+                        حذف
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- مودال تأیید حذف دسته‌ای عکس‌ها -->
+<div class="modal fade" id="deleteBatchImageModal" tabindex="-1" aria-labelledby="deleteBatchImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteBatchImageModalLabel">
+                    <i class="bi bi-trash text-danger"></i>
+                    حذف دسته‌ای عکس‌ها
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+            </div>
+            <form id="deleteBatchImageForm">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <p class="mb-0" id="deleteBatchConfirmText">آیا از حذف عکس‌های انتخاب‌شده اطمینان دارید؟</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger" id="deleteBatchImageSubmitBtn">
+                        <i class="bi bi-trash"></i>
+                        حذف
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
 (function() {
     const deleteImageUrl = '@Url.Action("Delete", "ProjectImageGalleries")';
+    const deleteBatchImageUrl = '@Url.Action("DeleteBatch", "ProjectImageGalleries")';
     const createImageUrl = '@Url.Action("Create", "ProjectImageGalleries")';
+    const deleteFolderUrl = '@Url.Action("Delete", "ProjectImageGalleryFolders")';
+    const galleryIndexUrl = '@Url.Action("Index", "ProjectImageGalleries")';
 
     const createImageModal = document.getElementById('createImageModal');
     const createImageForm = document.getElementById('createImageForm');
@@ -280,6 +355,55 @@
     const deleteImageModal = document.getElementById('deleteImageModal');
     const deleteImageForm = document.getElementById('deleteImageForm');
     const deleteImageId = document.getElementById('deleteImageId');
+
+    const deleteFolderModal = document.getElementById('deleteFolderModal');
+    const deleteFolderForm = document.getElementById('deleteFolderForm');
+    const deleteFolderId = document.getElementById('deleteFolderId');
+
+    if (deleteFolderModal) {
+        deleteFolderModal.addEventListener('shown.bs.modal', function(e) {
+            const trigger = e.relatedTarget;
+            if (trigger && trigger.getAttribute('data-folder-id')) {
+                deleteFolderId.value = trigger.getAttribute('data-folder-id');
+                const nameEl = document.getElementById('deleteFolderConfirmText');
+                if (nameEl) nameEl.textContent = 'آیا از حذف پوشه «' + (trigger.getAttribute('data-folder-name') || '') + '» و تمام زیرپوشه‌های آن اطمینان دارید؟';
+            }
+        });
+    }
+
+    if (deleteFolderForm) {
+        deleteFolderForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const id = deleteFolderId.value;
+            if (!id) return;
+            const formData = new FormData(deleteFolderForm);
+            const btn = document.getElementById('deleteFolderSubmitBtn');
+            btn.disabled = true;
+            fetch(deleteFolderUrl, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(r) { return r.text().then(function(t) { return { ok: r.ok, status: r.status, text: t }; }); })
+            .then(function(o) {
+                var data;
+                try { data = JSON.parse(o.text); } catch(_) {
+                    data = { success: false, message: o.status === 400 ? 'درخواست نامعتبر. لطفاً صفحه را یک‌بار رفرش کنید و دوباره تلاش کنید.' : 'خطا در سرور (کد: ' + o.status + ')' };
+                }
+                if (!data.success && !data.message) data.message = 'خطا در حذف پوشه';
+                if (data.success) {
+                    const bsModal = bootstrap.Modal.getInstance(deleteFolderModal);
+                    if (bsModal) bsModal.hide();
+                    window.location.href = galleryIndexUrl + '?projectId=' + data.projectId + (data.parentFolderId ? '&folderId=' + data.parentFolderId : '');
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(function() { alert('خطا در ارتباط با سرور. اتصال اینترنت یا سرور را بررسی کنید.'); })
+            .finally(function() { btn.disabled = false; });
+        });
+    }
 
     if (deleteImageModal) {
         deleteImageModal.addEventListener('shown.bs.modal', function(e) {
@@ -321,6 +445,85 @@
                 }
             })
             .catch(function() { alert('خطا در ارتباط با سرور. اتصال اینترنت یا سرور را بررسی کنید.'); })
+            .finally(function() { btn.disabled = false; });
+        });
+    }
+
+    // حذف دسته‌ای
+    const bulkActionsBar = document.getElementById('bulkActionsBar');
+    const selectAllGalleryImages = document.getElementById('selectAllGalleryImages');
+    const bulkSelectedCount = document.getElementById('bulkSelectedCount');
+    const deleteBatchImageForm = document.getElementById('deleteBatchImageForm');
+    const deleteBatchImageModal = document.getElementById('deleteBatchImageModal');
+    const deleteBatchConfirmText = document.getElementById('deleteBatchConfirmText');
+
+    function updateBulkUI() {
+        const checkboxes = document.querySelectorAll('.gallery-item-checkbox');
+        const checked = document.querySelectorAll('.gallery-item-checkbox:checked');
+        if (!bulkActionsBar || !checkboxes.length) return;
+        if (checked.length > 0) {
+            bulkActionsBar.style.display = 'flex';
+            bulkSelectedCount.textContent = checked.length + ' عکس انتخاب شده';
+            if (selectAllGalleryImages) selectAllGalleryImages.checked = checked.length === checkboxes.length;
+        } else {
+            bulkActionsBar.style.display = 'none';
+            if (selectAllGalleryImages) selectAllGalleryImages.checked = false;
+        }
+    }
+
+    document.querySelectorAll('.gallery-item-checkbox').forEach(function(cb) {
+        cb.addEventListener('click', function(e) { e.stopPropagation(); });
+        cb.addEventListener('change', updateBulkUI);
+    });
+    if (selectAllGalleryImages) {
+        selectAllGalleryImages.addEventListener('change', function() {
+            document.querySelectorAll('.gallery-item-checkbox').forEach(function(cb) { cb.checked = selectAllGalleryImages.checked; });
+            updateBulkUI();
+        });
+    }
+    if (deleteBatchImageModal) {
+        deleteBatchImageModal.addEventListener('shown.bs.modal', function() {
+            const n = document.querySelectorAll('.gallery-item-checkbox:checked').length;
+            if (deleteBatchConfirmText) deleteBatchConfirmText.textContent = n === 1 ? 'آیا از حذف این عکس اطمینان دارید؟' : 'آیا از حذف ' + n + ' عکس انتخاب‌شده اطمینان دارید؟';
+        });
+    }
+    if (deleteBatchImageForm) {
+        deleteBatchImageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const checked = document.querySelectorAll('.gallery-item-checkbox:checked');
+            if (!checked.length) return;
+            const formData = new FormData(deleteBatchImageForm);
+            checked.forEach(function(cb) { formData.append('ids', cb.value); });
+            const btn = document.getElementById('deleteBatchImageSubmitBtn');
+            btn.disabled = true;
+            fetch(deleteBatchImageUrl, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(r) { return r.text().then(function(t) { return { ok: r.ok, status: r.status, text: t }; }); })
+            .then(function(o) {
+                var data;
+                try { data = JSON.parse(o.text); } catch(_) {
+                    data = { success: false, message: o.status === 400 ? 'درخواست نامعتبر.' : 'خطا در سرور (کد: ' + o.status + ')' };
+                }
+                if (data.success) {
+                    checked.forEach(function(cb) {
+                        const item = document.querySelector('.gallery-item[data-image-id="' + cb.value + '"]');
+                        if (item) item.remove();
+                    });
+                    const bsModal = bootstrap.Modal.getInstance(deleteBatchImageModal);
+                    if (bsModal) bsModal.hide();
+                    updateBulkUI();
+                    alert(data.message);
+                    if (document.querySelectorAll('.gallery-item').length === 0)
+                        window.location.reload();
+                } else {
+                    alert(data.message || 'خطا در حذف دسته‌ای عکس‌ها.');
+                }
+            })
+            .catch(function() { alert('خطا در ارتباط با سرور.'); })
             .finally(function() { btn.disabled = false; });
         });
     }
@@ -540,6 +743,14 @@
         color: #dc3545;
     }
 
+    .btn-delete-folder {
+        border: none;
+        background: inherit;
+        cursor: pointer;
+        padding: 0;
+        font: inherit;
+    }
+
     .gallery-content {
         flex: 1;
         min-width: 0;
@@ -731,6 +942,39 @@
     .gallery-item:hover {
         transform: translateY(-4px);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .gallery-item-checkbox-wrap {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 2;
+        padding: 4px;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 6px;
+    }
+    .gallery-item-checkbox-wrap .form-check-input {
+        cursor: pointer;
+        width: 1.2rem;
+        height: 1.2rem;
+    }
+
+    .bulk-actions-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        background: #f8f9fa;
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
+    }
+    .bulk-actions-bar .bulk-select-all {
+        margin: 0;
+        cursor: pointer;
+    }
+    .bulk-actions-bar .bulk-selected-count {
+        color: #495057;
+        font-size: 0.9rem;
     }
 
     .gallery-item-image {
