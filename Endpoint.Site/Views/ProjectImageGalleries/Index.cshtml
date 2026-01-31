@@ -92,6 +92,14 @@
                     <i class="bi bi-folder-plus"></i>
                     <span>پوشه جدید</span>
                 </a>
+                <a class="btn-figma-design" href="/ProjectImageGalleries/UploadFigmaDesign?projectId=@projectId&folderId=@folderId">
+                    <i class="bi bi-file-earmark-zip"></i>
+                    <span>آپلود طراحی فیگما</span>
+                </a>
+                <a class="btn-view-figma" href="/ProjectImageGalleries/ViewFigmaDesign?projectId=@projectId@(folderId.HasValue ? "&folderId=" + folderId : "")">
+                    <i class="bi bi-palette-fill"></i>
+                    <span>نمایش فیگما</span>
+                </a>
                 <a class="btn-create-image" href="/ProjectImageGalleries/Create?projectId=@projectId&folderId=@folderId">
                     <i class="bi bi-plus-lg"></i>
                     <span>افزودن عکس</span>
@@ -389,6 +397,46 @@
         color: #1a1a1a;
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-figma-design {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    }
+    .btn-figma-design:hover {
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+    }
+
+    .btn-view-figma {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: transparent;
+        color: #8B5CF6;
+        border: 2px solid #8B5CF6;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+    .btn-view-figma:hover {
+        background: #8B5CF6;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
     }
 
     .btn-back-project {

@@ -1,9 +1,11 @@
 using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.IO.Compression;
 using System.Security.Claims;
 using TaskPlanner.Application.Services.FileUpload;
 using TaskPlanner.Domain.Entities.TaskPlanner;
@@ -555,6 +557,238 @@ namespace Endpoint.Site.Controllers
 
             TempData["Success"] = "عکس با موفقیت حذف شد.";
             return RedirectToAction(nameof(Index), new { projectId });
+        }
+
+        /// <summary>
+        /// فرم آپلود طراحی فیگما (فایل zip اکسپورت فیگما)
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> UploadFigmaDesign(int projectId, int? folderId = null)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == projectId &&
+                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+            if (!hasAccess)
+            {
+                TempData["Error"] = "شما به این پروژه دسترسی ندارید.";
+                return RedirectToAction("Index", "Projects");
+            }
+
+            if (folderId.HasValue)
+            {
+                var folder = await _context.ProjectImageGalleryFolders
+                    .FirstOrDefaultAsync(f => f.Id == folderId.Value && f.ProjectId == projectId);
+                if (folder == null)
+                {
+                    TempData["Error"] = "پوشه یافت نشد یا متعلق به این پروژه نیست.";
+                    return RedirectToAction(nameof(Index), new { projectId });
+                }
+            }
+
+            var project = await _context.Projects.FindAsync(projectId);
+            ViewBag.ProjectName = project?.Name;
+            ViewBag.ProjectId = projectId;
+            ViewBag.FolderId = folderId;
+            return View();
+        }
+
+        /// <summary>
+        /// دریافت فایل zip اکسپورت فیگما، استخراج تصاویر و ذخیره در گالری + نمایش طراحی
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadFigmaDesign(int projectId, int? folderId, IFormFile figmaZipFile)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == projectId &&
+                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+            if (!hasAccess)
+            {
+                TempData["Error"] = "شما به این پروژه دسترسی ندارید.";
+                return RedirectToAction("Index", "Projects");
+            }
+
+            if (figmaZipFile == null || figmaZipFile.Length == 0)
+            {
+                TempData["Error"] = "لطفاً یک فایل zip اکسپورت فیگما انتخاب کنید.";
+                return RedirectToAction(nameof(UploadFigmaDesign), new { projectId, folderId });
+            }
+
+            var ext = Path.GetExtension(figmaZipFile.FileName).ToLowerInvariant();
+            if (ext != ".zip")
+            {
+                TempData["Error"] = "فقط فایل‌های zip مجاز هستند.";
+                return RedirectToAction(nameof(UploadFigmaDesign), new { projectId, folderId });
+            }
+
+            var allowedImageExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg" };
+
+            string tempZipPath = null;
+            string tempExtractPath = null;
+
+            try
+            {
+                tempZipPath = Path.Combine(Path.GetTempPath(), $"figma_{Guid.NewGuid():N}.zip");
+                tempExtractPath = Path.Combine(Path.GetTempPath(), $"figma_extract_{Guid.NewGuid():N}");
+
+                using (var stream = new FileStream(tempZipPath, FileMode.Create))
+                    await figmaZipFile.CopyToAsync(stream);
+
+                ZipFile.ExtractToDirectory(tempZipPath, tempExtractPath, overwriteFiles: true);
+
+                var imageFiles = Directory
+                    .GetFiles(tempExtractPath, "*.*", SearchOption.AllDirectories)
+                    .Where(f => allowedImageExtensions.Contains(Path.GetExtension(f)))
+                    .OrderBy(f => f)
+                    .ToList();
+
+                if (!imageFiles.Any())
+                {
+                    TempData["Error"] = "در این فایل zip هیچ تصویر مجازی (PNG, JPG, SVG و...) یافت نشد.";
+                    return RedirectToAction(nameof(UploadFigmaDesign), new { projectId, folderId });
+                }
+
+                var folderName = Path.GetFileNameWithoutExtension(figmaZipFile.FileName);
+                int? targetFolderId = folderId;
+
+                if (!folderId.HasValue && !string.IsNullOrWhiteSpace(folderName))
+                {
+                    var newFolder = new ProjectImageGalleryFolder
+                    {
+                        Name = folderName,
+                        ProjectId = projectId,
+                        ParentFolderId = null,
+                        CreatorUserId = userId!,
+                        CreatedAt = DateTime.UtcNow,
+                        Color = "#8B5CF6"
+                    };
+                    _context.ProjectImageGalleryFolders.Add(newFolder);
+                    await _context.SaveChangesAsync();
+                    targetFolderId = newFolder.Id;
+                }
+
+                var uploadedImages = new List<ProjectImageGallery>();
+                var uploadErrors = new List<string>();
+
+                foreach (var filePath in imageFiles)
+                {
+                    var fileName = Path.GetFileName(filePath);
+                    var fileLength = new FileInfo(filePath).Length;
+                    using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.None))
+                    {
+                        var formFile = new FormFile(fileStream, 0, fileLength, "file", fileName)
+                        {
+                            Headers = new HeaderDictionary(),
+                            ContentType = GetMimeType(fileName)
+                        };
+
+                        var uploadResult = await _fileUploadService.UploadFileAsync(formFile, "project-galleries");
+                        if (!uploadResult.Success)
+                        {
+                            uploadErrors.Add($"{fileName}: {uploadResult.Error}");
+                            continue;
+                        }
+
+                        var title = Path.GetFileNameWithoutExtension(fileName);
+                        var image = new ProjectImageGallery
+                        {
+                            Title = title,
+                            ProjectId = projectId,
+                            FolderId = targetFolderId,
+                            CreatorUserId = userId!,
+                            FileName = fileName,
+                            FilePath = uploadResult.FilePath,
+                            FileSize = fileLength,
+                            MimeType = formFile.ContentType,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        uploadedImages.Add(image);
+                    }
+                }
+
+                if (!uploadedImages.Any())
+                {
+                    TempData["Error"] = "هیچ تصویری آپلود نشد. " + (uploadErrors.Any() ? string.Join(" ", uploadErrors.Take(3)) : "");
+                    return RedirectToAction(nameof(UploadFigmaDesign), new { projectId, folderId });
+                }
+
+                _context.ProjectImageGalleries.AddRange(uploadedImages);
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = $"{uploadedImages.Count} فریم از طراحی فیگما با موفقیت آپلود و در گالری ذخیره شد.";
+                return RedirectToAction(nameof(ViewFigmaDesign), new { projectId, folderId = targetFolderId });
+            }
+            finally
+            {
+                try
+                {
+                    if (tempZipPath != null && System.IO.File.Exists(tempZipPath))
+                        System.IO.File.Delete(tempZipPath);
+                    if (tempExtractPath != null && Directory.Exists(tempExtractPath))
+                        Directory.Delete(tempExtractPath, true);
+                }
+                catch { /* ignore cleanup */ }
+            }
+        }
+
+        /// <summary>
+        /// نمایش طراحی فیگما (فریم‌های استخراج‌شده از zip)
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> ViewFigmaDesign(int projectId, int? folderId = null)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == projectId &&
+                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+            if (!hasAccess)
+            {
+                TempData["Error"] = "شما به این پروژه دسترسی ندارید.";
+                return RedirectToAction("Index", "Projects");
+            }
+
+            var query = _context.ProjectImageGalleries
+                .Include(img => img.Folder)
+                .Where(img => img.ProjectId == projectId);
+
+            if (folderId.HasValue)
+                query = query.Where(img => img.FolderId == folderId);
+
+            var images = await query.OrderBy(img => img.CreatedAt).ToListAsync();
+
+            var project = await _context.Projects.FindAsync(projectId);
+            var folder = folderId.HasValue
+                ? await _context.ProjectImageGalleryFolders.FirstOrDefaultAsync(f => f.Id == folderId && f.ProjectId == projectId)
+                : null;
+
+            ViewBag.ProjectName = project?.Name;
+            ViewBag.ProjectId = projectId;
+            ViewBag.FolderId = folderId;
+            ViewBag.Folder = folder;
+            return View(images);
+        }
+
+        private static string GetMimeType(string fileName)
+        {
+            var ext = Path.GetExtension(fileName).ToLowerInvariant();
+            return ext switch
+            {
+                ".png" => "image/png",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".gif" => "image/gif",
+                ".webp" => "image/webp",
+                ".svg" => "image/svg+xml",
+                _ => "application/octet-stream"
+            };
         }
 
         // Helper: محاسبه تمام IDهای پوشه‌های موجود در درخت یک پوشه

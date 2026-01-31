@@ -1,0 +1,603 @@
+@model IEnumerable<TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGallery>
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "نمایش طراحی فیگما";
+    var projectId = ViewBag.ProjectId as int?;
+    var folderId = ViewBag.FolderId as int?;
+    var folder = ViewBag.Folder as TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGalleryFolder;
+}
+
+<div class="figma-viewer-wrapper">
+    <div class="figma-viewer-header">
+        <div class="figma-viewer-breadcrumb">
+            <a href="/Projects/Details/@projectId" class="breadcrumb-link">
+                <i class="bi bi-folder2"></i>
+                @ViewBag.ProjectName
+            </a>
+            <span class="breadcrumb-sep">/</span>
+            @if (folder != null)
+            {
+                <span class="breadcrumb-current">
+                    <i class="bi bi-palette-fill" style="color: #8B5CF6;"></i>
+                    @folder.Name
+                </span>
+            }
+            else
+            {
+                <span class="breadcrumb-current">نمایش طراحی فیگما</span>
+            }
+        </div>
+        <div class="figma-viewer-actions">
+            <a href="/ProjectImageGalleries/UploadFigmaDesign?projectId=@projectId&folderId=@folderId" class="btn-figma-upload">
+                <i class="bi bi-file-earmark-zip"></i>
+                آپلود طراحی دیگر
+            </a>
+            <a href="/ProjectImageGalleries/Index?projectId=@projectId@(folderId.HasValue ? "&folderId=" + folderId : "")" class="btn-figma-gallery">
+                <i class="bi bi-images"></i>
+                گالری عکس
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-figma" role="alert">
+            <i class="bi bi-check-circle-fill"></i>
+            @TempData["Success"]
+        </div>
+    }
+
+    @if (Model != null && Model.Any())
+    {
+        <!-- نوار زوم و راهنما (مثل فیگما) -->
+        <div class="figma-zoom-bar">
+            <span class="figma-zoom-label">زوم:</span>
+            <button type="button" class="figma-zoom-btn" id="figmaZoomOut" title="کوچک‌نمایی" aria-label="Zoom Out">
+                <i class="bi bi-dash-lg"></i>
+            </button>
+            <span class="figma-zoom-value" id="figmaZoomValue">100%</span>
+            <button type="button" class="figma-zoom-btn" id="figmaZoomIn" title="بزرگ‌نمایی" aria-label="Zoom In">
+                <i class="bi bi-plus-lg"></i>
+            </button>
+            <button type="button" class="figma-zoom-reset" id="figmaZoomReset" title="برگشت به 100%">۱۰۰٪</button>
+            <span class="figma-canvas-hint">روی پس‌زمینه کلیک و بکشید برای جابه‌جایی • Ctrl+اسکرول برای زوم</span>
+        </div>
+
+        <div class="figma-canvas-wrap">
+            <div class="figma-frames-container figma-canvas" id="figmaFramesContainer">
+                <div class="figma-frames-list" id="figmaFramesList">
+                    @foreach (var img in Model)
+                    {
+                        <div class="figma-frame-item figma-artboard" data-src="@img.FilePath">
+                            <div class="figma-frame-image-wrap">
+                                <img src="@img.FilePath" alt="@img.Title" loading="lazy" />
+                            </div>
+                            <div class="figma-frame-title">@img.Title</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- لایت‌باکس با زوم -->
+        <div id="figmaLightbox" class="figma-lightbox" style="display: none;">
+            <button type="button" class="figma-lightbox-close" aria-label="بستن">&times;</button>
+            <div class="figma-lightbox-zoom-bar">
+                <button type="button" class="figma-lb-zoom-btn" id="lbZoomOut" title="کوچک‌نمایی"><i class="bi bi-dash-lg"></i></button>
+                <span class="figma-lb-zoom-value" id="lbZoomValue">100%</span>
+                <button type="button" class="figma-lb-zoom-btn" id="lbZoomIn" title="بزرگ‌نمایی"><i class="bi bi-plus-lg"></i></button>
+                <button type="button" class="figma-lb-zoom-btn" id="lbZoomReset" title="۱۰۰٪"><i class="bi bi-arrow-counterclockwise"></i></button>
+            </div>
+            <div class="figma-lightbox-pan-wrap" id="figmaLightboxPanWrap">
+                <img id="figmaLightboxImg" src="" alt="" />
+            </div>
+            <span id="figmaLightboxTitle" class="figma-lightbox-title"></span>
+        </div>
+    }
+    else
+    {
+        <div class="figma-empty">
+            <i class="bi bi-palette"></i>
+            <h3>هنوز فریمی در این طراحی نیست</h3>
+            <p>یک فایل zip اکسپورت فیگما آپلود کنید.</p>
+            <a href="/ProjectImageGalleries/UploadFigmaDesign?projectId=@projectId&folderId=@folderId" class="btn-figma-upload">
+                <i class="bi bi-file-earmark-zip"></i>
+                آپلود طراحی فیگما
+            </a>
+        </div>
+    }
+</div>
+
+<style>
+    .figma-viewer-wrapper {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 1.5rem;
+    }
+    .figma-viewer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    .figma-viewer-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .breadcrumb-link {
+        color: #4a5568;
+        text-decoration: none;
+    }
+    .breadcrumb-link:hover { color: #8B5CF6; }
+    .breadcrumb-sep { color: #cbd5e0; }
+    .breadcrumb-current {
+        font-weight: 600;
+        color: #1a1a1a;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .figma-viewer-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    .btn-figma-upload {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1.2rem;
+        background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
+        color: white;
+        border-radius: 10px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-figma-upload:hover { color: white; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4); }
+    .btn-figma-gallery {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1.2rem;
+        background: #f1f5f9;
+        color: #475569;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .btn-figma-gallery:hover { background: #e2e8f0; color: #1a1a1a; }
+    .alert-figma {
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .figma-zoom-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding: 0.5rem 0;
+        flex-wrap: wrap;
+    }
+    .figma-zoom-label {
+        font-weight: 600;
+        color: #475569;
+        font-size: 0.9rem;
+    }
+    .figma-zoom-btn {
+        width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        color: #475569;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 1.25rem;
+    }
+    .figma-zoom-btn:hover {
+        background: #8B5CF6;
+        color: white;
+        border-color: #8B5CF6;
+    }
+    .figma-zoom-value {
+        min-width: 48px;
+        text-align: center;
+        font-weight: 600;
+        color: #334155;
+        font-size: 0.9rem;
+    }
+    .figma-zoom-reset {
+        padding: 0.35rem 0.75rem;
+        background: #f1f5f9;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-weight: 500;
+        color: #475569;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+    .figma-zoom-reset:hover {
+        background: #e2e8f0;
+        color: #1a1a1a;
+    }
+    .figma-canvas-hint {
+        color: #9ca3af;
+        font-size: 0.8rem;
+        margin-right: 0.75rem;
+    }
+    .figma-canvas-wrap {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #d1d5db;
+        min-height: 70vh;
+    }
+    .figma-frames-container.figma-canvas {
+        position: relative;
+        background-color: #e5e7eb;
+        background-image: radial-gradient(circle, #9ca3af 1px, transparent 1px);
+        background-size: 24px 24px;
+        overflow: hidden;
+        cursor: grab;
+        min-height: 70vh;
+        touch-action: none;
+    }
+    .figma-frames-container.figma-canvas:active {
+        cursor: grabbing;
+    }
+    .figma-frames-container.figma-canvas.panning {
+        cursor: grabbing;
+    }
+    .figma-frames-list {
+        position: absolute;
+        top: 0;
+        left: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 32px;
+        justify-content: flex-start;
+        align-content: flex-start;
+        padding: 48px;
+        transform-origin: 0 0;
+        will-change: transform;
+    }
+    .figma-frame-item.figma-artboard {
+        background: #fff;
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+        border: 1px solid rgba(0,0,0,0.08);
+        transition: box-shadow 0.2s, border-color 0.2s;
+        cursor: pointer;
+        width: 320px;
+        flex-shrink: 0;
+    }
+    .figma-frame-item.figma-artboard:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);
+        border-color: #8B5CF6;
+    }
+    .figma-frame-image-wrap {
+        width: 100%;
+        background: #f9fafb;
+        min-height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    .figma-frame-image-wrap img {
+        width: 100%;
+        height: auto;
+        max-height: 420px;
+        object-fit: contain;
+        display: block;
+    }
+    .figma-frame-title {
+        padding: 8px 12px;
+        font-weight: 500;
+        color: #6b7280;
+        font-size: 12px;
+        border-top: 1px solid #e5e7eb;
+        font-family: inherit;
+    }
+    .figma-empty {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .figma-empty i {
+        font-size: 4rem;
+        color: #c4b5fd;
+        margin-bottom: 1rem;
+    }
+    .figma-empty h3 { font-size: 1.25rem; color: #1e293b; margin-bottom: 0.5rem; }
+    .figma-empty p { color: #64748b; margin-bottom: 1.5rem; }
+    .figma-lightbox {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.9);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+    .figma-lightbox-close {
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        background: rgba(255,255,255,0.2);
+        border: none;
+        color: white;
+        font-size: 2rem;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        cursor: pointer;
+        line-height: 1;
+    }
+    .figma-lightbox-close:hover { background: rgba(255,255,255,0.3); }
+    .figma-lightbox-zoom-bar {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        left: auto;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: rgba(0,0,0,0.5);
+        padding: 0.4rem 0.6rem;
+        border-radius: 12px;
+        z-index: 10001;
+    }
+    .figma-lb-zoom-btn {
+        width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.2);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        font-size: 1.2rem;
+        transition: background 0.2s;
+    }
+    .figma-lb-zoom-btn:hover { background: rgba(255,255,255,0.35); }
+    .figma-lb-zoom-value {
+        min-width: 44px;
+        text-align: center;
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .figma-lightbox-pan-wrap {
+        overflow: auto;
+        max-width: 95vw;
+        max-height: 80vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+    .figma-lightbox-pan-wrap img {
+        max-width: none;
+        max-height: none;
+        object-fit: contain;
+        transition: transform 0.15s ease;
+        transform-origin: center center;
+    }
+    .figma-lightbox-title {
+        color: white;
+        margin-top: 0.75rem;
+        font-size: 1.1rem;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        (function () {
+            // --- زوم گرید ---
+            var gridList = document.getElementById('figmaFramesList');
+            var zoomValueEl = document.getElementById('figmaZoomValue');
+            var zoomOutBtn = document.getElementById('figmaZoomOut');
+            var zoomInBtn = document.getElementById('figmaZoomIn');
+            var zoomResetBtn = document.getElementById('figmaZoomReset');
+
+            var gridZoom = 1;
+            var gridZoomMin = 0.25;
+            var gridZoomMax = 3;
+            var gridZoomStep = 0.25;
+            var panX = 0, panY = 0;
+
+            var canvasContainer = document.getElementById('figmaFramesContainer');
+
+            function applyCanvasTransform() {
+                if (!gridList) return;
+                gridList.style.transform = 'translate(' + panX + 'px, ' + panY + 'px) scale(' + gridZoom + ')';
+                if (zoomValueEl) zoomValueEl.textContent = Math.round(gridZoom * 100) + '%';
+            }
+
+            function zoomTowardPoint(vx, vy, newZoom) {
+                var cx = (vx - panX) / gridZoom;
+                var cy = (vy - panY) / gridZoom;
+                panX = vx - cx * newZoom;
+                panY = vy - cy * newZoom;
+                gridZoom = newZoom;
+                applyCanvasTransform();
+            }
+
+            if (zoomOutBtn) zoomOutBtn.addEventListener('click', function () {
+                if (!canvasContainer) return;
+                var rect = canvasContainer.getBoundingClientRect();
+                var vx = rect.width / 2;
+                var vy = rect.height / 2;
+                zoomTowardPoint(vx, vy, Math.max(gridZoomMin, gridZoom - gridZoomStep));
+            });
+            if (zoomInBtn) zoomInBtn.addEventListener('click', function () {
+                if (!canvasContainer) return;
+                var rect = canvasContainer.getBoundingClientRect();
+                var vx = rect.width / 2;
+                var vy = rect.height / 2;
+                zoomTowardPoint(vx, vy, Math.min(gridZoomMax, gridZoom + gridZoomStep));
+            });
+            if (zoomResetBtn) zoomResetBtn.addEventListener('click', function () {
+                panX = 0;
+                panY = 0;
+                gridZoom = 1;
+                applyCanvasTransform();
+            });
+            applyCanvasTransform();
+
+            // پن با دست: کشیدن از هر نقطه (به‌جز روی فریم) — مثل فیگما
+            if (canvasContainer) {
+                var panning = false, startPanX, startPanY, startMouseX, startMouseY;
+                function onPointerDown(e) {
+                    if (e.target.closest('.figma-frame-item')) return;
+                    panning = true;
+                    startPanX = panX;
+                    startPanY = panY;
+                    startMouseX = e.clientX;
+                    startMouseY = e.clientY;
+                    canvasContainer.classList.add('panning');
+                    e.preventDefault();
+                }
+                function onPointerMove(e) {
+                    if (!panning) return;
+                    panX = startPanX + (e.clientX - startMouseX);
+                    panY = startPanY + (e.clientY - startMouseY);
+                    applyCanvasTransform();
+                    e.preventDefault();
+                }
+                function onPointerUp() {
+                    panning = false;
+                    canvasContainer.classList.remove('panning');
+                }
+                canvasContainer.addEventListener('mousedown', onPointerDown);
+                canvasContainer.addEventListener('touchstart', function (e) {
+                    if (e.touches.length === 1 && !e.target.closest('.figma-frame-item')) {
+                        panning = true;
+                        startPanX = panX;
+                        startPanY = panY;
+                        startMouseX = e.touches[0].clientX;
+                        startMouseY = e.touches[0].clientY;
+                        canvasContainer.classList.add('panning');
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+                document.addEventListener('mousemove', onPointerMove);
+                document.addEventListener('touchmove', function (e) {
+                    if (panning && e.touches.length === 1) {
+                        panX = startPanX + (e.touches[0].clientX - startMouseX);
+                        panY = startPanY + (e.touches[0].clientY - startMouseY);
+                        applyCanvasTransform();
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+                document.addEventListener('mouseup', onPointerUp);
+                document.addEventListener('touchend', function (e) { if (e.touches.length === 0) onPointerUp(); });
+                document.addEventListener('mouseleave', onPointerUp);
+                canvasContainer.addEventListener('wheel', function (e) {
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        var rect = canvasContainer.getBoundingClientRect();
+                        var vx = e.clientX - rect.left;
+                        var vy = e.clientY - rect.top;
+                        var newZoom = e.deltaY < 0
+                            ? Math.min(gridZoomMax, gridZoom + gridZoomStep)
+                            : Math.max(gridZoomMin, gridZoom - gridZoomStep);
+                        zoomTowardPoint(vx, vy, newZoom);
+                    }
+                }, { passive: false });
+            }
+
+            // --- لایت‌باکس با زوم ---
+            var lb = document.getElementById('figmaLightbox');
+            var lbImg = document.getElementById('figmaLightboxImg');
+            var lbTitle = document.getElementById('figmaLightboxTitle');
+            var lbZoomValueEl = document.getElementById('lbZoomValue');
+            var lbZoomOutBtn = document.getElementById('lbZoomOut');
+            var lbZoomInBtn = document.getElementById('lbZoomIn');
+            var lbZoomResetBtn = document.getElementById('lbZoomReset');
+            var lbPanWrap = document.getElementById('figmaLightboxPanWrap');
+            var closeBtn = document.querySelector('.figma-lightbox-close');
+
+            var lbZoom = 1;
+            var lbZoomMin = 0.5;
+            var lbZoomMax = 3;
+            var lbZoomStep = 0.25;
+
+            function updateLbZoom() {
+                if (!lbImg) return;
+                lbImg.style.transform = 'scale(' + lbZoom + ')';
+                if (lbZoomValueEl) lbZoomValueEl.textContent = Math.round(lbZoom * 100) + '%';
+            }
+
+            function openLightbox(src, title) {
+                lbImg.src = src;
+                lbImg.alt = title;
+                lbTitle.textContent = title;
+                lbZoom = 1;
+                updateLbZoom();
+                lb.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeLightbox() {
+                lb.style.display = 'none';
+                document.body.style.overflow = '';
+                lbZoom = 1;
+                updateLbZoom();
+            }
+
+            document.querySelectorAll('.figma-frame-item').forEach(function (el) {
+                el.addEventListener('click', function () {
+                    var src = this.getAttribute('data-src');
+                    var title = this.querySelector('.figma-frame-title') ? this.querySelector('.figma-frame-title').textContent : '';
+                    if (src) openLightbox(src, title);
+                });
+            });
+
+            if (lbZoomOutBtn) lbZoomOutBtn.addEventListener('click', function (e) { e.stopPropagation(); lbZoom = Math.max(lbZoomMin, lbZoom - lbZoomStep); updateLbZoom(); });
+            if (lbZoomInBtn) lbZoomInBtn.addEventListener('click', function (e) { e.stopPropagation(); lbZoom = Math.min(lbZoomMax, lbZoom + lbZoomStep); updateLbZoom(); });
+            if (lbZoomResetBtn) lbZoomResetBtn.addEventListener('click', function (e) { e.stopPropagation(); lbZoom = 1; updateLbZoom(); });
+
+            if (lbPanWrap && lbImg) {
+                lbPanWrap.addEventListener('wheel', function (e) {
+                    if (!e.ctrlKey && !e.metaKey) return;
+                    e.preventDefault();
+                    if (e.deltaY < 0) lbZoom = Math.min(lbZoomMax, lbZoom + lbZoomStep);
+                    else lbZoom = Math.max(lbZoomMin, lbZoom - lbZoomStep);
+                    updateLbZoom();
+                }, { passive: false });
+            }
+
+            if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
+            lb.addEventListener('click', function (e) { if (e.target === lb) closeLightbox(); });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') closeLightbox();
+            });
+        })();
+    </script>
+}
