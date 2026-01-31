@@ -120,10 +120,10 @@
                     <i class="bi bi-palette-fill"></i>
                     <span>نمایش فیگما</span>
                 </a>
-                <a class="btn-create-image" href="/ProjectImageGalleries/Create?projectId=@projectId&folderId=@folderId">
+                <button type="button" class="btn-create-image" data-bs-toggle="modal" data-bs-target="#createImageModal" id="btnOpenCreateModal">
                     <i class="bi bi-plus-lg"></i>
                     <span>افزودن عکس</span>
-                </a>
+                </button>
                 <a class="btn-back-project" href="/Projects/Details/@projectId">
                     <i class="bi bi-arrow-right"></i>
                     <span>بازگشت به پروژه</span>
@@ -152,7 +152,7 @@
             <div class="image-gallery-grid">
                 @foreach (var image in Model.OrderByDescending(img => img.CreatedAt))
                 {
-                    <div class="gallery-item" onclick="window.location.href='/ProjectImageGalleries/Details?id=@image.Id'">
+                    <div class="gallery-item" data-image-id="@image.Id" onclick="window.location.href='/ProjectImageGalleries/Details?id=@image.Id'">
                         <div class="gallery-item-image">
                             <img src="@image.FilePath" alt="@image.Title" loading="lazy" />
                             <div class="gallery-item-overlay">
@@ -167,9 +167,9 @@
                             <a href="/ProjectImageGalleries/Edit?id=@image.Id" class="gallery-action-btn" title="ویرایش">
                                 <i class="bi bi-pencil"></i>
                             </a>
-                            <a href="/ProjectImageGalleries/Delete?id=@image.Id" class="gallery-action-btn gallery-action-danger" title="حذف">
+                            <button type="button" class="gallery-action-btn gallery-action-danger btn-delete-image" title="حذف" data-image-id="@image.Id" data-bs-toggle="modal" data-bs-target="#deleteImageModal">
                                 <i class="bi bi-trash"></i>
-                            </a>
+                            </button>
                         </div>
                     </div>
                 }
@@ -183,14 +183,213 @@
                 </div>
                 <h3>هنوز عکسی در این گالری وجود ندارد</h3>
                 <p>با افزودن اولین عکس خود شروع کنید</p>
-                <a href="/ProjectImageGalleries/Create?projectId=@projectId@(folderId.HasValue ? "&folderId=" + folderId : "")" class="btn-create-image">
+                <button type="button" class="btn-create-image" data-bs-toggle="modal" data-bs-target="#createImageModal">
                     <i class="bi bi-plus-lg"></i>
                     <span>افزودن اولین عکس</span>
-                </a>
+                </button>
             </div>
         }
     </div>
 </div>
+
+<!-- مودال افزودن عکس -->
+<div class="modal fade" id="createImageModal" tabindex="-1" aria-labelledby="createImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createImageModalLabel">
+                    <i class="bi bi-image"></i>
+                    افزودن عکس به گالری
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+            </div>
+            <form id="createImageForm" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ProjectId" id="createModalProjectId" value="@projectId" />
+                <input type="hidden" name="FolderId" id="createModalFolderId" value="@(folderId?.ToString() ?? "")" />
+                <div class="modal-body">
+                    <div id="createImageError" class="alert alert-danger d-none" role="alert"></div>
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-upload"></i>
+                            فایل‌های عکس <span class="text-danger">*</span>
+                        </label>
+                        <div class="file-upload-area border rounded p-4 text-center" style="background: #f8f9fa; cursor: pointer;" onclick="document.getElementById('createModalImageFiles').click();">
+                            <i class="bi bi-cloud-upload" style="font-size: 2rem; color: #6c757d;"></i>
+                            <p class="mt-2 mb-0">برای انتخاب عکس‌ها کلیک کنید</p>
+                            <small class="text-muted">می‌توانید چند عکس را همزمان انتخاب کنید</small>
+                        </div>
+                        <input type="file" name="ImageFiles" id="createModalImageFiles" class="form-control d-none" accept="image/*" multiple />
+                        <div id="createModalFilePreview" class="mt-3"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary" id="createImageSubmitBtn">
+                        <i class="bi bi-check-lg"></i>
+                        افزودن عکس
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- مودال تأیید حذف عکس -->
+<div class="modal fade" id="deleteImageModal" tabindex="-1" aria-labelledby="deleteImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteImageModalLabel">
+                    <i class="bi bi-trash text-danger"></i>
+                    حذف عکس
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+            </div>
+            <form id="deleteImageForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="deleteImageId" value="" />
+                <div class="modal-body">
+                    <p class="mb-0">آیا از حذف این عکس اطمینان دارید؟</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger" id="deleteImageSubmitBtn">
+                        <i class="bi bi-trash"></i>
+                        حذف
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function() {
+    const deleteImageUrl = '@Url.Action("Delete", "ProjectImageGalleries")';
+    const createImageUrl = '@Url.Action("Create", "ProjectImageGalleries")';
+
+    const createImageModal = document.getElementById('createImageModal');
+    const createImageForm = document.getElementById('createImageForm');
+    const createImageError = document.getElementById('createImageError');
+    const createModalImageFiles = document.getElementById('createModalImageFiles');
+    const createModalFilePreview = document.getElementById('createModalFilePreview');
+    const createImageSubmitBtn = document.getElementById('createImageSubmitBtn');
+
+    const deleteImageModal = document.getElementById('deleteImageModal');
+    const deleteImageForm = document.getElementById('deleteImageForm');
+    const deleteImageId = document.getElementById('deleteImageId');
+
+    if (deleteImageModal) {
+        deleteImageModal.addEventListener('shown.bs.modal', function(e) {
+            const trigger = e.relatedTarget;
+            if (trigger && trigger.getAttribute('data-image-id')) {
+                deleteImageId.value = trigger.getAttribute('data-image-id');
+            }
+        });
+    }
+
+    if (deleteImageForm) {
+        deleteImageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const id = deleteImageId.value;
+            if (!id) return;
+            const formData = new FormData(deleteImageForm);
+            const btn = document.getElementById('deleteImageSubmitBtn');
+            btn.disabled = true;
+            fetch(deleteImageUrl, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(r) { return r.text().then(function(t) { return { ok: r.ok, status: r.status, text: t }; }); })
+            .then(function(o) {
+                var data;
+                try { data = JSON.parse(o.text); } catch(_) {
+                    data = { success: false, message: o.status === 400 ? 'درخواست نامعتبر. لطفاً صفحه را یک‌بار رفرش کنید و دوباره تلاش کنید.' : 'خطا در سرور (کد: ' + o.status + ')' };
+                }
+                if (!data.success && !data.message) data.message = 'خطا در حذف عکس';
+                if (data.success) {
+                    const item = document.querySelector('.gallery-item[data-image-id="' + id + '"]');
+                    if (item) item.remove();
+                    const bsModal = bootstrap.Modal.getInstance(deleteImageModal);
+                    if (bsModal) bsModal.hide();
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(function() { alert('خطا در ارتباط با سرور. اتصال اینترنت یا سرور را بررسی کنید.'); })
+            .finally(function() { btn.disabled = false; });
+        });
+    }
+
+    if (createModalImageFiles) {
+        createModalImageFiles.addEventListener('change', function() {
+            createModalFilePreview.innerHTML = '';
+            const files = this.files;
+            if (files.length === 0) return;
+            const row = document.createElement('div');
+            row.className = 'row g-2';
+            for (let i = 0; i < files.length; i++) {
+                if (!files[i].type.startsWith('image/')) continue;
+                const col = document.createElement('div');
+                col.className = 'col-4';
+                col.innerHTML = '<img src="' + URL.createObjectURL(files[i]) + '" class="img-fluid rounded" style="height:80px;object-fit:cover" alt="" />';
+                row.appendChild(col);
+            }
+            createModalFilePreview.appendChild(row);
+        });
+    }
+
+    if (createImageModal) {
+        createImageModal.addEventListener('hidden.bs.modal', function() {
+            createImageForm.reset();
+            createModalFilePreview.innerHTML = '';
+            createImageError.classList.add('d-none');
+        });
+    }
+
+    if (createImageForm) {
+        createImageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!createModalImageFiles.files || createModalImageFiles.files.length === 0) {
+                createImageError.textContent = 'لطفاً حداقل یک عکس انتخاب کنید.';
+                createImageError.classList.remove('d-none');
+                return;
+            }
+            createImageError.classList.add('d-none');
+            const formData = new FormData(createImageForm);
+            createImageSubmitBtn.disabled = true;
+            fetch(createImageUrl, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(r) { return r.text().then(function(t) { return { ok: r.ok, status: r.status, text: t }; }); })
+            .then(function(o) {
+                var data;
+                try { data = JSON.parse(o.text); } catch(_) {
+                    data = { success: false, message: o.status === 400 ? 'درخواست نامعتبر. صفحه را رفرش کنید و دوباره تلاش کنید.' : 'خطا در سرور (کد: ' + o.status + ')' };
+                }
+                if (data.success) {
+                    const bsModal = bootstrap.Modal.getInstance(createImageModal);
+                    if (bsModal) bsModal.hide();
+                    window.location.reload();
+                } else {
+                    createImageError.textContent = data.message || (data.errors && data.errors.join('\n')) || 'خطا در افزودن عکس';
+                    createImageError.classList.remove('d-none');
+                }
+            })
+            .catch(function() { createImageError.textContent = 'خطا در ارتباط با سرور. اتصال اینترنت یا سرور را بررسی کنید.'; createImageError.classList.remove('d-none'); })
+            .finally(function() { createImageSubmitBtn.disabled = false; });
+        });
+    }
+})();
+</script>
+}
 
 <style>
     .gallery-container-wrapper {
@@ -614,6 +813,14 @@
     .gallery-action-danger:hover {
         background: #fee;
         color: #dc3545;
+    }
+
+    .btn-delete-image {
+        border: none;
+        background: inherit;
+        cursor: pointer;
+        padding: 0;
+        font: inherit;
     }
 
     .empty-state {

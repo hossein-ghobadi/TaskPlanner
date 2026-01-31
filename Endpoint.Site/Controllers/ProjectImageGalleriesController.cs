@@ -217,17 +217,19 @@ namespace Endpoint.Site.Controllers
 
             if (!ModelState.IsValid)
             {
+                if (IsAjaxRequest())
+                {
+                    var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
+                    return Json(new { success = false, message = "خطا در اعتبارسنجی", errors });
+                }
                 var project = await _context.Projects.FindAsync(vm.ProjectId);
                 ViewBag.ProjectName = project?.Name;
-                
-                // اگر folderId مشخص شده، اطلاعات پوشه را برای نمایش بگیر
                 if (vm.FolderId.HasValue)
                 {
                     var currentFolder = await _context.ProjectImageGalleryFolders
                         .FirstOrDefaultAsync(f => f.Id == vm.FolderId.Value && f.ProjectId == vm.ProjectId);
                     ViewBag.CurrentFolder = currentFolder;
                 }
-                
                 return View(vm);
             }
 
@@ -240,6 +242,8 @@ namespace Endpoint.Site.Controllers
 
             if (!hasAccess)
             {
+                if (IsAjaxRequest())
+                    return Json(new { success = false, message = "شما به این پروژه دسترسی ندارید." });
                 TempData["Error"] = "شما به این پروژه دسترسی ندارید.";
                 return RedirectToAction("Index", "Projects");
             }
@@ -252,35 +256,34 @@ namespace Endpoint.Site.Controllers
 
                 if (folder == null)
                 {
+                    if (IsAjaxRequest())
+                        return Json(new { success = false, message = "پوشه یافت نشد یا به آن دسترسی ندارید." });
                     ModelState.AddModelError("FolderId", "پوشه یافت نشد یا به آن دسترسی ندارید.");
                     var project = await _context.Projects.FindAsync(vm.ProjectId);
                     ViewBag.ProjectName = project?.Name;
-                    
                     if (vm.FolderId.HasValue)
                     {
                         var currentFolder = await _context.ProjectImageGalleryFolders
                             .FirstOrDefaultAsync(f => f.Id == vm.FolderId.Value && f.ProjectId == vm.ProjectId);
                         ViewBag.CurrentFolder = currentFolder;
                     }
-                    
                     return View(vm);
                 }
             }
 
-            // بررسی اینکه حداقل یک فایل انتخاب شده باشد
             if (vm.ImageFiles == null || !vm.ImageFiles.Any())
             {
+                if (IsAjaxRequest())
+                    return Json(new { success = false, message = "لطفاً حداقل یک عکس انتخاب کنید." });
                 ModelState.AddModelError("ImageFiles", "لطفاً حداقل یک عکس انتخاب کنید.");
                 var project = await _context.Projects.FindAsync(vm.ProjectId);
                 ViewBag.ProjectName = project?.Name;
-                
                 if (vm.FolderId.HasValue)
                 {
                     var currentFolder = await _context.ProjectImageGalleryFolders
                         .FirstOrDefaultAsync(f => f.Id == vm.FolderId.Value && f.ProjectId == vm.ProjectId);
                     ViewBag.CurrentFolder = currentFolder;
                 }
-                
                 return View(vm);
             }
 
@@ -329,20 +332,19 @@ namespace Endpoint.Site.Controllers
                 successCount++;
             }
 
-            // اگر هیچ فایلی با موفقیت آپلود نشد
             if (!uploadedImages.Any())
             {
+                if (IsAjaxRequest())
+                    return Json(new { success = false, message = "خطا در آپلود فایل‌ها", errors = uploadErrors });
                 ModelState.AddModelError("ImageFiles", $"خطا در آپلود فایل‌ها:\n{string.Join("\n", uploadErrors)}");
                 var project = await _context.Projects.FindAsync(vm.ProjectId);
                 ViewBag.ProjectName = project?.Name;
-                
                 if (vm.FolderId.HasValue)
                 {
                     var currentFolder = await _context.ProjectImageGalleryFolders
                         .FirstOrDefaultAsync(f => f.Id == vm.FolderId.Value && f.ProjectId == vm.ProjectId);
                     ViewBag.CurrentFolder = currentFolder;
                 }
-                
                 return View(vm);
             }
 
@@ -350,23 +352,21 @@ namespace Endpoint.Site.Controllers
             _context.ProjectImageGalleries.AddRange(uploadedImages);
             await _context.SaveChangesAsync();
 
-            // پیام موفقیت
+            var successMessage = uploadErrors.Any()
+                ? $"{successCount} عکس با موفقیت اضافه شد. {uploadErrors.Count} فایل با خطا مواجه شد."
+                : $"{successCount} عکس با موفقیت به گالری اضافه شد.";
             if (uploadErrors.Any())
             {
-                TempData["Success"] = $"{successCount} عکس با موفقیت اضافه شد. {uploadErrors.Count} فایل با خطا مواجه شد.";
+                TempData["Success"] = successMessage;
                 TempData["Error"] = string.Join("\n", uploadErrors);
             }
             else
-            {
-                TempData["Success"] = $"{successCount} عکس با موفقیت به گالری اضافه شد.";
-            }
-            
-            // اگر عکس‌ها در یک پوشه ایجاد شده‌اند، به همان پوشه redirect کن
+                TempData["Success"] = successMessage;
+
+            if (IsAjaxRequest())
+                return Json(new { success = true, message = successMessage, projectId = vm.ProjectId, folderId = vm.FolderId });
             if (vm.FolderId.HasValue)
-            {
                 return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId, folderId = vm.FolderId.Value });
-            }
-            
             return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId });
         }
 
@@ -541,33 +541,35 @@ namespace Endpoint.Site.Controllers
 
             if (image == null)
             {
+                if (IsAjaxRequest())
+                    return Json(new { success = false, message = "عکس یافت نشد." });
                 TempData["Error"] = "عکس یافت نشد.";
                 return RedirectToAction("Index", "Projects");
             }
 
             var projectId = image.ProjectId;
 
-            // بررسی دسترسی
             var hasAccess = await _context.Projects
                 .AnyAsync(p => p.Id == projectId && 
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
             {
+                if (IsAjaxRequest())
+                    return Json(new { success = false, message = "شما به این پروژه دسترسی ندارید." });
                 TempData["Error"] = "شما به این پروژه دسترسی ندارید.";
                 return RedirectToAction("Index", "Projects");
             }
 
-            // حذف فایل از سرور
             _fileUploadService.DeleteFile(image.FilePath);
             if (!string.IsNullOrEmpty(image.ThumbnailPath))
-            {
                 _fileUploadService.DeleteFile(image.ThumbnailPath);
-            }
 
             _context.ProjectImageGalleries.Remove(image);
             await _context.SaveChangesAsync();
 
+            if (IsAjaxRequest())
+                return Json(new { success = true, message = "عکس با موفقیت حذف شد.", projectId });
             TempData["Success"] = "عکس با موفقیت حذف شد.";
             return RedirectToAction(nameof(Index), new { projectId });
         }
@@ -805,6 +807,9 @@ namespace Endpoint.Site.Controllers
             ViewBag.Folder = folder;
             return View(images);
         }
+
+        private bool IsAjaxRequest() =>
+            string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
 
         private static string GetMimeType(string fileName)
         {
