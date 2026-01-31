@@ -64,6 +64,19 @@ namespace Endpoint.Site.Controllers
                 }
 
                 ViewBag.CurrentFolder = folder;
+
+                // ساخت مسیر breadcrumb از root تا والد پوشه فعلی (برای برگشت به پوشه‌های بالاتر)
+                var breadcrumbPath = new List<ProjectImageGalleryFolder>();
+                var parentId = folder.ParentFolderId;
+                while (parentId.HasValue)
+                {
+                    var parentFolder = await _context.ProjectImageGalleryFolders
+                        .FirstOrDefaultAsync(f => f.Id == parentId.Value && f.ProjectId == projectId);
+                    if (parentFolder == null) break;
+                    breadcrumbPath.Insert(0, parentFolder);
+                    parentId = parentFolder.ParentFolderId;
+                }
+                ViewBag.BreadcrumbFolders = breadcrumbPath;
             }
 
             var project = await _context.Projects.FindAsync(projectId);
@@ -769,6 +782,22 @@ namespace Endpoint.Site.Controllers
             var folder = folderId.HasValue
                 ? await _context.ProjectImageGalleryFolders.FirstOrDefaultAsync(f => f.Id == folderId && f.ProjectId == projectId)
                 : null;
+
+            // مسیر breadcrumb برای پوشه‌های والد (در صورت تودرتو بودن)
+            var breadcrumbPath = new List<ProjectImageGalleryFolder>();
+            if (folder != null)
+            {
+                var parentId = folder.ParentFolderId;
+                while (parentId.HasValue)
+                {
+                    var parentFolder = await _context.ProjectImageGalleryFolders
+                        .FirstOrDefaultAsync(f => f.Id == parentId.Value && f.ProjectId == projectId);
+                    if (parentFolder == null) break;
+                    breadcrumbPath.Insert(0, parentFolder);
+                    parentId = parentFolder.ParentFolderId;
+                }
+            }
+            ViewBag.BreadcrumbFolders = breadcrumbPath;
 
             ViewBag.ProjectName = project?.Name;
             ViewBag.ProjectId = projectId;
