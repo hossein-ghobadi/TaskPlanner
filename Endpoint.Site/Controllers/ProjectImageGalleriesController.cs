@@ -18,6 +18,15 @@ namespace Endpoint.Site.Controllers
     [Route("[controller]/[action]")]
     public class ProjectImageGalleriesController : Controller
     {
+        /// <summary>جداکننده‌های تگ: ویرگول انگلیسی و فارسی (،)</summary>
+        private static readonly char[] TagSeparators = new[] { ',', '\u060C' };
+
+        private static string? NormalizeTagsInput(string? input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return null;
+            return input.Trim().Replace('\u060C', ',').Trim();
+        }
+
         private readonly MVPTestDatabaseContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IFileUploadService _fileUploadService;
@@ -492,7 +501,7 @@ namespace Endpoint.Site.Controllers
             image.Title = vm.Title;
             image.Description = vm.Description;
             image.FolderId = vm.FolderId;
-            image.Tags = string.IsNullOrWhiteSpace(vm.Tags) ? null : vm.Tags.Trim();
+            image.Tags = NormalizeTagsInput(vm.Tags);
             image.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -851,7 +860,7 @@ namespace Endpoint.Site.Controllers
 
             // استخراج تمام تگ‌های یکتا از همه عکس‌ها (برای فیلتر)
             var allTags = images
-                .SelectMany(img => (img.Tags ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
+                .SelectMany(img => (img.Tags ?? "").Split(TagSeparators, StringSplitOptions.RemoveEmptyEntries))
                 .Select(t => t.Trim())
                 .Where(t => t.Length > 0)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -863,7 +872,7 @@ namespace Endpoint.Site.Controllers
             if (!string.IsNullOrWhiteSpace(selectedTagsParam))
             {
                 var selectedTagsSet = selectedTagsParam
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Split(TagSeparators, StringSplitOptions.RemoveEmptyEntries)
                     .Select(t => t.Trim())
                     .Where(t => t.Length > 0)
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -872,7 +881,7 @@ namespace Endpoint.Site.Controllers
                     images = images.Where(img =>
                     {
                         if (string.IsNullOrWhiteSpace(img.Tags)) return false;
-                        var itemTags = img.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim());
+                        var itemTags = img.Tags.Split(TagSeparators, StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim());
                         return itemTags.Any(t => selectedTagsSet.Contains(t));
                     }).ToList();
                 }
@@ -933,7 +942,7 @@ namespace Endpoint.Site.Controllers
             if (!hasAccess)
                 return Json(new { success = false, message = "دسترسی مجاز نیست." });
 
-            image.Tags = string.IsNullOrWhiteSpace(request?.Tags) ? null : request.Tags.Trim();
+            image.Tags = NormalizeTagsInput(request?.Tags);
             image.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
