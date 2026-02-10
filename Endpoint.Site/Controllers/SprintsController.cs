@@ -888,7 +888,6 @@ namespace Endpoint.Site.Controllers
         public async Task<IActionResult> CreateQuickTask([FromBody] JsonElement data)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     1");
             if (!data.TryGetProperty("sprintId", out var sprintIdProp) || !data.TryGetProperty("title", out var titleProp))
             {
                 return Json(new { success = false, message = "اسپرینت و عنوان الزامی است." });
@@ -907,10 +906,7 @@ namespace Endpoint.Site.Controllers
                 .FirstOrDefaultAsync(s => s.Id == sprintId);
 
             if (sprint == null)
-            {
                 return Json(new { success = false, message = "اسپرینت یافت نشد." });
-            }
-            Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     2");
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
@@ -928,232 +924,111 @@ namespace Endpoint.Site.Controllers
                 return Json(new { success = false, message = "فقط اسپرینت فعال می‌تواند تسک جدید داشته باشد." });
             }
 
-            const int maxRetries = 5;
-            for (int retry = 0; retry < maxRetries; retry++)
+            var projectInfo = await _context.Projects
+                .Where(p => p.Id == sprint.ProjectId)
+                .Select(p => new { p.IssueKeyPrefix })
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            if (projectInfo == null)
+                return Json(new { success = false, message = "پروژه یافت نشد." });
+
+            // دریافت categoryId (اختیاری)
+            int? categoryId = null;
+            if (data.TryGetProperty("categoryId", out var catProp) && catProp.ValueKind == JsonValueKind.Number)
             {
-                await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-                try
+                categoryId = catProp.GetInt32();
+                if (categoryId <= 0) categoryId = null;
+            }
+
+            // دریافت IssueType (پیش‌فرض: Task)
+            IssueType issueType = IssueType.Task;
+            if (data.TryGetProperty("issueType", out var issueTypeProp) && issueTypeProp.ValueKind == JsonValueKind.Number)
+                issueType = (IssueType)issueTypeProp.GetInt32();
+
+            WorkflowStatus? targetStatus = null;
+            if (data.TryGetProperty("statusId", out var statusProp) && statusProp.ValueKind == JsonValueKind.Number)
+            {
+                var requestedStatusId = statusProp.GetInt32();
+                targetStatus = await _context.WorkflowStatuses
+                    .FirstOrDefaultAsync(ws => ws.Id == requestedStatusId && ws.SprintId == sprintId);
+            }
+
+            if (targetStatus == null)
+                targetStatus = await _context.WorkflowStatuses
+                    .Where(ws => ws.SprintId == sprintId)
+                    .OrderBy(ws => ws.IsDefault ? 0 : ws.Order)
+                    .FirstOrDefaultAsync();
+
+            var targetStatusId = targetStatus?.Id;
+            var targetStatusName = targetStatus?.Name;
+            var isFinalStatus = targetStatus?.IsFinal == true;
+
+            // دریافت ProjectIssueTypeId اگر ارسال شده باشد
+            int? projectIssueTypeId = null;
+            if (data.TryGetProperty("projectIssueTypeId", out var pitProp) && pitProp.ValueKind == JsonValueKind.Number)
+            {
+                var pitId = pitProp.GetInt32();
+                var projectIssueType = await _context.ProjectIssueTypes
+                    .FirstOrDefaultAsync(pit => pit.Id == pitId && pit.ProjectId == sprint.ProjectId);
+                if (projectIssueType != null)
                 {
-                    var projectInfo = await _context.Projects
-                        .Where(p => p.Id == sprint.ProjectId)
-                        .Select(p => new { p.IssueKeyPrefix })
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync();
-                    Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     3 - Retry: {retry}");
-
-                    if (projectInfo == null)
-                    {
-                        await transaction.RollbackAsync();
-                        return Json(new { success = false, message = "پروژه یافت نشد." });
-                    }
-
-                    var connection = _context.Database.GetDbConnection();
-                    if (connection.State != System.Data.ConnectionState.Open)
-                    {
-                        await connection.OpenAsync();
-                    }
-
-                    await using var command = connection.CreateCommand();
-                    var relationalTransaction = (transaction as IInfrastructure<DbTransaction>)?.Instance;
-                    if (relationalTransaction == null)
-                    {
-                        throw new InvalidOperationException("تراکنش پایگاه داده در دسترس نیست.");
-                    }
-                    command.Transaction = relationalTransaction;
-
-                    // پیدا کردن شماره منحصر به فرد با استفاده از loop
-                    int newIssueNumber = 0;
-                    string generatedIssueKey = null;
-                    int maxAttempts = 10; // حداکثر 10 تلاش برای پیدا کردن شماره منحصر به فرد
-                    
-                    for (int attempt = 0; attempt < maxAttempts; attempt++)
-                    {
-                        // دریافت و افزایش LastIssueNumber به صورت atomic
-                        command.CommandText = @"UPDATE Projects SET LastIssueNumber = LastIssueNumber + 1 OUTPUT INSERTED.LastIssueNumber WHERE Id = @projectId;";
-                        command.Parameters.Clear();
-                        var projectIdParam = command.CreateParameter();
-                        projectIdParam.ParameterName = "@projectId";
-                        projectIdParam.Value = sprint.ProjectId;
-                        command.Parameters.Add(projectIdParam);
-
-                        var scalarResult = await command.ExecuteScalarAsync();
-                        if (scalarResult == null || scalarResult == DBNull.Value)
-                        {
-                            throw new InvalidOperationException("امکان تولید IssueKey وجود ندارد.");
-                        }
-
-                        newIssueNumber = Convert.ToInt32(scalarResult);
-                        generatedIssueKey = $"{projectInfo.IssueKeyPrefix}-{newIssueNumber}";
-                        
-                        // بررسی اینکه آیا این IssueKey قبلاً وجود دارد
-                        command.CommandText = @"SELECT COUNT(*) FROM TaskItems WHERE IssueKey = @issueKey;";
-                        command.Parameters.Clear();
-                        var issueKeyParam = command.CreateParameter();
-                        issueKeyParam.ParameterName = "@issueKey";
-                        issueKeyParam.Value = generatedIssueKey;
-                        command.Parameters.Add(issueKeyParam);
-
-                        var countResult = await command.ExecuteScalarAsync();
-                        var exists = Convert.ToInt32(countResult) > 0;
-                        
-                        if (!exists)
-                        {
-                            // شماره منحصر به فرد پیدا شد
-                            Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     Generated unique IssueKey: {generatedIssueKey} (Retry: {retry}, Attempt: {attempt})");
-                            break;
-                        }
-                        
-                        Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     IssueKey {generatedIssueKey} already exists, trying next number... (Attempt: {attempt})");
-                        
-                        // اگر آخرین تلاش بود و هنوز duplicate بود، خطا بده
-                        if (attempt == maxAttempts - 1)
-                        {
-                            throw new InvalidOperationException($"نمی‌توان شماره منحصر به فرد برای IssueKey پیدا کرد پس از {maxAttempts} تلاش.");
-                        }
-                    }
-
-                    // دریافت categoryId (اختیاری)
-                    int? categoryId = null;
-                    if (data.TryGetProperty("categoryId", out var catProp) && catProp.ValueKind == JsonValueKind.Number)
-                    {
-                        categoryId = catProp.GetInt32();
-                        if (categoryId <= 0) categoryId = null;
-                    }
-                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     4");
-
-                    // دریافت IssueType (پیش‌فرض: Task)
-                    IssueType issueType = IssueType.Task;
-                    if (data.TryGetProperty("issueType", out var issueTypeProp) && issueTypeProp.ValueKind == JsonValueKind.Number)
-                    {
-                        issueType = (IssueType)issueTypeProp.GetInt32();
-                    }
-
-                    WorkflowStatus? targetStatus = null;
-                    if (data.TryGetProperty("statusId", out var statusProp) && statusProp.ValueKind == JsonValueKind.Number)
-                    {
-                        var requestedStatusId = statusProp.GetInt32();
-                        targetStatus = await _context.WorkflowStatuses
-                            .FirstOrDefaultAsync(ws => ws.Id == requestedStatusId && ws.SprintId == sprintId);
-                    }
-                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     5");
-
-                    if (targetStatus == null)
-                    {
-                        targetStatus = await _context.WorkflowStatuses
-                            .Where(ws => ws.SprintId == sprintId)
-                            .OrderBy(ws => ws.IsDefault ? 0 : ws.Order)
-                            .FirstOrDefaultAsync();
-                    }
-
-                    var targetStatusId = targetStatus?.Id;
-                    var targetStatusName = targetStatus?.Name;
-                    var isFinalStatus = targetStatus?.IsFinal == true;
-
-                    // دریافت ProjectIssueTypeId اگر ارسال شده باشد
-                    int? projectIssueTypeId = null;
-                    if (data.TryGetProperty("projectIssueTypeId", out var pitProp) && pitProp.ValueKind == JsonValueKind.Number)
-                    {
-                        var pitId = pitProp.GetInt32();
-                        var projectIssueType = await _context.ProjectIssueTypes
-                            .FirstOrDefaultAsync(pit => pit.Id == pitId && pit.ProjectId == sprint.ProjectId);
-                        
-                        if (projectIssueType != null)
-                        {
-                            projectIssueTypeId = projectIssueType.Id;
-                            issueType = projectIssueType.BaseType; // به‌روزرسانی IssueType بر اساس ProjectIssueType
-                        }
-                    }
-
-                    var newTask = new TaskItem
-                    {
-                        Title = title,
-                        Description = data.TryGetProperty("description", out var descProp) ? descProp.GetString() : null,
-                        IssueType = issueType,
-                        ProjectIssueTypeId = projectIssueTypeId,
-                        IssueKey = generatedIssueKey,
-                        StartDate = DateTime.Today,
-                        DueDate = null,
-                        ProjectId = sprint.ProjectId,
-                        CategoryId = categoryId,
-                        AssignedUserId = data.TryGetProperty("assignedUserId", out var assignedProp) && !string.IsNullOrWhiteSpace(assignedProp.GetString()) ? assignedProp.GetString() : null,
-                        StoryPoints = data.TryGetProperty("storyPoints", out var spProp) && spProp.ValueKind == JsonValueKind.Number ? spProp.GetInt32() : null,
-                        StatusId = targetStatusId,
-                        WorkflowStatusId = targetStatusId,
-                        IsCompleted = isFinalStatus,
-                        SprintId = sprintId,
-                        CreatedByUserId = userId,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     6");
-
-                    _context.TaskItems.Add(newTask);
-                    
-                    // ابتدا تسک را ذخیره می‌کنیم تا Id تولید شود
-                    await _context.SaveChangesAsync();
-                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     6.5 - Task saved, Id: " + newTask.Id);
-
-                    // حالا که Id تولید شده، SprintTask را می‌سازیم
-                    var sprintTask = new SprintTask
-                    {
-                        SprintId = sprintId,
-                        TaskId = newTask.Id,
-                        AddedAt = DateTime.UtcNow,
-                        AddedByUserId = userId,
-                        Status = isFinalStatus ? SprintTaskStatus.Completed : SprintTaskStatus.Pending,
-                        SprintPriority = (int)TaskPriority.Medium
-                    };
-
-                    _context.SprintTasks.Add(sprintTask);
-                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     7");
-
-                    // ذخیره SprintTask
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     8");
-
-                    return Json(new
-                    {
-                        success = true,
-                        message = "تسک با موفقیت ایجاد و به اسپرینت اضافه شد.",
-                        taskId = newTask.Id,
-                        issueKey = newTask.IssueKey,
-                        statusId = targetStatusId,
-                        statusName = targetStatusName
-                    });
-                }
-                catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx &&
-                                                   sqlEx.Number == 2601 &&
-                                                   retry < maxRetries - 1)
-                {
-                    Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     Duplicate key error on retry {retry}: {sqlEx.Message}");
-                    await transaction.RollbackAsync();
-                    // افزایش تاخیر برای هر retry
-                    await Task.Delay(100 * (retry + 1));
-                    continue;
-                }
-                catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx &&
-                                                   sqlEx.Number == 2601)
-                {
-                    // آخرین retry و هنوز duplicate key
-                    await transaction.RollbackAsync();
-                    Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     Final duplicate key error: {sqlEx.Message}");
-                    return Json(new { success = false, message = "خطا در ایجاد تسک: کلید تکراری. لطفاً دوباره امتحان کنید." });
-                }
-                catch (Exception ex)
-                {
-                    await transaction.RollbackAsync();
-                    Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     General error: {ex.Message}");
-                    if (ex.InnerException != null)
-                    {
-                        Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>     Inner exception: {ex.InnerException.Message}");
-                    }
-                    var detailedMessage = ex.InnerException?.Message ?? ex.Message;
-                    return Json(new { success = false, message = "خطا در ایجاد تسک: " + detailedMessage });
+                    projectIssueTypeId = projectIssueType.Id;
+                    issueType = projectIssueType.BaseType;
                 }
             }
 
-            return Json(new { success = false, message = "خطا در ایجاد تسک پس از چندین تلاش. لطفاً دوباره امتحان کنید." });
+            // تسک را ابتدا بدون IssueKey ذخیره می‌کنیم تا Id تولید شود، بعد IssueKey = Prefix-Id (همیشه یکتا)
+            var newTask = new TaskItem
+            {
+                Title = title,
+                Description = data.TryGetProperty("description", out var descProp) ? descProp.GetString() : null,
+                IssueType = issueType,
+                ProjectIssueTypeId = projectIssueTypeId,
+                IssueKey = null,
+                StartDate = DateTime.Today,
+                DueDate = null,
+                ProjectId = sprint.ProjectId,
+                CategoryId = categoryId,
+                AssignedUserId = data.TryGetProperty("assignedUserId", out var assignedProp) && !string.IsNullOrWhiteSpace(assignedProp.GetString()) ? assignedProp.GetString() : null,
+                StoryPoints = data.TryGetProperty("storyPoints", out var spProp) && spProp.ValueKind == JsonValueKind.Number ? spProp.GetInt32() : null,
+                StatusId = targetStatusId,
+                WorkflowStatusId = targetStatusId,
+                IsCompleted = isFinalStatus,
+                SprintId = sprintId,
+                CreatedByUserId = userId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.TaskItems.Add(newTask);
+            await _context.SaveChangesAsync();
+
+            newTask.IssueKey = $"{projectInfo.IssueKeyPrefix}-{newTask.Id}";
+            await _context.SaveChangesAsync();
+
+            var sprintTask = new SprintTask
+            {
+                SprintId = sprintId,
+                TaskId = newTask.Id,
+                AddedAt = DateTime.UtcNow,
+                AddedByUserId = userId,
+                Status = isFinalStatus ? SprintTaskStatus.Completed : SprintTaskStatus.Pending,
+                SprintPriority = (int)TaskPriority.Medium
+            };
+
+            _context.SprintTasks.Add(sprintTask);
+            await _context.SaveChangesAsync();
+
+            return Json(new
+            {
+                success = true,
+                message = "تسک با موفقیت ایجاد و به اسپرینت اضافه شد.",
+                taskId = newTask.Id,
+                issueKey = newTask.IssueKey,
+                statusId = targetStatusId,
+                statusName = targetStatusName
+            });
         }
 
         // 📌 تغییر وضعیت تسک در اسپرینت
