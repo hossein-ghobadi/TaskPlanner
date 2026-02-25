@@ -20,6 +20,7 @@ namespace TaskPlanner.Infrastructure.IdentityConfigs
             // If you need a separate connection for Identity, uncomment below and update Program.cs
             // var connection1 = Environment.GetEnvironmentVariable("CONNECTION_TABLOYAR");
             // services.AddDbContext<MVPTestDatabaseContext>(options => options.UseSqlServer(connection1));
+            var cookie_expieTime = Environment.GetEnvironmentVariable("COOKIE_EXPIRETIME");
 
             services.AddIdentity<User, IdentityRole>()
                 .AddEntityFrameworkStores<MVPTestDatabaseContext>()
@@ -42,7 +43,7 @@ namespace TaskPlanner.Infrastructure.IdentityConfigs
 
                 // Lockout settings
                 options.Lockout.MaxFailedAccessAttempts = 5;
-                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(30);
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(Convert.ToDouble(cookie_expieTime));
             });
 
             // Configure application cookie settings with dynamic Domain
@@ -54,7 +55,7 @@ namespace TaskPlanner.Infrastructure.IdentityConfigs
                 options.Cookie.HttpOnly = true;
                 options.Cookie.SameSite = SameSiteMode.None; // Required for cross-origin
                 options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Secure=true
-                options.ExpireTimeSpan = TimeSpan.FromMinutes(1130);
+                options.ExpireTimeSpan = TimeSpan.FromMinutes(Convert.ToDouble(cookie_expieTime));
                 options.SlidingExpiration = true;
 
                 options.Events = new CookieAuthenticationEvents
