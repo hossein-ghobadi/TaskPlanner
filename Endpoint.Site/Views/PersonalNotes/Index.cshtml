@@ -303,7 +303,7 @@ else
     public string GetTimeAgo(DateTime dateTime)
     {
         var now = DateTime.Now;
-        var diff = now - dateTime;
+        var diff = now - dateTime.AddHours(3.5);
         
         if (diff.TotalSeconds < 60)
             return "همین الان";

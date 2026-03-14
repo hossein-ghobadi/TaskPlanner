@@ -25,7 +25,7 @@
                 <i class="bi bi-plus-lg"></i>
             </a>
         </div>
-        
+
         <div class="folders-list">
             <!-- Root Level - All Notes -->
             <a href="/ProjectNotes/Index?projectId=@projectId" class="folder-item @(!folderId.HasValue ? "active" : "")">
@@ -38,7 +38,7 @@
             {
                 var isActive = folderId.HasValue && folder.Id == folderId.Value;
                 var folderColor = folder.Color ?? "#3b82f6";
-                
+
                 <div class="folder-item-wrapper">
                     <div class="folder-item-with-actions">
                         <a href="/ProjectNotes/Index?projectId=@projectId&folderId=@folder.Id" class="folder-item @(isActive ? "active" : "")" style="border-right: 3px solid @folderColor;">
@@ -55,7 +55,7 @@
                             </a>
                         </div>
                     </div>
-                    
+
                     @if (folder.Children != null && folder.Children.Any())
                     {
                         <div class="folder-children">
@@ -63,7 +63,7 @@
                             {
                                 var childIsActive = folderId.HasValue && child.Id == folderId.Value;
                                 var childColor = child.Color ?? "#3b82f6";
-                                
+
                                 <div class="folder-item-wrapper">
                                     <div class="folder-item-with-actions">
                                         <a href="/ProjectNotes/Index?projectId=@projectId&folderId=@child.Id" class="folder-item @(childIsActive ? "active" : "")" style="border-right: 3px solid @childColor;">
@@ -133,149 +133,149 @@
             </div>
         </div>
 
-    @if (TempData["Success"] != null)
-    {
-        <div class="alert alert-success alert-social" role="alert">
-            <i class="bi bi-check-circle-fill"></i>
-            @TempData["Success"]
-        </div>
-    }
-    @if (TempData["Error"] != null)
-    {
-        <div class="alert alert-danger alert-social" role="alert">
-            <i class="bi bi-exclamation-triangle-fill"></i>
-            @TempData["Error"]
-        </div>
-    }
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success alert-social" role="alert">
+                <i class="bi bi-check-circle-fill"></i>
+                @TempData["Success"]
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-social" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                @TempData["Error"]
+            </div>
+        }
 
         @if (Model.Any())
         {
             <!-- Social Media Feed -->
             <div class="social-feed" id="socialFeedView">
                 @foreach (var note in Model.OrderByDescending(n => n.CreatedAt))
-        {
-            var noteColor = "#3b82f6";
-            var timeAgo = GetTimeAgo(note.CreatedAt);
-            
-            <article class="note-post" onclick="window.location.href='/ProjectNotes/Details?id=@note.Id'" style="border-top: 4px solid @noteColor;">
-                <!-- Post Header -->
-                <div class="post-header">
-                    <div class="post-avatar">
-                        <div class="avatar-circle" style="background: linear-gradient(135deg, @noteColor 0%, #2563eb 100%);">
-                            <i class="bi bi-journal-text"></i>
-                        </div>
-                    </div>
-                    <div class="post-author">
-                        <div class="author-name">یادداشت پروژه</div>
-                        <div class="post-time">
-                            <i class="bi bi-clock"></i>
-                            <span>@timeAgo</span>
-                            <span class="time-full">(@note.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Post Content -->
-                <div class="post-content">
-                    <h3 class="post-title">@note.Title</h3>
-                    @if (!string.IsNullOrEmpty(note.Content))
-                    {
-                        <div class="post-text">
-                            @Html.Raw(note.Content.Replace("\n", "<br/>"))
-                        </div>
-                    }
-                </div>
-
-                <!-- Post Attachments -->
-                @if (note.Attachments != null && note.Attachments.Any())
                 {
-                    <div class="post-attachments" onclick="event.stopPropagation();">
-                        @foreach (var att in note.Attachments.Take(4))
-                        {
-                            @if (att.FileType == "Image")
+                    var noteColor = "#3b82f6";
+                    var timeAgo = GetTimeAgo(note.CreatedAt);
+
+                    <article class="note-post" onclick="window.location.href='/ProjectNotes/Details?id=@note.Id'" style="border-top: 4px solid @noteColor;">
+                        <!-- Post Header -->
+                        <div class="post-header">
+                            <div class="post-avatar">
+                                <div class="avatar-circle" style="background: linear-gradient(135deg, @noteColor 0%, #2563eb 100%);">
+                                    <i class="bi bi-journal-text"></i>
+                                </div>
+                            </div>
+                            <div class="post-author">
+                                <div class="author-name">یادداشت پروژه</div>
+                                <div class="post-time">
+                                    <i class="bi bi-clock"></i>
+                                    <span>@timeAgo</span>
+                                    <span class="time-full">(@note.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Post Content -->
+                        <div class="post-content">
+                            <h3 class="post-title">@note.Title</h3>
+                            @if (!string.IsNullOrEmpty(note.Content))
                             {
-                                <div class="attachment-item attachment-image">
-                                    <img src="@att.FilePath" alt="@att.FileName" class="attachment-img" />
-                                    <div class="attachment-overlay">
-                                        <i class="bi bi-zoom-in"></i>
-                                    </div>
+                                <div class="post-text">
+                                    @Html.Raw(note.Content.Replace("\n", "<br/>"))
                                 </div>
                             }
-                            else if (att.FileType == "Audio")
-                            {
-                                <div class="attachment-item attachment-audio">
-                                    <audio controls class="attachment-audio-player">
-                                        <source src="@att.FilePath" type="@att.MimeType">
-                                    </audio>
-                                    <div class="attachment-info">
-                                        <i class="bi bi-music-note-beamed"></i>
-                                        <span>@att.FileName</span>
-                                    </div>
-                                </div>
-                            }
-                            else if (att.FileType == "Document")
-                            {
-                                <a href="@att.FilePath" target="_blank" class="attachment-item attachment-document">
-                                    <div class="attachment-icon">
-                                        <i class="bi bi-file-earmark-text"></i>
-                                    </div>
-                                    <div class="attachment-details">
-                                        <span class="attachment-name">@att.FileName</span>
-                                        <span class="attachment-size">@(Math.Round(att.FileSize / 1024.0, 1)) KB</span>
-                                    </div>
-                                    <i class="bi bi-download attachment-download"></i>
-                                </a>
-                            }
-                            else
-                            {
-                                <a href="@att.FilePath" target="_blank" class="attachment-item attachment-file">
-                                    <div class="attachment-icon">
-                                        <i class="bi bi-file-earmark"></i>
-                                    </div>
-                                    <div class="attachment-details">
-                                        <span class="attachment-name">@att.FileName</span>
-                                        <span class="attachment-size">@(Math.Round(att.FileSize / 1024.0, 1)) KB</span>
-                                    </div>
-                                    <i class="bi bi-download attachment-download"></i>
-                                </a>
-                            }
-                        }
-                        @if (note.Attachments.Count > 4)
+                        </div>
+
+                        <!-- Post Attachments -->
+                        @if (note.Attachments != null && note.Attachments.Any())
                         {
-                            <div class="attachment-item attachment-more">
-                                <span>+@(note.Attachments.Count - 4)</span>
-                                <small>فایل بیشتر</small>
+                            <div class="post-attachments" onclick="event.stopPropagation();">
+                                @foreach (var att in note.Attachments.Take(4))
+                                {
+                                    @if (att.FileType == "Image")
+                                    {
+                                        <div class="attachment-item attachment-image">
+                                            <img src="@att.FilePath" alt="@att.FileName" class="attachment-img" />
+                                            <div class="attachment-overlay">
+                                                <i class="bi bi-zoom-in"></i>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (att.FileType == "Audio")
+                                    {
+                                        <div class="attachment-item attachment-audio">
+                                            <audio controls class="attachment-audio-player">
+                                                <source src="@att.FilePath" type="@att.MimeType">
+                                            </audio>
+                                            <div class="attachment-info">
+                                                <i class="bi bi-music-note-beamed"></i>
+                                                <span>@att.FileName</span>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (att.FileType == "Document")
+                                    {
+                                        <a href="@att.FilePath" target="_blank" class="attachment-item attachment-document">
+                                            <div class="attachment-icon">
+                                                <i class="bi bi-file-earmark-text"></i>
+                                            </div>
+                                            <div class="attachment-details">
+                                                <span class="attachment-name">@att.FileName</span>
+                                                <span class="attachment-size">@(Math.Round(att.FileSize / 1024.0, 1)) KB</span>
+                                            </div>
+                                            <i class="bi bi-download attachment-download"></i>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a href="@att.FilePath" target="_blank" class="attachment-item attachment-file">
+                                            <div class="attachment-icon">
+                                                <i class="bi bi-file-earmark"></i>
+                                            </div>
+                                            <div class="attachment-details">
+                                                <span class="attachment-name">@att.FileName</span>
+                                                <span class="attachment-size">@(Math.Round(att.FileSize / 1024.0, 1)) KB</span>
+                                            </div>
+                                            <i class="bi bi-download attachment-download"></i>
+                                        </a>
+                                    }
+                                }
+                                @if (note.Attachments.Count > 4)
+                                {
+                                    <div class="attachment-item attachment-more">
+                                        <span>+@(note.Attachments.Count - 4)</span>
+                                        <small>فایل بیشتر</small>
+                                    </div>
+                                }
                             </div>
                         }
-                    </div>
-                }
 
-                <!-- Post Footer -->
-                <div class="post-footer" onclick="event.stopPropagation();">
-                    <div class="post-meta">
-                        <span class="meta-item">
-                            <i class="bi bi-paperclip"></i>
-                            <span>@(note.Attachments?.Count ?? 0) فایل</span>
-                        </span>
-                    </div>
-                    <div class="post-actions">
-                        <a href="/ProjectNotes/MoveToFolder?id=@note.Id" class="action-btn">
-                            <i class="bi bi-folder"></i>
-                            <span>جابجا کردن</span>
-                        </a>
-                        <a href="/ProjectNotes/Edit?id=@note.Id" class="action-btn">
-                            <i class="bi bi-pencil"></i>
-                            <span>ویرایش</span>
-                        </a>
-                        <a href="/ProjectNotes/Delete?id=@note.Id" class="action-btn action-danger">
-                            <i class="bi bi-trash"></i>
-                            <span>حذف</span>
-                        </a>
-                    </div>
-                </div>
-                </article>
-            }
-        </div>
+                        <!-- Post Footer -->
+                        <div class="post-footer" onclick="event.stopPropagation();">
+                            <div class="post-meta">
+                                <span class="meta-item">
+                                    <i class="bi bi-paperclip"></i>
+                                    <span>@(note.Attachments?.Count ?? 0) فایل</span>
+                                </span>
+                            </div>
+                            <div class="post-actions">
+                                <a href="/ProjectNotes/MoveToFolder?id=@note.Id" class="action-btn">
+                                    <i class="bi bi-folder"></i>
+                                    <span>جابجا کردن</span>
+                                </a>
+                                <a href="/ProjectNotes/Edit?id=@note.Id" class="action-btn">
+                                    <i class="bi bi-pencil"></i>
+                                    <span>ویرایش</span>
+                                </a>
+                                <a href="/ProjectNotes/Delete?id=@note.Id" class="action-btn action-danger">
+                                    <i class="bi bi-trash"></i>
+                                    <span>حذف</span>
+                                </a>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
         }
         else
         {
@@ -295,11 +295,13 @@
 </div>
 
 @functions {
+
     public string GetTimeAgo(DateTime dateTime)
     {
         var now = DateTime.Now;
-        var diff = now - dateTime;
-        
+        var diff = now - dateTime.AddHours(3.5);
+
+
         if (diff.TotalSeconds < 60)
             return "همین الان";
         
