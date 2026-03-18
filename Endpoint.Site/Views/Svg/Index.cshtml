@@ -1,0 +1,71 @@
+﻿@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>SVG Viewer</title>
+    <style>
+        body {
+            background-color: #f3f3f3;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        #svgContainer {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+        }
+
+        svg {
+            transform-origin: center center;
+            transition: transform 0.05s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div id="svgContainer">
+        @Html.Raw(ViewBag.SvgContent)
+    </div>
+
+    <script>
+        let scale = 1, translateX = 0, translateY = 0;
+        let isDragging = false, startX, startY;
+        const svg = document.querySelector("svg");
+        const container = document.getElementById("svgContainer");
+
+        // Zoom با چرخ ماوس
+        container.addEventListener("wheel", e => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            scale *= zoomFactor;
+            svg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        });
+
+        // Pan با ماوس درگ
+        container.addEventListener("mousedown", e => {
+            isDragging = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+            container.style.cursor = "grabbing";
+        });
+
+        container.addEventListener("mouseup", () => {
+            isDragging = false;
+            container.style.cursor = "grab";
+        });
+
+        container.addEventListener("mousemove", e => {
+            if (!isDragging) return;
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            svg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        });
+    </script>
+</body>
+</html>

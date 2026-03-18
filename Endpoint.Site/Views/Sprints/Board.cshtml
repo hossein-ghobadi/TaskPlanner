@@ -1239,17 +1239,7 @@
                                 </span>
                             </div>
                             <div class="d-flex align-items-center gap-1">
-                                @if (Model.Status == SprintStatus.Active)
-                                {
-                                    <button type="button"
-                                            class="quick-add-column-btn"
-                                            data-status-id="@status.Id"
-                                            data-status-name="@status.Name"
-                                            title="افزودن سریع"
-                                            onclick="event.stopPropagation();">
-                                        <i class="bi bi-plus"></i>
-                                    </button>
-                                }
+                               
                                 @if (Model.Status != SprintStatus.Completed && !status.IsDefault && !status.IsFinal)
                                 {
                                     <button type="button"
