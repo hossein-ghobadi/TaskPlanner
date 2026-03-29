@@ -1,3 +1,4 @@
+using DocumentFormat.OpenXml.Spreadsheet;
 using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -444,7 +445,8 @@ namespace Endpoint.Site.Controllers
             
             var trashFolder = await _context.ProjectNoteFolders
                 .FirstOrDefaultAsync(f => f.ProjectId == projectId && f.Name == trashFolderName);
-
+            var project= await _context.Projects
+                .FirstOrDefaultAsync(f => f.Id == projectId );
             if (trashFolder == null)
             {
                 trashFolder = new ProjectNoteFolder
@@ -453,7 +455,9 @@ namespace Endpoint.Site.Controllers
                     ProjectId = projectId,
                     Color = "#6c757d", // رنگ خاکستری
                     CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    UpdatedAt = DateTime.UtcNow,
+                    CreatorUserId = project.CreatorUserId // مقداردهی CreatorUserId
+
                 };
 
                 _context.ProjectNoteFolders.Add(trashFolder);
