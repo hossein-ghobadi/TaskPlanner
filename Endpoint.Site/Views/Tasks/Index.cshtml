@@ -235,17 +235,7 @@
                     <i class="bi bi-plus-circle me-1"></i>
                     افزودن کار
                 </a>
-                @if (activeSprintId.HasValue)
-                {
-                    <a class="btn btn-minimal" style="background: #f0f9ff; border-color: #3b82f6; color: #1e40af;" asp-controller="Sprints" asp-action="Board" asp-route-id="@activeSprintId">
-                        <i class="bi bi-kanban me-1"></i>
-                        تخته اسپرینت
-                        @if (!string.IsNullOrEmpty(activeSprintName))
-                        {
-                            <span class="ms-1">(@activeSprintName)</span>
-                        }
-                    </a>
-                }
+               
                 <a class="btn btn-minimal" asp-controller="Projects" asp-action="Details" asp-route-id="@projectIdInt">
                     <i class="bi bi-arrow-right me-1"></i>
                     بازگشت به پروژه

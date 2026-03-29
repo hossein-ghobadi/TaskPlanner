@@ -286,7 +286,6 @@
                         <span class="text-danger">*</span>
                     </label>
                     <input type="text" class="form-control" value="@ViewBag.ProjectName" readonly disabled />
-                    <small class="text-muted small">کار فقط در این پروژه ایجاد می‌شود</small>
                     <span asp-validation-for="ProjectId" class="text-danger small"></span>
                 </div>
 
@@ -299,7 +298,6 @@
                             asp-items="@(new SelectList(ViewBag.Categories, "Id", "Name"))">
                         <option value="">-- بدون دسته‌بندی --</option>
                     </select>
-                    <small class="text-muted small">مثل Component در Jira</small>
                 </div>
             </div>
 

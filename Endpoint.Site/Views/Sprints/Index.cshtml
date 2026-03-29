@@ -80,10 +80,7 @@ else
                         {
                             <a class="stretched-link" href="/Sprints/Details/@sprint.Id" aria-label="جزئیات اسپرینت"></a>
                         }
-                        else if (sprint.Status == SprintStatus.Planning)
-                        {
-                            <a class="stretched-link" href="/WorkflowStatus/Index?sprintId=@sprint.Id" aria-label="مدیریت وضعیت‌های اسپرینت"></a>
-                        }
+                       
                         
                         @if (!string.IsNullOrEmpty(sprint.Description))
                         {

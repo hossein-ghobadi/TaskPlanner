@@ -20,7 +20,7 @@
         allStatusesList = new List<BoardStatus>();
     }
     
-    // اطمینان از اینکه "To Do" اول باشد (برای نمایش در سمت چپ)
+    // اطمینان از اینکه "To Do" اول باشد (برای نمایش در سمت چantiforgeryTokenپ)
     var toDoStatus = allStatusesList.FirstOrDefault(s => s.Name.Equals("To Do", StringComparison.OrdinalIgnoreCase));
     if (toDoStatus != null)
     {
@@ -495,8 +495,7 @@
                         <option value="soft">نرم و محو</option>
                         <option value="pattern">الگوی نقطه‌ای</option>
                         <option value="pastel">پاستلی</option>
-                        <option value="photo-1">عکس ۱</option>
-                        <option value="photo-2">عکس ۲</option>
+                        
                     </select>
                 </div>
             </div>
@@ -886,7 +885,7 @@
             <div class="modal-header">
                 <h5 class="modal-title" id="taskDetailsModalLabel">
                     <i class="bi bi-list-check me-2"></i>
-                    جزئیات کار
+                    جزئیات تست کار
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>

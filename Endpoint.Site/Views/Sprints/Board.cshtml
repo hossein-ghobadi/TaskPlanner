@@ -1305,11 +1305,7 @@
                                                             <i class="bi bi-three-dots-vertical"></i>
                                                     </button>
                                                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="taskMenu-@issue.Id">
-                                                            <li>
-                                                                <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@issue.Id);">
-                                                                    <i class="bi bi-pencil text-primary me-2"></i>ویرایش کار
-                                                                </a>
-                                                            </li>
+                                                           
                                                             @if (finalStatus != null && status.Id != finalStatus.Id)
                                                             {
                                                                 <li>
@@ -1338,6 +1334,7 @@
                                         <div class="task-title">
                                             <a href="/Tasks/Details/@issue.Id" onclick="event.stopPropagation();">@issue.Title</a>
                                         </div>
+
                                         @if (!string.IsNullOrWhiteSpace(issue.Description))
                                         {
                                             <div class="task-description">@(issue.Description.Length > 100 ? issue.Description.Substring(0, 100) + "..." : issue.Description)</div>
@@ -1476,10 +1473,7 @@
             <div class="modal-body">
                 <form id="addSubtaskForm">
                     <input type="hidden" id="subtaskParentId" />
-                    <div class="mb-3">
-                        <label for="subtaskParentKey" class="form-label">کار والد</label>
-                        <input type="text" class="form-control" id="subtaskParentKey" readonly>
-                    </div>
+                    
                     <div class="mb-3">
                         <label for="subtaskTitle" class="form-label">عنوان کارک <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="subtaskTitle" required placeholder="عنوان کارک را وارد کنید">
@@ -1553,34 +1547,20 @@
             <div class="modal-content quick-task-card">
                 <div class="modal-header d-flex flex-wrap gap-3">
                     <div>
-                        <div class="text-uppercase small opacity-75">Quick Add</div>
-                        <h5 class="modal-title mb-0" id="quickTaskModalLabel">افزودن سریع کار به اسپرینت</h5>
+                        <div class="text-uppercase fs-3 opacity-75">افزودن کار</div>
                     </div>
-                    <div class="quick-task-meta text-end ms-auto">
-                        <span><i class="bi bi-lightning-charge-fill"></i> در کمتر از ۳۰ ثانیه</span>
-                        <span><i class="bi bi-journal-check"></i> به‌صورت خودکار به ستون شروع می‌رود</span>
-                    </div>
+                   
                     <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <div class="alert alert-primary d-flex align-items-center gap-2 mb-4">
-                        <i class="bi bi-pin-angle"></i>
-                        <span>افزودن مستقیم به ستون: <strong id="quickTaskTargetDisplay">@defaultStatusName</strong></span>
-                    </div>
+                    
                     <form id="quickTaskForm" class="row g-4 align-items-end">
                         <div class="col-lg-6">
                             <label for="quickTaskTitle" class="form-label">عنوان کار <span class="text-danger">*</span></label>
                             <input type="text" class="form-control form-control-lg" id="quickTaskTitle" required placeholder="مثلاً گزارش خطای صفحه گزارش‌ها">
                             <div class="helper-text">عنوان واضح بنویسید تا اعضا بدون باز کردن جزئیات متوجه شوند.</div>
                         </div>
-                        <div class="col-lg-6">
-                            <label class="form-label">نوع کار</label>
-                            <div class="issue-type-chips" role="group" aria-label="انتخاب نوع کار" id="issueTypeChipsContainer">
-                                <div class="text-muted small">در حال بارگذاری...</div>
-                            </div>
-                            <select class="form-select d-none" id="quickTaskType"></select>
-                            <input type="hidden" id="quickTaskProjectIssueTypeId" value="0" />
-                        </div>
+                       
                         <div class="col-lg-6">
                             <label for="quickTaskCategory" class="form-label">دسته‌بندی</label>
                             <select class="form-select form-select-lg" id="quickTaskCategory">
@@ -1597,7 +1577,7 @@
                         </div>
                         <div class="col-lg-6 text-lg-end">
                             <button type="submit" class="btn btn-primary btn-lg px-4">
-                                <i class="bi bi-magic me-1"></i> ساخت و افزودن به اسپرینت
+                                <i class="bi bi-magic me-1"></i> افزودن کار
                             </button>
                         </div>
                     </form>
@@ -2538,7 +2518,8 @@
                 return;
             }
             // در غیر این صورت، به جزئیات کار برو
-            window.location.href = '/Tasks/Details/' + issueId;
+            // window.location.href = '/Tasks/Details/' + issueId;
+            openEditTaskModal(issueId)
         }
 
         // متغیرهای touch برای موبایل

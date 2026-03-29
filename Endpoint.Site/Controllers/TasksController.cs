@@ -216,7 +216,7 @@ namespace Endpoint.Site.Controllers
             string title = data.GetProperty("title").GetString();
             int parentId = data.GetProperty("parentId").GetInt32();
             int categoryId = data.GetProperty("categoryId").GetInt32();
-
+            Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 1");
             if (string.IsNullOrWhiteSpace(title))
                 return BadRequest("عنوان الزامی است.");
 
@@ -236,6 +236,7 @@ namespace Endpoint.Site.Controllers
                 return BadRequest($"❌ {parent.IssueType.GetDisplayName()} نمی‌تواند Subtask داشته باشد. " +
                     "فقط Story، Task و Bug می‌توانند Subtask داشته باشند.");
             }
+            Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 2");
 
             // بررسی دقیق‌تر با Validator
             var validationResult = IssueHierarchyValidator.ValidateParentChild(
@@ -252,6 +253,7 @@ namespace Endpoint.Site.Controllers
             var hasAccess = await _context.Projects
                 .AnyAsync(p => p.Id == parent.ProjectId &&
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+            Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 3");
 
             if (!hasAccess)
             {
@@ -322,6 +324,7 @@ namespace Endpoint.Site.Controllers
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
+                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 4");
 
                     if (parent.IsCompleted)
                     {
@@ -329,11 +332,15 @@ namespace Endpoint.Site.Controllers
                         parent.UpdatedAt = DateTime.UtcNow;
                     }
                     await MarkAncestorsIncompleteAsync(parent.ParentTaskId);
+                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 5");
 
                     _context.TaskItems.Add(subTask);
                     _context.Projects.Update(project); // به‌روزرسانی LastIssueNumber
+                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 6");
 
                     await _context.SaveChangesAsync();
+                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 7");
+
                     break; // موفقیت‌آمیز بود، خارج شو
                 }
                 catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException sqlEx &&
@@ -379,7 +386,7 @@ namespace Endpoint.Site.Controllers
             string title = data.GetProperty("title").GetString();
             int parentId = data.GetProperty("parentId").GetInt32();
             int categoryId = data.TryGetProperty("categoryId", out var catProp) ? catProp.GetInt32() : 0;
-            
+
             // IssueType اختیاری: اگه ارسال نشد → خودکار Subtask
             IssueType? issueType = null;
             if (data.TryGetProperty("issueType", out var issueTypeProp))
@@ -422,7 +429,7 @@ namespace Endpoint.Site.Controllers
             // 🎯 Smart Logic: تعیین IssueType بر اساس Parent Level
             IssueType finalIssueType;
             int? projectIssueTypeId = null;
-            var parentLevel = parent.ProjectIssueType?.Level ?? 
+            var parentLevel = parent.ProjectIssueType?.Level ??
                 (parent.IssueType == IssueType.Epic ? IssueTypeLevel.Epic :
                  parent.IssueType == IssueType.Subtask ? IssueTypeLevel.Subtask :
                  IssueTypeLevel.StoryLevel);
@@ -441,10 +448,10 @@ namespace Endpoint.Site.Controllers
                 {
                     var pitId = pitProp.GetInt32();
                     var projectIssueType = await _context.ProjectIssueTypes
-                        .FirstOrDefaultAsync(pit => pit.Id == pitId && 
-                            pit.ProjectId == parent.ProjectId && 
+                        .FirstOrDefaultAsync(pit => pit.Id == pitId &&
+                            pit.ProjectId == parent.ProjectId &&
                             pit.Level == IssueTypeLevel.StoryLevel);
-                    
+
                     if (projectIssueType != null)
                     {
                         projectIssueTypeId = projectIssueType.Id;
@@ -460,13 +467,13 @@ namespace Endpoint.Site.Controllers
                 {
                     // اگر ProjectIssueTypeId ارسال نشد، از IssueType استفاده کن
                     finalIssueType = issueType.Value;
-                    
+
                     // پیدا کردن ProjectIssueType مربوطه بر اساس BaseType
                     var projectIssueType = await _context.ProjectIssueTypes
-                        .FirstOrDefaultAsync(pit => pit.ProjectId == parent.ProjectId && 
-                            pit.BaseType == finalIssueType && 
+                        .FirstOrDefaultAsync(pit => pit.ProjectId == parent.ProjectId &&
+                            pit.BaseType == finalIssueType &&
                             pit.Level == IssueTypeLevel.StoryLevel);
-                    
+
                     if (projectIssueType != null)
                     {
                         projectIssueTypeId = projectIssueType.Id;
@@ -483,12 +490,12 @@ namespace Endpoint.Site.Controllers
             {
                 // اگه Parent = Story-level → خودکار Subtask
                 finalIssueType = IssueType.Subtask;
-                
+
                 // پیدا کردن ProjectIssueType برای Subtask
                 var subtaskType = await _context.ProjectIssueTypes
-                    .FirstOrDefaultAsync(pit => pit.ProjectId == parent.ProjectId && 
+                    .FirstOrDefaultAsync(pit => pit.ProjectId == parent.ProjectId &&
                         pit.Level == IssueTypeLevel.Subtask);
-                
+
                 if (subtaskType != null)
                 {
                     projectIssueTypeId = subtaskType.Id;
@@ -503,7 +510,7 @@ namespace Endpoint.Site.Controllers
             var childLevel = finalIssueType == IssueType.Subtask ? IssueTypeLevel.Subtask :
                             projectIssueTypeId.HasValue ? IssueTypeLevel.StoryLevel :
                             IssueTypeLevel.StoryLevel;
-            
+
             var validationResult = IssueHierarchyValidator.ValidateParentChildByLevel(
                 childLevel,
                 parentLevel,
@@ -534,32 +541,58 @@ namespace Endpoint.Site.Controllers
             }
 
             // 🔄 Retry mechanism برای جلوگیری از race condition در IssueKey
-            int maxRetries = 5;
             TaskItem newIssue = null;
-            for (int retry = 0; retry < maxRetries; retry++)
-            {
-                try
+            
+                // حذف project از change tracker و دریافت مجدد از دیتابیس
+                _context.Entry(project).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                project = await _context.Projects.FindAsync(parent.ProjectId);
+
+                if (project == null)
                 {
-                    // حذف project از change tracker و دریافت مجدد از دیتابیس
-                    _context.Entry(project).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
-                    project = await _context.Projects.FindAsync(parent.ProjectId);
-                    
-                    if (project == null)
+                    return BadRequest("❌ پروژه یافت نشد.");
+                }
+                //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////                
+
+                var projectForIssueKey = await _context.Projects.FindAsync(parent.ProjectId);
+       
+                //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////                
+
+                // 🔄 Retry mechanism برای جلوگیری از race condition در IssueKey
+
+                string generatedIssueKey = null;
+
+               
+                    // پاک کردن ChangeTracker برای project و newTask
+                    if (projectForIssueKey != null)
                     {
-                        return BadRequest("❌ پروژه یافت نشد.");
+                        var entry = _context.Entry(projectForIssueKey);
+                        if (entry.State != Microsoft.EntityFrameworkCore.EntityState.Detached)
+                        {
+                            entry.State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                        }
                     }
-                    
-                    // بررسی اینکه آیا IssueKey تولید شده تکراری است یا نه
-                    string generatedIssueKey = project.GenerateNextIssueKey();
-                    bool keyExists = await _context.TaskItems
-                        .AnyAsync(t => t.IssueKey == generatedIssueKey);
-                    
-                    if (keyExists)
+
+                 
+                    // تولید IssueKey و بررسی تکراری بودن - تا زمانی که IssueKey منحصر به فرد باشد
+                    int keyGenerationAttempts = 0;
+                    do
                     {
-                        // اگر key تکراری بود، LastIssueNumber را افزایش می‌دهیم و دوباره تلاش می‌کنیم
-                        project.LastIssueNumber++;
-                        generatedIssueKey = project.GenerateNextIssueKey();
-                    }
+                        generatedIssueKey = projectForIssueKey.GenerateNextIssueKey();
+                        bool keyExists = await _context.TaskItems
+                            .AnyAsync(t => t.IssueKey == generatedIssueKey);
+
+                        if (keyExists)
+                        {
+                            // اگر key تکراری بود، LastIssueNumber را افزایش می‌دهیم
+                            projectForIssueKey.LastIssueNumber++;
+                            keyGenerationAttempts++;
+
+                        }
+                        else
+                        {
+                            break; // IssueKey منحصر به فرد است
+                        }
+                    } while (true);
 
                     // 🏗️ ساخت Issue جدید
                     newIssue = new TaskItem
@@ -588,33 +621,16 @@ namespace Endpoint.Site.Controllers
                         parent.UpdatedAt = DateTime.UtcNow;
                     }
                     await MarkAncestorsIncompleteAsync(parent.ParentTaskId);
+                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 11");
 
                     _context.TaskItems.Add(newIssue);
                     _context.Projects.Update(project); // به‌روزرسانی LastIssueNumber
 
                     await _context.SaveChangesAsync();
-                    break; // موفقیت‌آمیز بود، خارج شو
-                }
-                catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException sqlEx &&
-                                                                               sqlEx.Number == 2601 && // Duplicate key error
-                                                                               retry < maxRetries - 1)
-                {
-                    // اگر IssueKey تکراری بود، دوباره تلاش کن
-                    if (newIssue != null)
-                    {
-                        _context.Entry(newIssue).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
-                    }
-                    _context.Entry(project).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
-                    await Task.Delay(50 * (retry + 1)); // delay افزایشی برای retry بعدی
-                    continue; // دوباره تلاش کن
-                }
-            }
-
-            if (newIssue == null)
-            {
-                return BadRequest("❌ خطا در ایجاد Issue. لطفاً دوباره تلاش کنید.");
-            }
-
+                    Console.WriteLine(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 12");
+                    
+                  
+                
             return Ok(new
             {
                 success = true,
@@ -624,6 +640,9 @@ namespace Endpoint.Site.Controllers
                 issueType = newIssue.IssueTypeName
             });
         }
+
+                
+        
 
 
         [HttpPost]
@@ -1249,6 +1268,7 @@ namespace Endpoint.Site.Controllers
                 await FillListsForCreate(vm.ProjectId);
                 return View(vm);
             }
+            //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////                
 
             // 🔄 Retry mechanism برای جلوگیری از race condition در IssueKey
             int maxRetries = 10;
@@ -1317,7 +1337,7 @@ namespace Endpoint.Site.Controllers
                             break; // IssueKey منحصر به فرد است
                         }
                     } while (true);
-                    
+                    Console.WriteLine($">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> generatedIssueKey={generatedIssueKey} ");
                     // ساخت Task جدید با IssueKey منحصر به فرد
                     newTask = new TaskItem
                     {
@@ -2335,6 +2355,8 @@ namespace Endpoint.Site.Controllers
             ViewBag.CurrentUserId = userId;
             return View(task);
         }
+
+       
 
         // GET: Delete
         public async Task<IActionResult> Delete(int id)
