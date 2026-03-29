@@ -1305,7 +1305,7 @@
                                                             <i class="bi bi-three-dots-vertical"></i>
                                                     </button>
                                                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="taskMenu-@issue.Id">
-                                                           
+                                                            
                                                             @if (finalStatus != null && status.Id != finalStatus.Id)
                                                             {
                                                                 <li>
@@ -1332,9 +1332,10 @@
                                         </div>
 
                                         <div class="task-title">
-                                            <a href="/Tasks/Details/@issue.Id" onclick="event.stopPropagation();">@issue.Title</a>
-                                        </div>
 
+                                        <a href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@issue.Id); return false;">@issue.Title</a>
+                                    </div>
+                                        
                                         @if (!string.IsNullOrWhiteSpace(issue.Description))
                                         {
                                             <div class="task-description">@(issue.Description.Length > 100 ? issue.Description.Substring(0, 100) + "..." : issue.Description)</div>
@@ -1399,9 +1400,8 @@
                                                                         </a>
                                                                     </li>
                                                                     <li>
-                                                                        <a class="dropdown-item" href="/Tasks/Details/@subtask.Id" onclick="event.stopPropagation();">
-                                                                            <i class="bi bi-eye text-info me-2"></i>مشاهده جزئیات
-                                                                        </a>
+
+                                                                    <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@issue.Id); return false;">@issue.Title</a>
                                                                     </li>
                                                                     @{
                                                                         var subtaskStatus = Model.Statuses.FirstOrDefault(s => s.Id == subtask.StatusId);
@@ -2679,7 +2679,9 @@
                 // این یک tap است، نه drag - به جزئیات برو
                 const issueId = parseInt(touchCard.dataset.issueId);
                 if (issueId && !e.target.closest('button') && !e.target.closest('a')) {
-                    window.location.href = '/Tasks/Details/' + issueId;
+                    // window.location.href = '/Tasks/Details/' + issueId;
+                    openEditTaskModal(issueId);
+
                 }
             } else {
                 // اگر drag نبود، استایل را برگردان
@@ -3372,6 +3374,7 @@
                     html += `
                         <div class="available-task-item" data-task-id="${task.id}" data-assignee-id="${assigneeId}">
                             <div class="available-task-title">
+
                                 <a href="/Tasks/Details/${task.id}" onclick="event.stopPropagation();">${escapeHtml(task.title || 'بدون عنوان')}</a>
                             </div>
                             <div class="available-task-meta">${escapeHtml(task.categoryName ?? 'بدون دسته')} • ${escapeHtml(task.assignedUserName ?? 'تخصیص نیافته')}</div>
