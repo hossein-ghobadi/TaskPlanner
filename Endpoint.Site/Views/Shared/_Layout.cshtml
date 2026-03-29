@@ -133,14 +133,22 @@
             font-size: 1.2rem;
         }
 
+        
+
         .notification-menu {
-            width: 360px;
-            border-radius: 16px;
-            border: none;
-            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
-            overflow: hidden;
+            width: 260px !important; /* جلوگیری از خارج شدن از صفحه */
+            inset: auto !important; /* ریست کردن موقعیت قدیمی */
+            right: 0 !important; /* تو RTL طرف راست دکمه */
+            left: auto !important;
+            transform: translateX(10px); /* کمی فاصله زیبایی */
         }
 
+        /* جلوگیری از بهم‌ریختگی badge */
+        #notificationBadge {
+            transform: translate(-50%, -50%) !important;
+        }
+
+        }
         .notification-menu-header {
             background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
             color: #fff;
@@ -257,70 +265,80 @@
 </head>
 <body data-antiforgery-token="@antiforgeryToken">
     <!-- 🔹 نوار ناوبری -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/Projects/Index">
+
+            <a class="navbar-brand d-flex align-items-center" href="/Projects/Index">
                 <i class="bi bi-grid-3x3-gap-fill me-2"></i>
                 داشبورد
             </a>
 
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#navbarNav" aria-controls="navbarNav"
+                    aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-                <div class="d-flex align-items-center gap-2">
+
+                <div class="d-flex align-items-center gap-3">
+
                     @if (User?.Identity?.IsAuthenticated == true)
                     {
                         <div class="dropdown me-2">
-                            <button type="button" class="btn navbar-notification-btn position-relative text-light" id="notificationBell" data-bs-toggle="dropdown" aria-expanded="false">
+                            <button type="button" class="btn navbar-notification-btn position-relative text-light"
+                                    id="notificationBell" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-bell"></i>
-                                <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-danger d-none" id="notificationBadge">
-                                    0
-                                </span>
+                                <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-danger d-none"
+                                      id="notificationBadge">0</span>
                             </button>
-                            <div class="dropdown-menu dropdown-menu-end notification-menu" aria-labelledby="notificationBell">
-                                <div class="notification-menu-header">
+
+                            <div class="dropdown-menu dropdown-menu-end notification-menu">
+                                <div class="notification-menu-header d-flex justify-content-between align-items-center">
                                     <div class="d-flex align-items-center gap-2">
-                                        <span class="bg-white bg-opacity-20 rounded-circle d-inline-flex align-items-center justify-content-center" style="width:28px;height:28px;">
+                                        <span class="bg-white bg-opacity-20 rounded-circle d-inline-flex align-items-center justify-content-center"
+                                              style="width:28px;height:28px;">
                                             <i class="bi bi-bell-fill"></i>
                                         </span>
                                         <h6 class="mb-0">نوتیفیکیشن‌ها</h6>
                                     </div>
-                                    <button class="btn-notification-refresh" id="refreshNotificationsBtn" type="button" title="به‌روزرسانی">
+                                    <button class="btn-notification-refresh" id="refreshNotificationsBtn" type="button">
                                         <i class="bi bi-arrow-repeat"></i>
                                     </button>
                                 </div>
+
                                 <div id="notificationList" class="notification-list">
                                     <div class="notification-empty" id="notificationEmpty">
                                         <i class="bi bi-bell-slash"></i>
                                         در حال بارگذاری...
                                     </div>
                                 </div>
+
                                 <div class="notification-footer">
                                     <form id="markAllNotificationsForm" class="d-grid gap-1">
                                         <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
-                                        <button type="submit" class="btn btn-light">علامت‌گذاری همه به عنوان خوانده شده</button>
+                                        <button class="btn btn-light" type="submit">علامت‌گذاری همه</button>
                                     </form>
                                 </div>
                             </div>
                         </div>
-                        <div class="user-info">
-                            سلام، <span>@User.Identity.Name</span>
-                        </div>
+
+                        <div class="user-info">سلام، <span>@User.Identity.Name</span></div>
+
                         <form method="post" action="/account/logout" class="m-0">
-                            <input name="__RequestVerificationToken" type="hidden"
-                                   value="@antiforgeryToken" />
+                            <input name="__RequestVerificationToken" type="hidden" value="@antiforgeryToken" />
                             <button class="btn-logout" type="submit">خروج</button>
                         </form>
                     }
                     else
                     {
-                        <a class="btn-login text-decoration-none" href="/login">ورود</a>
-                        <a class="btn-register text-decoration-none ms-2" href="/register">ثبت نام</a>
+                        <a class="btn-login" href="/login">ورود</a>
+                        <a class="btn-register ms-2" href="/register">ثبت‌نام</a>
                     }
                 </div>
+
             </div>
+
         </div>
     </nav>
 
