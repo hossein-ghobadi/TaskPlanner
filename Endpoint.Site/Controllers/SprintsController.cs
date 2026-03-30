@@ -14,6 +14,8 @@ using Endpoint.Site.Models;
 using DNTPersianUtils.Core;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Application.Services.ProjectService;
+using DocumentFormat.OpenXml.InkML;
+using Microsoft.CodeAnalysis;
 
 namespace Endpoint.Site.Controllers
 {
@@ -144,7 +146,9 @@ namespace Endpoint.Site.Controllers
                 TempData["Error"] = "شما به این اسپرینت دسترسی ندارید.";
                 return RedirectToAction("Index", "Projects");
             }
-
+            var tasksWithoutSprint = _context.TaskItems
+            .Where(t => t.ProjectId == sprint.ProjectId && t.SprintId == null&&t.IssueType!=IssueType.Epic)
+            .ToList();
             // وضعیت‌های اسپرینت (ستون‌ها)
             var statuses = await _context.WorkflowStatuses
                 .Where(ws => ws.SprintId == sprint.Id)
@@ -152,7 +156,6 @@ namespace Endpoint.Site.Controllers
                 .ToListAsync();
 
             var sprintTasks = sprint.SprintTasks.Select(st => st.Task).ToList();
-
             // محاسبه آمار
             var completedTasks = sprintTasks.Count(t => t.StatusId.HasValue && statuses.Any(ws => ws.Id == t.StatusId && ws.IsFinal));
             var inProgressTasks = sprintTasks.Count(t => t.StatusId.HasValue && statuses.Any(ws => ws.Id == t.StatusId && ws.Type == WorkflowType.InProgress));
@@ -178,7 +181,7 @@ namespace Endpoint.Site.Controllers
                 PendingTasks = pendingTasks,
                 BlockedTasks = blockedTasks
             };
-
+            ViewBag.backLog = tasksWithoutSprint;
             ViewBag.WorkflowStatuses = statuses;
             ViewBag.ProjectId = sprint.ProjectId;
             ViewBag.SprintId = sprint.Id;

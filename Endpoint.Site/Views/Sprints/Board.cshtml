@@ -2,6 +2,7 @@
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @using DNTPersianUtils.Core
 @{
+
     Layout = "/Views/Shared/_Layout.cshtml";
     var sprintId = ViewBag.SprintId as int?;
     var projectId = ViewBag.ProjectId as int?;
@@ -10,16 +11,17 @@
     var defaultStatusName = defaultStatus?.Name ?? "ستون اول";
     var finalStatus = Model.Statuses.FirstOrDefault(s => s.IsFinal);
     var finalStatusName = finalStatus?.Name ?? "Done";
-    
+
     // دریافت ProjectIssueTypes برای Quick Task form
     var viewBagValue = ViewBag.ProjectIssueTypes;
     var projectIssueTypes = viewBagValue as List<ProjectIssueType> ?? new List<ProjectIssueType>();
-    
+
+    var backLog = ViewBag.backLog as List<TaskItem> ?? new List<TaskItem>();
     // Debug: بررسی ViewBag
     var viewBagType = viewBagValue?.GetType().Name ?? "null";
     var viewBagIsList = viewBagValue is List<ProjectIssueType>;
     var viewBagCount = (viewBagValue as List<ProjectIssueType>)?.Count ?? 0;
-    
+
     // Debug: نمایش اطلاعات ProjectIssueTypes
     var debugInfo = new
     {
@@ -36,7 +38,7 @@
             BaseType = pit.BaseType.ToString()
         }).ToList()
     };
-    
+
     // فقط انواعی که می‌توانند به Sprint اضافه شوند (Story-level types)
     // اول از CanAddToSprint استفاده می‌کنیم، اگر خالی بود از Level استفاده می‌کنیم
     var availableIssueTypes = projectIssueTypes
@@ -44,7 +46,7 @@
         .Where(pit => pit.CanAddToSprint)
         .OrderBy(pit => pit.Order)
         .ToList();
-    
+
     // اگر هنوز خالی بود، از همه Story-level types استفاده کن (برای پروژه‌های قدیمی)
     if (!availableIssueTypes.Any())
     {
@@ -53,7 +55,7 @@
             .OrderBy(pit => pit.Order)
             .ToList();
     }
-    
+
     // نوع پیش‌فرض: Task یا اولین گزینه موجود
     var defaultIssueType = availableIssueTypes.FirstOrDefault(pit => pit.BaseType == IssueType.Task && !pit.IsCustom) 
                            ?? availableIssueTypes.FirstOrDefault();
@@ -61,1035 +63,1035 @@
 
 <style>
     .board-container {
-        direction: rtl;
-        padding: 1rem;
-        transition: background-color 0.3s ease, background-image 0.3s ease;
+    direction: rtl;
+    padding: 1rem;
+    transition: background-color 0.3s ease, background-image 0.3s ease;
     }
     /* تم‌های پس‌زمینه */
     .board-bg-plain {
-        background: #f7f7f9;
+    background: #f7f7f9;
     }
     .board-bg-gradient {
-        background: linear-gradient(135deg, #f7f8ff 0%, #eef3ff 50%, #fdf7ff 100%);
+    background: linear-gradient(135deg, #f7f8ff 0%, #eef3ff 50%, #fdf7ff 100%);
     }
     .board-bg-soft {
-        background:
-            radial-gradient(circle at 20% 20%, rgba(0,123,255,0.08) 0, rgba(0,123,255,0.08) 18%, transparent 28%),
-            radial-gradient(circle at 80% 0%, rgba(255,193,7,0.1) 0, rgba(255,193,7,0.1) 15%, transparent 25%),
-            radial-gradient(circle at 50% 80%, rgba(40,167,69,0.08) 0, rgba(40,167,69,0.08) 14%, transparent 24%),
-            #f8f9fb;
-        background-size: cover;
+    background:
+    radial-gradient(circle at 20% 20%, rgba(0,123,255,0.08) 0, rgba(0,123,255,0.08) 18%, transparent 28%),
+    radial-gradient(circle at 80% 0%, rgba(255,193,7,0.1) 0, rgba(255,193,7,0.1) 15%, transparent 25%),
+    radial-gradient(circle at 50% 80%, rgba(40,167,69,0.08) 0, rgba(40,167,69,0.08) 14%, transparent 24%),
+    #f8f9fb;
+    background-size: cover;
     }
     .board-bg-pattern {
-        background-color: #f7f7f9;
-        background-image: radial-gradient(#dfe7f3 1px, transparent 1px);
-        background-size: 22px 22px;
+    background-color: #f7f7f9;
+    background-image: radial-gradient(#dfe7f3 1px, transparent 1px);
+    background-size: 22px 22px;
     }
     .board-bg-pastel {
-        background: linear-gradient(135deg, #fff7e6 0%, #e8f5ff 50%, #f2e8ff 100%);
+    background: linear-gradient(135deg, #fff7e6 0%, #e8f5ff 50%, #f2e8ff 100%);
     }
     /* پس‌زمینه تصویری */
     .board-bg-photo {
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     }
     .board-bg-photo-1 {
-        /* کوهستان مه‌آلود */
-        background-image: url('https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1600&q=80');
+    /* کوهستان مه‌آلود */
+    background-image: url('https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1600&q=80');
     }
     .board-bg-photo-2 {
-        /* ساحل آرام با غروب */
-        background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80');
+    /* ساحل آرام با غروب */
+    background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80');
     }
     .board-header {
-        margin-bottom: 1.5rem;
-        padding: 1rem;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .board-header h2 {
-        font-size: 1.5rem;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
     }
     .board-header .meta {
-        color: #6c757d;
-        font-size: 0.9rem;
+    color: #6c757d;
+    font-size: 0.9rem;
     }
     .stats-compact {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 1rem;
-        flex-wrap: wrap;
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
     }
     .stat-compact {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background: #f8f9fa;
-        border-radius: 8px;
-        font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 0.9rem;
     }
     .stat-compact .label {
-        color: #6c757d;
+    color: #6c757d;
     }
     .stat-compact .value {
-        font-weight: 600;
-        color: #212529;
+    font-weight: 600;
+    color: #212529;
     }
     .board-toolbar {
-        display: flex;
-        gap: 0.75rem;
-        align-items: center;
-        margin-bottom: 1rem;
-        flex-wrap: wrap;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
     }
     .toolbar-input,
     .toolbar-select {
-        border: 1px solid #dee2e6;
-        border-radius: 6px;
-        padding: 0.5rem 0.75rem;
-        font-size: 0.9rem;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
     }
     .toolbar-input:focus,
     .toolbar-select:focus {
-        border-color: #0d6efd;
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(13,110,253,0.1);
+    border-color: #0d6efd;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(13,110,253,0.1);
     }
     .btn-toggle {
-        border: 1px solid #dee2e6;
-        background: #fff;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        font-size: 0.9rem;
-        transition: all 0.2s;
+    border: 1px solid #dee2e6;
+    background: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
     }
     .btn-toggle.active {
-        background: #0d6efd;
-        color: #fff;
-        border-color: #0d6efd;
+    background: #0d6efd;
+    color: #fff;
+    border-color: #0d6efd;
     }
     .board-layout {
-        width: 100%;
+    width: 100%;
     }
     .kanban-board {
-        display: flex;
-        gap: 1rem;
-        padding: 0.5rem 0;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        scroll-behavior: smooth;
-        /* برای بهبود scroll در موبایل */
-        scroll-snap-type: x proximity;
-        /* جلوگیری از scroll عمودی هنگام drag */
-        overscroll-behavior-x: contain;
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    /* برای بهبود scroll در موبایل */
+    scroll-snap-type: x proximity;
+    /* جلوگیری از scroll عمودی هنگام drag */
+    overscroll-behavior-x: contain;
     }
     .board-columns {
-        display: flex;
-        flex-direction: row;
-        gap: 1rem;
-        overflow-x: auto;
-        padding-bottom: 1rem;
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    overflow-x: auto;
+    padding-bottom: 1rem;
     }
     .kanban-column {
-        min-width: 300px;
-        background: #f4f5f7;
-        border-radius: 8px;
-        padding: 1rem;
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        overflow: visible;
-        max-height: calc(100vh - 250px);
-        flex-shrink: 0;
-        /* برای بهبود scroll در موبایل */
-        scroll-snap-align: start;
+    min-width: 300px;
+    background: #f4f5f7;
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: visible;
+    max-height: calc(100vh - 250px);
+    flex-shrink: 0;
+    /* برای بهبود scroll در موبایل */
+    scroll-snap-align: start;
     }
     .kanban-column.column-dragging {
-        opacity: 0.6;
+    opacity: 0.6;
     }
     .kanban-column.column-drop-target {
-        outline: 2px dashed #0d6efd;
+    outline: 2px dashed #0d6efd;
     }
     .column-header {
-        font-weight: 600;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid #ddd;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        color: #212529;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #212529;
     }
     .add-task-btn {
-        margin-top: 0.5rem;
-        width: 100%;
-        border: none;
-        background: transparent;
-        color: #6c757d;
-        padding: 0.75rem;
-        border-radius: 6px;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        cursor: pointer;
-        font-size: 0.9rem;
-        font-weight: 500;
+    margin-top: 0.5rem;
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    padding: 0.75rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
     }
     .add-task-btn:hover {
-        background: rgba(0, 0, 0, 0.05);
-        color: #007bff;
+    background: rgba(0, 0, 0, 0.05);
+    color: #007bff;
     }
     .add-task-btn i {
-        font-size: 1.1rem;
+    font-size: 1.1rem;
     }
     .column-tasks {
-        flex: 1;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     }
     .task-card {
-        background: white;
-        border-radius: 6px;
-        padding: 1rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        cursor: grab;
-        transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-        user-select: none;
-        position: relative;
-        border: 1px solid transparent;
+    background: white;
+    border-radius: 6px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    cursor: grab;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    user-select: none;
+    position: relative;
+    border: 1px solid transparent;
     }
     .task-card:hover {
-        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-        transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    transform: translateY(-1px);
     }
     .task-card:active {
-        cursor: grabbing;
+    cursor: grabbing;
     }
     .task-card.dragging {
-        opacity: 0.5;
-        z-index: 1000;
+    opacity: 0.5;
+    z-index: 1000;
     }
     .task-card[data-due-soon="true"] {
-        border-left: 3px solid #f97316;
+    border-left: 3px solid #f97316;
     }
     .task-card.filtered-out {
-        display: none !important;
+    display: none !important;
     }
     .due-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        padding: 0.15rem 0.5rem;
-        border-radius: 999px;
-        font-size: 0.8rem;
-        margin-top: 0.15rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    margin-top: 0.15rem;
     }
     .due-badge i {
-        font-size: 0.9rem;
+    font-size: 0.9rem;
     }
     .due-soon {
-        background-color: #dcfce7;
-        color: #166534;
+    background-color: #dcfce7;
+    color: #166534;
     }
     .due-past {
-        background-color: #fee2e2;
-        color: #991b1b;
+    background-color: #fee2e2;
+    color: #991b1b;
     }
     .due-none {
-        background-color: #fef9c3;
-        color: #92400e;
+    background-color: #fef9c3;
+    color: #92400e;
     }
     .subtask-item {
-        flex-direction: row-reverse;
+    flex-direction: row-reverse;
     }
     .subtask-item .flex-grow-1 {
-        text-align: right;
+    text-align: right;
     }
     .task-card-header {
-        display: flex;
-        justify-content: flex-start;
-        align-items: flex-start;
-        margin-bottom: 0.5rem;
-        flex-direction: row;
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+    flex-direction: row;
     }
     .task-key {
-        font-weight: 600;
-        font-size: 0.85rem;
-        color: #495057;
-        text-align: right;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #495057;
+    text-align: right;
     }
     .task-actions {
-        display: flex;
-        gap: 0.25rem;
-        align-items: center;
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
     }
     .task-actions .btn {
-        padding: 0.25rem 0.4rem;
-        font-size: 0.75rem;
-        line-height: 1;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.75rem;
+    line-height: 1;
     }
     .task-actions .dropdown-menu {
-        font-size: 0.85rem;
-        min-width: 200px;
-        z-index: 1050;
+    font-size: 0.85rem;
+    min-width: 200px;
+    z-index: 1050;
     }
     .task-card .dropdown {
-        position: relative;
-        z-index: 2;
+    position: relative;
+    z-index: 2;
     }
     .task-card .dropdown.show {
-        z-index: 1051;
+    z-index: 1051;
     }
     .task-actions .dropdown-item {
-        padding: 0.5rem 1rem;
-        display: flex;
-        align-items: center;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
     }
     .task-actions .dropdown-item i {
-        width: 20px;
+    width: 20px;
     }
     /* استایل‌های modal ویرایش کار */
     #editTaskModal .modal-dialog {
-        max-width: 900px;
-        margin: 2rem auto;
+    max-width: 900px;
+    margin: 2rem auto;
     }
     #editTaskModal .modal-content {
-        border-radius: 20px;
-        overflow: hidden;
-        box-shadow: 0 25px 80px rgba(0, 0, 0, 0.25);
-        border: none;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.25);
+    border: none;
     }
     #editTaskModal .modal-header {
-        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-        color: white;
-        border-bottom: none;
-        padding: 1.5rem 2rem;
-        position: relative;
-        overflow: hidden;
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    color: white;
+    border-bottom: none;
+    padding: 1.5rem 2rem;
+    position: relative;
+    overflow: hidden;
     }
     #editTaskModal .modal-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-        animation: pulse 3s ease-in-out infinite;
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: pulse 3s ease-in-out infinite;
     }
     @@keyframes pulse {
-        0%, 100% { transform: scale(1); opacity: 0.5; }
-        50% { transform: scale(1.1); opacity: 0.8; }
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0.8; }
     }
     #editTaskModal .modal-title {
-        font-weight: 700;
-        font-size: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        position: relative;
-        z-index: 1;
+    font-weight: 700;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+    z-index: 1;
     }
     #editTaskModal .modal-title::before {
-        content: "✏️";
-        font-size: 1.75rem;
-        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    content: "✏️";
+    font-size: 1.75rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
     }
     #editTaskModal .btn-close {
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        opacity: 1;
-        transition: all 0.3s ease;
-        position: relative;
-        z-index: 1;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    opacity: 1;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
     }
     #editTaskModal .btn-close:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: rotate(90deg);
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
     }
     #editTaskModal .modal-body {
-        padding: 2rem;
-        background: linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%);
-        max-height: calc(90vh - 200px);
-        overflow-y: auto;
+    padding: 2rem;
+    background: linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%);
+    max-height: calc(90vh - 200px);
+    overflow-y: auto;
     }
     #editTaskModal .modal-body::-webkit-scrollbar {
-        width: 8px;
+    width: 8px;
     }
     #editTaskModal .modal-body::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 10px;
+    background: #f1f1f1;
+    border-radius: 10px;
     }
     #editTaskModal .modal-body::-webkit-scrollbar-thumb {
-        background: #2563eb;
-        border-radius: 10px;
+    background: #2563eb;
+    border-radius: 10px;
     }
     #editTaskModal .modal-body::-webkit-scrollbar-thumb:hover {
-        background: #1e40af;
+    background: #1e40af;
     }
     #editTaskModal .form-label {
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 0.5rem;
-        font-size: 0.95rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     }
     #editTaskModal .form-label::before {
-        content: '';
-        width: 4px;
-        height: 18px;
-        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-        border-radius: 2px;
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    border-radius: 2px;
     }
     #editTaskModal .form-control,
     #editTaskModal .form-select {
-        border: 2px solid #e5e7eb;
-        border-radius: 10px;
-        padding: 0.75rem 1rem;
-        font-size: 0.95rem;
-        transition: all 0.3s ease;
-        background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background: white;
     }
     #editTaskModal .form-control:focus,
     #editTaskModal .form-select:focus {
-        border-color: #2563eb;
-        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
-        outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+    outline: none;
     }
     #editTaskModal .form-control:hover,
     #editTaskModal .form-select:hover {
-        border-color: #d1d5db;
+    border-color: #d1d5db;
     }
     #editTaskModal textarea.form-control {
-        resize: vertical;
-        min-height: 100px;
+    resize: vertical;
+    min-height: 100px;
     }
     #editTaskModal .form-control:disabled,
     #editTaskModal .form-select:disabled {
-        background-color: #f3f4f6;
-        cursor: not-allowed;
-        opacity: 0.8;
-        border-color: #d1d5db;
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+    opacity: 0.8;
+    border-color: #d1d5db;
     }
     #editTaskModal .modal-footer {
-        background: white;
-        border-top: 1px solid #e5e7eb;
-        padding: 1.25rem 2rem;
-        border-radius: 0 0 20px 20px;
+    background: white;
+    border-top: 1px solid #e5e7eb;
+    padding: 1.25rem 2rem;
+    border-radius: 0 0 20px 20px;
     }
     #editTaskModal .modal-footer .btn {
-        border-radius: 10px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        border: none;
+    border-radius: 10px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
     }
     #editTaskModal .modal-footer .btn-secondary {
-        background: #f3f4f6;
-        color: #6b7280;
+    background: #f3f4f6;
+    color: #6b7280;
     }
     #editTaskModal .modal-footer .btn-secondary:hover {
-        background: #e5e7eb;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: #e5e7eb;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
     #editTaskModal .modal-footer .btn-primary {
-        background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-        color: white;
-        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
     }
     #editTaskModal .modal-footer .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
     }
     #editTaskModal .modal-footer .btn-primary:active {
-        transform: translateY(0);
+    transform: translateY(0);
     }
     #editTaskModal .row {
-        margin-left: -0.5rem;
-        margin-right: -0.5rem;
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
     }
     #editTaskModal .row > [class*="col-"] {
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
     }
     #editTaskModalBody {
-        min-height: 400px;
+    min-height: 400px;
     }
     #editTaskModalBody form {
-        max-width: 100%;
+    max-width: 100%;
     }
     @@media (max-width: 992px) {
-        #editTaskModal .modal-dialog {
-            max-width: 95%;
-            margin: 1rem auto;
-        }
-        #editTaskModal .modal-header {
-            padding: 1.25rem 1.5rem;
-        }
-        #editTaskModal .modal-title {
-            font-size: 1.25rem;
-        }
-        #editTaskModal .modal-body {
-            padding: 1.5rem;
-        }
-        #editTaskModal .modal-footer {
-            padding: 1rem 1.5rem;
-        }
-        #editTaskModal .row > [class*="col-"] {
-            margin-bottom: 1rem;
-        }
+    #editTaskModal .modal-dialog {
+    max-width: 95%;
+    margin: 1rem auto;
+    }
+    #editTaskModal .modal-header {
+    padding: 1.25rem 1.5rem;
+    }
+    #editTaskModal .modal-title {
+    font-size: 1.25rem;
+    }
+    #editTaskModal .modal-body {
+    padding: 1.5rem;
+    }
+    #editTaskModal .modal-footer {
+    padding: 1rem 1.5rem;
+    }
+    #editTaskModal .row > [class*="col-"] {
+    margin-bottom: 1rem;
+    }
     }
     .task-title {
-        font-weight: 500;
-        margin-bottom: 0.5rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
     }
     .task-title a {
-        color: #212529;
-        text-decoration: none;
-        transition: color 0.2s;
+    color: #212529;
+    text-decoration: none;
+    transition: color 0.2s;
     }
     .task-title a:hover {
-        color: #0d6efd;
+    color: #0d6efd;
     }
     .task-description {
-        font-size: 0.85rem;
-        color: #6c757d;
-        margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
     }
     .task-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 0.8rem;
-        color: #6c757d;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: #6c757d;
     }
     .task-badge {
-        display: inline-block;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 500;
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
     }
     .badge-assigned {
-        background: #e3f2fd;
-        color: #1976d2;
+    background: #e3f2fd;
+    color: #1976d2;
     }
     .available-tasks-column {
-        background: #f8f9fa;
-        border-radius: 8px;
-        border: 1px solid #dee2e6;
-        display: flex;
-        flex-direction: column;
-        max-height: calc(100vh - 200px);
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 200px);
     }
     .available-tasks-header {
-        padding: 0.75rem;
-        background: #e9ecef;
-        border-bottom: 1px solid #dee2e6;
-        border-radius: 8px 8px 0 0;
-        font-weight: 600;
-        font-size: 0.9rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    padding: 0.75rem;
+    background: #e9ecef;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     }
     .available-tasks-body {
-        padding: 0.5rem;
-        overflow-y: auto;
-        flex: 1;
+    padding: 0.5rem;
+    overflow-y: auto;
+    flex: 1;
     }
     .available-task-item {
-        background: white;
-        border: 1px solid #dee2e6;
-        border-radius: 6px;
-        padding: 0.75rem;
-        margin-bottom: 0.5rem;
-        transition: all 0.2s;
-        cursor: pointer;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s;
+    cursor: pointer;
     }
     .available-task-item:hover {
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
     }
     .available-task-item.selected {
-        background: #e7f3ff;
-        border-color: #0d6efd;
-        border-width: 2px;
+    background: #e7f3ff;
+    border-color: #0d6efd;
+    border-width: 2px;
     }
     .available-task-item.selected .available-task-title::after {
-        content: " ✓ انتخاب شده";
-        color: #0d6efd;
-        font-weight: bold;
-        margin-right: 0.5rem;
+    content: " ✓ انتخاب شده";
+    color: #0d6efd;
+    font-weight: bold;
+    margin-right: 0.5rem;
     }
     .available-task-item.selected .available-task-meta::after {
-        content: " (دوبار کلیک کنید برای افزودن)";
-        color: #0d6efd;
-        font-weight: 600;
+    content: " (دوبار کلیک کنید برای افزودن)";
+    color: #0d6efd;
+    font-weight: 600;
     }
     .available-task-title {
-        font-size: 0.9rem;
-        font-weight: 500;
-        margin-bottom: 0.25rem;
-        color: #212529;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: #212529;
     }
     .available-task-title a {
-        color: #0d6efd;
-        text-decoration: none;
-        transition: color 0.2s;
+    color: #0d6efd;
+    text-decoration: none;
+    transition: color 0.2s;
     }
     .available-task-title a:hover {
-        color: #0a58ca;
-        text-decoration: underline;
+    color: #0a58ca;
+    text-decoration: underline;
     }
     .available-task-meta {
-        font-size: 0.75rem;
-        color: #6c757d;
+    font-size: 0.75rem;
+    color: #6c757d;
     }
     .drop-zone {
-        min-height: 300px;
-        display: flex;
-        flex-direction: column;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
     }
     .empty-message {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #6c757d;
-        font-size: 0.85rem;
-        text-align: center;
-        padding: 2rem;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 2rem;
     }
     .quick-add-column-btn {
-        background: rgba(255, 255, 255, 0.95);
-        border: 1px solid rgba(13,110,253,0.3);
-        color: #0d6efd;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        transition: all 0.2s;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-        backdrop-filter: blur(4px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(13,110,253,0.3);
+    color: #0d6efd;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(4px);
     }
     .quick-add-column-btn:hover {
-        background: #0d6efd;
-        color: #fff;
-        box-shadow: 0 2px 6px rgba(13, 110, 253, 0.4);
+    background: #0d6efd;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(13, 110, 253, 0.4);
     }
     .delete-status-btn {
-        background: rgba(255, 255, 255, 0.95) !important;
-        border: 1px solid rgba(220, 53, 69, 0.3) !important;
-        color: #dc3545 !important;
-        border-radius: 4px;
-        transition: all 0.2s;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-        backdrop-filter: blur(4px);
-        opacity: 1 !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(220, 53, 69, 0.3) !important;
+    color: #dc3545 !important;
+    border-radius: 4px;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(4px);
+    opacity: 1 !important;
     }
     .delete-status-btn:hover {
-        background: #dc3545 !important;
-        color: #fff !important;
-        box-shadow: 0 2px 6px rgba(220, 53, 69, 0.4);
+    background: #dc3545 !important;
+    color: #fff !important;
+    box-shadow: 0 2px 6px rgba(220, 53, 69, 0.4);
     }
     .issue-type-icon {
-        font-size: 1rem;
+    font-size: 1rem;
     }
     .quick-task-card {
-        border-radius: 12px;
+    border-radius: 12px;
     }
     .quick-task-card .card-header,
     #quickTaskModal .modal-header {
-        background: linear-gradient(125deg, #2563eb, #4f46e5);
-        color: #fff;
-        padding: 1rem 1.5rem;
-        border: none;
+    background: linear-gradient(125deg, #2563eb, #4f46e5);
+    color: #fff;
+    padding: 1rem 1.5rem;
+    border: none;
     }
     .quick-task-card label,
     #quickTaskModal label {
-        font-weight: 600;
-        color: #0f172a;
+    font-weight: 600;
+    color: #0f172a;
     }
     .helper-text {
-        font-size: 0.8rem;
-        color: #64748b;
-        margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 0.25rem;
     }
     .issue-type-chips {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
     }
     .chip-option {
-        border-radius: 6px;
-        border: 1px solid #cbd5f5;
-        padding: 0.35rem 1rem;
-        background: #fff;
-        color: #2563eb;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-size: 0.85rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5f5;
+    padding: 0.35rem 1rem;
+    background: #fff;
+    color: #2563eb;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.85rem;
     }
     .chip-option.active {
-        background: #2563eb;
-        color: #fff;
-        border-color: #1d4ed8;
+    background: #2563eb;
+    color: #fff;
+    border-color: #1d4ed8;
     }
     .quick-task-meta {
-        display: flex;
-        flex-direction: column;
-        gap: 0.3rem;
-        color: #94a3b8;
-        font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    color: #94a3b8;
+    font-size: 0.85rem;
     }
     @@media (max-width: 1200px) {
-        .board-layout {
-            gap: 0.75rem;
-        }
-        .kanban-column {
-            min-width: 220px;
-        }
+    .board-layout {
+    gap: 0.75rem;
+    }
+    .kanban-column {
+    min-width: 220px;
+    }
     }
 
     @@media (max-width: 992px) {
-        .board-layout {
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-        .available-tasks-column {
-            max-height: 400px;
-            order: -1;
-        }
-        .board-header h2 {
-            font-size: 1.25rem;
-        }
-        .board-header .meta {
-            font-size: 0.85rem;
-        }
-        .stats-compact {
-            gap: 0.75rem;
-            font-size: 0.85rem;
-        }
-        .stat-compact {
-            padding: 0.4rem 0.75rem;
-            font-size: 0.85rem;
-        }
-        .board-toolbar {
-            gap: 0.5rem;
-        }
-        .toolbar-input,
-        .toolbar-select {
-            font-size: 0.85rem;
-            padding: 0.4rem 0.6rem;
-        }
+    .board-layout {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    }
+    .available-tasks-column {
+    max-height: 400px;
+    order: -1;
+    }
+    .board-header h2 {
+    font-size: 1.25rem;
+    }
+    .board-header .meta {
+    font-size: 0.85rem;
+    }
+    .stats-compact {
+    gap: 0.75rem;
+    font-size: 0.85rem;
+    }
+    .stat-compact {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+    }
+    .board-toolbar {
+    gap: 0.5rem;
+    }
+    .toolbar-input,
+    .toolbar-select {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.6rem;
+    }
     }
 
     @@media (max-width: 768px) {
-        .board-container {
-            padding: 0.5rem;
-        }
-        .board-header {
-            margin-bottom: 1rem;
-        }
-        .board-header h2 {
-            font-size: 1.1rem;
-        }
-        .board-header .meta {
-            font-size: 0.8rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-        .board-header .d-flex {
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-        .board-header .d-flex > div:last-child {
-            width: 100%;
-        }
-        .board-header .d-flex .btn {
-            width: 100%;
-            margin-bottom: 0.5rem;
-        }
-        .stats-compact {
-            flex-direction: column;
-            gap: 0.5rem;
-            margin-bottom: 0.75rem;
-        }
-        .stat-compact {
-            width: 100%;
-            justify-content: space-between;
-            padding: 0.5rem 0.75rem;
-        }
-        .board-toolbar {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 0.5rem;
-        }
-        .toolbar-input,
-        .toolbar-select {
-            width: 100%;
-            font-size: 0.85rem;
-        }
-        .btn-toggle {
-            width: 100%;
-            text-align: center;
-        }
-        .kanban-board {
-            flex-direction: row;
-            overflow-x: auto;
-            overflow-y: hidden;
-            -webkit-overflow-scrolling: touch;
-            scroll-behavior: smooth;
-            padding: 0.25rem 0;
-            gap: 0.75rem;
-            /* برای بهبود scroll در موبایل */
-            scroll-snap-type: x proximity;
-        }
-        .kanban-column {
-            min-width: 280px;
-            width: 280px;
-            flex: 0 0 280px;
-            /* برای بهبود scroll در موبایل */
-            scroll-snap-align: start;
-        }
-        .kanban-column-header {
-            padding: 0.6rem;
-            font-size: 0.85rem;
-        }
-        .kanban-column-body {
-            padding: 0.4rem;
-            min-height: 250px;
-        }
-        .task-card {
-            padding: 0.6rem;
-            margin-bottom: 0.4rem;
-        }
-        .task-title {
-            font-size: 0.85rem;
-        }
-        .task-meta {
-            font-size: 0.7rem;
-        }
-        .task-actions .btn {
-            padding: 0.2rem 0.3rem;
-            font-size: 0.7rem;
-        }
-        .available-tasks-column {
-            max-height: 300px;
-        }
-        .available-tasks-header {
-            padding: 0.6rem;
-            font-size: 0.85rem;
-        }
-        .available-task-item {
-            padding: 0.6rem;
-        }
-        .available-task-title {
-            font-size: 0.85rem;
-        }
-        .available-task-meta {
-            font-size: 0.7rem;
-        }
-        #editTaskModal .modal-dialog {
-            max-width: 95%;
-            margin: 1rem auto;
-        }
-        #editTaskModal .modal-header {
-            padding: 1rem 1.25rem;
-        }
-        #editTaskModal .modal-title {
-            font-size: 1.1rem;
-        }
-        #editTaskModal .modal-body {
-            padding: 1rem;
-        }
-        #editTaskModal .modal-footer {
-            padding: 0.875rem 1rem;
-        }
-        #editTaskModal .row > [class*="col-"] {
-            margin-bottom: 0.75rem;
-        }
-        #quickTaskModal .modal-dialog {
-            max-width: 95%;
-        }
-        #quickTaskModal .modal-header {
-            padding: 0.875rem 1rem;
-        }
-        #quickTaskModal .modal-body {
-            padding: 1rem;
-        }
-        .issue-type-chips {
-            gap: 0.4rem;
-        }
-        .chip-option {
-            padding: 0.3rem 0.75rem;
-            font-size: 0.8rem;
-        }
+    .board-container {
+    padding: 0.5rem;
+    }
+    .board-header {
+    margin-bottom: 1rem;
+    }
+    .board-header h2 {
+    font-size: 1.1rem;
+    }
+    .board-header .meta {
+    font-size: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    }
+    .board-header .d-flex {
+    flex-direction: column;
+    gap: 0.75rem;
+    }
+    .board-header .d-flex > div:last-child {
+    width: 100%;
+    }
+    .board-header .d-flex .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    }
+    .stats-compact {
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    }
+    .stat-compact {
+    width: 100%;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    }
+    .board-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    }
+    .toolbar-input,
+    .toolbar-select {
+    width: 100%;
+    font-size: 0.85rem;
+    }
+    .btn-toggle {
+    width: 100%;
+    text-align: center;
+    }
+    .kanban-board {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    padding: 0.25rem 0;
+    gap: 0.75rem;
+    /* برای بهبود scroll در موبایل */
+    scroll-snap-type: x proximity;
+    }
+    .kanban-column {
+    min-width: 280px;
+    width: 280px;
+    flex: 0 0 280px;
+    /* برای بهبود scroll در موبایل */
+    scroll-snap-align: start;
+    }
+    .kanban-column-header {
+    padding: 0.6rem;
+    font-size: 0.85rem;
+    }
+    .kanban-column-body {
+    padding: 0.4rem;
+    min-height: 250px;
+    }
+    .task-card {
+    padding: 0.6rem;
+    margin-bottom: 0.4rem;
+    }
+    .task-title {
+    font-size: 0.85rem;
+    }
+    .task-meta {
+    font-size: 0.7rem;
+    }
+    .task-actions .btn {
+    padding: 0.2rem 0.3rem;
+    font-size: 0.7rem;
+    }
+    .available-tasks-column {
+    max-height: 300px;
+    }
+    .available-tasks-header {
+    padding: 0.6rem;
+    font-size: 0.85rem;
+    }
+    .available-task-item {
+    padding: 0.6rem;
+    }
+    .available-task-title {
+    font-size: 0.85rem;
+    }
+    .available-task-meta {
+    font-size: 0.7rem;
+    }
+    #editTaskModal .modal-dialog {
+    max-width: 95%;
+    margin: 1rem auto;
+    }
+    #editTaskModal .modal-header {
+    padding: 1rem 1.25rem;
+    }
+    #editTaskModal .modal-title {
+    font-size: 1.1rem;
+    }
+    #editTaskModal .modal-body {
+    padding: 1rem;
+    }
+    #editTaskModal .modal-footer {
+    padding: 0.875rem 1rem;
+    }
+    #editTaskModal .row > [class*="col-"] {
+    margin-bottom: 0.75rem;
+    }
+    #quickTaskModal .modal-dialog {
+    max-width: 95%;
+    }
+    #quickTaskModal .modal-header {
+    padding: 0.875rem 1rem;
+    }
+    #quickTaskModal .modal-body {
+    padding: 1rem;
+    }
+    .issue-type-chips {
+    gap: 0.4rem;
+    }
+    .chip-option {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+    }
     }
 
     @@media (max-width: 576px) {
-        .board-container {
-            padding: 0.25rem;
-        }
-        .board-header {
-            margin-bottom: 0.75rem;
-        }
-        .board-header h2 {
-            font-size: 1rem;
-        }
-        .board-header .meta {
-            font-size: 0.75rem;
-        }
-        .stats-compact {
-            gap: 0.4rem;
-        }
-        .stat-compact {
-            padding: 0.4rem 0.6rem;
-            font-size: 0.8rem;
-        }
-        .board-toolbar {
-            gap: 0.4rem;
-        }
-        .toolbar-input,
-        .toolbar-select,
-        .btn-toggle {
-            font-size: 0.8rem;
-            padding: 0.4rem 0.5rem;
-        }
-        .kanban-board {
-            gap: 0.6rem;
-        }
-        .kanban-column {
-            min-width: 260px;
-            width: 260px;
-            flex: 0 0 260px;
-        }
-        .kanban-column-header {
-            padding: 0.5rem;
-            font-size: 0.8rem;
-        }
-        .kanban-column-header .badge {
-            font-size: 0.7rem;
-            padding: 0.2rem 0.4rem;
-        }
-        .kanban-column-body {
-            padding: 0.3rem;
-            min-height: 200px;
-        }
-        .task-card {
-            padding: 0.5rem;
-        }
-        .task-title {
-            font-size: 0.8rem;
-            margin-bottom: 0.4rem;
-        }
-        .task-meta {
-            font-size: 0.65rem;
-            gap: 0.2rem;
-        }
-        .task-actions {
-            gap: 0.2rem;
-        }
-        .task-actions .btn {
-            padding: 0.15rem 0.25rem;
-            font-size: 0.65rem;
-        }
-        .due-badge {
-            padding: 0.1rem 0.4rem;
-            font-size: 0.7rem;
-        }
-        .available-tasks-column {
-            max-height: 250px;
-        }
-        .available-tasks-header {
-            padding: 0.5rem;
-            font-size: 0.8rem;
-        }
-        .available-task-item {
-            padding: 0.5rem;
-        }
-        .available-task-title {
-            font-size: 0.8rem;
-        }
-        .available-task-meta {
-            font-size: 0.65rem;
-        }
-        #editTaskModal .modal-header {
-            padding: 0.875rem 1rem;
-        }
-        #editTaskModal .modal-title {
-            font-size: 1rem;
-        }
-        #editTaskModal .modal-body {
-            padding: 0.875rem;
-        }
-        #editTaskModal .form-label {
-            font-size: 0.85rem;
-        }
-        #editTaskModal .form-control,
-        #editTaskModal .form-select {
-            padding: 0.6rem 0.75rem;
-            font-size: 0.85rem;
-        }
-        #editTaskModal .modal-footer {
-            padding: 0.75rem;
-        }
-        #editTaskModal .modal-footer .btn {
-            padding: 0.6rem 1.5rem;
-            font-size: 0.85rem;
-        }
-        #quickTaskModal .modal-header {
-            padding: 0.75rem;
-        }
-        #quickTaskModal .modal-title {
-            font-size: 0.95rem;
-        }
-        #quickTaskModal .modal-body {
-            padding: 0.875rem;
-        }
-        .chip-option {
-            padding: 0.25rem 0.6rem;
-            font-size: 0.75rem;
-        }
-        .quick-task-meta {
-            font-size: 0.75rem;
-        }
+    .board-container {
+    padding: 0.25rem;
+    }
+    .board-header {
+    margin-bottom: 0.75rem;
+    }
+    .board-header h2 {
+    font-size: 1rem;
+    }
+    .board-header .meta {
+    font-size: 0.75rem;
+    }
+    .stats-compact {
+    gap: 0.4rem;
+    }
+    .stat-compact {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+    }
+    .board-toolbar {
+    gap: 0.4rem;
+    }
+    .toolbar-input,
+    .toolbar-select,
+    .btn-toggle {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.5rem;
+    }
+    .kanban-board {
+    gap: 0.6rem;
+    }
+    .kanban-column {
+    min-width: 260px;
+    width: 260px;
+    flex: 0 0 260px;
+    }
+    .kanban-column-header {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    }
+    .kanban-column-header .badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+    }
+    .kanban-column-body {
+    padding: 0.3rem;
+    min-height: 200px;
+    }
+    .task-card {
+    padding: 0.5rem;
+    }
+    .task-title {
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+    }
+    .task-meta {
+    font-size: 0.65rem;
+    gap: 0.2rem;
+    }
+    .task-actions {
+    gap: 0.2rem;
+    }
+    .task-actions .btn {
+    padding: 0.15rem 0.25rem;
+    font-size: 0.65rem;
+    }
+    .due-badge {
+    padding: 0.1rem 0.4rem;
+    font-size: 0.7rem;
+    }
+    .available-tasks-column {
+    max-height: 250px;
+    }
+    .available-tasks-header {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    }
+    .available-task-item {
+    padding: 0.5rem;
+    }
+    .available-task-title {
+    font-size: 0.8rem;
+    }
+    .available-task-meta {
+    font-size: 0.65rem;
+    }
+    #editTaskModal .modal-header {
+    padding: 0.875rem 1rem;
+    }
+    #editTaskModal .modal-title {
+    font-size: 1rem;
+    }
+    #editTaskModal .modal-body {
+    padding: 0.875rem;
+    }
+    #editTaskModal .form-label {
+    font-size: 0.85rem;
+    }
+    #editTaskModal .form-control,
+    #editTaskModal .form-select {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+    }
+    #editTaskModal .modal-footer {
+    padding: 0.75rem;
+    }
+    #editTaskModal .modal-footer .btn {
+    padding: 0.6rem 1.5rem;
+    font-size: 0.85rem;
+    }
+    #quickTaskModal .modal-header {
+    padding: 0.75rem;
+    }
+    #quickTaskModal .modal-title {
+    font-size: 0.95rem;
+    }
+    #quickTaskModal .modal-body {
+    padding: 0.875rem;
+    }
+    .chip-option {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    }
+    .quick-task-meta {
+    font-size: 0.75rem;
+    }
     }
 
     @@media (max-width: 400px) {
-        .kanban-board {
-            gap: 0.5rem;
-        }
-        .kanban-column {
-            min-width: 240px;
-            width: 240px;
-            flex: 0 0 240px;
-        }
-        .task-card {
-            padding: 0.4rem;
-        }
-        .task-title {
-            font-size: 0.75rem;
-        }
-        .task-meta {
-            font-size: 0.6rem;
-        }
+    .kanban-board {
+    gap: 0.5rem;
+    }
+    .kanban-column {
+    min-width: 240px;
+    width: 240px;
+    flex: 0 0 240px;
+    }
+    .task-card {
+    padding: 0.4rem;
+    }
+    .task-title {
+    font-size: 0.75rem;
+    }
+    .task-meta {
+    font-size: 0.6rem;
+    }
     }
 </style>
 
@@ -1169,7 +1171,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- فیلترها (اختیاری - می‌تواند مخفی شود) -->
         <div class="board-toolbar mt-3" id="boardToolbar" style="display: none;">
             <input type="text" id="boardSearchInput" class="form-control toolbar-input" placeholder="جستجو..." style="min-width: 200px;">
@@ -1210,7 +1212,181 @@
 
     <!-- ستون‌های تخته -->
     <div class="board-columns" id="boardColumns">
+        <div class="kanban-column"
+             style="width: 250px; flex-shrink: 0;"
+             ondragover="onDragOverColumn(event)"
+             ondragenter="onDragEnter(event)"
+             ondragleave="onDragLeave(event)"
+
+                <div class="column-header"
+                     draggable="false"
+                     ondragstart="onColumnDragStart(event)"
+                     ondragend="onColumnDragEnd(event)">
+                    <div class="d-flex align-items-center gap-2">
+
+                        <span>بک لاگ</span>
+                        <span class="badge bg-primary">
+                        @{
+
+
+
+                            var count0 = backLog.Count();
+
+                        }
+                        @count0.ToString().ToPersianNumbers()
+                                </span>
+                </div>
+
+
+                <div class="column-tasks"  ondragover="onDragOverColumn(event)" ondragleave="onDragLeave(event)">
+
+                    @if (backLog.Any())
+                    {
+                        foreach (var issue in backLog)
+                        {
+                            var dueDate = issue.DueDate;
+                            var now = DateTime.UtcNow;
+                            var dueSoonFlag = dueDate.HasValue && dueDate.Value >= now && dueDate.Value <= now.AddDays(3);
+                                    <div class="task-card"
+                                         draggable="true"
+                                         ondragstart="onDragIssue(event, @issue.Id)"
+                                         onclick="handleCardClick(event, @issue.Id)"
+                                         data-issue-id="@issue.Id"
+                                         data-title="@issue.Title"
+                                         data-assignee="@((issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص"))"
+                                         data-assignee-id="@(issue.AssignedUserId ?? "unassigned")"
+                                         data-key="@issue.IssueKey"
+                                         data-due="@dueDate?.ToString("o")"
+                                         data-due-soon="@dueSoonFlag.ToString().ToLower()">
+
+                                        <div class="task-card-header">
+                                            <div class="task-actions">
+                                                <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
+                                        
+                                            </div>
+                                        </div>
+
+                                        <div class="task-title">
+
+                                            <a href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@issue.Id); return false;">@issue.Title</a>
+                                        </div>
+
+                                @if (!string.IsNullOrWhiteSpace(issue.Description))
+                                {
+                                                <div class="task-description">@(issue.Description.Length > 100 ? issue.Description.Substring(0, 100) + "..." : issue.Description)</div>
+                                }
+                                        <div class="task-footer">
+                                    @if (!string.IsNullOrWhiteSpace(issue.AssignedUserId))
+                                    {
+                                                    <span class="task-badge badge-assigned">
+                                                        <i class="bi bi-person"></i>
+                                            @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "اختصاص داده شده")
+                                                    </span>
+                                    }
+                                            <small>@issue.CreatedAt.ToShortPersianDateString().ToPersianNumbers()</small>
+                                        </div>
+
+                                        <!-- دکمه‌های عملیات -->
+                                        <div class="d-flex gap-2 mt-2" onclick="event.stopPropagation();">
+
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="addTaskToSprint(@issue.Id)" title="حذف کار">
+                                                <i class="bi bi-plus-circle-fill"></i>
+                                            </button>
+                                        </div>
+
+                                @if (issue.ChildIssues != null && issue.ChildIssues.Any())
+                                {
+                                                <div class="subtasks-container mt-2" id="subtasks-@issue.Id" style="display: none; border-top: 1px solid #dee2e6; padding-top: 8px;">
+                                        @foreach (var subtask in issue.ChildIssues.OrderBy(c => c.CreatedAt))
+                                        {
+                                                            <div class="subtask-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded" style="font-size: 0.85rem;">
+                                                                <div class="d-flex align-items-center gap-2 flex-grow-1">
+                                                                    <span class="issue-type-icon" style="font-size: 0.9rem;">@subtask.IssueTypeIcon</span>
+                                                                    <div class="flex-grow-1">
+                                                                        <div class="fw-bold">@subtask.Title</div>
+                                                        @if (!string.IsNullOrEmpty(subtask.Description))
+                                                        {
+                                                                                <small class="text-muted">@(subtask.Description.Length > 50 ? subtask.Description.Substring(0, 50) + "..." : subtask.Description)</small>
+                                                        }
+                                                                    </div>
+                                                                </div>
+                                                @if (Model.Status == SprintStatus.Active)
+                                                {
+                                                                        <div class="dropdown">
+                                                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle p-0 px-1"
+                                                                                    type="button"
+                                                                                    id="subtaskMenu-@subtask.Id"
+                                                                                    data-bs-toggle="dropdown"
+                                                                                    aria-expanded="false"
+                                                                                    onclick="event.stopPropagation(); event.preventDefault();"
+                                                                                    title="عملیات بیشتر"
+                                                                                    style="font-size: 0.7rem;">
+                                                                                <i class="bi bi-three-dots-vertical"></i>
+                                                                            </button>
+                                                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="subtaskMenu-@subtask.Id">
+                                                                                <li>
+                                                                                    <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@subtask.Id);">
+                                                                                        <i class="bi bi-pencil-square text-primary me-2"></i>ویرایش کار
+                                                                                    </a>
+                                                                                </li>
+                                                                                <li>
+
+                                                                                    <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@issue.Id); return false;">@issue.Title</a>
+                                                                                </li>
+                                                            @{
+                                                                var subtaskStatus = Model.Statuses.FirstOrDefault(s => s.Id == subtask.StatusId);
+                                                                var subtaskIsFinal = subtaskStatus != null && subtaskStatus.IsFinal;
+                                                            }
+                                                            @if (finalStatus != null && !subtaskIsFinal)
+                                                            {
+                                                                                        <li>
+                                                                                            <a class="dropdown-item complete-task-btn" href="#" onclick="event.stopPropagation(); event.preventDefault(); completeTask(@subtask.Id);">
+                                                                                                <i class="bi bi-check-lg text-success me-2"></i>خاتمه کار
+                                                                                            </a>
+                                                                                        </li>
+                                                            }
+                                                                                <li><hr class="dropdown-divider"></li>
+                                                                                <li>
+                                                                                    <a class="dropdown-item text-danger" href="#" onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@subtask.Id, '@subtask.Title');">
+                                                                                        <i class="bi bi-trash me-2"></i>حذف کار
+                                                                                    </a>
+                                                                                </li>
+                                                                            </ul>
+                                                                        </div>
+                                                }
+                                                else
+                                                {
+                                                                        <a href="/Tasks/Details/@subtask.Id" class="btn btn-sm btn-outline-info p-0 px-1"
+                                                                           onclick="event.stopPropagation();"
+                                                                           title="جزئیات"
+                                                                           style="font-size: 0.7rem;">
+                                                                            <i class="bi bi-eye"></i>
+                                                                        </a>
+                                                }
+                                                            </div>
+                                        }
+                                                </div>
+                                }
+                                    </div>
+                        }
+                    }
+                    else
+                    {
+                            <div class="empty-message text-muted text-center small p-4">
+                                <i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد
+                            </div>
+                    }
+                </div>
+                <!-- دکمه افزودن کار -->
+
+            </div>
+
+
         <div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
+
+
+
+
                 @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
                 {
                     <div class="kanban-column"
@@ -1259,6 +1435,8 @@
                                 .OrderByDescending(t => t.UpdatedAt)
                                 .ThenBy(t => t.Priority)
                                 .ToList();
+
+                            
                             }
                             @if (cards.Any())
                             {
@@ -1665,7 +1843,7 @@
                         </div>
                     </div>
                     
-                    <div class="mb-4">
+                  <div class="mb-4">
                         <label for="editTaskStoryPoints" class="form-label">
                             <i class="bi bi-star text-primary"></i>
                             امتیاز داستان
@@ -3455,6 +3633,63 @@
                     }
                 });
             }
+
+
+             function removeTaskFromSprint(taskId) {
+                if (!confirm('آیا مطمئن هستید که می‌خواهید این کار را از اسپرینت خارج کنید؟')) {
+                    return;
+                }
+
+                $.ajax({
+                    url: '/Sprints/RemoveTaskFromSprint',
+                    type: 'POST',
+                    data: { sprintId: sprintId, taskId: taskId },
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('کار با موفقیت از اسپرینت خارج شد', 'success');
+                            // حذف کارت از صفحه
+                            const card = document.querySelector(`.task-card[data-issue-id="${taskId}"]`);
+                            if (card) {
+                                card.style.transition = 'opacity 0.3s';
+                                card.style.opacity = '0';
+                                setTimeout(() => {
+                                    const column = card.closest('.kanban-column-body');
+                                    card.remove();
+                                    updateIssueCounts();
+                                    
+                                    // نمایش پیام خالی اگر ستون خالی شد
+                                    const remainingCards = column.querySelectorAll('.task-card');
+                                    if (remainingCards.length === 0) {
+                                        const emptyMsg = document.createElement('div');
+                                        emptyMsg.className = 'empty-message text-muted text-center small p-4';
+                                        emptyMsg.innerHTML = '<i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد';
+                                        column.appendChild(emptyMsg);
+                                    }
+                                }, 300);
+                            }
+                            // بارگذاری مجدد تسک‌های موجود
+                            loadAvailableTasks();
+                        } else {
+                            showNotification('خطا: ' + response.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        showNotification('خطا در ارتباط با سرور', 'error');
+                    }
+                });
+            }
+
+            $(document).ready(function() {
+                loadAvailableTasks();
+            });
+
+
+
+
+
 
             function removeTaskFromSprint(taskId) {
                 if (!confirm('آیا مطمئن هستید که می‌خواهید این کار را از اسپرینت خارج کنید؟')) {
