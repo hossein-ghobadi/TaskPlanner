@@ -2225,7 +2225,6 @@ namespace Endpoint.Site.Controllers
             task.Title = vm.Title;
             task.Description = vm.Description;
             task.CategoryId = vm.CategoryId;
-            task.ParentTaskId = vm.ParentId;
             // 🔒 IssueType تغییر نمی‌کند - نوع کار قابل ویرایش نیست
             // task.IssueType = vm.IssueType; // ❌ حذف شد - نوع کار قابل تغییر نیست
             // task.ProjectIssueTypeId = selectedProjectIssueType?.Id; // ❌ حذف شد - نوع کار قابل تغییر نیست
