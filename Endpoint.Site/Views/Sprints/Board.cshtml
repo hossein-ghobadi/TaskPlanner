@@ -1212,7 +1212,12 @@
 
     <!-- ستون‌های تخته -->
     <div class="board-columns" id="boardColumns">
-        <div class="kanban-column"
+       
+
+        <div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
+
+
+            <div class="kanban-column"
              style="width: 250px; flex-shrink: 0;"
              ondragover="onDragOverColumn(event)"
              ondragenter="onDragEnter(event)"
@@ -1262,7 +1267,7 @@
                                         <div class="task-card-header">
                                             <div class="task-actions">
                                                 <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
-                                        
+
                                             </div>
                                         </div>
 
@@ -1378,13 +1383,7 @@
                     }
                 </div>
                 <!-- دکمه افزودن کار -->
-
-            </div>
-
-
-        <div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
-
-
+            </div> 
 
 
                 @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
@@ -1802,7 +1801,9 @@
                                 <i class="bi bi-calendar-event text-primary"></i>
                                 تاریخ شروع
                             </label>
-                            <input type="text" class="form-control" id="editTaskStartDateDisplay" autocomplete="off">
+
+                                <input type="text" class="form-control" id="editTaskStartDateDisplay" value="@Model.StartDate" autocomplete="off">
+                               
                             <input type="hidden" id="editTaskStartDate">
                         </div>
                         <div class="col-md-6">
@@ -3191,7 +3192,6 @@
             try {
                 // دریافت اطلاعات کار با AJAX
                 const response = await fetch(`/Tasks/GetTaskDetails?id=${taskId}`);
-                
                 // بررسی Content-Type
                 const contentType = response.headers.get("content-type");
                 if (!contentType || !contentType.includes("application/json")) {
@@ -3206,7 +3206,7 @@
                 }
                 
                 const taskData = await response.json();
-                
+                    console.log("مقدار startDateSh دریافتی:", taskData.startDateSh);
                 if (!taskData.success) {
                     throw new Error(taskData.message || 'خطا در دریافت اطلاعات کار');
                 }
@@ -3227,7 +3227,7 @@
                 document.getElementById('editTaskCategory').value = taskData.categoryId || '';
                 document.getElementById('editTaskAssignedUser').value = taskData.assignedUserId || '';
                 document.getElementById('editTaskStoryPoints').value = taskData.storyPoints || '';
-                
+                    console.log("مقدار altField (#editTaskStartDate):", document.getElementById('editTaskStartDate').value);
                 // ذخیره مقدار IssueType در hidden input (فیلد نمایش داده نمی‌شود)
                 const issueTypeHidden = document.getElementById('editTaskIssueTypeHidden');
                 if (taskData.issueType) {

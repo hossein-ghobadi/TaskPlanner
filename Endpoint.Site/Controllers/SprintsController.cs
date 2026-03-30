@@ -147,7 +147,7 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
             var tasksWithoutSprint = _context.TaskItems
-            .Where(t => t.ProjectId == sprint.ProjectId && t.SprintId == null&&t.IssueType!=IssueType.Epic)
+            .Where(t => t.ProjectId == sprint.ProjectId && t.SprintId == null&&(t.IssueType==IssueType.Story|| t.IssueType == IssueType.Task))
             .ToList();
             // وضعیت‌های اسپرینت (ستون‌ها)
             var statuses = await _context.WorkflowStatuses
@@ -860,6 +860,9 @@ namespace Endpoint.Site.Controllers
                 await _context.Database.ExecuteSqlRawAsync(
                     "DELETE FROM SprintTasks WHERE SprintId = {0} AND TaskId = {1}",
                     sprintId, taskId);
+                await _context.Database.ExecuteSqlRawAsync(
+                 "UPDATE TaskItems SET SprintId = NULL WHERE Id = {0}",
+                 taskId);
 
                 // بازگشت اطلاعات به‌روز شده
                 var remainingTasks = await _context.SprintTasks
@@ -872,7 +875,6 @@ namespace Endpoint.Site.Controllers
                         status = st.Status.ToString()
                     })
                     .ToListAsync();
-
                 return Json(new
                 {
                     success = true,
