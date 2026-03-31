@@ -1720,6 +1720,8 @@ namespace Endpoint.Site.Controllers
                 projectId = task.ProjectId,
                 startDateSh = ToJalali(task.StartDate),
                 dueDateSh = task.DueDate.HasValue ? ToJalali(task.DueDate.Value) : null,
+                startDate = task.StartDate,
+                dueDate = task.DueDate.Value ,
                 categoryId = task.CategoryId,
                 assignedUserId = task.AssignedUserId,
                 storyPoints = task.StoryPoints,

@@ -1802,7 +1802,7 @@
                                 تاریخ شروع
                             </label>
 
-                                <input type="text" class="form-control" id="editTaskStartDateDisplay" value="@Model.StartDate" autocomplete="off">
+                                <input type="text" class="form-control" id="editTaskStartDateDisplay"  autocomplete="off">
                                
                             <input type="hidden" id="editTaskStartDate">
                         </div>
@@ -3213,7 +3213,8 @@
                 
                 // ذخیره اطلاعات اصلی برای استفاده در submit
                 originalTaskData = taskData;
-                
+                         // مقدار را اول ست کن
+           
                 // پر کردن فرم
                 document.getElementById('editTaskId').value = taskData.id;
                 document.getElementById('editTaskProjectId').value = taskData.projectId;
@@ -3221,13 +3222,15 @@
                 document.getElementById('editTaskTitle').value = taskData.title || '';
                 document.getElementById('editTaskDescription').value = taskData.description || '';
                 document.getElementById('editTaskStartDateDisplay').value = taskData.startDateSh || '';
-                document.getElementById('editTaskStartDate').value = taskData.startDateSh || '';
+                document.getElementById('editTaskStartDate').value = taskData.startDateSh|| '';
                 document.getElementById('editTaskDueDateDisplay').value = taskData.dueDateSh || '';
                 document.getElementById('editTaskDueDate').value = taskData.dueDateSh || '';
                 document.getElementById('editTaskCategory').value = taskData.categoryId || '';
                 document.getElementById('editTaskAssignedUser').value = taskData.assignedUserId || '';
                 document.getElementById('editTaskStoryPoints').value = taskData.storyPoints || '';
-                    console.log("مقدار altField (#editTaskStartDate):", document.getElementById('editTaskStartDate').value);
+                console.log("مقدار altField (#editTaskStartDate):", document.getElementById('editTaskStartDate').value);
+                console.log("مقدار altField (#editTaskStartDate):",  taskData.startDateSh);
+
                 // ذخیره مقدار IssueType در hidden input (فیلد نمایش داده نمی‌شود)
                 const issueTypeHidden = document.getElementById('editTaskIssueTypeHidden');
                 if (taskData.issueType) {
@@ -3298,30 +3301,29 @@
                         helpText.remove();
                     }
                 }
-                
+
+                   
+
                 // تنظیم Persian Datepicker
-                if ($.fn.persianDatepicker) {
+                if ($.fn.persianDatepicker) 
+                {
                     $('#editTaskStartDateDisplay').persianDatepicker({
                         format: 'YYYY/MM/DD',
                         autoClose: true,
-                        initialValueType: "persian",
-                        initialValue: true,
+                        initialValue: false,
                         altField: '#editTaskStartDate',
                         altFormat: 'YYYY/MM/DD',
                         timePicker: { enabled: false },
-                        calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
                     });
-                    
                     $('#editTaskDueDateDisplay').persianDatepicker({
                         format: 'YYYY/MM/DD',
                         autoClose: true,
-                        initialValueType: "persian",
-                        initialValue: true,
+                        initialValue: false,
                         altField: '#editTaskDueDate',
                         altFormat: 'YYYY/MM/DD',
                         timePicker: { enabled: false },
-                        calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
                     });
+              
                 }
                 
             } catch (error) {
@@ -3329,7 +3331,11 @@
                 bootstrap.Modal.getInstance(modalElement)?.hide();
             }
         }
-        
+
+
+
+
+
         // ارسال فرم ویرایش کار
         async function submitEditTask() {
             const taskId = document.getElementById('editTaskId').value;
