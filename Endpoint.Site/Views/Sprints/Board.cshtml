@@ -1529,7 +1529,7 @@
                                                     @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "اختصاص داده شده")
                                                 </span>
                                             }
-                                            <small>@issue.CreatedAt.ToShortPersianDateString().ToPersianNumbers()</small>
+                                            <small>@issue.DueDate.ToShortPersianDateString().ToPersianNumbers()</small>
                                         </div>
                                         
                                         <!-- دکمه‌های عملیات -->
