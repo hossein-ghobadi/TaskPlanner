@@ -146,9 +146,10 @@ namespace Endpoint.Site.Controllers
                 TempData["Error"] = "شما به این اسپرینت دسترسی ندارید.";
                 return RedirectToAction("Index", "Projects");
             }
+
             var tasksWithoutSprint = _context.TaskItems
-            .Where(t => t.ProjectId == sprint.ProjectId && t.SprintId == null&&(t.IssueType==IssueType.Story|| t.IssueType == IssueType.Task))
-            .ToList();
+                        .Where(t => t.ProjectId == sprint.ProjectId && !t.IsCompleted && (t.SprintId != sprint.Id || t.SprintId == null) && (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task))
+                        .ToList();
             // وضعیت‌های اسپرینت (ستون‌ها)
             var statuses = await _context.WorkflowStatuses
                 .Where(ws => ws.SprintId == sprint.Id)

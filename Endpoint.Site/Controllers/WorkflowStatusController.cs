@@ -468,6 +468,7 @@ namespace Endpoint.Site.Controllers
             {
                 task.WorkflowStatusId = defaultStatus?.Id;
                 task.StatusId = defaultStatus?.Id;
+                task.SprintId = null;
             }
 
             _context.WorkflowStatuses.Remove(status);
@@ -723,8 +724,10 @@ namespace Endpoint.Site.Controllers
                     {
                         task.SprintId = null;
                         task.WorkflowStatusId = null;
-                        task.StatusId = null;
                     }
+                    _context.TaskItems.UpdateRange(affectedTasks);
+                    await _context.SaveChangesAsync();
+
                 }
 
                 // حذف تاریخچه‌هایی که به این وضعیت اشاره دارند تا محدودیت FK نقض نشود
