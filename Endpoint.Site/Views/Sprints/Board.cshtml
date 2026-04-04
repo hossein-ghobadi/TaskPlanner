@@ -1438,6 +1438,7 @@
                                 .OrderByDescending(t => t.UpdatedAt)
                                 .ThenBy(t => t.Priority)
                                 .ToList();
+                                
 
                             
                             }
@@ -1445,6 +1446,7 @@
                             {
                                 foreach (var issue in cards)
                                 {
+                                    
                                     var dueDate = issue.DueDate;
                                     var now = DateTime.UtcNow;
                                     var dueSoonFlag = dueDate.HasValue && dueDate.Value >= now && dueDate.Value <= now.AddDays(3);
@@ -1545,9 +1547,9 @@
                                             </button>
                                         </div>
 
-                                        @if (issue.ChildIssues != null && issue.ChildIssues.Any())
+                                        @if (issue.ChildIssues.Count>0 )
                                         {
-                                            <div class="subtasks-container mt-2" id="subtasks-@issue.Id" style="display: none; border-top: 1px solid #dee2e6; padding-top: 8px;">
+                                            <div class="subtasks-container mt-2" id="subtasks-@issue.Id" style="display: initial; border-top: 1px solid #dee2e6; padding-top: 8px;">
                                                 @foreach (var subtask in issue.ChildIssues.OrderBy(c => c.CreatedAt))
                                                 {
                                                     <div class="subtask-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded" style="font-size: 0.85rem;">
