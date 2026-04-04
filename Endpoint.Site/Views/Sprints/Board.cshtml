@@ -1,9 +1,13 @@
 @model Endpoint.Site.Models.SprintBoardVm
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @using DNTPersianUtils.Core
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+
 @{
 
     Layout = "/Views/Shared/_Layout.cshtml";
+    var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+
     var sprintId = ViewBag.SprintId as int?;
     var projectId = ViewBag.ProjectId as int?;
     var workflowStatuses = ViewBag.WorkflowStatuses as List<WorkflowStatus> ?? new List<WorkflowStatus>();
@@ -1815,7 +1819,69 @@
                             <input type="hidden" id="editTaskDueDate">
                         </div>
                     </div>
-                    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        <!-- یادداشت‌ها -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="bi bi-chat-left-text me-2"></i>
+                                یادداشت‌ها
+                            </label>
+
+                            <!-- فرم افزودن یادداشت -->
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <form id="taskDetailsCommentForm" enctype="multipart/form-data">
+                                        <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
+                                        <input type="hidden" id="taskDetailsTaskIdForComment" name="BoardTaskId" />
+                                        <div class="mb-3">
+                                            <label for="taskDetailsCommentMessage" class="form-label">یادداشت</label>
+                                            <textarea class="form-control" id="taskDetailsCommentMessage" name="Message" rows="3" placeholder="یادداشت خود را وارد کنید..."></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="taskDetailsCommentAttachments" class="form-label">فایل‌های پیوست</label>
+                                            <input type="file" class="form-control" id="taskDetailsCommentAttachments" name="Attachments" multiple />
+                                            <small class="form-text text-muted">می‌توانید چند فایل انتخاب کنید</small>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            <i class="bi bi-send me-1"></i>
+                                            ارسال یادداشت
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- لیست یادداشت‌ها -->
+                            <div id="taskDetailsComments" class="border rounded p-3 bg-white" style="max-height: 300px; overflow-y: auto;">
+                                <!-- یادداشت‌ها اینجا نمایش داده می‌شوند -->
+                            </div>
+                        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <label for="editTaskCategory" class="form-label">
