@@ -7,7 +7,6 @@
 
     Layout = "/Views/Shared/_Layout.cshtml";
     var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
-
     var sprintId = ViewBag.SprintId as int?;
     var projectId = ViewBag.ProjectId as int?;
     var workflowStatuses = ViewBag.WorkflowStatuses as List<WorkflowStatus> ?? new List<WorkflowStatus>();
@@ -1097,6 +1096,476 @@
     font-size: 0.6rem;
     }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /* استایل‌های مدرن برای صفحه کار */
+    .task-details-page {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* هدر کار */
+    .task-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border-radius: 20px;
+        padding: 30px;
+        color: white;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3);
+    }
+
+        .task-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .task-header .task-icon {
+            font-size: 2.5rem;
+        }
+
+        .task-header .task-key {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+    .task-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .task-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.15);
+        padding: 8px 16px;
+        border-radius: 12px;
+        font-size: 0.9rem;
+    }
+
+        .task-meta-item i {
+            font-size: 1.1rem;
+        }
+
+    /* کارت‌های اطلاعات */
+    .info-card {
+        background: white;
+        border-radius: 16px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+        .info-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+    .info-card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+        .info-card-title i {
+            color: #3b82f6;
+            font-size: 1.3rem;
+        }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+    .info-item-label {
+        color: #6b7280;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .info-item-value {
+        color: #1f2937;
+        font-weight: 500;
+        text-align: left;
+    }
+
+    .badge-modern {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    /* بخش چت */
+    .chat-container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 700px;
+    }
+
+    .chat-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        padding: 20px 25px;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+        .chat-header h5 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+    .chat-count-badge {
+        background: rgba(255, 255, 255, 0.25);
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background: #f9fafb;
+    }
+
+    .chat-message {
+        margin-bottom: 20px;
+        animation: fadeInUp 0.3s ease;
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .chat-message.own {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .chat-message.other {
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .message-bubble {
+        max-width: 70%;
+        padding: 12px 18px;
+        border-radius: 18px;
+        position: relative;
+        word-wrap: break-word;
+    }
+
+        .message-bubble.own {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-bubble.other {
+            background: white;
+            color: #1f2937;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+    .message-user {
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 5px;
+        color: #3b82f6;
+    }
+
+    .message-text {
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    .message-time {
+        font-size: 0.75rem;
+        opacity: 0.7;
+        margin-top: 5px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .message-actions {
+        margin-top: 8px;
+        display: flex;
+        gap: 10px;
+    }
+
+        .message-actions a {
+            color: inherit;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+
+            .message-actions a:hover {
+                opacity: 1;
+            }
+
+    .chat-input-area {
+        padding: 20px;
+        background: white;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .chat-input-wrapper {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+    }
+
+    .chat-input {
+        flex: 1;
+        border: 2px solid #e5e7eb;
+        border-radius: 25px;
+        padding: 12px 20px;
+        font-size: 0.95rem;
+        transition: border-color 0.2s;
+        resize: none;
+        min-height: 50px;
+        max-height: 120px;
+    }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+    .chat-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+
+    .chat-action-btn {
+        background: #f3f4f6;
+        border: none;
+        border-radius: 12px;
+        padding: 10px 16px;
+        font-size: 0.85rem;
+        color: #4b5563;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+        .chat-action-btn:hover {
+            background: #e5e7eb;
+            color: #1f2937;
+        }
+
+        .chat-action-btn.recording {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+            .chat-action-btn.recording:hover {
+                background: #fecaca;
+            }
+
+    .chat-send-btn {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border: none;
+        border-radius: 25px;
+        padding: 12px 24px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        .chat-send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .chat-send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+    .file-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .file-preview-item {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+        .file-preview-item img {
+            max-width: 150px;
+            max-height: 150px;
+            border-radius: 12px;
+        }
+
+        .file-preview-item .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(220, 38, 38, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #9ca3af;
+    }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+        .status-badge.completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.in-progress {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+    /* دکمه بازگشت */
+    .back-btn {
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 10px 20px;
+        color: #4b5563;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+        margin-bottom: 20px;
+    }
+
+        .back-btn:hover {
+            background: #f9fafb;
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+    /* ریسپانسیو */
+    @@media (max-width: 768px) {
+        .task-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .task-meta {
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message-bubble {
+            max-width: 85%;
+        }
+
+        .chat-container {
+            height: 600px;
+        }
+    }
+
+
+
+
 </style>
 
 @using System.Security.Claims
@@ -1549,7 +2018,7 @@
 
                                         @if (issue.ChildIssues.Count>0 )
                                         {
-                                            <div class="subtasks-container mt-2" id="subtasks-@issue.Id" style="display: initial; border-top: 1px solid #dee2e6; padding-top: 8px;">
+                                            <div class="subtasks-container mt-2" id="subtasks-@issue.Id" style="display: none; border-top: 1px solid #dee2e6; padding-top: 8px;">
                                                 @foreach (var subtask in issue.ChildIssues.OrderBy(c => c.CreatedAt))
                                                 {
                                                     <div class="subtask-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded" style="font-size: 0.85rem;">
@@ -1837,40 +2306,64 @@
 
 
                         <!-- یادداشت‌ها -->
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">
-                                <i class="bi bi-chat-left-text me-2"></i>
-                                یادداشت‌ها
-                            </label>
+                    
 
-                            <!-- فرم افزودن یادداشت -->
-                            <div class="card mb-3">
-                                <div class="card-body">
-                                    <form id="taskDetailsCommentForm" enctype="multipart/form-data">
-                                        <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
-                                        <input type="hidden" id="taskDetailsTaskIdForComment" name="BoardTaskId" />
-                                        <div class="mb-3">
-                                            <label for="taskDetailsCommentMessage" class="form-label">یادداشت</label>
-                                            <textarea class="form-control" id="taskDetailsCommentMessage" name="Message" rows="3" placeholder="یادداشت خود را وارد کنید..."></textarea>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="taskDetailsCommentAttachments" class="form-label">فایل‌های پیوست</label>
-                                            <input type="file" class="form-control" id="taskDetailsCommentAttachments" name="Attachments" multiple />
-                                            <small class="form-text text-muted">می‌توانید چند فایل انتخاب کنید</small>
-                                        </div>
-                                        <button type="submit" class="btn btn-primary btn-sm">
-                                            <i class="bi bi-send me-1"></i>
-                                            ارسال یادداشت
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
+                           
+                                <div class="chat-container">
+                                    <div class="chat-header">
+                                        <h5>
+                                            <i class="bi bi-chat-dots"></i>
+                                            گفتگوی گروهی
+                                        </h5>
+                                        <span class="chat-count-badge" id="commentCount">0</span>
+                                    </div>
 
-                            <!-- لیست یادداشت‌ها -->
-                            <div id="taskDetailsComments" class="border rounded p-3 bg-white" style="max-height: 300px; overflow-y: auto;">
-                                <!-- یادداشت‌ها اینجا نمایش داده می‌شوند -->
-                            </div>
-                        </div>
+                                    <div class="chat-messages" id="chatBox">
+                                        <div class="empty-state" id="loadingComments">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">در حال بارگذاری...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="chat-input-area">
+                                        <form id="chatForm">
+                                            <div class="chat-input-wrapper">
+                                                <textarea id="messageInput"
+                                                          class="chat-input"
+                                                          placeholder="پیام خود را بنویسید..."
+                                                          rows="1"></textarea>
+                                        <button type="button" id="sendBtn" class="chat-send-btn">
+                                                    <i class="bi bi-send"></i>
+                                                    ارسال
+                                                </button>
+                                            </div>
+
+                                            <div class="chat-actions">
+                                                <label class="chat-action-btn">
+                                                    <i class="bi bi-paperclip"></i>
+                                                    فایل
+                                                    <input type="file" id="fileInput" name="Attachments" multiple accept="image/*,audio/*,.pdf,.doc,.docx,.txt" style="display: none;" onchange="handleFileInputChange()" />
+                                                </label>
+
+                                                <button type="button" class="chat-action-btn" id="recordBtn" onclick="toggleRecording()">
+                                                    <span id="recordIcon"><i class="bi bi-mic"></i></span>
+                                                    <span id="recordText">ضبط ویس</span>
+                                                </button>
+
+                                                <span id="recordTimer" class="chat-action-btn" style="background: transparent; padding: 0;"></span>
+                                            </div>
+
+                                            <!-- نمایش فایل‌های انتخاب شده -->
+                                            <div id="selectedFiles" class="file-preview"></div>
+                                            <div id="audioPreview" class="mt-2"></div>
+                                            <div id="clipboardPreviews" class="file-preview"></div>
+
+                                    <input type="hidden" id="editTaskId"  />
+                                            <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
+                                        </form>
+                                    </div>
+                             
 
 
 
@@ -3260,6 +3753,8 @@
             try {
                 // دریافت اطلاعات کار با AJAX
                 const response = await fetch(`/Tasks/GetTaskDetails?id=${taskId}`);
+                 
+
                 // بررسی Content-Type
                 const contentType = response.headers.get("content-type");
                 if (!contentType || !contentType.includes("application/json")) {
@@ -3298,7 +3793,7 @@
                 document.getElementById('editTaskStoryPoints').value = taskData.storyPoints || '';
                 console.log("مقدار altField (#editTaskStartDate):", document.getElementById('editTaskStartDate').value);
                 console.log("مقدار altField (#editTaskStartDate):",  taskData.startDateSh);
-
+                    loadComments();
                 // ذخیره مقدار IssueType در hidden input (فیلد نمایش داده نمی‌شود)
                 const issueTypeHidden = document.getElementById('editTaskIssueTypeHidden');
                 if (taskData.issueType) {
@@ -4112,5 +4607,422 @@
                 applyBoardBackground('plain');
             }
         });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+            const token = '@antiforgeryToken';
+            const currentUserId = '@ViewBag.CurrentUserId';
+            const sendButton = document.getElementById('sendBtn');
+            const recordButton = document.getElementById('recordBtn');
+            let mediaRecorder;
+            let audioChunks = [];
+            let recordingStartTime;
+            let timerInterval;
+
+
+            // بارگذاری پیام‌ها
+                async function loadComments() {
+              try {
+                              const taskId = document.getElementById('editTaskId').value;
+                const response = await fetch(`/Tasks/GetComments?taskId=${taskId}`);
+                const comments = await response.json();
+                         console.log('All comments:', comments);
+                if (comments && comments.length > 0) {
+                    console.log('First comment attachments:', comments[0].attachments);
+                }
+
+                const chatBox = document.getElementById('chatBox');
+                if (!comments || comments.length === 0) {
+                  chatBox.innerHTML = `<div class="empty-state">هنوز پیامی ارسال نشده است.</div>`;
+                } else {
+                  chatBox.innerHTML = '';
+                  comments.forEach(comment => {
+                    chatBox.appendChild(createCommentElement(comment));
+                  });
+                  chatBox.scrollTop = chatBox.scrollHeight;
+                }
+                // شمار پیام‌ها
+                const count = comments?.length ?? 0;
+                document.getElementById('commentCount').textContent = count;
+              } catch (error) {
+                console.error('خطا در بارگذاری کامنت‌ها:', error);
+              } finally {
+                document.getElementById('loadingComments')?.remove();
+              }
+            }
+
+            // ساخت المان کامنت
+                        function createCommentElement(comment) {
+                const div = document.createElement('div');
+                div.className = `chat-message ${comment.isCurrentUser ? 'own' : 'other'}`;
+                div.id = `comment-${comment.id}`;
+                const date = new Date(comment.createdAt).toLocaleString('fa-IR');
+
+                let attachmentsHtml = '';
+                if (comment.attachments && comment.attachments.length > 0) {
+                    attachmentsHtml = comment.attachments.map(att => {
+                        // استفاده از filePath به جای url
+                        const fileUrl = att.filePath || att.url || '';
+                        const fileName = att.fileName || 'فایل';
+                        const fileType = att.fileType || att.mimeType || '';
+
+                        if (fileType === 'Image' || fileType.startsWith('image/')) {
+                            return `<img src="${fileUrl}" alt="${fileName}" style="max-width:200px; display:block; margin-top:6px; border-radius:8px;" />`;
+                        } else if (fileType === 'Audio' || fileType.startsWith('audio/')) {
+                            return `<audio controls src="${fileUrl}" style="width:100%; margin-top:6px;"></audio>`;
+                        } else {
+                            return `<a href="${fileUrl}" target="_blank" style="display:inline-block; margin-top:6px;">📎 ${fileName}</a>`;
+                        }
+                    }).join('');
+                }
+
+                div.innerHTML = `
+                    ${!comment.isCurrentUser ? `<div class="message-user">${comment.userName}</div>` : ''}
+                    <div class="message-text">${comment.message ?? ''}</div>
+                    ${attachmentsHtml}
+                    <div class="message-time">${date} ${comment.isCurrentUser ? `<a href="#" onclick="deleteComment(${comment.id})" style="margin-left:8px;">حذف</a>` : ''}</div>
+                `;
+                return div;
+            }
+
+            // نمایش فایل‌های انتخاب‌شده (فقط غیر تصویری)
+                       // نمایش فایل‌های انتخاب‌شده (شامل تصویر و غیر تصویر)
+            function showSelectedFiles() {
+                const fileInput = document.getElementById('fileInput');
+                const selectedFilesDiv = document.getElementById('selectedFiles');
+                if (!selectedFilesDiv) return;
+                selectedFilesDiv.innerHTML = '';
+
+                if (fileInput.files.length > 0) {
+                    Array.from(fileInput.files).forEach((file) => {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'file-preview-item';
+                        wrapper.style.background = '#f3f4f6';
+                        wrapper.style.padding = '10px 15px';
+                        wrapper.style.borderRadius = '12px';
+                        wrapper.style.marginBottom = '5px';
+                        wrapper.style.display = 'flex';
+                        wrapper.style.alignItems = 'center';
+                        wrapper.style.gap = '10px';
+
+                        if (file.type.startsWith('image/')) {
+                            // نمایش پیش‌نمایش تصویر
+                            const img = document.createElement('img');
+                            img.src = URL.createObjectURL(file);
+                            img.style.width = '40px';
+                            img.style.height = '40px';
+                            img.style.objectFit = 'cover';
+                            img.style.borderRadius = '8px';
+                            wrapper.appendChild(img);
+                        } else {
+                            // آیکون برای فایل‌های غیر تصویری
+                            const icon = document.createElement('span');
+                            icon.innerHTML = '📎';
+                            icon.style.fontSize = '20px';
+                            wrapper.appendChild(icon);
+                        }
+
+                        // نام فایل
+                        const nameSpan = document.createElement('span');
+                        nameSpan.textContent = file.name;
+                        nameSpan.style.flex = '1';
+                        nameSpan.style.fontSize = '14px';
+                        wrapper.appendChild(nameSpan);
+
+                        // دکمه حذف
+                        const removeBtn = document.createElement('button');
+                        removeBtn.innerHTML = '✕';
+                        removeBtn.style.border = 'none';
+                        removeBtn.style.background = 'transparent';
+                        removeBtn.style.color = '#dc3545';
+                        removeBtn.style.cursor = 'pointer';
+                        removeBtn.onclick = function() {
+                            removeFile(file.name);
+                        };
+                        wrapper.appendChild(removeBtn);
+
+                        selectedFilesDiv.appendChild(wrapper);
+                    });
+                }
+            }
+
+
+
+                        function removeFile(fileName) {
+                const fileInput = document.getElementById('fileInput');
+                const dataTransfer = new DataTransfer();
+
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    if (fileInput.files[i].name !== fileName) {
+                        dataTransfer.items.add(fileInput.files[i]);
+                    }
+                }
+
+                fileInput.files = dataTransfer.files;
+                showSelectedFiles();
+
+                // ✅ پاک کردن پیش‌نمایش صوت اگر فایل صوتی حذف شده
+                const audioPreview = document.getElementById('audioPreview');
+                if (audioPreview && audioPreview.innerHTML.trim() !== '') {
+                    // بررسی آیا فایل حذف شده صوت است
+                    const remainingFiles = Array.from(fileInput.files);
+                    const hasAudio = remainingFiles.some(f => f.type.startsWith('audio/'));
+
+                    if (!hasAudio) {
+                        audioPreview.innerHTML = '';
+                    }
+                }
+            }
+
+
+
+
+
+            // ضبط ویس
+            async function toggleRecording() {
+              if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                await startRecording();
+              } else {
+                stopRecording();
+              }
+            }
+
+                        async function startRecording() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                    // ✅ تغییر: استفاده از MIME type ساده‌تر
+                    let mimeType = 'audio/webm';
+                    if (MediaRecorder.isTypeSupported('audio/webm')) {
+                        mimeType = 'audio/webm';
+                    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                        mimeType = 'audio/mp4';
+                    } else if (MediaRecorder.isTypeSupported('audio/wav')) {
+                        mimeType = 'audio/wav';
+                    }
+
+                    mediaRecorder = new MediaRecorder(stream, { mimeType });
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = (e) => {
+                        if (e.data && e.data.size > 0) audioChunks.push(e.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        if (audioChunks.length === 0) {
+                            alert('فایل صوتی خالی است.');
+                            stream.getTracks().forEach(t => t.stop());
+                            return;
+                        }
+
+                        // ✅ تغییر: استفاده از mimeType ساده
+                        const blob = new Blob(audioChunks, { type: mimeType });
+                        const url = URL.createObjectURL(blob);
+
+                        const audioEl = document.createElement('audio');
+                        audioEl.controls = true;
+                        audioEl.src = url;
+                        document.getElementById('audioPreview').innerHTML = '';
+                        document.getElementById('audioPreview').appendChild(audioEl);
+
+                        // ✅ تغییر: استفاده از mimeType ساده در File
+                        const extension = mimeType === 'audio/mp4' ? 'm4a' : 'webm';
+                        const file = new File([blob], `voice_${Date.now()}.${extension}`, { type: mimeType });
+                        addFileToInput(file);
+
+                        stream.getTracks().forEach(t => t.stop());
+                    };
+
+                    mediaRecorder.start(100);
+                    recordingStartTime = Date.now();
+                    document.getElementById('recordBtn').classList.add('recording');
+                    document.getElementById('recordText').textContent = 'توقف';
+
+                    timerInterval = setInterval(() => {
+                        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+                        const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+                        const s = String(elapsed % 60).padStart(2, '0');
+                        document.getElementById('recordTimer').textContent = `${m}:${s}`;
+                    }, 1000);
+
+                } catch (error) {
+                    alert('خطا در دسترسی به میکروفن: ' + error.message);
+                }
+            }
+
+            function stopRecording() {
+              if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                clearInterval(timerInterval);
+                document.getElementById('recordBtn').classList.remove('recording');
+                document.getElementById('recordText').textContent = 'ضبط ویس';
+                document.getElementById('recordTimer').textContent = '';
+              }
+            }
+
+            // افزودن فایل به ورودی فرم برای ارسال
+            function addFileToInput(file) {
+              const fileInput = document.getElementById('fileInput');
+              const dataTransfer = new DataTransfer();
+              // نگه دار همه فایل‌های قبلی و اضافه کن فایل جدید
+              for (let i = 0; i < fileInput.files.length; i++) dataTransfer.items.add(fileInput.files[i]);
+              dataTransfer.items.add(file);
+              fileInput.files = dataTransfer.files;
+              showSelectedFiles();
+            }
+
+            // هندلرها
+            function handleFileInputChange() {
+              showSelectedFiles();
+            }
+
+                        async function sendMessage() {
+                const messageInput = document.getElementById('messageInput');
+                const taskId = document.getElementById('editTaskId').value;
+                const message = messageInput.value.trim();
+                const fileInput = document.getElementById('fileInput');
+
+                // دیباگ: نمایش مقادیر
+                console.log('TaskId:', taskId);
+                console.log('Message:', message);
+                console.log('Files:', fileInput.files.length);
+                console.log('Token:', token);
+
+                if (!taskId) {
+                    alert('شناسه کار مشخص نیست');
+                    return;
+                }
+
+                // اصلاح: اگر پیام خالی بود اما فایل وجود دارد، خطا نده
+                if (!message && fileInput.files.length === 0) {
+                    alert('پیام خالی است');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('TaskId', taskId);
+                formData.append('Message', message);
+                formData.append('__RequestVerificationToken', token);
+
+                Array.from(fileInput.files || []).forEach((f) => formData.append('Attachments', f));
+
+                try {
+                    const response = await fetch('/Tasks/PostComment', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    console.log('Response status:', response.status);
+                    console.log('Response ok:', response.ok);
+
+                    if (response.ok) {
+                        messageInput.value = '';
+                        fileInput.value = '';
+                        document.getElementById('selectedFiles').innerHTML = '';
+                        document.getElementById('audioPreview').innerHTML = '';
+                        loadComments();
+                    } else {
+                        const errorText = await response.text();
+                        console.log('Error response:', errorText);
+                        alert('خطا در ارسال پیام: ' + errorText);
+                    }
+                } catch (err) {
+                    console.error('Fetch error:', err);
+                    alert('خطا در ارتباط با سرور: ' + err.message);
+                }
+            }
+            
+            // حذف پیام (اختیاری)
+         // حذف کامنت
+    async function deleteComment(commentId, triggerElement) {
+        if (!confirm('آیا مطمئن هستید که می‌خواهید این پیام را حذف کنید؟')) {
+            return;
+        }
+
+        let previousContent = '';
+        if (triggerElement) {
+            previousContent = triggerElement.innerHTML;
+            triggerElement.style.pointerEvents = 'none';
+            triggerElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+        }
+        
+        try {
+            const formData = new FormData();
+            formData.append('commentId', commentId);
+            formData.append('__RequestVerificationToken', token);
+            
+            const response = await fetch('/Tasks/DeleteComment', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                document.getElementById(`comment-${commentId}`)?.remove();
+                
+                const count = parseInt(document.getElementById('commentCount').textContent);
+                document.getElementById('commentCount').textContent = Math.max(0, count - 1);
+                
+                const chatBox = document.getElementById('chatBox');
+                if (chatBox.children.length === 0) {
+                    chatBox.innerHTML = `
+                        <div class="empty-state">
+                            <i class="bi bi-chat-left"></i>
+                            <p>هنوز پیامی ارسال نشده است.</p>
+                        </div>
+                    `;
+                }
+            }
+        } catch (error) {
+            console.error('خطا در حذف پیام:', error);
+            alert('خطا در حذف پیام');
+        } finally {
+            if (triggerElement && document.body.contains(triggerElement)) {
+                triggerElement.style.pointerEvents = '';
+                triggerElement.innerHTML = previousContent || '<i class="bi bi-trash"></i> حذف';
+            }
+        }
+    }
+            // رویدادهای پایه
+            document.getElementById('sendBtn').addEventListener('click', sendMessage);
+            document.getElementById('fileInput').addEventListener('change', handleFileInputChange);
+            document.getElementById('messageInput').addEventListener('paste', () => {
+              // اختیاری: پاست کردن فایل‌ها
+            });
+
+            // مقداردهی‌های اولیه و دوره‌ای
+            document.addEventListener('DOMContentLoaded', () => {
+                 
+            });
+
     </script>
 }
