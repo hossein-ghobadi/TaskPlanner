@@ -200,12 +200,22 @@
                         {
                             @if (att.FileType == "Image")
                             {
-                                <div class="attachment-item attachment-image">
+                                @*<div class="attachment-item attachment-image">
                                     <img src="@att.FilePath" alt="@att.FileName" class="attachment-img" />
                                     <div class="attachment-overlay">
                                         <i class="bi bi-zoom-in"></i>
                                     </div>
-                                </div>
+                                </div>*@
+                                        <div class="attachment-item attachment-image">
+                                            <!-- اضافه کردن onclick برای باز کردن مودال -->
+                                            <img src="@att.FilePath"
+                                                 alt="@att.FileName"
+                                                 class="attachment-img"
+                                                 onclick="openImageModal('@att.FilePath'); event.stopPropagation();" />
+                                            <div class="attachment-overlay" onclick="openImageModal('@att.FilePath'); event.stopPropagation();">
+                                                <i class="bi bi-zoom-in"></i>
+                                            </div>
+                                        </div>
                             }
                             else if (att.FileType == "Audio")
                             {
@@ -282,7 +292,10 @@
             </article>
         }
     </div>
-
+            <div id="imagePreviewModal" class="image-modal" onclick="closeImageModal()">
+                <span class="close-modal" onclick="closeImageModal()">&times;</span>
+                <img id="modalImage" src="" alt="Preview" />
+            </div>
 }
 else
 {
@@ -298,7 +311,41 @@ else
         </a>
     </div>
 }
+        <script>
 
+
+
+            function openImageModal(src)
+                {
+                    const modal = document.getElementById('imagePreviewModal');
+                    const modalImg = document.getElementById('modalImage');
+                    modalImg.src = src;
+                    modal.classList.add('active');
+                }
+
+                function closeImageModal()
+                {
+                    const modal = document.getElementById('imagePreviewModal');
+                    modal.classList.remove('active');
+                }
+
+                // بستن مودال با کلیک روی پس‌زمینه
+                document.getElementById('imagePreviewModal').addEventListener('click', function(e) {
+                    if (e.target === this)
+                    {
+                        closeImageModal();
+                    }
+                });
+
+            // بستن با کلید Escape
+            document.addEventListener('keydown', function(e)
+                {
+                    if (e.key === 'Escape')
+                    {
+                        closeImageModal();
+                    }
+                });
+        </script>
 @functions {
     public string GetTimeAgo(DateTime dateTime)
     {
@@ -810,12 +857,53 @@ else
         background: #f8f9fa;
     }
 
-    .attachment-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
+            .attachment-img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
 
+    @*.attachment-img {
+        width: 120px; /* یا مقدار دلخواه */
+        height: 120px;
+        object-fit: cover; /* حفظ نسبت تصویر */
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+    }*@
+            /* استایل مودال پیش‌نمایش */
+            .image-modal {
+                display: none;
+                position: fixed;
+                z-index: 9999;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.9);
+                justify-content: center;
+                align-items: center;
+            }
+
+            .image-modal.active {
+                display: flex;
+            }
+
+            .image-modal img {
+                max-width: 90%;
+                max-height: 90%;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            }
+
+            .image-modal .close-modal {
+                position: absolute;
+                top: 20px;
+                right: 30px;
+                color: white;
+                font-size: 40px;
+                cursor: pointer;
+            }
     .attachment-overlay {
         position: absolute;
         top: 0;
