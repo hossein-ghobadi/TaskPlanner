@@ -254,7 +254,11 @@ namespace Endpoint.Site.Controllers
                 .ThenByDescending(n => n.CreatedAt)
                 .Take(5)
                 .ToListAsync();
-
+            recentNotes.ForEach(n =>
+            {
+                if (n.Content?.Length > 100)
+                    n.Content = n.Content.Substring(0, 100);
+            });
             ViewBag.RecentNotes = recentNotes;
 
             return View(projects);
