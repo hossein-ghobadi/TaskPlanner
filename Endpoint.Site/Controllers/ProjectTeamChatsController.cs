@@ -9,6 +9,7 @@ using System.Security.Claims;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Persistence.Contexts;
+using TaskPlanner.Application.Services.FileUpload;
 
 namespace Endpoint.Site.Controllers
 {
@@ -19,15 +20,18 @@ namespace Endpoint.Site.Controllers
         private readonly MVPTestDatabaseContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IHubContext<ProjectChatHub> _hubContext;
+        private readonly IFileUploadService _fileUploadService;
 
         public ProjectTeamChatsController(
             MVPTestDatabaseContext context,
             UserManager<User> userManager,
-            IHubContext<ProjectChatHub> hubContext)
+            IHubContext<ProjectChatHub> hubContext,
+            IFileUploadService fileUploadService)
         {
             _context = context;
             _userManager = userManager;
             _hubContext = hubContext;
+            _fileUploadService = fileUploadService;
         }
 
         [HttpGet]
@@ -98,15 +102,6 @@ namespace Endpoint.Site.Controllers
                 return Unauthorized();
             }
 
-            var group = await _context.ProjectChatGroups
-                .Include(g => g.Project)
-                .FirstOrDefaultAsync(g => g.Id == groupId && !g.IsArchived);
-
-            if (group == null)
-            {
-                return NotFound();
-            }
-
             var hasAccess = await _context.ProjectChatGroupMembers
                 .AnyAsync(m => m.ProjectChatGroupId == groupId && m.UserId == userId);
 
@@ -115,9 +110,8 @@ namespace Endpoint.Site.Controllers
                 return Forbid();
             }
 
-            var canManageAllMessages = group.CreatedByUserId == userId || group.Project.CreatorUserId == userId;
-
             var messages = await _context.ProjectChatMessages
+                .Include(m => m.Attachments)
                 .Where(m => m.ProjectChatGroupId == groupId && !m.IsDeleted)
                 .OrderBy(m => m.CreatedAt)
                 .Select(m => new ProjectChatMessageVm
@@ -127,9 +121,32 @@ namespace Endpoint.Site.Controllers
                     UserId = m.UserId,
                     UserName = m.UserName,
                     Message = m.Message,
+                    ReplyToMessageId = m.ReplyToMessageId,
+                    ReplyPreviewUserName = m.ReplyToMessage == null
+                        ? null
+                        : m.ReplyToMessage.UserName,
+                    ReplyPreviewMessage = m.ReplyToMessage == null
+                        ? null
+                        : (m.ReplyToMessage.IsDeleted
+                            ? "پیام حذف شده"
+                            : (!string.IsNullOrWhiteSpace(m.ReplyToMessage.Message)
+                                ? m.ReplyToMessage.Message
+                                : (m.ReplyToMessage.Attachments.Any()
+                                    ? "فایل"
+                                    : "(بدون متن)"))),
                     CreatedAt = m.CreatedAt,
                     IsCurrentUser = m.UserId == userId,
-                    CanDelete = m.UserId == userId || canManageAllMessages
+                    Attachments = m.Attachments
+                        .Select(a => new ProjectChatMessageAttachmentVm
+                        {
+                            Id = a.Id,
+                            FileName = a.FileName,
+                            FilePath = a.FilePath,
+                            FileType = a.FileType,
+                            FileSize = a.FileSize,
+                            MimeType = a.MimeType,
+                            UploadedAt = a.UploadedAt
+                        }).ToList()
                 })
                 .ToListAsync();
 
@@ -256,7 +273,7 @@ namespace Endpoint.Site.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SendMessage([FromBody] ProjectChatSendMessageVm vm)
+        public async Task<IActionResult> SendMessage([FromForm] ProjectChatSendMessageVm vm)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrWhiteSpace(userId))
@@ -265,9 +282,9 @@ namespace Endpoint.Site.Controllers
             }
 
             var messageText = vm.Message?.Trim();
-            if (string.IsNullOrWhiteSpace(messageText))
+            if (string.IsNullOrWhiteSpace(messageText) && (vm.Attachments == null || !vm.Attachments.Any()))
             {
-                return BadRequest("پیام نمی‌تواند خالی باشد.");
+                return BadRequest("حداقل یک پیام یا فایل باید ارسال شود.");
             }
 
             var group = await _context.ProjectChatGroups
@@ -286,6 +303,18 @@ namespace Endpoint.Site.Controllers
                 return Forbid();
             }
 
+            ProjectChatMessage? repliedMessage = null;
+            if (vm.ReplyToMessageId.HasValue)
+            {
+                repliedMessage = await _context.ProjectChatMessages
+                    .FirstOrDefaultAsync(m => m.Id == vm.ReplyToMessageId.Value
+                        && m.ProjectChatGroupId == vm.GroupId);
+                if (repliedMessage == null)
+                {
+                    return BadRequest("پیام مرجع برای پاسخ معتبر نیست.");
+                }
+            }
+
             var currentUser = await _userManager.GetUserAsync(User);
             var userName = !string.IsNullOrWhiteSpace(currentUser?.FullName)
                 ? currentUser.FullName!
@@ -296,13 +325,52 @@ namespace Endpoint.Site.Controllers
                 ProjectChatGroupId = vm.GroupId,
                 UserId = userId,
                 UserName = userName,
-                Message = messageText,
+                Message = messageText ?? string.Empty,
+                ReplyToMessageId = vm.ReplyToMessageId,
                 CreatedAt = DateTime.UtcNow
             };
 
             _context.ProjectChatMessages.Add(message);
             group.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+
+            var uploadedAttachments = new List<ProjectChatMessageAttachment>();
+            if (vm.Attachments != null && vm.Attachments.Any())
+            {
+                var uploadErrors = new List<string>();
+                foreach (var file in vm.Attachments)
+                {
+                    var uploadResult = await _fileUploadService.UploadFileAsync(file, "project-team-chat");
+                    if (uploadResult.Success)
+                    {
+                        var attachment = new ProjectChatMessageAttachment
+                        {
+                            ProjectChatMessageId = message.Id,
+                            FileName = file.FileName,
+                            FilePath = uploadResult.FilePath,
+                            FileType = _fileUploadService.GetFileType(file.FileName),
+                            FileSize = file.Length,
+                            MimeType = NormalizeMimeType(file.ContentType),
+                            UploadedAt = DateTime.UtcNow
+                        };
+                        uploadedAttachments.Add(attachment);
+                    }
+                    else
+                    {
+                        uploadErrors.Add($"{file.FileName}: {uploadResult.Error}");
+                    }
+                }
+
+                if (uploadErrors.Any())
+                {
+                    _context.ProjectChatMessages.Remove(message);
+                    await _context.SaveChangesAsync();
+                    return BadRequest($"خطا در آپلود فایل‌ها:\n{string.Join("\n", uploadErrors)}");
+                }
+
+                _context.ProjectChatMessageAttachments.AddRange(uploadedAttachments);
+                await _context.SaveChangesAsync();
+            }
 
             var result = new ProjectChatMessageVm
             {
@@ -311,9 +379,25 @@ namespace Endpoint.Site.Controllers
                 UserId = message.UserId,
                 UserName = message.UserName,
                 Message = message.Message,
+                ReplyToMessageId = message.ReplyToMessageId,
+                ReplyPreviewUserName = repliedMessage?.UserName,
+                ReplyPreviewMessage = repliedMessage == null
+                    ? null
+                    : (!string.IsNullOrWhiteSpace(repliedMessage.Message)
+                        ? repliedMessage.Message
+                        : "فایل"),
                 CreatedAt = message.CreatedAt,
-                IsCurrentUser = false,
-                CanDelete = false
+                IsCurrentUser = true,
+                Attachments = uploadedAttachments.Select(a => new ProjectChatMessageAttachmentVm
+                {
+                    Id = a.Id,
+                    FileName = a.FileName,
+                    FilePath = a.FilePath,
+                    FileType = a.FileType,
+                    FileSize = a.FileSize,
+                    MimeType = a.MimeType,
+                    UploadedAt = a.UploadedAt
+                }).ToList()
             };
 
             await _hubContext.Clients
@@ -321,50 +405,6 @@ namespace Endpoint.Site.Controllers
                 .SendAsync("projectGroupMessageCreated", result);
 
             return Json(result);
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteMessage(int messageId)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                return Unauthorized();
-            }
-
-            var message = await _context.ProjectChatMessages
-                .Include(m => m.ProjectChatGroup)
-                    .ThenInclude(g => g.Project)
-                .FirstOrDefaultAsync(m => m.Id == messageId && !m.IsDeleted);
-
-            if (message == null)
-            {
-                return NotFound();
-            }
-
-            var isAllowed = message.UserId == userId
-                || message.ProjectChatGroup.CreatedByUserId == userId
-                || message.ProjectChatGroup.Project.CreatorUserId == userId;
-
-            if (!isAllowed)
-            {
-                return Forbid();
-            }
-
-            message.IsDeleted = true;
-            message.ProjectChatGroup.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            await _hubContext.Clients
-                .Group(ProjectChatHub.GetSignalRGroupName(message.ProjectChatGroupId))
-                .SendAsync("projectGroupMessageDeleted", new
-                {
-                    groupId = message.ProjectChatGroupId,
-                    messageId = message.Id
-                });
-
-            return Json(new { success = true });
         }
 
         [HttpPost]
@@ -487,6 +527,124 @@ namespace Endpoint.Site.Controllers
             return Json(new { success = true });
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteMessage(int messageId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized();
+            }
+
+            var message = await _context.ProjectChatMessages
+                .Include(m => m.ProjectChatGroup)
+                    .ThenInclude(g => g.Project)
+                .Include(m => m.Attachments)
+                .FirstOrDefaultAsync(m => m.Id == messageId);
+
+            if (message == null || message.IsDeleted)
+            {
+                return NotFound();
+            }
+
+            var group = message.ProjectChatGroup;
+            var isMessageOwner = message.UserId == userId;
+            var canManage = await CanManageGroupMembers(group, userId);
+            if (!isMessageOwner && !canManage)
+            {
+                return Forbid();
+            }
+
+            foreach (var attachment in message.Attachments.ToList())
+            {
+                _fileUploadService.DeleteFile(attachment.FilePath);
+                _context.ProjectChatMessageAttachments.Remove(attachment);
+            }
+
+            message.IsDeleted = true;
+            group.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            await _hubContext.Clients
+                .Group(ProjectChatHub.GetSignalRGroupName(group.Id))
+                .SendAsync("projectGroupMessageDeleted", new
+                {
+                    messageId = message.Id
+                });
+
+            return Json(new
+            {
+                success = true,
+                messageId = message.Id
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteAttachment(int attachmentId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized();
+            }
+
+            var attachment = await _context.ProjectChatMessageAttachments
+                .Include(a => a.ProjectChatMessage)
+                    .ThenInclude(m => m.ProjectChatGroup)
+                        .ThenInclude(g => g.Project)
+                .FirstOrDefaultAsync(a => a.Id == attachmentId);
+
+            if (attachment == null)
+            {
+                return NotFound();
+            }
+
+            var message = attachment.ProjectChatMessage;
+            var group = message.ProjectChatGroup;
+
+            var isMessageOwner = message.UserId == userId;
+            var canManage = await CanManageGroupMembers(group, userId);
+            if (!isMessageOwner && !canManage)
+            {
+                return Forbid();
+            }
+
+            _fileUploadService.DeleteFile(attachment.FilePath);
+            _context.ProjectChatMessageAttachments.Remove(attachment);
+            await _context.SaveChangesAsync();
+
+            var hasRemainingAttachments = await _context.ProjectChatMessageAttachments
+                .AnyAsync(a => a.ProjectChatMessageId == message.Id);
+            var hasText = !string.IsNullOrWhiteSpace(message.Message);
+
+            var messageDeleted = false;
+            if (!hasText && !hasRemainingAttachments)
+            {
+                message.IsDeleted = true;
+                messageDeleted = true;
+                await _context.SaveChangesAsync();
+            }
+
+            await _hubContext.Clients
+                .Group(ProjectChatHub.GetSignalRGroupName(group.Id))
+                .SendAsync("projectGroupAttachmentDeleted", new
+                {
+                    attachmentId = attachmentId,
+                    messageId = message.Id,
+                    messageDeleted
+                });
+
+            return Json(new
+            {
+                success = true,
+                attachmentId = attachmentId,
+                messageId = message.Id,
+                messageDeleted
+            });
+        }
+
         private async Task<bool> HasProjectAccess(int projectId, string userId)
         {
             return await _context.Projects
@@ -505,6 +663,18 @@ namespace Endpoint.Site.Controllers
             var isProjectCreator = await _context.Projects
                 .AnyAsync(p => p.Id == group.ProjectId && p.CreatorUserId == userId);
             return isProjectCreator;
+        }
+
+        private static string? NormalizeMimeType(string? mimeType)
+        {
+            if (string.IsNullOrWhiteSpace(mimeType))
+            {
+                return null;
+            }
+
+            var cleaned = mimeType.Trim();
+            var baseType = cleaned.Split(';', 2, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            return string.IsNullOrWhiteSpace(baseType) ? cleaned : baseType;
         }
     }
 }

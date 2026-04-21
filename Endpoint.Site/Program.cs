@@ -125,11 +125,46 @@ using (var scope = app.Services.CreateScope())
                     [UserId] NVARCHAR(450) NOT NULL,
                     [UserName] NVARCHAR(200) NOT NULL,
                     [Message] NVARCHAR(4000) NOT NULL,
+                    [ReplyToMessageId] INT NULL,
                     [CreatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
                     [IsDeleted] BIT NOT NULL DEFAULT 0,
-                    CONSTRAINT [FK_ProjectChatMessages_ProjectChatGroups_ProjectChatGroupId] FOREIGN KEY ([ProjectChatGroupId]) REFERENCES [ProjectChatGroups]([Id]) ON DELETE CASCADE
+                    CONSTRAINT [FK_ProjectChatMessages_ProjectChatGroups_ProjectChatGroupId] FOREIGN KEY ([ProjectChatGroupId]) REFERENCES [ProjectChatGroups]([Id]) ON DELETE CASCADE,
+                    CONSTRAINT [FK_ProjectChatMessages_ProjectChatMessages_ReplyToMessageId] FOREIGN KEY ([ReplyToMessageId]) REFERENCES [ProjectChatMessages]([Id])
                 );
                 CREATE INDEX [IX_ProjectChatMessages_ProjectChatGroupId_CreatedAt] ON [dbo].[ProjectChatMessages]([ProjectChatGroupId], [CreatedAt]);
+                CREATE INDEX [IX_ProjectChatMessages_ReplyToMessageId] ON [dbo].[ProjectChatMessages]([ReplyToMessageId]);
+            END;
+
+            IF COL_LENGTH('dbo.ProjectChatMessages', 'ReplyToMessageId') IS NULL
+            BEGIN
+                ALTER TABLE [dbo].[ProjectChatMessages] ADD [ReplyToMessageId] INT NULL;
+            END;
+
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_ProjectChatMessages_ReplyToMessageId' AND object_id = OBJECT_ID(N'[dbo].[ProjectChatMessages]'))
+            BEGIN
+                CREATE INDEX [IX_ProjectChatMessages_ReplyToMessageId] ON [dbo].[ProjectChatMessages]([ReplyToMessageId]);
+            END;
+
+            IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_ProjectChatMessages_ProjectChatMessages_ReplyToMessageId')
+            BEGIN
+                ALTER TABLE [dbo].[ProjectChatMessages]
+                ADD CONSTRAINT [FK_ProjectChatMessages_ProjectChatMessages_ReplyToMessageId]
+                FOREIGN KEY ([ReplyToMessageId]) REFERENCES [dbo].[ProjectChatMessages]([Id]);
+            END;
+
+            IF OBJECT_ID(N'[dbo].[ProjectChatMessageAttachments]', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[ProjectChatMessageAttachments](
+                    [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [ProjectChatMessageId] INT NOT NULL,
+                    [FileName] NVARCHAR(500) NOT NULL,
+                    [FilePath] NVARCHAR(1000) NOT NULL,
+                    [FileType] NVARCHAR(50) NOT NULL,
+                    [FileSize] BIGINT NOT NULL,
+                    [MimeType] NVARCHAR(100) NULL,
+                    [UploadedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+                    CONSTRAINT [FK_ProjectChatMessageAttachments_ProjectChatMessages_ProjectChatMessageId] FOREIGN KEY ([ProjectChatMessageId]) REFERENCES [ProjectChatMessages]([Id]) ON DELETE CASCADE
+                );
             END;";
         await context.Database.ExecuteSqlRawAsync(chatTablesSql);
     }

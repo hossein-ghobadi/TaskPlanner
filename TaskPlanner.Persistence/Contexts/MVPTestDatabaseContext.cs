@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -41,6 +41,7 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<ProjectChatGroup> ProjectChatGroups { get; set; }
         public DbSet<ProjectChatGroupMember> ProjectChatGroupMembers { get; set; }
         public DbSet<ProjectChatMessage> ProjectChatMessages { get; set; }
+        public DbSet<ProjectChatMessageAttachment> ProjectChatMessageAttachments { get; set; }
         public DbSet<Sprint> Sprints { get; set; }
         public DbSet<SprintTask> SprintTasks { get; set; }
         public DbSet<WorkflowStatus> WorkflowStatuses { get; set; }
@@ -271,6 +272,12 @@ namespace TaskPlanner.Persistence.Contexts
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<ProjectChatMessage>()
+                .HasOne(m => m.ReplyToMessage)
+                .WithMany(m => m.Replies)
+                .HasForeignKey(m => m.ReplyToMessageId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<ProjectChatMessage>()
                 .Property(m => m.UserId)
                 .HasMaxLength(450);
 
@@ -284,6 +291,31 @@ namespace TaskPlanner.Persistence.Contexts
 
             modelBuilder.Entity<ProjectChatMessage>()
                 .HasIndex(m => new { m.ProjectChatGroupId, m.CreatedAt });
+
+            modelBuilder.Entity<ProjectChatMessage>()
+                .HasIndex(m => m.ReplyToMessageId);
+
+            modelBuilder.Entity<ProjectChatMessageAttachment>()
+                .HasOne(a => a.ProjectChatMessage)
+                .WithMany(m => m.Attachments)
+                .HasForeignKey(a => a.ProjectChatMessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProjectChatMessageAttachment>()
+                .Property(a => a.FileName)
+                .HasMaxLength(500);
+
+            modelBuilder.Entity<ProjectChatMessageAttachment>()
+                .Property(a => a.FilePath)
+                .HasMaxLength(1000);
+
+            modelBuilder.Entity<ProjectChatMessageAttachment>()
+                .Property(a => a.FileType)
+                .HasMaxLength(50);
+
+            modelBuilder.Entity<ProjectChatMessageAttachment>()
+                .Property(a => a.MimeType)
+                .HasMaxLength(100);
 
 
             // رابطه WorkflowStatus با Project

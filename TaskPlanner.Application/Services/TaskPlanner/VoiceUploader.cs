@@ -34,7 +34,7 @@ namespace TaskPlanner.Application.Services.TaskPlanner
             client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
 
             using var form = new MultipartFormDataContent();
-            var mime = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+            var mime = NormalizeMimeType(file.ContentType);
 
             var part = new ByteArrayContent(bytes);
             part.Headers.ContentType = new MediaTypeHeaderValue(mime);
@@ -88,6 +88,31 @@ namespace TaskPlanner.Application.Services.TaskPlanner
         {
             if (string.IsNullOrEmpty(input)) return false;
             return input.Any(c => c > 127);
+        }
+
+        private static string NormalizeMimeType(string? contentType)
+        {
+            if (string.IsNullOrWhiteSpace(contentType))
+            {
+                return "application/octet-stream";
+            }
+
+            var cleaned = contentType.Trim();
+
+            // بعضی مرورگرها برای ویس مقدارهایی مثل audio/webm;codecs=opus می‌فرستند
+            // که در بعضی سرورها/کتابخانه‌ها باعث خطای parse می‌شود؛ فقط media type پایه را نگه می‌داریم.
+            var mediaTypeOnly = cleaned.Split(';', 2, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(mediaTypeOnly) && MediaTypeHeaderValue.TryParse(mediaTypeOnly, out _))
+            {
+                return mediaTypeOnly;
+            }
+
+            if (MediaTypeHeaderValue.TryParse(cleaned, out _))
+            {
+                return cleaned;
+            }
+
+            return "application/octet-stream";
         }
 
         private sealed class UploadResponse

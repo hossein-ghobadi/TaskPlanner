@@ -386,17 +386,26 @@
         border-color: #bfdbfe;
     }
 
-    .team-chat-actions {
-        margin-top: 0.3rem;
+    .chat-reply-preview {
+        border-right: 3px solid #60a5fa;
+        background: #eff6ff;
+        border-radius: 8px;
+        padding: 0.45rem 0.6rem;
+        margin-bottom: 0.45rem;
+        cursor: pointer;
     }
 
-    .team-chat-delete-btn {
-        font-size: 0.75rem;
-        color: #dc2626;
-        background: transparent;
-        border: none;
-        padding: 0;
-        cursor: pointer;
+    .chat-reply-pill {
+        border-right: 3px solid #93c5fd;
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 0.4rem 0.55rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .chat-message-target-highlight .team-chat-bubble {
+        box-shadow: 0 0 0 2px #60a5fa, 0 0 0 6px rgba(96, 165, 250, 0.15);
+        transition: box-shadow 0.3s ease;
     }
 
     .member-pill {
@@ -408,6 +417,24 @@
         align-items: center;
         gap: 0.35rem;
         margin: 0.2rem;
+    }
+
+    .chat-attachment-thumb {
+        max-width: 180px;
+        max-height: 150px;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+    }
+
+    .chat-audio-wrap {
+        direction: ltr;
+        text-align: left;
+    }
+
+    .chat-audio-player {
+        width: 260px;
+        max-width: 100%;
+        display: block;
     }
     
     /* Responsive */
@@ -625,6 +652,56 @@
     
 </div>
 
+<!-- چت تیمی پروژه (مجزا از چت تسک‌ها) -->
+<div class="card-modern mb-4">
+    <div class="card-header-modern d-flex justify-content-between align-items-center">
+        <div><i class="bi bi-chat-dots-fill me-2"></i>گروه‌های چت تیمی پروژه</div>
+        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createTeamChatGroupModal">
+            <i class="bi bi-plus-circle me-1"></i>ایجاد گروه
+        </button>
+    </div>
+    <div class="card-body-modern">
+        <div class="team-chat-layout">
+            <div class="team-chat-groups">
+                <div id="projectChatGroupsList">
+                    <div class="p-3 text-muted">در حال بارگذاری گروه‌ها...</div>
+                </div>
+            </div>
+
+            <div class="team-chat-room">
+                <div id="projectChatCurrentHeader" class="px-3 py-2 border-bottom text-muted">
+                    یک گروه چت را انتخاب کنید
+                </div>
+                <div id="projectChatMessages" class="team-chat-messages">
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-chat-square-text" style="font-size:2rem;"></i>
+                        <div class="mt-2">برای شروع گفتگو یک گروه انتخاب کنید</div>
+                    </div>
+                </div>
+                <div class="p-3 border-top">
+                    <div id="projectChatReplyPreview" class="chat-reply-pill d-none"></div>
+                    <div class="input-group">
+                        <input type="text" id="projectChatMessageInput" class="form-control" placeholder="پیام تیمی..." />
+                        <button class="btn btn-primary" type="button" id="projectChatSendBtn" disabled>
+                            <i class="bi bi-send"></i>
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2 mt-2">
+                        <label class="btn btn-sm btn-outline-secondary mb-0">
+                            <i class="bi bi-paperclip me-1"></i>فایل
+                            <input type="file" id="projectChatFileInput" multiple accept="image/*,audio/*,.pdf,.doc,.docx,.txt,.zip,.rar" style="display:none;" />
+                        </label>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="projectChatRecordBtn">
+                            <i class="bi bi-mic me-1"></i><span id="projectChatRecordText">ضبط ویس</span>
+                        </button>
+                        <span id="projectChatRecordTimer" class="text-muted small align-self-center"></span>
+                    </div>
+                    <div id="projectChatAttachmentPreview" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- بخش تنظیمات -->
 @if (isCreator)
 {
@@ -789,44 +866,6 @@
     </div>
 }
 
-<!-- چت تیمی پروژه (مجزا از چت تسک‌ها) -->
-<div class="card-modern mb-4">
-    <div class="card-header-modern d-flex justify-content-between align-items-center">
-        <div><i class="bi bi-chat-dots-fill me-2"></i>گروه‌های چت تیمی پروژه</div>
-        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createTeamChatGroupModal">
-            <i class="bi bi-plus-circle me-1"></i>ایجاد گروه
-        </button>
-    </div>
-    <div class="card-body-modern">
-        <div class="team-chat-layout">
-            <div class="team-chat-groups">
-                <div id="projectChatGroupsList">
-                    <div class="p-3 text-muted">در حال بارگذاری گروه‌ها...</div>
-                </div>
-            </div>
-
-            <div class="team-chat-room">
-                <div id="projectChatCurrentHeader" class="px-3 py-2 border-bottom text-muted">
-                    یک گروه چت را انتخاب کنید
-                </div>
-                <div id="projectChatMessages" class="team-chat-messages">
-                    <div class="text-center text-muted py-5">
-                        <i class="bi bi-chat-square-text" style="font-size:2rem;"></i>
-                        <div class="mt-2">برای شروع گفتگو یک گروه انتخاب کنید</div>
-                    </div>
-                </div>
-                <div class="p-3 border-top">
-                    <div class="input-group">
-                        <input type="text" id="projectChatMessageInput" class="form-control" placeholder="پیام تیمی..." />
-                        <button class="btn btn-primary" type="button" id="projectChatSendBtn" disabled>
-                            <i class="bi bi-send"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- مودال ساخت گروه -->
 <div class="modal fade" id="createTeamChatGroupModal" tabindex="-1" aria-hidden="true">
@@ -1001,6 +1040,12 @@
     const headerEl = document.getElementById('projectChatCurrentHeader');
     const messageInputEl = document.getElementById('projectChatMessageInput');
     const sendBtnEl = document.getElementById('projectChatSendBtn');
+    const fileInputEl = document.getElementById('projectChatFileInput');
+    const recordBtnEl = document.getElementById('projectChatRecordBtn');
+    const recordTextEl = document.getElementById('projectChatRecordText');
+    const recordTimerEl = document.getElementById('projectChatRecordTimer');
+    const attachmentPreviewEl = document.getElementById('projectChatAttachmentPreview');
+    const replyPreviewEl = document.getElementById('projectChatReplyPreview');
     const createGroupBtnEl = document.getElementById('createProjectChatGroupBtn');
     const addMembersBtnEl = document.getElementById('addProjectChatMembersBtn');
 
@@ -1009,6 +1054,12 @@
     let activeGroupMeta = null;
     let manageGroupId = null;
     let groupsCache = [];
+    let selectedFiles = [];
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recordingStartTime = null;
+    let recordingTimer = null;
+    let replyingToMessage = null;
 
     async function ensureConnection() {
         if (connection) {
@@ -1027,11 +1078,28 @@
             appendMessage(message);
         });
 
-        connection.on('projectGroupMessageDeleted', (payload) => {
-            if (!payload || payload.groupId !== activeGroupId) {
+        connection.on('projectGroupAttachmentDeleted', (payload) => {
+            if (!payload) {
                 return;
             }
-            removeMessageFromDom(payload.messageId);
+            if (payload.messageDeleted) {
+                document.getElementById(`project-chat-message-${payload.messageId}`)?.remove();
+                if (!messagesEl.children.length) {
+                    messagesEl.innerHTML = '<div class="text-center text-muted py-4">هنوز پیامی در این گروه ثبت نشده است.</div>';
+                }
+                return;
+            }
+            document.querySelector(`[data-attachment-item-id="${payload.attachmentId}"]`)?.remove();
+        });
+
+        connection.on('projectGroupMessageDeleted', (payload) => {
+            if (!payload || !payload.messageId) {
+                return;
+            }
+            document.getElementById(`project-chat-message-${payload.messageId}`)?.remove();
+            if (!messagesEl.children.length) {
+                messagesEl.innerHTML = '<div class="text-center text-muted py-4">هنوز پیامی در این گروه ثبت نشده است.</div>';
+            }
         });
 
         await connection.start();
@@ -1099,6 +1167,7 @@
         headerEl.innerHTML = `<strong>${escapeHtml(group.name)}</strong> <span class="text-muted small ms-2">(${group.membersCount} عضو)</span>`;
         sendBtnEl.disabled = false;
         messagesEl.innerHTML = '<div class="text-center text-muted py-4">در حال بارگذاری پیام‌ها...</div>';
+        clearReplyTarget();
 
         await ensureConnection();
         await connection.invoke('JoinProjectGroup', groupId);
@@ -1129,49 +1198,282 @@
         }
 
         const mine = message.userId === currentUserId || message.isCurrentUser;
-        const canDelete = !!message.canDelete || mine || !!(activeGroupMeta && activeGroupMeta.canManageMembers);
         const dateText = new Date(message.createdAt).toLocaleString('fa-IR');
+        const attachmentsHtml = renderMessageAttachments(message.attachments || [], mine);
+        const replyHtml = renderReplyPreview(message);
+        const replyActionBtn = `<button type="button" class="btn btn-sm btn-link p-0 mt-1 reply-chat-message-btn" data-message-id="${message.id}" data-message-user="${escapeHtml(message.userName)}" data-message-text="${escapeHtml(message.message || '')}" title="پاسخ"><i class="bi bi-reply"></i> پاسخ</button>`;
+        const deleteMessageBtn = mine
+            ? `<button type="button" class="btn btn-sm btn-link text-danger p-0 mt-1 ms-2 delete-chat-message-btn" data-message-id="${message.id}" title="حذف پیام"><i class="bi bi-trash"></i> حذف</button>`
+            : '';
         const html = `
             <div id="project-chat-message-${message.id}" class="team-chat-message ${mine ? 'mine' : ''}">
                 <div class="small text-muted mb-1">${escapeHtml(message.userName)} - ${dateText}</div>
-                <div class="team-chat-bubble">${escapeHtml(message.message)}</div>
-                ${canDelete ? `
-                    <div class="team-chat-actions">
-                        <button type="button" class="team-chat-delete-btn" data-message-id="${message.id}">
-                            <i class="bi bi-trash"></i> حذف پیام
-                        </button>
-                    </div>` : ''}
+                <div class="team-chat-bubble">
+                    ${replyHtml}
+                    ${message.message ? `<div>${escapeHtml(message.message)}</div>` : ''}
+                    ${attachmentsHtml}
+                    <div>${replyActionBtn}${deleteMessageBtn}</div>
+                </div>
             </div>`;
         messagesEl.insertAdjacentHTML('beforeend', html);
         messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    function removeMessageFromDom(messageId) {
-        const row = document.getElementById(`project-chat-message-${messageId}`);
-        if (row) {
-            row.remove();
+    function renderReplyPreview(message) {
+        if (!message || !message.replyToMessageId) {
+            return '';
         }
 
-        if (!messagesEl.querySelector('.team-chat-message')) {
+        const previewUser = escapeHtml(message.replyPreviewUserName || 'کاربر');
+        const previewText = escapeHtml(message.replyPreviewMessage || '(بدون متن)');
+        return `<div class="chat-reply-preview jump-to-replied-message" data-reply-to-message-id="${message.replyToMessageId}" title="رفتن به پیام اصلی"><div class="small text-primary fw-bold">${previewUser}</div><div class="small text-muted">${previewText}</div></div>`;
+    }
+
+    function setReplyTarget(payload) {
+        replyingToMessage = payload;
+        const previewUser = escapeHtml(payload.userName || 'کاربر');
+        const previewText = escapeHtml(payload.messageText || '');
+        replyPreviewEl.classList.remove('d-none');
+        replyPreviewEl.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start gap-2">
+                <div>
+                    <div class="small text-primary fw-bold">پاسخ به ${previewUser}</div>
+                    <div class="small text-muted">${previewText}</div>
+                </div>
+                <button type="button" class="btn btn-sm btn-link text-danger p-0" id="cancelReplyBtn" title="لغو پاسخ">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </div>`;
+        document.getElementById('cancelReplyBtn')?.addEventListener('click', clearReplyTarget);
+    }
+
+    function clearReplyTarget() {
+        replyingToMessage = null;
+        replyPreviewEl.classList.add('d-none');
+        replyPreviewEl.innerHTML = '';
+    }
+
+    function jumpToMessage(messageId) {
+        const targetEl = document.getElementById(`project-chat-message-${messageId}`);
+        if (!targetEl) {
+            showAlert('پیام مرجع در لیست فعلی پیدا نشد', 'error');
+            return;
+        }
+
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetEl.classList.add('chat-message-target-highlight');
+        setTimeout(() => targetEl.classList.remove('chat-message-target-highlight'), 2200);
+    }
+
+    function renderMessageAttachments(attachments, canDelete) {
+        if (!attachments || !attachments.length) {
+            return '';
+        }
+
+        return `<div class="mt-2">${attachments.map(att => {
+            const deleteBtn = canDelete
+                ? `<button type="button" class="btn btn-sm btn-link text-danger p-0 delete-chat-attachment-btn ms-1" data-attachment-id="${att.id}" title="حذف فایل"><i class="bi bi-trash"></i></button>`
+                : '';
+
+            if (att.fileType === 'Image') {
+                return `<div class="mb-2" data-attachment-item-id="${att.id}"><a href="${att.filePath}" target="_blank" rel="noopener"><img src="${att.filePath}" alt="${escapeHtml(att.fileName)}" class="chat-attachment-thumb" /></a>${deleteBtn}</div>`;
+            }
+
+            if (att.fileType === 'Audio') {
+                return `<div class="mb-2 chat-audio-wrap" data-attachment-item-id="${att.id}"><audio class="chat-audio-player" controls preload="metadata" src="${att.filePath}"></audio><div><a href="${att.filePath}" target="_blank" rel="noopener" class="small">دانلود ویس</a>${deleteBtn}</div></div>`;
+            }
+
+            return `<div class="mb-1" data-attachment-item-id="${att.id}"><a href="${att.filePath}" target="_blank" rel="noopener"><i class="bi bi-file-earmark"></i> ${escapeHtml(att.fileName)}</a>${deleteBtn}</div>`;
+        }).join('')}</div>`;
+    }
+
+    function renderSelectedFiles() {
+        if (!attachmentPreviewEl) {
+            return;
+        }
+
+        if (!selectedFiles.length) {
+            attachmentPreviewEl.innerHTML = '';
+            return;
+        }
+
+        attachmentPreviewEl.innerHTML = selectedFiles.map((file, index) => {
+            if (file.type && file.type.startsWith('image/')) {
+                const url = URL.createObjectURL(file);
+                return `
+                    <span class="member-pill">
+                        <img src="${url}" class="chat-attachment-thumb" style="max-width:80px; max-height:60px;" />
+                        <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-selected-file-btn" data-index="${index}">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </span>`;
+            }
+            return `
+                <span class="member-pill">
+                    <span>${escapeHtml(file.name)}</span>
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-selected-file-btn" data-index="${index}">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                </span>`;
+        }).join('');
+    }
+
+    function addSelectedFiles(files) {
+        if (!files || !files.length) {
+            return;
+        }
+        selectedFiles.push(...Array.from(files));
+        renderSelectedFiles();
+    }
+
+    function removeSelectedFile(index) {
+        selectedFiles = selectedFiles.filter((_, i) => i !== index);
+        renderSelectedFiles();
+    }
+
+    async function deleteAttachment(attachmentId) {
+        if (!attachmentId) {
+            return;
+        }
+
+        const body = new URLSearchParams();
+        body.append('attachmentId', String(attachmentId));
+
+        const response = await fetch('/ProjectTeamChats/DeleteAttachment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'RequestVerificationToken': token
+            },
+            body: body.toString()
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            showAlert(errorText || 'خطا در حذف فایل', 'error');
+            return;
+        }
+
+        const result = await response.json();
+        if (result.messageDeleted) {
+            document.getElementById(`project-chat-message-${result.messageId}`)?.remove();
+            if (!messagesEl.children.length) {
+                messagesEl.innerHTML = '<div class="text-center text-muted py-4">هنوز پیامی در این گروه ثبت نشده است.</div>';
+            }
+        } else {
+            document.querySelector(`[data-attachment-item-id="${result.attachmentId}"]`)?.remove();
+        }
+    }
+
+    async function deleteMessage(messageId) {
+        if (!messageId) {
+            return;
+        }
+
+        const body = new URLSearchParams();
+        body.append('messageId', String(messageId));
+
+        const response = await fetch('/ProjectTeamChats/DeleteMessage', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'RequestVerificationToken': token
+            },
+            body: body.toString()
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            showAlert(errorText || 'خطا در حذف پیام', 'error');
+            return;
+        }
+
+        const result = await response.json();
+        document.getElementById(`project-chat-message-${result.messageId}`)?.remove();
+        if (!messagesEl.children.length) {
             messagesEl.innerHTML = '<div class="text-center text-muted py-4">هنوز پیامی در این گروه ثبت نشده است.</div>';
         }
     }
 
+    async function startVoiceRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const preferredMime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus'
+                : (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus') ? 'audio/ogg;codecs=opus' : 'audio/webm');
+
+            mediaRecorder = new MediaRecorder(stream, { mimeType: preferredMime });
+            audioChunks = [];
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                stream.getTracks().forEach(t => t.stop());
+                if (!audioChunks.length) {
+                    return;
+                }
+                const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+                const normalizedType = (blob.type || 'audio/webm').split(';')[0].trim() || 'audio/webm';
+                const ext = normalizedType.includes('ogg') ? '.ogg' : '.webm';
+                const file = new File([blob], `voice_${Date.now()}${ext}`, { type: normalizedType });
+                addSelectedFiles([file]);
+            };
+
+            mediaRecorder.start(100);
+            recordingStartTime = Date.now();
+            recordTextEl.textContent = 'توقف';
+            recordBtnEl.classList.remove('btn-outline-secondary');
+            recordBtnEl.classList.add('btn-outline-danger');
+            recordingTimer = setInterval(() => {
+                const elapsedSec = Math.floor((Date.now() - recordingStartTime) / 1000);
+                const mm = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+                const ss = String(elapsedSec % 60).padStart(2, '0');
+                recordTimerEl.textContent = `${mm}:${ss}`;
+            }, 1000);
+        } catch (err) {
+            showAlert('خطا در دسترسی به میکروفن', 'error');
+        }
+    }
+
+    function stopVoiceRecording() {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+        }
+        if (recordingTimer) {
+            clearInterval(recordingTimer);
+            recordingTimer = null;
+        }
+        recordTextEl.textContent = 'ضبط ویس';
+        recordTimerEl.textContent = '';
+        recordBtnEl.classList.remove('btn-outline-danger');
+        recordBtnEl.classList.add('btn-outline-secondary');
+    }
+
     async function sendMessage() {
         const message = (messageInputEl.value || '').trim();
-        if (!activeGroupId || !message) {
+        if (!activeGroupId || (!message && !selectedFiles.length)) {
             return;
         }
 
         sendBtnEl.disabled = true;
         try {
+            const formData = new FormData();
+            formData.append('GroupId', String(activeGroupId));
+            formData.append('Message', message);
+            if (replyingToMessage?.id) {
+                formData.append('ReplyToMessageId', String(replyingToMessage.id));
+            }
+            selectedFiles.forEach(file => formData.append('Attachments', file));
+
             const response = await fetch('/ProjectTeamChats/SendMessage', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'RequestVerificationToken': token
                 },
-                body: JSON.stringify({ groupId: activeGroupId, message })
+                body: formData
             });
 
             if (!response.ok) {
@@ -1180,6 +1482,9 @@
             }
 
             messageInputEl.value = '';
+            selectedFiles = [];
+            renderSelectedFiles();
+            clearReplyTarget();
         } catch (error) {
             showAlert(error.message || 'خطا در ارسال پیام', 'error');
         } finally {
@@ -1315,36 +1620,6 @@
         await openManageMembers(manageGroupId);
     }
 
-    async function deleteMessage(messageId) {
-        if (!messageId || !activeGroupId) {
-            return;
-        }
-
-        if (!confirm('آیا از حذف این پیام مطمئن هستید؟')) {
-            return;
-        }
-
-        const body = new URLSearchParams();
-        body.append('messageId', messageId);
-
-        const response = await fetch('/ProjectTeamChats/DeleteMessage', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                'RequestVerificationToken': token
-            },
-            body: body.toString()
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            showAlert(errorText || 'خطا در حذف پیام', 'error');
-            return;
-        }
-
-        removeMessageFromDom(messageId);
-    }
-
     function escapeHtml(value) {
         return String(value ?? '')
             .replace(/&/g, '&amp;')
@@ -1384,21 +1659,101 @@
         await removeMemberFromGroup(userId);
     });
 
-    messagesEl.addEventListener('click', async (event) => {
-        const deleteBtn = event.target.closest('.team-chat-delete-btn');
-        if (!deleteBtn) {
-            return;
-        }
-        const messageId = Number(deleteBtn.dataset.messageId);
-        await deleteMessage(messageId);
-    });
-
     sendBtnEl.addEventListener('click', sendMessage);
     messageInputEl.addEventListener('keydown', async (event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
             await sendMessage();
         }
+    });
+    fileInputEl.addEventListener('change', (event) => {
+        addSelectedFiles(event.target.files);
+        fileInputEl.value = '';
+    });
+    messageInputEl.addEventListener('paste', (event) => {
+        if (!event.clipboardData || !event.clipboardData.items) {
+            return;
+        }
+        const imageFiles = [];
+        for (const item of event.clipboardData.items) {
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+                const file = item.getAsFile();
+                if (file) {
+                    imageFiles.push(file);
+                }
+            }
+        }
+        if (imageFiles.length) {
+            event.preventDefault();
+            addSelectedFiles(imageFiles);
+        }
+    });
+    recordBtnEl.addEventListener('click', async () => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            stopVoiceRecording();
+            return;
+        }
+        await startVoiceRecording();
+    });
+    attachmentPreviewEl.addEventListener('click', (event) => {
+        const removeBtn = event.target.closest('.remove-selected-file-btn');
+        if (!removeBtn) {
+            return;
+        }
+        const index = Number(removeBtn.dataset.index);
+        if (!Number.isNaN(index)) {
+            removeSelectedFile(index);
+        }
+    });
+    messagesEl.addEventListener('click', async (event) => {
+        const deleteMessageBtn = event.target.closest('.delete-chat-message-btn');
+        if (deleteMessageBtn) {
+            const messageId = Number(deleteMessageBtn.dataset.messageId);
+            if (!Number.isNaN(messageId)) {
+                if (!confirm('آیا از حذف این پیام مطمئن هستید؟')) {
+                    return;
+                }
+                await deleteMessage(messageId);
+            }
+            return;
+        }
+
+        const jumpBtn = event.target.closest('.jump-to-replied-message');
+        if (jumpBtn) {
+            const targetId = Number(jumpBtn.dataset.replyToMessageId);
+            if (!Number.isNaN(targetId)) {
+                jumpToMessage(targetId);
+            }
+            return;
+        }
+
+        const replyBtn = event.target.closest('.reply-chat-message-btn');
+        if (replyBtn) {
+            const messageId = Number(replyBtn.dataset.messageId);
+            if (Number.isNaN(messageId)) {
+                return;
+            }
+            const userName = replyBtn.dataset.messageUser || 'کاربر';
+            const messageText = replyBtn.dataset.messageText || '';
+            setReplyTarget({ id: messageId, userName, messageText });
+            messageInputEl.focus();
+            return;
+        }
+
+        const deleteBtn = event.target.closest('.delete-chat-attachment-btn');
+        if (!deleteBtn) {
+            return;
+        }
+
+        const attachmentId = Number(deleteBtn.dataset.attachmentId);
+        if (Number.isNaN(attachmentId)) {
+            return;
+        }
+
+        if (!confirm('آیا از حذف این فایل مطمئن هستید؟')) {
+            return;
+        }
+        await deleteAttachment(attachmentId);
     });
     createGroupBtnEl.addEventListener('click', createGroup);
     addMembersBtnEl.addEventListener('click', addMembersToGroup);

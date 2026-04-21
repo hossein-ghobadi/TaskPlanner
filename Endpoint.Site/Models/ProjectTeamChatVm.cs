@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 
 namespace Endpoint.Site.Models
@@ -19,9 +20,12 @@ namespace Endpoint.Site.Models
         [Required]
         public int GroupId { get; set; }
 
-        [Required]
-        [StringLength(4000, MinimumLength = 1)]
-        public string Message { get; set; } = null!;
+        [StringLength(4000)]
+        public string? Message { get; set; }
+
+        public int? ReplyToMessageId { get; set; }
+
+        public List<IFormFile>? Attachments { get; set; }
     }
 
     public class ProjectChatAddMembersVm
@@ -51,9 +55,23 @@ namespace Endpoint.Site.Models
         public string UserId { get; set; } = null!;
         public string UserName { get; set; } = null!;
         public string Message { get; set; } = null!;
+        public int? ReplyToMessageId { get; set; }
+        public string? ReplyPreviewUserName { get; set; }
+        public string? ReplyPreviewMessage { get; set; }
         public DateTime CreatedAt { get; set; }
         public bool IsCurrentUser { get; set; }
-        public bool CanDelete { get; set; }
+        public List<ProjectChatMessageAttachmentVm> Attachments { get; set; } = new();
+    }
+
+    public class ProjectChatMessageAttachmentVm
+    {
+        public int Id { get; set; }
+        public string FileName { get; set; } = null!;
+        public string FilePath { get; set; } = null!;
+        public string FileType { get; set; } = null!;
+        public long FileSize { get; set; }
+        public string? MimeType { get; set; }
+        public DateTime UploadedAt { get; set; }
     }
 
     public class ProjectChatGroupMemberVm

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System;
 using System.Collections.Generic;
@@ -31,6 +31,7 @@ namespace TaskPlanner.Application.Interfaces.Contexts
         DbSet<ProjectChatGroup> ProjectChatGroups { get; set; }
         DbSet<ProjectChatGroupMember> ProjectChatGroupMembers { get; set; }
         DbSet<ProjectChatMessage> ProjectChatMessages { get; set; }
+        DbSet<ProjectChatMessageAttachment> ProjectChatMessageAttachments { get; set; }
         DbSet<Sprint> Sprints { get; set; }
         DbSet<SprintTask> SprintTasks { get; set; }
         DbSet<WorkflowStatus> WorkflowStatuses { get; set; }
