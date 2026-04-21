@@ -14,6 +14,7 @@ using System.Linq;
 using TaskPlanner.Application.Services.FileUpload;
 using TaskPlanner.Application.Services.NotificationService;
 using TaskPlanner.Domain.Entities.TaskPlanner;
+using Microsoft.AspNetCore.SignalR;
 
 namespace Endpoint.Site.Controllers
 {
@@ -764,6 +765,78 @@ namespace Endpoint.Site.Controllers
                 message = "تسک با موفقیت خاتمه یافت."
             });
         }
+
+
+
+
+        [HttpPost]
+        public async Task<IActionResult> ToggleCompleteSubTask(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var task = await _context.TaskItems
+                
+                .FirstOrDefaultAsync(t => t.Id == id);
+            var taskparent= await _context.TaskItems
+                .Include(t => t.ChildIssues)
+
+                .FirstOrDefaultAsync(t => t.Id == task.ParentTaskId);
+            var subtask = taskparent.ChildIssues.FirstOrDefault(t=>t.Id==id);
+            var sprintTask = await _context.SprintTasks
+
+                .FirstOrDefaultAsync(t => t.SprintId== taskparent.SprintId && t.TaskId== task.ParentTaskId);
+            if (subtask == null)
+                return Json(new { success = false, message = "کار یافت نشد" });
+
+            // بررسی دسترسی
+            if (subtask.Project.CreatorUserId != userId && !subtask.Project.Members.Any(m => m.UserId == userId))
+                return Json(new { success = false, message = "دسترسی ندارید" });
+
+            subtask.IsCompleted = !task.IsCompleted;
+            subtask.UpdatedAt = DateTime.UtcNow;
+
+            // اگر کار تکمیل شد، همه کارک‌ها رو هم تکمیل کن
+            if (subtask.IsCompleted)
+            {
+                bool allCompleted = true;
+
+                foreach (var sub in taskparent.ChildIssues)
+                {
+                    if (!sub.IsCompleted)
+                    {
+                        allCompleted = false;
+                        break;
+                    }
+                }
+
+                if (!allCompleted)
+                {
+                    // عملیات مورد نظر در صورت وجود زیرتکمیل نشده
+                    
+                    taskparent.IsCompleted = true;
+                    taskparent.UpdatedAt = DateTime.UtcNow;
+                    sprintTask.CompletedAt = DateTime.UtcNow;
+                    subtask.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            // اگر کار uncomplete شد، همه کارک‌ها رو هم uncomplete کن
+
+            //_context.TaskItems.update(taskparent.);
+            //await _context.TaskItems.update(subtask);
+            //await _context.SprintTasks.update(sprintTask);
+
+            await _context.SaveChangesAsync();
+
+            return Json(new
+            {
+                success = true,
+                isCompleted = task.IsCompleted,
+                
+            });
+        }
+
+
 
         /// <summary>
         /// انتقال Issue بین وضعیت‌ها بر اساس WorkflowTransitions

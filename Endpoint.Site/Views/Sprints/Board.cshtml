@@ -1638,8 +1638,7 @@
                         <option value="soft">نرم و محو</option>
                         <option value="pattern">الگوی نقطه‌ای</option>
                         <option value="pastel">پاستلی</option>
-                        <option value="photo-1">عکس ۱</option>
-                        <option value="photo-2">عکس ۲</option>
+                        
                     </select>
                 </div>
             </div>
@@ -2023,7 +2022,23 @@
                                                 {
                                                     <div class="subtask-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded" style="font-size: 0.85rem;">
                                                         <div class="d-flex align-items-center gap-2 flex-grow-1">
-                                                            <span class="issue-type-icon" style="font-size: 0.9rem;">@subtask.IssueTypeIcon</span>
+                                                            <input type="checkbox"
+                                                                   class="form-check-input task-complete-checkbox"
+                                                                   id="task_@subtask.Id"
+                                                                                            @(subtask.IsCompleted ? "checked" : "")
+                                                                   onchange="toggleTaskComplete(@subtask.Id, this.checked)" />
+                                                                                                          <a href="/Tasks/ToggleCompleteSubTask/@subtask.Id" class="btn btn-sm btn-outline-info p-0 px-1"
+                                                                                   onclick="event.stopPropagation();"
+                                                                                   title="جزئیات"
+                                                                                   style="font-size: 0.7rem;">
+                                                                                    <i class="bi bi-eye"></i>
+                                                                                </a>
+                                                                                                    <li>
+                                                                                                                <a class="dropdown-item text-danger" href="#" onclick="event.stopPropagation(); event.preventDefault(); toggleSubtask(@subtask.Id);">
+                                                                                                <i class="bi bi-trash me-2"></i>حذف کار
+                                                                                            </a>
+                                                                                        </li>
+                                                                                                            
                                                             <div class="flex-grow-1">
                                                                 <div class="fw-bold">@subtask.Title</div>
                                                                 @if (!string.IsNullOrEmpty(subtask.Description))
@@ -2032,7 +2047,7 @@
                                                                 }
                                                             </div>
                                                         </div>
-                                                        @if (Model.Status == SprintStatus.Active)
+                                                        @*@if (Model.Status == SprintStatus.Active)
                                                         {
                                                             <div class="dropdown">
                                                                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle p-0 px-1"
@@ -2084,7 +2099,7 @@
                                                                style="font-size: 0.7rem;">
                                                                 <i class="bi bi-eye"></i>
                                                             </a>
-                                                        }
+                                                        }*@
                                                     </div>
                                                 }
                                             </div>
@@ -3719,6 +3734,10 @@
             }
         }
 
+
+                
+
+
         function updateIssueCounts() {
             document.querySelectorAll('.kanban-column').forEach(column => {
                 const body = column.querySelector('.column-tasks');
@@ -4961,7 +4980,54 @@
                     alert('خطا در ارتباط با سرور: ' + err.message);
                 }
             }
-            
+
+
+
+
+
+                    async function toggleSubtask(taskId) {
+                            if (!taskId) return;
+                            if (!finalStatusId) {
+                                showNotification('ستون نهایی برای این اسپرینت تعریف نشده است', 'error');
+                                return;
+                            }
+
+                            // دریافت اطلاعات کار برای نمایش در پیغام تایید
+                            const card = document.querySelector(`.task-card[data-issue-id="${taskId}"]`);
+                            const taskTitle = card?.dataset.title || 'این کار';
+                            const taskKey = card?.dataset.key || '';
+
+                            // نمایش پیغام تایید
+                                                  formData.append('id', taskId);
+                                                formData.append('__RequestVerificationToken', token);
+                            const previousOpacity = card ? card.style.opacity : null;
+                            if (card) {
+                                card.style.opacity = '0.5';
+                            }
+
+                            try {
+                                        const formData = new FormData();
+                                        const response = await fetch('/Tasks/ToggleCompleteSubTask', {
+                                    method: 'POST',
+                                    body: formData
+                                          });
+                                       
+
+
+                            } catch (error) {
+                                showNotification(error.message || 'خطا در خاتمه کار', 'error');
+                                if (card) {
+                                    card.style.opacity = previousOpacity ?? '1';
+                                }
+                            } finally {
+                                if (card) {
+                                    card.style.opacity = '1';
+                                }
+                            }
+                        }
+
+
+
             // حذف پیام (اختیاری)
          // حذف کامنت
     async function deleteComment(commentId, triggerElement) {

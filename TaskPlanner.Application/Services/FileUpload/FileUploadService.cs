@@ -74,7 +74,7 @@ namespace TaskPlanner.Application.Services.FileUpload
                         remoteUrl = await _imageUploader.UploadAsync(file, folder);
                         break;
                     case "Audio":
-                        _logger.LogInformation("🎤 آپلود فایل صوتی به باکت...");
+                        _logger.LogInformation("🎤audio آپلود فایل صوتی به باکت...");
                         remoteUrl = await _voiceUploader.UploadAsync(file, folder);
                         break;
                     case "Document":
