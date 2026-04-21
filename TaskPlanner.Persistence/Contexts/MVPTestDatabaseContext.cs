@@ -38,6 +38,9 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<PersonalNoteFolder> PersonalNoteFolders { get; set; }
         public DbSet<TaskComment> TaskComments { get; set; }
         public DbSet<TaskCommentAttachment> TaskCommentAttachments { get; set; }
+        public DbSet<ProjectChatGroup> ProjectChatGroups { get; set; }
+        public DbSet<ProjectChatGroupMember> ProjectChatGroupMembers { get; set; }
+        public DbSet<ProjectChatMessage> ProjectChatMessages { get; set; }
         public DbSet<Sprint> Sprints { get; set; }
         public DbSet<SprintTask> SprintTasks { get; set; }
         public DbSet<WorkflowStatus> WorkflowStatuses { get; set; }
@@ -225,6 +228,62 @@ namespace TaskPlanner.Persistence.Contexts
                 .WithMany(c => c.Attachments)
                 .HasForeignKey(a => a.TaskCommentId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProjectChatGroup>()
+                .HasOne(g => g.Project)
+                .WithMany()
+                .HasForeignKey(g => g.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProjectChatGroup>()
+                .Property(g => g.Name)
+                .HasMaxLength(150);
+
+            modelBuilder.Entity<ProjectChatGroup>()
+                .Property(g => g.CreatedByUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<ProjectChatGroup>()
+                .HasIndex(g => new { g.ProjectId, g.Name });
+
+            modelBuilder.Entity<ProjectChatGroupMember>()
+                .HasOne(m => m.ProjectChatGroup)
+                .WithMany(g => g.Members)
+                .HasForeignKey(m => m.ProjectChatGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProjectChatGroupMember>()
+                .Property(m => m.UserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<ProjectChatGroupMember>()
+                .Property(m => m.AddedByUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<ProjectChatGroupMember>()
+                .HasIndex(m => new { m.ProjectChatGroupId, m.UserId })
+                .IsUnique();
+
+            modelBuilder.Entity<ProjectChatMessage>()
+                .HasOne(m => m.ProjectChatGroup)
+                .WithMany(g => g.Messages)
+                .HasForeignKey(m => m.ProjectChatGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProjectChatMessage>()
+                .Property(m => m.UserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<ProjectChatMessage>()
+                .Property(m => m.UserName)
+                .HasMaxLength(200);
+
+            modelBuilder.Entity<ProjectChatMessage>()
+                .Property(m => m.Message)
+                .HasMaxLength(4000);
+
+            modelBuilder.Entity<ProjectChatMessage>()
+                .HasIndex(m => new { m.ProjectChatGroupId, m.CreatedAt });
 
 
             // رابطه WorkflowStatus با Project

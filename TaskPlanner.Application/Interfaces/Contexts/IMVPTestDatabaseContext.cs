@@ -28,6 +28,9 @@ namespace TaskPlanner.Application.Interfaces.Contexts
         DbSet<PersonalNoteAttachment> PersonalNoteAttachments { get; set; }
         DbSet<TaskComment> TaskComments { get; set; }
         DbSet<TaskCommentAttachment> TaskCommentAttachments { get; set; }
+        DbSet<ProjectChatGroup> ProjectChatGroups { get; set; }
+        DbSet<ProjectChatGroupMember> ProjectChatGroupMembers { get; set; }
+        DbSet<ProjectChatMessage> ProjectChatMessages { get; set; }
         DbSet<Sprint> Sprints { get; set; }
         DbSet<SprintTask> SprintTasks { get; set; }
         DbSet<WorkflowStatus> WorkflowStatuses { get; set; }

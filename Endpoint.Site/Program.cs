@@ -17,6 +17,7 @@ using TaskPlanner.Domain.Entities.Users;
 using Microsoft.Extensions.Options;
 using TaskPlanner.Application.Services;
 using Microsoft.Extensions.Logging;
+using Endpoint.Site.Hubs;
 
 
 Env.Load();
@@ -65,6 +66,7 @@ builder.Services.AddHttpClient("PriceApi", c =>
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 builder.Services.AddHttpClient();  // برای IHttpClientFactory
+builder.Services.AddSignalR();
 
 
 var app = builder.Build();
@@ -85,6 +87,51 @@ using (var scope = app.Services.CreateScope())
                 FOREIGN KEY ([ParentTaskId]) REFERENCES [BoardTasks] ([Id]) ON DELETE NO ACTION;
             END";
         await context.Database.ExecuteSqlRawAsync(sql);
+
+        var chatTablesSql = @"
+            IF OBJECT_ID(N'[dbo].[ProjectChatGroups]', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[ProjectChatGroups](
+                    [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [ProjectId] INT NOT NULL,
+                    [Name] NVARCHAR(150) NOT NULL,
+                    [CreatedByUserId] NVARCHAR(450) NOT NULL,
+                    [CreatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+                    [UpdatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+                    [IsArchived] BIT NOT NULL DEFAULT 0,
+                    CONSTRAINT [FK_ProjectChatGroups_Projects_ProjectId] FOREIGN KEY ([ProjectId]) REFERENCES [Projects]([Id]) ON DELETE CASCADE
+                );
+                CREATE INDEX [IX_ProjectChatGroups_ProjectId_Name] ON [dbo].[ProjectChatGroups]([ProjectId], [Name]);
+            END;
+
+            IF OBJECT_ID(N'[dbo].[ProjectChatGroupMembers]', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[ProjectChatGroupMembers](
+                    [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [ProjectChatGroupId] INT NOT NULL,
+                    [UserId] NVARCHAR(450) NOT NULL,
+                    [AddedByUserId] NVARCHAR(450) NULL,
+                    [AddedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+                    CONSTRAINT [FK_ProjectChatGroupMembers_ProjectChatGroups_ProjectChatGroupId] FOREIGN KEY ([ProjectChatGroupId]) REFERENCES [ProjectChatGroups]([Id]) ON DELETE CASCADE
+                );
+                CREATE UNIQUE INDEX [IX_ProjectChatGroupMembers_ProjectChatGroupId_UserId] ON [dbo].[ProjectChatGroupMembers]([ProjectChatGroupId], [UserId]);
+            END;
+
+            IF OBJECT_ID(N'[dbo].[ProjectChatMessages]', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[ProjectChatMessages](
+                    [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [ProjectChatGroupId] INT NOT NULL,
+                    [UserId] NVARCHAR(450) NOT NULL,
+                    [UserName] NVARCHAR(200) NOT NULL,
+                    [Message] NVARCHAR(4000) NOT NULL,
+                    [CreatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+                    [IsDeleted] BIT NOT NULL DEFAULT 0,
+                    CONSTRAINT [FK_ProjectChatMessages_ProjectChatGroups_ProjectChatGroupId] FOREIGN KEY ([ProjectChatGroupId]) REFERENCES [ProjectChatGroups]([Id]) ON DELETE CASCADE
+                );
+                CREATE INDEX [IX_ProjectChatMessages_ProjectChatGroupId_CreatedAt] ON [dbo].[ProjectChatMessages]([ProjectChatGroupId], [CreatedAt]);
+            END;";
+        await context.Database.ExecuteSqlRawAsync(chatTablesSql);
     }
     catch (Exception ex)
     {
@@ -123,6 +170,7 @@ app.UseEndpoints(endpoints =>
     endpoints.MapControllerRoute(
         name: "default",
         pattern: "{controller=Projects}/{action=Index}/{id?}");
+    endpoints.MapHub<ProjectChatHub>("/chathub");
 });
 
 app.Run();

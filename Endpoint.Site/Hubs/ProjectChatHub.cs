@@ -1,29 +1,47 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using TaskPlanner.Persistence.Contexts;
 
 namespace Endpoint.Site.Hubs
 {
+    [Microsoft.AspNetCore.Authorization.Authorize]
     public class ProjectChatHub : Hub
     {
+        private readonly MVPTestDatabaseContext _context;
 
-        public async Task SendNewMessage(string Sender, string Message)
+        public ProjectChatHub(MVPTestDatabaseContext context)
         {
-            await Clients.All.SendAsync("getNewMessage", Sender, Message, DateTime.Now.ToShortDateString());
+            _context = context;
         }
 
-
-        public override Task OnConnectedAsync()
+        public async Task JoinProjectGroup(int groupId)
         {
-            var s = Context.ConnectionId;
-            return base.OnConnectedAsync();
+            var userId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return;
+            }
+
+            var isMember = await _context.ProjectChatGroupMembers
+                .AnyAsync(m => m.ProjectChatGroupId == groupId && m.UserId == userId);
+
+            if (!isMember)
+            {
+                return;
+            }
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, GetSignalRGroupName(groupId));
         }
 
-        public override Task OnDisconnectedAsync(Exception exception)
+        public async Task LeaveProjectGroup(int groupId)
         {
-            return base.OnDisconnectedAsync(exception);
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, GetSignalRGroupName(groupId));
+        }
+
+        public static string GetSignalRGroupName(int groupId)
+        {
+            return $"project-chat-group-{groupId}";
         }
     }
 }
