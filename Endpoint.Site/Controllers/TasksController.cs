@@ -4,7 +4,6 @@ using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskPlanner.Persistence.Contexts;
-using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using TaskPlanner.Domain.Entities.Users;
@@ -1715,8 +1714,6 @@ namespace Endpoint.Site.Controllers
                 return Json(new { success = false, message = "شما به این کار دسترسی ندارید" });
             }
 
-            var pc = new System.Globalization.PersianCalendar();
-            string ToJalali(DateTime d) => $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
 
             // دریافت IssueTypes
             var projectIssueTypes = await _context.ProjectIssueTypes
@@ -1781,7 +1778,6 @@ namespace Endpoint.Site.Controllers
                     name = $"{currentUser.FullName ?? currentUser.UserName} ({currentUser.Phone})"
                 });
             }
-            Console.WriteLine($" startdate>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  ={ToJalali(task.StartDate)}");
             return Json(new
             {
                 success = true,
@@ -1791,10 +1787,10 @@ namespace Endpoint.Site.Controllers
                 issueType = (int)task.IssueType,
                 projectIssueTypeId = task.ProjectIssueTypeId,
                 projectId = task.ProjectId,
-                startDateSh = ToJalali(task.StartDate),
-                dueDateSh = task.DueDate!=null ? ToJalali(task.DueDate.Value) : ToJalali(DateTime.Now),
+                startDateSh = task.StartDate.ToShortPersianDateString(),
+                dueDateSh = task.DueDate != null ? task.DueDate.Value.ToShortPersianDateString() : string.Empty,
                 startDate = task.StartDate,
-                dueDate = task.DueDate != null ? task.DueDate.Value : DateTime.Now,
+                dueDate = task.DueDate,
                 categoryId = task.CategoryId,
                 assignedUserId = task.AssignedUserId,
                 storyPoints = task.StoryPoints,
@@ -1842,8 +1838,6 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction(nameof(Index), new { projectId = task.ProjectId });
             }
 
-            var pc = new System.Globalization.PersianCalendar();
-            string ToJalali(DateTime d) => $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
 
             var vm = new TaskEditVm
             {
@@ -1853,8 +1847,8 @@ namespace Endpoint.Site.Controllers
                 CategoryId = task.CategoryId,
                 ParentId = task.ParentTaskId,
                 ProjectId = task.ProjectId,
-                StartDateSh = ToJalali(task.StartDate),
-                DueDateSh = task.DueDate.HasValue ? ToJalali(task.DueDate.Value) : null,
+                StartDateSh = task.StartDate.ToShortPersianDateString(),
+                DueDateSh = task.DueDate.HasValue ? task.DueDate.Value.ToShortPersianDateString() : null,
                 AssignedUserId = task.AssignedUserId,
                 IssueType = task.IssueType,
                 ProjectIssueTypeId = task.ProjectIssueTypeId
@@ -2305,10 +2299,32 @@ namespace Endpoint.Site.Controllers
             // task.ProjectIssueTypeId = selectedProjectIssueType?.Id; // ❌ حذف شد - نوع کار قابل تغییر نیست
             // 🔒 ProjectId تغییر نمی‌کند - همیشه همان پروژه اصلی تسک باقی می‌ماند
             // task.ProjectId = vm.ProjectId; // ❌ حذف شد - پروژه قابل تغییر نیست
-            task.StartDate = vm.StartDateSh.ToGregorianDateTime()!.Value;
-            task.DueDate = string.IsNullOrWhiteSpace(vm.DueDateSh)
-                ? null
+            var parsedStartDate = vm.StartDateSh.ToGregorianDateTime();
+            if (!parsedStartDate.HasValue)
+            {
+                if (isJsonRequest)
+                {
+                    return Json(new { success = false, message = "تاریخ شروع نامعتبر است." });
+                }
+                ModelState.AddModelError(nameof(vm.StartDateSh), "تاریخ شروع نامعتبر است.");
+                return View(vm);
+            }
+
+            var parsedDueDate = string.IsNullOrWhiteSpace(vm.DueDateSh)
+                ? (DateTime?)null
                 : vm.DueDateSh.ToGregorianDateTime();
+            if (!string.IsNullOrWhiteSpace(vm.DueDateSh) && !parsedDueDate.HasValue)
+            {
+                if (isJsonRequest)
+                {
+                    return Json(new { success = false, message = "تاریخ پایان نامعتبر است." });
+                }
+                ModelState.AddModelError(nameof(vm.DueDateSh), "تاریخ پایان نامعتبر است.");
+                return View(vm);
+            }
+
+            task.StartDate = parsedStartDate.Value;
+            task.DueDate = parsedDueDate;
 
             // 👇 مسئول تسک
             // برای Subtask، AssignedUserId را از parent task بگیر (نه از vm)
