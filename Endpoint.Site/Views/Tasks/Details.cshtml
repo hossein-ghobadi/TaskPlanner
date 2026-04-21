@@ -867,6 +867,7 @@
                 audioElement.src = audioUrl;
                 audioElement.className = 'w-100';
                 audioElement.style.borderRadius = '12px';
+                clearAudioPreview();
                 preview.innerHTML = '';
                 preview.appendChild(audioElement);
 
@@ -933,9 +934,35 @@
         showSelectedFiles();
     }
 
+    function isAudioFile(file) {
+        if (!file) {
+            return false;
+        }
+
+        const hasAudioMimeType = typeof file.type === 'string' && file.type.startsWith('audio/');
+        const hasAudioExtension = typeof file.name === 'string' && /\.(webm|ogg|mp3|wav|m4a|aac)$/i.test(file.name);
+        return hasAudioMimeType || hasAudioExtension;
+    }
+
+    function clearAudioPreview() {
+        const previews = document.querySelectorAll('[id="audioPreview"]');
+        previews.forEach(preview => {
+            preview.querySelectorAll('audio').forEach(audio => {
+                try {
+                    audio.pause();
+                    audio.currentTime = 0;
+                } catch (_) {
+                    // ignore
+                }
+            });
+            preview.innerHTML = '';
+        });
+    }
+
     function removeFileFromInput(index) {
         const fileInput = document.getElementById('fileInput');
         const selectedFilesDiv = document.getElementById('selectedFiles');
+        const removedFile = fileInput.files[index];
         
         // ابتدا selectedFiles را پاک می‌کنیم
         if (selectedFilesDiv) {
@@ -951,6 +978,11 @@
         }
 
         fileInput.files = dataTransfer.files;
+
+        const hasAnyAudioFile = Array.from(fileInput.files).some(file => isAudioFile(file));
+        if ((removedFile && isAudioFile(removedFile)) || !hasAnyAudioFile) {
+            clearAudioPreview();
+        }
         
         // ابتدا تصاویر را نمایش می‌دهیم، سپس فایل‌های غیر تصویری
         refreshClipboardPreviews();
@@ -991,6 +1023,10 @@
         // ابتدا تصاویر را نمایش می‌دهیم، سپس فایل‌های غیر تصویری
         refreshClipboardPreviews();
         showSelectedFiles();
+
+        if (!Array.from(document.getElementById('fileInput').files).some(file => isAudioFile(file))) {
+            clearAudioPreview();
+        }
     }
 
     // چسباندن تصویر از کلیپ‌بورد
@@ -1078,7 +1114,7 @@
                 messageInput.style.height = 'auto';
                 fileInput.value = '';
                 document.getElementById('selectedFiles').innerHTML = '';
-                document.getElementById('audioPreview').innerHTML = '';
+                clearAudioPreview();
                 refreshClipboardPreviews();
                 
                 const count = parseInt(document.getElementById('commentCount').textContent);
