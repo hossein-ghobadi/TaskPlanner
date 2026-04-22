@@ -1,7 +1,9 @@
 ﻿@model Endpoint.Site.Models.TaskEditVm
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @{
-    Layout = "/Views/Shared/_Layout.cshtml";
+    var isModal = (Context.Request.Query.ContainsKey("fromModal") && Context.Request.Query["fromModal"] == "true")
+                  || (Context.Request.HasFormContentType && Context.Request.Form.ContainsKey("fromModal") && Context.Request.Form["fromModal"] == "true");
+    Layout = isModal ? null : "/Views/Shared/_Layout.cshtml";
     var projectIssueTypes = ViewBag.ProjectIssueTypes as List<ProjectIssueType> ?? new List<ProjectIssueType>();
     
     // دریافت همه انواع به جز Subtask (کارک) - مرتب بر اساس Order
@@ -12,11 +14,36 @@
         .ToList();
 }
 
+@if (isModal)
+{
+    <link rel="stylesheet" href="~/lib/vazir-font/dist/font-face.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="~/lib/persian-datepicker/dist/css/persian-datepicker.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/persian-date/dist/persian-date.min.js"></script>
+    <script src="~/lib/persian-datepicker/dist/js/persian-datepicker.min.js"></script>
+}
+
 <style>
+    .modal-mode-root {
+        direction: rtl;
+        font-family: var(--primary-font-family, 'Vazir', 'Tahoma', 'Arial', sans-serif);
+    }
     .task-form-container {
         max-width: 900px;
         margin: 0 auto;
         padding: 2rem 0;
+    }
+    .task-form-container.modal-mode {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    .task-form-container.modal-mode .form-header {
+        display: none;
     }
     
     .form-header {
@@ -184,7 +211,8 @@
     }
 </style>
 
-<div class="task-form-container">
+<div class="modal-mode-root">
+<div class="task-form-container @(isModal ? "modal-mode" : "")">
     <div class="form-header">
         <h2>
             <span class="icon">✏️</span>
@@ -197,7 +225,7 @@
         <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
         <input type="hidden" asp-for="IssueType" id="issueTypeHidden" />
         @Html.HiddenFor(m => m.ProjectId)
-        @if (Context.Request.Query.ContainsKey("fromModal") && Context.Request.Query["fromModal"] == "true")
+        @if (isModal)
         {
             <input type="hidden" name="fromModal" value="true" />
         }
@@ -332,14 +360,112 @@
                 <i class="bi bi-check-circle"></i>
                 ذخیره تغییرات
         </button>
-            <a asp-action="Index" asp-route-projectId="@Model.ProjectId" class="btn btn-modern btn-modern-secondary">
-                <i class="bi bi-x-circle"></i>
-                انصراف
-        </a>
+            @if (isModal)
+            {
+                <button type="button" class="btn btn-modern btn-modern-secondary" onclick="closeEditTaskModal()">
+                    <i class="bi bi-x-circle"></i>
+                    انصراف
+                </button>
+            }
+            else
+            {
+                <a asp-action="Index" asp-route-projectId="@Model.ProjectId" class="btn btn-modern btn-modern-secondary">
+                    <i class="bi bi-x-circle"></i>
+                    انصراف
+                </a>
+            }
     </div>
 </form>
 </div>
+</div>
 
+@if (isModal)
+{
+    <script>
+        (function () {
+            // 👇 مقدار اولیه hidden را ثابت نگه دار
+            $("#StartDate").val("@Model.StartDateSh");
+            $("#DueDate").val("@Model.DueDateSh");
+
+            // ✅ تاریخ شروع
+            $("#StartDateDisplay").persianDatepicker({
+                format: 'YYYY/MM/DD',
+                autoClose: true,
+                initialValueType: "persian",
+                initialValue: true,
+                altField: '#StartDate',
+                altFormat: 'YYYY/MM/DD', // 👈 مهم برای جلوگیری از +1 روز
+                timePicker: { enabled: false },
+                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+            });
+
+            // ✅ تاریخ پایان
+            $("#DueDateDisplay").persianDatepicker({
+                format: 'YYYY/MM/DD',
+                autoClose: true,
+                initialValueType: "persian",
+                initialValue: true,
+                altField: '#DueDate',
+                altFormat: 'YYYY/MM/DD',
+                timePicker: { enabled: false },
+                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+            });
+
+            // بعد از مقداردهی، دوباره hidden ها را با مقدار نمایشگر همسان‌سازی کن
+            $("#StartDate").val($("#StartDateDisplay").val() || "");
+            $("#DueDate").val($("#DueDateDisplay").val() || "");
+
+            // 🎯 مدیریت IssueType و ProjectIssueType
+            const projectIssueTypeInput = document.getElementById('projectIssueTypeId');
+            
+            // مدیریت تغییر نوع کار و تنظیم ProjectIssueTypeId
+            const selectElement = document.getElementById('issueTypeSelect');
+            if (selectElement) {
+                selectElement.addEventListener('change', function () {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
+                    
+                    if (projectIssueTypeId && projectIssueTypeInput) {
+                        projectIssueTypeInput.value = projectIssueTypeId;
+                    } else if (projectIssueTypeInput) {
+                        projectIssueTypeInput.value = '';
+                    }
+                });
+                
+                // تنظیم مقدار اولیه
+                const selectedOption = selectElement.options[selectElement.selectedIndex];
+                if (selectedOption) {
+                    const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
+                    if (projectIssueTypeId && projectIssueTypeInput) {
+                        projectIssueTypeInput.value = projectIssueTypeId;
+                    }
+                }
+            }
+        })();
+
+        function closeEditTaskModal() {
+            if (window.self !== window.top) {
+                window.parent.postMessage('taskEditCancel', '*');
+            } else {
+                window.history.back();
+            }
+        }
+
+        @if (Context.Request.Query.ContainsKey("saved") && Context.Request.Query["saved"] == "true")
+        {
+            <text>
+            (function notifyEditSuccess() {
+                const editedTaskId = '@(Context.Request.Query.ContainsKey("id") ? Context.Request.Query["id"].ToString() : "")';
+                if (window.self !== window.top) {
+                    window.parent.postMessage({ type: 'taskEditSuccess', taskId: editedTaskId }, '*');
+                }
+            })();
+            </text>
+        }
+    </script>
+}
+@if (!isModal)
+{
 @section Scripts {
     <script>
         // اطمینان از مقداردهی درست ورودی‌ها و مقدارهای پنهان بعد از لود کامل DOM
@@ -403,44 +529,6 @@
                 }
             }
         });
-
-        // ارسال پیام به parent window بعد از ذخیره موفق (اگر در iframe هستیم)
-        @{
-            var fromModal = Context.Request.Query.ContainsKey("fromModal") && Context.Request.Query["fromModal"] == "true";
-            var saved = Context.Request.Query.ContainsKey("saved") && Context.Request.Query["saved"] == "true";
-        }
-        @if (fromModal && saved)
-        {
-            <text>
-            // بررسی اینکه آیا در iframe هستیم
-            (function() {
-                if (window.self !== window.top) {
-                    // در iframe هستیم - ارسال پیام به parent
-                    function sendSuccessMessage() {
-                        try {
-                            window.parent.postMessage('taskEditSuccess', '*');
-                        } catch (e) {
-                            console.error('Error sending message to parent:', e);
-                        }
-                    }
-                    
-                    // ارسال فوری
-                    sendSuccessMessage();
-                    
-                    // ارسال بعد از لود کامل DOM
-                    if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', sendSuccessMessage);
-                    } else {
-                        // DOM قبلاً لود شده
-                        setTimeout(sendSuccessMessage, 100);
-                    }
-                    
-                    // ارسال مجدد با تاخیر بیشتر برای اطمینان
-                    setTimeout(sendSuccessMessage, 300);
-                    setTimeout(sendSuccessMessage, 500);
-                }
-            })();
-            </text>
-        }
     </script>
+}
 }

@@ -1582,13 +1582,24 @@ namespace Endpoint.Site.Controllers
 
             if (fromModal)
             {
-                return RedirectToAction(nameof(Create), new
-                {
-                    projectId = vm.ProjectId,
-                    fromModal = true,
-                    saved = true,
-                    taskId = newTask.Id
-                });
+                var successHtml = $@"<!doctype html>
+<html lang=""fa"" dir=""rtl"">
+<head>
+    <meta charset=""utf-8"" />
+    <title>Task Created</title>
+</head>
+<body>
+    <script>
+        (function () {{
+            if (window.self !== window.top) {{
+                window.parent.postMessage({{ type: 'taskCreateSuccess', taskId: '{newTask.Id}' }}, '*');
+            }}
+        }})();
+    </script>
+</body>
+</html>";
+
+                return Content(successHtml, "text/html; charset=utf-8");
             }
 
             return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId });

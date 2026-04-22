@@ -162,9 +162,9 @@
                         @if (!Model.IsCompleted)
                         {
                             <li>
-                                <a class="dropdown-item" asp-controller="Tasks" asp-action="Edit" asp-route-id="@Model.Id">
+                                <button type="button" class="dropdown-item" onclick="openEditTaskModal(@Model.Id)">
                                     <i class="bi bi-pencil-square me-2"></i> ویرایش
-                                </a>
+                                </button>
                             </li>
                         }
                         <li>
