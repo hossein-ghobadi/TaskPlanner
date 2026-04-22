@@ -1,7 +1,9 @@
 ﻿@model Endpoint.Site.Models.TaskCreateVm
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @{
-    Layout = "/Views/Shared/_Layout.cshtml";
+    var isModal = (Context.Request.Query.ContainsKey("fromModal") && Context.Request.Query["fromModal"] == "true")
+                  || (Context.Request.HasFormContentType && Context.Request.Form.ContainsKey("fromModal") && Context.Request.Form["fromModal"] == "true");
+    Layout = isModal ? null : "/Views/Shared/_Layout.cshtml";
     var projectIssueTypes = ViewBag.ProjectIssueTypes as List<ProjectIssueType> ?? new List<ProjectIssueType>();
     
     // دریافت همه انواع به جز Subtask (کارک) - مرتب بر اساس Order
@@ -12,11 +14,41 @@
         .ToList();
 }
 
+@if (isModal)
+{
+    <link rel="stylesheet" href="~/lib/vazir-font/dist/font-face.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="~/lib/persian-datepicker/dist/css/persian-datepicker.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/persian-date/dist/persian-date.min.js"></script>
+    <script src="~/lib/persian-datepicker/dist/js/persian-datepicker.min.js"></script>
+}
+
 <style>
+    .modal-mode-root {
+        direction: rtl;
+        font-family: var(--primary-font-family, 'Vazir', 'Tahoma', 'Arial', sans-serif);
+    }
     .task-form-container {
         max-width: 900px;
         margin: 0 auto;
         padding: 2rem 0;
+    }
+    .task-form-container.modal-mode {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    .task-form-container.modal-mode .form-header {
+        display: none;
+    }
+    .task-create-modal-shell {
+        min-height: auto;
+        background: transparent;
+        padding: 0;
     }
     
     .form-header {
@@ -184,7 +216,8 @@
     }
 </style>
 
-<div class="task-form-container">
+<div class="modal-mode-root @(isModal ? "task-create-modal-shell" : "")">
+<div class="task-form-container @(isModal ? "modal-mode" : "")">
     <div class="form-header">
         <h2>
             <span class="icon">🎯</span>
@@ -198,6 +231,10 @@
             <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
         }
 
+        @if (isModal)
+        {
+            <input type="hidden" name="fromModal" value="true" />
+        }
         <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
         <input type="hidden" asp-for="ProjectId" id="projectSelect" />
 
@@ -333,14 +370,140 @@
                 <i class="bi bi-check-circle"></i>
                 ثبت کار
             </button>
-            <a asp-action="Index" asp-route-projectId="@Model.ProjectId" class="btn btn-modern btn-modern-secondary">
-                <i class="bi bi-x-circle"></i>
-                انصراف
-            </a>
+            @if (isModal)
+            {
+                <button type="button" class="btn btn-modern btn-modern-secondary" onclick="closeCreateTaskModal()">
+                    <i class="bi bi-x-circle"></i>
+                    انصراف
+                </button>
+            }
+            else
+            {
+                <a asp-action="Index" asp-route-projectId="@Model.ProjectId" class="btn btn-modern btn-modern-secondary">
+                    <i class="bi bi-x-circle"></i>
+                    انصراف
+                </a>
+            }
         </div>
     </form>
 </div>
+</div>
 
+@if (isModal)
+{
+    <script>
+        (function () {
+            $("#StartDateDisplay").persianDatepicker({
+                format: 'YYYY/MM/DD',
+                autoClose: true,
+                altField: '#StartDate',
+                altFormat: 'YYYY/MM/DD',
+                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } },
+                timePicker: { enabled: false }
+            });
+
+            $("#DueDateDisplay").persianDatepicker({
+                format: 'YYYY/MM/DD',
+                autoClose: true,
+                altField: '#DueDate',
+                altFormat: 'YYYY/MM/DD',
+                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } },
+                timePicker: { enabled: false }
+            });
+
+            const IssueTypeLevels = { Epic: 1, StoryLevel: 2, Subtask: 3 };
+            const projectIssueTypeInput = document.getElementById('projectIssueTypeId');
+            const selectElement = document.getElementById('issueTypeSelect');
+
+            if (selectElement) {
+                selectElement.addEventListener('change', function () {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
+                    if (projectIssueTypeId && projectIssueTypeInput) {
+                        projectIssueTypeInput.value = projectIssueTypeId;
+                    } else if (projectIssueTypeInput) {
+                        projectIssueTypeInput.value = '';
+                    }
+                });
+
+                const selectedOption = selectElement.options[selectElement.selectedIndex];
+                if (selectedOption) {
+                    const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
+                    if (projectIssueTypeId && projectIssueTypeInput) {
+                        projectIssueTypeInput.value = projectIssueTypeId;
+                    }
+                }
+            }
+
+            function updateFieldsBasedOnIssueType() {
+                const select = document.getElementById('issueTypeSelect');
+                if (!select) return;
+                const selectedOption = select.options[select.selectedIndex];
+                const level = parseInt(selectedOption.getAttribute('data-level') || '0');
+
+                if (level === IssueTypeLevels.StoryLevel) {
+                    $('#storyPointsDiv').show();
+                } else {
+                    $('#storyPointsDiv').hide();
+                    $('#StoryPoints').val('');
+                }
+            }
+
+            updateFieldsBasedOnIssueType();
+            $('#issueTypeSelect').on('change', updateFieldsBasedOnIssueType);
+
+            let isSubmittingForm = false;
+            const form = document.querySelector('form');
+            const submitButton = form?.querySelector('button[type="submit"]');
+            const originalButtonContent = submitButton ? submitButton.innerHTML : '';
+
+            form?.addEventListener('submit', function (event) {
+                if (isSubmittingForm) {
+                    event.preventDefault();
+                    return false;
+                }
+                isSubmittingForm = true;
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>در حال ثبت...';
+                }
+            });
+
+            window.addEventListener('pageshow', function (event) {
+                if (event.persisted || (submitButton && submitButton.disabled)) {
+                    isSubmittingForm = false;
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = originalButtonContent;
+                    }
+                }
+            });
+        })();
+
+        function closeCreateTaskModal() {
+            if (window.self !== window.top) {
+                window.parent.postMessage('taskCreateCancel', '*');
+            } else {
+                window.history.back();
+            }
+        }
+
+        @if (Context.Request.Query.ContainsKey("saved") && Context.Request.Query["saved"] == "true")
+        {
+            <text>
+            (function notifyCreateSuccess() {
+                const createdTaskId = '@(Context.Request.Query.ContainsKey("taskId") ? Context.Request.Query["taskId"].ToString() : "")';
+                if (window.self !== window.top) {
+                    window.parent.postMessage({ type: 'taskCreateSuccess', taskId: createdTaskId }, '*');
+                }
+            })();
+            </text>
+        }
+    </script>
+}
+
+@if (!isModal)
+{
 @section Scripts {
     <script>
         // تاریخ شروع
@@ -458,5 +621,26 @@
                 }
             });
         });
+
+        function closeCreateTaskModal() {
+            if (window.self !== window.top) {
+                window.parent.postMessage('taskCreateCancel', '*');
+            } else {
+                window.history.back();
+            }
+        }
+
+        @if (isModal && Context.Request.Query.ContainsKey("saved") && Context.Request.Query["saved"] == "true")
+        {
+            <text>
+            (function notifyCreateSuccess() {
+                const createdTaskId = '@(Context.Request.Query.ContainsKey("taskId") ? Context.Request.Query["taskId"].ToString() : "")';
+                if (window.self !== window.top) {
+                    window.parent.postMessage({ type: 'taskCreateSuccess', taskId: createdTaskId }, '*');
+                }
+            })();
+            </text>
+        }
     </script>
+}
 }

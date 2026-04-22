@@ -2375,8 +2375,6 @@
                                         <option value="">-- انتخاب کاربر --</option>
                                     </select>
 
-                                    <label for="editTaskStoryPoints" class="form-label">امتیاز داستان</label>
-                                    <input type="number" class="form-control" id="editTaskStoryPoints" min="0" placeholder="مثلاً 5">
                                 </div>
 
                                 
@@ -3777,7 +3775,6 @@
                 dueDateHiddenEl.setAttribute('value', dueDateValue);
                 document.getElementById('editTaskCategory').value = taskData.categoryId || '';
                 document.getElementById('editTaskAssignedUser').value = taskData.assignedUserId || '';
-                document.getElementById('editTaskStoryPoints').value = taskData.storyPoints || '';
                 console.log("مقدار altField (#editTaskStartDate):", document.getElementById('editTaskStartDate').value);
                 console.log("مقدار altField (#editTaskStartDate):",  taskData.startDateSh);
                 clearReplyContext();
@@ -3953,7 +3950,8 @@
                 DueDateSh: document.getElementById('editTaskDueDate').value || '',
                 CategoryId: document.getElementById('editTaskCategory').value ? parseInt(document.getElementById('editTaskCategory').value) : null,
                 AssignedUserId: assignedUserId,
-                StoryPoints: document.getElementById('editTaskStoryPoints').value ? parseInt(document.getElementById('editTaskStoryPoints').value) : null
+                // این فیلد در مودال نمایش داده نمی‌شود، مقدار قبلی را حفظ می‌کنیم
+                StoryPoints: originalTaskData?.storyPoints ?? null
             };
             
             // نمایش loading

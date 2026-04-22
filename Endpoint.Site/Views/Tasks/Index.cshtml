@@ -231,10 +231,10 @@
             }
             @if (projectIdInt.HasValue)
             {
-                <a class="btn btn-minimal btn-primary" href="/Tasks/Create?projectId=@projectIdInt">
+                <button type="button" class="btn btn-minimal btn-primary" onclick="openCreateTaskModal(@projectIdInt)">
                     <i class="bi bi-plus-circle me-1"></i>
                     افزودن کار
-                </a>
+                </button>
                
                 <a class="btn btn-minimal" asp-controller="Projects" asp-action="Details" asp-route-id="@projectIdInt">
                     <i class="bi bi-arrow-right me-1"></i>
@@ -342,10 +342,10 @@
             @if (projectIdInt.HasValue)
             {
                 <p class="text-muted">برای شروع، یک کار جدید اضافه کنید</p>
-                <a class="btn btn-minimal btn-primary mt-2" href="/Tasks/Create?projectId=@projectIdInt">
+                <button type="button" class="btn btn-minimal btn-primary mt-2" onclick="openCreateTaskModal(@projectIdInt)">
                     <i class="bi bi-plus-circle me-1"></i>
                     افزودن کار
-                </a>
+                </button>
             }
         </div>
     }
@@ -394,8 +394,48 @@
         </div>
     </div>
 </div>
+
+<!-- Modal افزودن کار -->
+<div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="min-height: 80vh;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createTaskModalLabel">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    افزودن کار جدید
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="createTaskFrame"
+                        title="Create Task"
+                        style="width: 100%; height: calc(80vh - 56px); border: 0;"
+                        loading="lazy"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
 @section Scripts {
     <script>
+        let createTaskModalInstance = null;
+
+        function openCreateTaskModal(projectId) {
+            if (!projectId) {
+                showToast('شناسه پروژه معتبر نیست', true);
+                return;
+            }
+
+            const iframe = document.getElementById('createTaskFrame');
+            const modalElement = document.getElementById('createTaskModal');
+            if (!iframe || !modalElement) {
+                return;
+            }
+
+            iframe.src = `/Tasks/Create?projectId=${projectId}&fromModal=true&_=${Date.now()}`;
+            createTaskModalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+            createTaskModalInstance.show();
+        }
+
         let selectedParentId = null;
         const completingTasks = new Set();
         const filterState = {
@@ -406,6 +446,31 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => {
+            const modalElement = document.getElementById('createTaskModal');
+            const iframe = document.getElementById('createTaskFrame');
+            if (modalElement) {
+                modalElement.addEventListener('hidden.bs.modal', () => {
+                    if (iframe) {
+                        iframe.src = 'about:blank';
+                    }
+                });
+            }
+
+            window.addEventListener('message', (event) => {
+                if (!event || !event.data) return;
+
+                if (event.data === 'taskCreateCancel') {
+                    createTaskModalInstance?.hide();
+                    return;
+                }
+
+                if (typeof event.data === 'object' && event.data.type === 'taskCreateSuccess') {
+                    createTaskModalInstance?.hide();
+                    showToast('کار با موفقیت ثبت شد ✅');
+                    setTimeout(() => window.location.reload(), 300);
+                }
+            });
+
             const searchInput = document.getElementById('taskSearch');
             const issueTypeFilter = document.getElementById('issueTypeFilter');
             const assigneeFilter = document.getElementById('assigneeFilter');

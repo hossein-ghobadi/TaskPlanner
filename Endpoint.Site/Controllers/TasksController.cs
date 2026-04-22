@@ -1257,6 +1257,9 @@ namespace Endpoint.Site.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(TaskCreateVm vm)
         {
+            var fromModal = Request.Form.ContainsKey("fromModal") && Request.Form["fromModal"] == "true" ||
+                            Request.Query.ContainsKey("fromModal") && Request.Query["fromModal"] == "true";
+
             if (!ModelState.IsValid)
             {
                 await FillListsForCreate(vm.ProjectId);
@@ -1576,6 +1579,18 @@ namespace Endpoint.Site.Controllers
             }
 
             await _notificationService.TrySendDueSoonNotificationAsync(newTask, projectForIssueKey?.Name);
+
+            if (fromModal)
+            {
+                return RedirectToAction(nameof(Create), new
+                {
+                    projectId = vm.ProjectId,
+                    fromModal = true,
+                    saved = true,
+                    taskId = newTask.Id
+                });
+            }
+
             return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId });
         }
 
