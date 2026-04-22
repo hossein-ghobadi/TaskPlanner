@@ -1121,20 +1121,21 @@
         font-weight: 500;
     }
 
-    /* بخش چت */
+    /* بخش پیوست */
     .chat-container {
-        background: white;
-        border-radius: 20px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        background: #fff;
+        border-radius: 16px;
+        border: 1px solid #dbe7ff;
+        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        height: 700px;
+        height: 640px;
     }
 
     .chat-header {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        padding: 20px 25px;
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        padding: 16px 20px;
         color: white;
         display: flex;
         justify-content: space-between;
@@ -1143,31 +1144,39 @@
 
         .chat-header h5 {
             margin: 0;
-            font-size: 1.2rem;
+            font-size: 1.05rem;
             font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
     .chat-count-badge {
-        background: rgba(255, 255, 255, 0.25);
-        padding: 5px 12px;
+        background: rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        padding: 4px 10px;
         border-radius: 20px;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         font-weight: 600;
     }
 
     .chat-messages {
         flex: 1;
         overflow-y: auto;
-        padding: 20px;
-        background: #f9fafb;
+        padding: 16px;
+        background: #f8fbff;
     }
 
     .chat-message {
         margin-bottom: 20px;
         animation: fadeInUp 0.3s ease;
+        scroll-margin-top: 110px;
+    }
+    .chat-message.target-highlight {
+        outline: 2px solid #60a5fa;
+        border-radius: 10px;
+        background: rgba(96, 165, 250, 0.12);
+        transition: all 0.35s ease;
     }
 
     @@keyframes fadeInUp {
@@ -1213,31 +1222,100 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
-    .message-user {
-        font-weight: 600;
-        font-size: 0.85rem;
-        margin-bottom: 5px;
-        color: #3b82f6;
+    .message-card {
+        width: min(100%, 460px);
+        border-radius: 14px;
+        border: 1px solid #dbe6ff;
+        background: #ffffff;
+        box-shadow: 0 2px 8px rgba(2, 6, 23, 0.06);
+        padding: 10px 12px;
     }
-
-    .message-text {
-        font-size: 0.95rem;
-        line-height: 1.5;
+    .chat-message.own .message-card {
+        border-color: #bfdbfe;
+        background: #f8fbff;
     }
-
-    .message-time {
-        font-size: 0.75rem;
-        opacity: 0.7;
-        margin-top: 5px;
+    .message-header {
         display: flex;
         align-items: center;
-        gap: 5px;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 6px;
     }
-
+    .message-user {
+        font-weight: 700;
+        font-size: 0.82rem;
+        color: #1d4ed8;
+    }
+    .message-time {
+        font-size: 0.74rem;
+        color: #64748b;
+        white-space: nowrap;
+    }
+    .message-text {
+        font-size: 0.92rem;
+        line-height: 1.65;
+        color: #0f172a;
+        white-space: pre-wrap;
+    }
+    .reply-reference {
+        width: 100%;
+        margin: 0 0 8px;
+        padding: 7px 10px;
+        border-radius: 10px;
+        border: 1px dashed #bfdbfe;
+        background: #eff6ff;
+        font-size: 0.8rem;
+        color: #1e3a8a;
+    }
+    .reply-reference.clickable {
+        cursor: pointer;
+        text-align: right;
+    }
+    .reply-reference.clickable:hover {
+        background: #dbeafe;
+    }
+    .reply-reference-preview {
+        margin-top: 2px;
+        padding-top: 4px;
+        border-top: 1px solid rgba(37, 99, 235, 0.2);
+        color: #334155;
+        font-size: 0.78rem;
+        line-height: 1.5;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .attachment-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 8px;
+    }
+    .attachment-item {
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 7px 9px;
+    }
+    .attachment-actions,
+    .message-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 6px;
+    }
     .message-actions {
         margin-top: 8px;
-        display: flex;
-        gap: 10px;
+    }
+    .reply-inline-link {
+        color: #2563eb;
+        text-decoration: none;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    .reply-inline-link:hover {
+        color: #1d4ed8;
+        text-decoration: underline;
     }
 
         .message-actions a {
@@ -1253,9 +1331,42 @@
             }
 
     .chat-input-area {
-        padding: 20px;
-        background: white;
-        border-top: 1px solid #e5e7eb;
+        padding: 14px 16px;
+        background: #fff;
+        border-top: 1px solid #e6eefc;
+    }
+    .reply-context {
+        display: none;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 10px;
+        padding: 8px 10px;
+        margin-bottom: 10px;
+    }
+    .reply-context.active {
+        display: flex;
+    }
+    .reply-context-meta {
+        font-size: 0.82rem;
+        color: #1e3a8a;
+        line-height: 1.5;
+        flex: 1;
+    }
+    .reply-context-meta strong {
+        display: block;
+        font-weight: 700;
+    }
+    .reply-context-close {
+        border: none;
+        background: transparent;
+        color: #1e40af;
+        font-size: 0.95rem;
+        cursor: pointer;
+        padding: 0 2px;
+        line-height: 1;
     }
 
     .chat-input-wrapper {
@@ -1266,13 +1377,13 @@
 
     .chat-input {
         flex: 1;
-        border: 2px solid #e5e7eb;
-        border-radius: 25px;
-        padding: 12px 20px;
-        font-size: 0.95rem;
+        border: 1px solid #dbe4f0;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 0.9rem;
         transition: border-color 0.2s;
         resize: none;
-        min-height: 50px;
+        min-height: 44px;
         max-height: 120px;
     }
 
@@ -1319,8 +1430,8 @@
     .chat-send-btn {
         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
         border: none;
-        border-radius: 25px;
-        padding: 12px 24px;
+        border-radius: 12px;
+        padding: 10px 14px;
         color: white;
         font-weight: 600;
         cursor: pointer;
@@ -2175,8 +2286,8 @@
                                 <div class="chat-container mt-3">
                                     <div class="chat-header">
                                         <h5>
-                                            <i class="bi bi-chat-dots"></i>
-                                            گفتگوی گروهی
+                                            <i class="bi bi-paperclip"></i>
+                                            پیوست
                                         </h5>
                                         <span class="chat-count-badge" id="commentCount">0</span>
                                     </div>
@@ -2191,14 +2302,19 @@
 
                                     <div class="chat-input-area">
                                         <form id="chatForm">
+                                            <div id="replyContextBox" class="reply-context">
+                                                <div class="reply-context-meta" id="replyContextMeta"></div>
+                                                <button type="button" class="reply-context-close" onclick="clearReplyContext()" title="لغو پاسخ">✕</button>
+                                            </div>
+                                            <input type="hidden" id="replyToCommentId" value="" />
                                             <div class="chat-input-wrapper">
                                                 <textarea id="messageInput"
                                                           class="chat-input"
-                                                          placeholder="پیام خود را بنویسید..."
+                                                          placeholder="توضیح پیوست را بنویسید..."
                                                           rows="1"></textarea>
                                                 <button type="button" id="sendBtn" class="chat-send-btn">
                                                     <i class="bi bi-send"></i>
-                                                    ارسال
+                                                    افزودن
                                                 </button>
                                             </div>
 
@@ -3643,16 +3759,29 @@
                 document.getElementById('editTaskProjectIssueTypeId').value = taskData.projectIssueTypeId || '';
                 document.getElementById('editTaskTitle').value = taskData.title || '';
                 document.getElementById('editTaskDescription').value = taskData.description || '';
-                document.getElementById('editTaskStartDateDisplay').value = taskData.startDateSh || '';
-                document.getElementById('editTaskStartDate').value = taskData.startDateSh|| '';
-                document.getElementById('editTaskDueDateDisplay').value = taskData.dueDateSh || '';
-                document.getElementById('editTaskDueDate').value = taskData.dueDateSh || '';
+                const startDateDisplayEl = document.getElementById('editTaskStartDateDisplay');
+                const startDateHiddenEl = document.getElementById('editTaskStartDate');
+                const dueDateDisplayEl = document.getElementById('editTaskDueDateDisplay');
+                const dueDateHiddenEl = document.getElementById('editTaskDueDate');
+                const startDateValue = taskData.startDateSh || '';
+                const dueDateValue = taskData.dueDateSh || '';
+
+                startDateDisplayEl.value = startDateValue;
+                startDateDisplayEl.setAttribute('value', startDateValue);
+                startDateHiddenEl.value = startDateValue;
+                startDateHiddenEl.setAttribute('value', startDateValue);
+
+                dueDateDisplayEl.value = dueDateValue;
+                dueDateDisplayEl.setAttribute('value', dueDateValue);
+                dueDateHiddenEl.value = dueDateValue;
+                dueDateHiddenEl.setAttribute('value', dueDateValue);
                 document.getElementById('editTaskCategory').value = taskData.categoryId || '';
                 document.getElementById('editTaskAssignedUser').value = taskData.assignedUserId || '';
                 document.getElementById('editTaskStoryPoints').value = taskData.storyPoints || '';
                 console.log("مقدار altField (#editTaskStartDate):", document.getElementById('editTaskStartDate').value);
                 console.log("مقدار altField (#editTaskStartDate):",  taskData.startDateSh);
-                    loadComments();
+                clearReplyContext();
+                loadComments();
                 // ذخیره مقدار IssueType در hidden input (فیلد نمایش داده نمی‌شود)
                 const issueTypeHidden = document.getElementById('editTaskIssueTypeHidden');
                 if (taskData.issueType) {
@@ -3729,23 +3858,46 @@
                 // تنظیم Persian Datepicker
                 if ($.fn.persianDatepicker) 
                 {
-                    $('#editTaskStartDateDisplay').persianDatepicker({
+                    const $startInput = $('#editTaskStartDateDisplay');
+                    const $dueInput = $('#editTaskDueDateDisplay');
+                    const existingStartPicker = $startInput.data('datepicker');
+                    const existingDuePicker = $dueInput.data('datepicker');
+
+                    if (existingStartPicker && typeof existingStartPicker.destroy === 'function') {
+                        existingStartPicker.destroy();
+                    }
+                    if (existingDuePicker && typeof existingDuePicker.destroy === 'function') {
+                        existingDuePicker.destroy();
+                    }
+
+                    $startInput.val(startDateValue).attr('value', startDateValue);
+                    $dueInput.val(dueDateValue).attr('value', dueDateValue);
+
+                    $startInput.persianDatepicker({
                         format: 'YYYY/MM/DD',
                         autoClose: true,
-                        initialValue: false,
+                        initialValueType: 'persian',
+                        initialValue: !!startDateValue,
                         altField: '#editTaskStartDate',
                         altFormat: 'YYYY/MM/DD',
                         timePicker: { enabled: false },
+                        calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
                     });
-                    $('#editTaskDueDateDisplay').persianDatepicker({
+
+                    $dueInput.persianDatepicker({
                         format: 'YYYY/MM/DD',
                         autoClose: true,
-                        initialValue: false,
+                        initialValueType: 'persian',
+                        initialValue: !!dueDateValue,
                         altField: '#editTaskDueDate',
                         altFormat: 'YYYY/MM/DD',
                         timePicker: { enabled: false },
+                        calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
                     });
-              
+
+                    // همسان‌سازی مقادیر hidden با مقدار واقعی نمایشگر
+                    document.getElementById('editTaskStartDate').value = $startInput.val() || '';
+                    document.getElementById('editTaskDueDate').value = $dueInput.val() || '';
                 }
                 
             } catch (error) {
@@ -4519,6 +4671,7 @@
             let audioChunks = [];
             let recordingStartTime;
             let timerInterval;
+            let replyContext = null;
 
 
             // بارگذاری پیام‌ها
@@ -4534,11 +4687,13 @@
 
                 const chatBox = document.getElementById('chatBox');
                 if (!comments || comments.length === 0) {
-                  chatBox.innerHTML = `<div class="empty-state">هنوز پیامی ارسال نشده است.</div>`;
+                  chatBox.innerHTML = `<div class="empty-state">هنوز پیوستی ثبت نشده است.</div>`;
                 } else {
                   chatBox.innerHTML = '';
+                  const commentsById = new Map();
+                  comments.forEach(c => commentsById.set(c.id, c));
                   comments.forEach(comment => {
-                    chatBox.appendChild(createCommentElement(comment));
+                    chatBox.appendChild(createCommentElement(comment, commentsById));
                   });
                   chatBox.scrollTop = chatBox.scrollHeight;
                 }
@@ -4553,11 +4708,107 @@
             }
 
             // ساخت المان کامنت
-                        function createCommentElement(comment) {
+            function parseReplyMeta(rawMessage) {
+                const source = rawMessage || '';
+                const structuredPattern = /^\[\[reply:(\d+):([^:\]]*):([^\]]*)\]\]\s*\n?/;
+                const match = source.match(structuredPattern);
+                if (match) {
+                    const replyCommentId = parseInt(match[1], 10);
+                    const userName = decodeURIComponent(match[2] || 'کاربر');
+                    const target = decodeURIComponent(match[3] || 'متن پیوست');
+                    return {
+                        cleanMessage: source.replace(structuredPattern, '').trimStart(),
+                        reply: {
+                            commentId: Number.isNaN(replyCommentId) ? null : replyCommentId,
+                            userName,
+                            target
+                        }
+                    };
+                }
+
+                const legacyPattern = /^↪\s*پاسخ به\s+(.+?)\s*\((.+?)\)\s*\n?/;
+                const legacy = source.match(legacyPattern);
+                if (legacy) {
+                    return {
+                        cleanMessage: source.replace(legacyPattern, '').trimStart(),
+                        reply: {
+                            commentId: null,
+                            userName: legacy[1] || 'کاربر',
+                            target: legacy[2] || 'متن پیوست'
+                        }
+                    };
+                }
+
+                return { cleanMessage: source, reply: null };
+            }
+
+            function scrollToComment(commentId) {
+                if (!commentId) {
+                    showNotification('پیام مرجع یافت نشد', 'error');
+                    return;
+                }
+                const targetEl = document.getElementById(`comment-${commentId}`);
+                if (!targetEl) {
+                    showNotification('پیام مرجع یافت نشد', 'error');
+                    return;
+                }
+                const chatBox = document.getElementById('chatBox');
+                if (chatBox) {
+                    const targetTop = targetEl.offsetTop - 32;
+                    chatBox.scrollTo({
+                        top: Math.max(0, targetTop),
+                        behavior: 'smooth'
+                    });
+                } else {
+                    targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                targetEl.classList.add('target-highlight');
+                setTimeout(() => targetEl.classList.remove('target-highlight'), 1800);
+            }
+
+            function createCommentElement(comment, commentsById) {
                 const div = document.createElement('div');
                 div.className = `chat-message ${comment.isCurrentUser ? 'own' : 'other'}`;
                 div.id = `comment-${comment.id}`;
                 const date = new Date(comment.createdAt).toLocaleString('fa-IR');
+                const parsed = parseReplyMeta(comment.message);
+                const cleanMessage = parsed.cleanMessage || '';
+                const replyMeta = parsed.reply;
+                const encodedUser = encodeURIComponent(comment.userName || 'کاربر');
+                const encodedMessage = encodeURIComponent(cleanMessage);
+
+                let replyReferenceHtml = '';
+                if (replyMeta) {
+                    const showTarget = replyMeta.target && replyMeta.target !== 'متن پیوست';
+                    const replyTitle = showTarget
+                        ? `در پاسخ به ${replyMeta.userName} (${replyMeta.target})`
+                        : `در پاسخ به ${replyMeta.userName}`;
+                    let replyPreviewHtml = '';
+                    if (replyMeta.commentId && commentsById?.has(replyMeta.commentId)) {
+                        const sourceComment = commentsById.get(replyMeta.commentId);
+                        const sourceParsed = parseReplyMeta(sourceComment?.message || '');
+                        const sourceText = (sourceParsed.cleanMessage || '').trim();
+                        const sourcePreview = sourceText
+                            ? (sourceText.length > 80 ? `${sourceText.substring(0, 80)}...` : sourceText)
+                            : 'بدون متن';
+                        replyPreviewHtml = `<div class="reply-reference-preview">${sourcePreview}</div>`;
+                    }
+
+                    if (replyMeta.commentId) {
+                        replyReferenceHtml = `
+                            <button type="button" class="reply-reference clickable js-scroll-to-reply" data-target-comment-id="${replyMeta.commentId}">
+                                ${replyTitle}
+                                ${replyPreviewHtml}
+                            </button>
+                        `;
+                    } else {
+                        replyReferenceHtml = `
+                            <div class="reply-reference">
+                                ${replyTitle}
+                            </div>
+                        `;
+                    }
+                }
 
                 let attachmentsHtml = '';
                 if (comment.attachments && comment.attachments.length > 0) {
@@ -4566,24 +4817,126 @@
                         const fileUrl = att.filePath || att.url || '';
                         const fileName = att.fileName || 'فایل';
                         const fileType = att.fileType || att.mimeType || '';
+                        const encodedTarget = encodeURIComponent(`فایل: ${fileName}`);
+                        const replyLink = `<a href="#" class="reply-inline-link js-reply-action" data-comment-id="${comment.id}" data-user="${encodedUser}" data-message="${encodedMessage}" data-target="${encodedTarget}">پاسخ به این فایل</a>`;
 
                         if (fileType === 'Image' || fileType.startsWith('image/')) {
-                            return `<img src="${fileUrl}" alt="${fileName}" style="max-width:200px; display:block; margin-top:6px; border-radius:8px;" />`;
+                            return `
+                                <div class="attachment-item">
+                                    <img src="${fileUrl}" alt="${fileName}" style="max-width:200px; display:block; border-radius:8px;" />
+                                    <div class="attachment-actions">${replyLink}</div>
+                                </div>
+                            `;
                         } else if (fileType === 'Audio' || fileType.startsWith('audio/')) {
-                            return `<audio controls src="${fileUrl}" style="width:100%; margin-top:6px;"></audio>`;
+                            return `
+                                <div class="attachment-item">
+                                    <audio controls src="${fileUrl}" style="width:100%;"></audio>
+                                    <div class="attachment-actions">${replyLink}</div>
+                                </div>
+                            `;
                         } else {
-                            return `<a href="${fileUrl}" target="_blank" style="display:inline-block; margin-top:6px;">📎 ${fileName}</a>`;
+                            return `
+                                <div class="attachment-item">
+                                    <a href="${fileUrl}" target="_blank" style="display:inline-block;">📎 ${fileName}</a>
+                                    <div class="attachment-actions">${replyLink}</div>
+                                </div>
+                            `;
                         }
                     }).join('');
                 }
 
+                const textReplyLink = cleanMessage
+                    ? `<a href="#" class="reply-inline-link js-reply-action" data-comment-id="${comment.id}" data-user="${encodedUser}" data-message="${encodedMessage}" data-target="${encodeURIComponent("متن پیوست")}">پاسخ به متن</a>`
+                    : '';
+                const deleteLink = comment.isCurrentUser
+                    ? `<a href="#" class="reply-inline-link js-delete-comment" data-comment-id="${comment.id}">حذف</a>`
+                    : '';
+
                 div.innerHTML = `
-                    ${!comment.isCurrentUser ? `<div class="message-user">${comment.userName}</div>` : ''}
-                    <div class="message-text">${comment.message ?? ''}</div>
-                    ${attachmentsHtml}
-                    <div class="message-time">${date} ${comment.isCurrentUser ? `<a href="#" onclick="deleteComment(${comment.id})" style="margin-left:8px;">حذف</a>` : ''}</div>
+                    <div class="message-card">
+                        <div class="message-header">
+                            <div class="message-user">${comment.userName}</div>
+                            <div class="message-time">${date}</div>
+                        </div>
+                        ${replyReferenceHtml}
+                        ${cleanMessage ? `<div class="message-text">${cleanMessage}</div>` : ''}
+                        ${attachmentsHtml ? `<div class="attachment-list">${attachmentsHtml}</div>` : ''}
+                        ${(textReplyLink || deleteLink) ? `<div class="message-actions">${textReplyLink}${deleteLink}</div>` : ''}
+                    </div>
                 `;
+
+                const refBtn = div.querySelector('.js-scroll-to-reply');
+                if (refBtn) {
+                    refBtn.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        const targetId = parseInt(refBtn.getAttribute('data-target-comment-id'), 10);
+                        scrollToComment(Number.isNaN(targetId) ? null : targetId);
+                    });
+                }
+
+                div.querySelectorAll('.js-reply-action').forEach((el) => {
+                    el.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        const commentId = parseInt(el.getAttribute('data-comment-id'), 10);
+                        const user = el.getAttribute('data-user') || '';
+                        const msg = el.getAttribute('data-message') || '';
+                        const target = el.getAttribute('data-target') || '';
+                        startReplyToComment(Number.isNaN(commentId) ? null : commentId, user, msg, target);
+                    });
+                });
+
+                const deleteBtn = div.querySelector('.js-delete-comment');
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        const commentId = parseInt(deleteBtn.getAttribute('data-comment-id'), 10);
+                        deleteComment(Number.isNaN(commentId) ? null : commentId, deleteBtn);
+                    });
+                }
                 return div;
+            }
+
+            function startReplyToComment(commentId, encodedUserName, encodedMessage, encodedTarget) {
+                const userName = decodeURIComponent(encodedUserName || '');
+                const message = decodeURIComponent(encodedMessage || '');
+                const target = decodeURIComponent(encodedTarget || 'پیوست');
+                const compactMessage = message ? (message.length > 70 ? `${message.substring(0, 70)}...` : message) : 'بدون متن';
+                const showTarget = target && target !== 'متن پیوست';
+
+                replyContext = {
+                    commentId,
+                    userName: userName || 'کاربر',
+                    target: target || 'پیوست',
+                    preview: compactMessage
+                };
+
+                const replyInput = document.getElementById('replyToCommentId');
+                const replyBox = document.getElementById('replyContextBox');
+                const replyMeta = document.getElementById('replyContextMeta');
+                const messageInput = document.getElementById('messageInput');
+
+                if (replyInput) replyInput.value = String(commentId);
+                if (replyMeta) {
+                    replyMeta.innerHTML = showTarget
+                        ? `<strong>پاسخ به ${replyContext.userName} (${replyContext.target})</strong>${replyContext.preview}`
+                        : `<strong>پاسخ به ${replyContext.userName}</strong>${replyContext.preview}`;
+                }
+                if (replyBox) replyBox.classList.add('active');
+                if (messageInput) {
+                    messageInput.focus();
+                    messageInput.placeholder = `پاسخ به ${replyContext.userName}...`;
+                }
+            }
+
+            function clearReplyContext() {
+                replyContext = null;
+                const replyInput = document.getElementById('replyToCommentId');
+                const replyBox = document.getElementById('replyContextBox');
+                const messageInput = document.getElementById('messageInput');
+
+                if (replyInput) replyInput.value = '';
+                if (replyBox) replyBox.classList.remove('active');
+                if (messageInput) messageInput.placeholder = 'توضیح پیوست را بنویسید...';
             }
 
             // نمایش فایل‌های انتخاب‌شده (فقط غیر تصویری)
@@ -4780,7 +5133,7 @@
                         async function sendMessage() {
                 const messageInput = document.getElementById('messageInput');
                 const taskId = document.getElementById('editTaskId').value;
-                const message = messageInput.value.trim();
+                let message = messageInput.value.trim();
                 const fileInput = document.getElementById('fileInput');
 
                 // دیباگ: نمایش مقادیر
@@ -4798,6 +5151,12 @@
                 if (!message && fileInput.files.length === 0) {
                     alert('پیام خالی است');
                     return;
+                }
+
+                const replyToCommentId = document.getElementById('replyToCommentId')?.value;
+                if (replyToCommentId && replyContext) {
+                    const replyMarker = `[[reply:${replyToCommentId}:${encodeURIComponent(replyContext.userName)}:${encodeURIComponent(replyContext.target)}]]`;
+                    message = message ? `${replyMarker}\n${message}` : replyMarker;
                 }
 
                 const formData = new FormData();
@@ -4821,6 +5180,7 @@
                         fileInput.value = '';
                         document.getElementById('selectedFiles').innerHTML = '';
                         document.getElementById('audioPreview').innerHTML = '';
+                        clearReplyContext();
                         loadComments();
                     } else {
                         const errorText = await response.text();
@@ -4883,6 +5243,10 @@
             // حذف پیام (اختیاری)
          // حذف کامنت
     async function deleteComment(commentId, triggerElement) {
+        if (!commentId) {
+            showNotification('شناسه پیام نامعتبر است', 'error');
+            return;
+        }
         if (!confirm('آیا مطمئن هستید که می‌خواهید این پیام را حذف کنید؟')) {
             return;
         }
@@ -4915,7 +5279,7 @@
                     chatBox.innerHTML = `
                         <div class="empty-state">
                             <i class="bi bi-chat-left"></i>
-                            <p>هنوز پیامی ارسال نشده است.</p>
+                            <p>هنوز پیوستی ثبت نشده است.</p>
                         </div>
                     `;
                 }

@@ -2517,7 +2517,7 @@ namespace Endpoint.Site.Controllers
                     Message = c.Message,
                     UserId = c.UserId,
                     UserName = c.UserName,
-                    CreatedAt = c.CreatedAt,
+                    CreatedAt = c.CreatedAt.AddHours(3.5),
                     UpdatedAt = c.UpdatedAt,
                     IsEdited = c.IsEdited,
                     IsCurrentUser = c.UserId == userId,
