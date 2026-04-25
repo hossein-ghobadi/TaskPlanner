@@ -879,7 +879,11 @@ namespace Endpoint.Site.Controllers
             // دسترسی به پروژه
             var hasAccess = await _context.Projects
                 .AnyAsync(p => p.Id == task.ProjectId &&
-                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+                    (p.CreatorUserId == userId ||
+                     p.Members.Any(m => m.UserId == userId) ||
+                     _context.ProjectInvitations.Any(i => i.ProjectId == task.ProjectId &&
+                                                          i.InviteeId == userId &&
+                                                          i.Status == InvitationStatus.Accepted)));
             if (!hasAccess)
                 return Forbid();
 
@@ -2432,7 +2436,24 @@ namespace Endpoint.Site.Controllers
             // اگر از query parameter ?fromModal=true استفاده شده، به Edit برگرد (برای iframe)
             if (fromModal)
             {
-                return RedirectToAction(nameof(Edit), new { id = task.Id, fromModal = true, saved = true });
+                var successHtml = $@"<!doctype html>
+<html lang=""fa"" dir=""rtl"">
+<head>
+    <meta charset=""utf-8"" />
+    <title>Task Edited</title>
+</head>
+<body>
+    <script>
+        (function () {{
+            if (window.self !== window.top) {{
+                window.parent.postMessage({{ type: 'taskEditSuccess', taskId: '{task.Id}' }}, '*');
+            }}
+        }})();
+    </script>
+</body>
+</html>";
+
+                return Content(successHtml, "text/html; charset=utf-8");
             }
             
             return RedirectToAction(nameof(Index), new { projectId = task.ProjectId });
@@ -2460,7 +2481,11 @@ namespace Endpoint.Site.Controllers
             // بررسی دسترسی کاربر به تسک
             var hasAccess = await _context.Projects
                 .AnyAsync(p => p.Id == task.ProjectId &&
-                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+                    (p.CreatorUserId == userId ||
+                     p.Members.Any(m => m.UserId == userId) ||
+                     _context.ProjectInvitations.Any(i => i.ProjectId == task.ProjectId &&
+                                                          i.InviteeId == userId &&
+                                                          i.Status == InvitationStatus.Accepted)));
 
             if (!hasAccess)
             {

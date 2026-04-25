@@ -415,9 +415,31 @@
         </div>
     </div>
 </div>
+
+<!-- Modal ویرایش کار -->
+<div class="modal fade" id="editTaskModal" tabindex="-1" aria-labelledby="editTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="min-height: 80vh;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editTaskModalLabel">
+                    <i class="bi bi-pencil-square me-2"></i>
+                    ویرایش کار
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="editTaskFrame"
+                        title="Edit Task"
+                        style="width: 100%; height: calc(80vh - 56px); border: 0;"
+                        loading="lazy"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
 @section Scripts {
     <script>
         let createTaskModalInstance = null;
+        let editTaskModalInstance = null;
 
         function openCreateTaskModal(projectId) {
             if (!projectId) {
@@ -434,6 +456,23 @@
             iframe.src = `/Tasks/Create?projectId=${projectId}&fromModal=true&_=${Date.now()}`;
             createTaskModalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
             createTaskModalInstance.show();
+        }
+
+        function openEditTaskModal(taskId) {
+            if (!taskId) {
+                showToast('شناسه کار معتبر نیست', true);
+                return;
+            }
+
+            const iframe = document.getElementById('editTaskFrame');
+            const modalElement = document.getElementById('editTaskModal');
+            if (!iframe || !modalElement) {
+                return;
+            }
+
+            iframe.src = `/Tasks/Edit?id=${taskId}&fromModal=true&_=${Date.now()}`;
+            editTaskModalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+            editTaskModalInstance.show();
         }
 
         let selectedParentId = null;
@@ -456,6 +495,16 @@
                 });
             }
 
+            const editModalElement = document.getElementById('editTaskModal');
+            const editIframe = document.getElementById('editTaskFrame');
+            if (editModalElement) {
+                editModalElement.addEventListener('hidden.bs.modal', () => {
+                    if (editIframe) {
+                        editIframe.src = 'about:blank';
+                    }
+                });
+            }
+
             window.addEventListener('message', (event) => {
                 if (!event || !event.data) return;
 
@@ -467,6 +516,18 @@
                 if (typeof event.data === 'object' && event.data.type === 'taskCreateSuccess') {
                     createTaskModalInstance?.hide();
                     showToast('کار با موفقیت ثبت شد ✅');
+                    setTimeout(() => window.location.reload(), 300);
+                    return;
+                }
+
+                if (event.data === 'taskEditCancel') {
+                    editTaskModalInstance?.hide();
+                    return;
+                }
+
+                if (typeof event.data === 'object' && event.data.type === 'taskEditSuccess') {
+                    editTaskModalInstance?.hide();
+                    showToast('کار با موفقیت ویرایش شد ✅');
                     setTimeout(() => window.location.reload(), 300);
                 }
             });
