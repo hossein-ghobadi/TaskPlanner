@@ -3,6 +3,7 @@
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = "نمایش طراحی";
+    ViewData["UseFluidLayout"] = true;
     var projectId = ViewBag.ProjectId as int?;
     var folderId = ViewBag.FolderId as int?;
     var folder = ViewBag.Folder as TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGalleryFolder;
@@ -46,10 +47,10 @@
             }
         </div>
         <div class="figma-viewer-actions">
-            <a href="/ProjectImageGalleries/UploadFigmaDesign?projectId=@projectId&folderId=@folderId" class="btn-figma-upload">
+            <button type="button" class="btn-figma-upload" data-bs-toggle="modal" data-bs-target="#uploadFigmaDesignModal">
                 <i class="bi bi-file-earmark-zip"></i>
                 آپلود طراحی دیگر
-            </a>
+            </button>
             <a href="/ProjectImageGalleries/Index?projectId=@projectId@(folderId.HasValue ? "&folderId=" + folderId : "")" class="btn-figma-gallery">
                 <i class="bi bi-images"></i>
                 گالری عکس
@@ -166,19 +167,66 @@
             <i class="bi bi-palette"></i>
             <h3>هنوز فریمی در این طراحی نیست</h3>
             <p>یک فایل zip اکسپورت فیگما آپلود کنید.</p>
-            <a href="/ProjectImageGalleries/UploadFigmaDesign?projectId=@projectId&folderId=@folderId" class="btn-figma-upload">
+            <button type="button" class="btn-figma-upload" data-bs-toggle="modal" data-bs-target="#uploadFigmaDesignModal">
                 <i class="bi bi-file-earmark-zip"></i>
                 آپلود طراحی
-            </a>
+            </button>
         </div>
     }
 </div>
 
+<div class="modal fade" id="uploadFigmaDesignModal" tabindex="-1" aria-labelledby="uploadFigmaDesignModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadFigmaDesignModalLabel">
+                    <i class="bi bi-file-earmark-zip"></i>
+                    آپلود طراحی
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+            </div>
+            <form method="post" action="@Url.Action("UploadFigmaDesign", "ProjectImageGalleries")" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="projectId" value="@projectId" />
+                @if (folderId.HasValue)
+                {
+                    <input type="hidden" name="folderId" value="@folderId" />
+                }
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        فایل zip اکسپورت شده از فیگما را انتخاب کنید.
+                    </p>
+                    <div class="file-upload-area border rounded p-4 text-center" id="figmaUploadDropArea" style="background: #f8f9fa; cursor: pointer;">
+                        <i class="bi bi-file-earmark-zip" style="font-size: 2.25rem; color: #8B5CF6;"></i>
+                        <p class="mt-2 mb-1 fw-bold">برای انتخاب فایل zip کلیک کنید</p>
+                        <small class="text-muted">فقط فایل‌های .zip</small>
+                        <input type="file" name="figmaZipFile" id="figmaZipFileInput" class="form-control d-none" accept=".zip" />
+                    </div>
+                    <div id="figmaZipChosenText" class="mt-2 text-muted small"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary" id="figmaUploadSubmitBtn" disabled>
+                        <i class="bi bi-upload"></i>
+                        آپلود و نمایش طراحی
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <style>
+    .app-main-body {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
     .figma-viewer-wrapper {
-        max-width: 1600px;
-        margin: 0 auto;
-        padding: 1.5rem;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0.75rem 0.25rem 1rem;
     }
     .figma-viewer-header {
         display: flex;
@@ -225,9 +273,11 @@
         padding: 0.6rem 1.2rem;
         background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
         color: white;
+        border: none;
         border-radius: 10px;
         font-weight: 600;
         text-decoration: none;
+        cursor: pointer;
         transition: transform 0.2s, box-shadow 0.2s;
     }
     .btn-figma-upload:hover { color: white; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4); }
@@ -766,6 +816,28 @@
 @section Scripts {
     <script>
         (function () {
+            var figmaUploadDropArea = document.getElementById('figmaUploadDropArea');
+            var figmaZipFileInput = document.getElementById('figmaZipFileInput');
+            var figmaZipChosenText = document.getElementById('figmaZipChosenText');
+            var figmaUploadSubmitBtn = document.getElementById('figmaUploadSubmitBtn');
+
+            if (figmaUploadDropArea && figmaZipFileInput) {
+                figmaUploadDropArea.addEventListener('click', function () {
+                    figmaZipFileInput.click();
+                });
+
+                figmaZipFileInput.addEventListener('change', function () {
+                    if (!figmaZipChosenText || !figmaUploadSubmitBtn) return;
+                    if (this.files && this.files.length > 0) {
+                        figmaZipChosenText.textContent = 'انتخاب شده: ' + this.files[0].name;
+                        figmaUploadSubmitBtn.disabled = false;
+                    } else {
+                        figmaZipChosenText.textContent = '';
+                        figmaUploadSubmitBtn.disabled = true;
+                    }
+                });
+            }
+
             var gridList = document.getElementById('figmaFramesList');
             var zoomValueEl = document.getElementById('figmaZoomValue');
             var zoomOutBtn = document.getElementById('figmaZoomOut');

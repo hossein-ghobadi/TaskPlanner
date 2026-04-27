@@ -62,12 +62,12 @@
     <div>
         @if (projectId.HasValue)
         {
-            <a class="btn btn-primary" href="/Sprints/Create?projectId=@projectId">ایجاد اسپرینت جدید</a>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSprintModal">ایجاد اسپرینت جدید</button>
             <a class="btn btn-secondary" href="/Projects/Details/@projectId">بازگشت به پروژه</a>
         }
         else
         {
-            <a class="btn btn-primary" href="/Sprints/Create">ایجاد اسپرینت جدید</a>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSprintModal">ایجاد اسپرینت جدید</button>
         }
     </div>
 </div>
@@ -158,7 +158,18 @@ else
                         <div class="mt-3 position-relative" style="z-index: 10;">
                             @if (sprint.Status == SprintStatus.Planning)
                             {
-                                <a class="btn btn-sm btn-warning" href="/Sprints/Edit/@sprint.Id" onclick="event.stopPropagation(); event.preventDefault(); window.location.href='/Sprints/Edit/@sprint.Id';">ویرایش</a>
+                                <button type="button"
+                                        class="btn btn-sm btn-warning btn-edit-sprint"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editSprintModal"
+                                        data-id="@sprint.Id"
+                                        data-name="@sprint.Name"
+                                        data-description="@sprint.Description"
+                                        data-goal="@sprint.Goal"
+                                        data-start="@sprint.StartDate.ToShortPersianDateString()"
+                                        data-end="@sprint.EndDate.ToShortPersianDateString()"
+                                        data-status="@((int)sprint.Status)"
+                                        onclick="event.stopPropagation();">ویرایش</button>
                                 <a class="btn btn-sm btn-danger" href="/Sprints/Delete/@sprint.Id" onclick="event.stopPropagation(); event.preventDefault(); window.location.href='/Sprints/Delete/@sprint.Id';">حذف</a>
                                 <form method="post" action="/Sprints/ChangeStatus" class="d-inline" onsubmit="event.stopPropagation();">
                                     @Html.AntiForgeryToken()
@@ -169,7 +180,18 @@ else
                             }
                             else if (sprint.Status == SprintStatus.Active)
                             {
-                                <a class="btn btn-sm btn-warning" href="/Sprints/Edit/@sprint.Id" onclick="event.stopPropagation(); event.preventDefault(); window.location.href='/Sprints/Edit/@sprint.Id';">ویرایش</a>
+                                <button type="button"
+                                        class="btn btn-sm btn-warning btn-edit-sprint"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editSprintModal"
+                                        data-id="@sprint.Id"
+                                        data-name="@sprint.Name"
+                                        data-description="@sprint.Description"
+                                        data-goal="@sprint.Goal"
+                                        data-start="@sprint.StartDate.ToShortPersianDateString()"
+                                        data-end="@sprint.EndDate.ToShortPersianDateString()"
+                                        data-status="@((int)sprint.Status)"
+                                        onclick="event.stopPropagation();">ویرایش</button>
                                 <form method="post" action="/Sprints/ChangeStatus" class="d-inline" onsubmit="event.stopPropagation();">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@sprint.Id" />
@@ -185,3 +207,185 @@ else
     </div>
 }
 
+<!-- مودال ایجاد اسپرینت -->
+<div class="modal fade" id="createSprintModal" tabindex="-1" aria-labelledby="createSprintModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createSprintModalLabel">ایجاد اسپرینت جدید</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+            </div>
+            <form method="post" action="/Sprints/Create">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <input type="hidden" name="ProjectId" value="@projectId" />
+
+                    <div class="mb-3">
+                        <label class="form-label">نام اسپرینت</label>
+                        <input name="Name" class="form-control" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">توضیحات</label>
+                        <textarea name="Description" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">تاریخ شروع</label>
+                            <input type="text" id="CreateStartDateDisplay" class="form-control" autocomplete="off" />
+                            <input type="hidden" name="StartDate" id="CreateStartDate" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">تاریخ پایان</label>
+                            <input type="text" id="CreateEndDateDisplay" class="form-control" autocomplete="off" />
+                            <input type="hidden" name="EndDate" id="CreateEndDate" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">هدف اسپرینت</label>
+                        <textarea name="Goal" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ایجاد اسپرینت</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- مودال ویرایش اسپرینت -->
+<div class="modal fade" id="editSprintModal" tabindex="-1" aria-labelledby="editSprintModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editSprintModalLabel">ویرایش اسپرینت</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+            </div>
+            <form method="post" id="editSprintForm">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <input type="hidden" name="Id" id="EditSprintId" />
+
+                    <div class="mb-3">
+                        <label class="form-label">نام اسپرینت</label>
+                        <input name="Name" id="EditSprintName" class="form-control" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">توضیحات</label>
+                        <textarea name="Description" id="EditSprintDescription" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">تاریخ شروع</label>
+                            <input type="text" id="EditStartDateDisplay" class="form-control" autocomplete="off" />
+                            <input type="hidden" name="StartDate" id="EditStartDate" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">تاریخ پایان</label>
+                            <input type="text" id="EditEndDateDisplay" class="form-control" autocomplete="off" />
+                            <input type="hidden" name="EndDate" id="EditEndDate" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">هدف اسپرینت</label>
+                        <textarea name="Goal" id="EditSprintGoal" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">وضعیت</label>
+                        <select name="Status" id="EditSprintStatus" class="form-control">
+                            <option value="@((int)SprintStatus.Planning)">در حال برنامه‌ریزی</option>
+                            <option value="@((int)SprintStatus.Active)">فعال</option>
+                            <option value="@((int)SprintStatus.Completed)">خاتمه یافته</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.$ && $.fn.persianDatepicker) {
+                $("#CreateStartDateDisplay").persianDatepicker({
+                    format: 'YYYY/MM/DD',
+                    autoClose: true,
+                    altField: '#CreateStartDate',
+                    altFormat: 'YYYY/MM/DD',
+                    timePicker: { enabled: false },
+                    calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+                });
+
+                $("#CreateEndDateDisplay").persianDatepicker({
+                    format: 'YYYY/MM/DD',
+                    autoClose: true,
+                    altField: '#CreateEndDate',
+                    altFormat: 'YYYY/MM/DD',
+                    timePicker: { enabled: false },
+                    calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+                });
+
+                $("#EditStartDateDisplay").persianDatepicker({
+                    format: 'YYYY/MM/DD',
+                    autoClose: true,
+                    altField: '#EditStartDate',
+                    altFormat: 'YYYY/MM/DD',
+                    timePicker: { enabled: false },
+                    calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+                });
+
+                $("#EditEndDateDisplay").persianDatepicker({
+                    format: 'YYYY/MM/DD',
+                    autoClose: true,
+                    altField: '#EditEndDate',
+                    altFormat: 'YYYY/MM/DD',
+                    timePicker: { enabled: false },
+                    calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+                });
+            }
+
+            const editForm = document.getElementById('editSprintForm');
+            const editButtons = document.querySelectorAll('.btn-edit-sprint');
+
+            editButtons.forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const id = this.dataset.id || '';
+                    const name = this.dataset.name || '';
+                    const description = this.dataset.description || '';
+                    const goal = this.dataset.goal || '';
+                    const start = this.dataset.start || '';
+                    const end = this.dataset.end || '';
+                    const status = this.dataset.status || '';
+
+                    if (editForm) {
+                        editForm.setAttribute('action', '/Sprints/Edit/' + id);
+                    }
+
+                    document.getElementById('EditSprintId').value = id;
+                    document.getElementById('EditSprintName').value = name;
+                    document.getElementById('EditSprintDescription').value = description;
+                    document.getElementById('EditSprintGoal').value = goal;
+                    document.getElementById('EditSprintStatus').value = status;
+
+                    document.getElementById('EditStartDateDisplay').value = start;
+                    document.getElementById('EditEndDateDisplay').value = end;
+                    document.getElementById('EditStartDate').value = start;
+                    document.getElementById('EditEndDate').value = end;
+                });
+            });
+        });
+    </script>
+}

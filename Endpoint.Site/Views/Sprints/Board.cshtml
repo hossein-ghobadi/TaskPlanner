@@ -1608,9 +1608,16 @@
             </div>
             <div class="d-flex flex-column align-items-end gap-2">
                 <div class="d-flex gap-2">
+                    @if (Model.Status != SprintStatus.Completed)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="openAddStatusModal()">
+                            <i class="bi bi-plus-circle"></i>
+                            افزودن وضعیت
+                        </button>
+                    }
                     <a href="/Projects/Details/@Model.ProjectId" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-arrow-right"></i>
-                        بازگشت به لیست
+                        بازگشت به پروژه
                     </a>
                     @if (Model.Status == SprintStatus.Active)
                     {
@@ -1624,13 +1631,7 @@
                             </button>
                         </form>
                     }
-                    @if (Model.Status != SprintStatus.Completed)
-                    {
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="openAddStatusModal()">
-                            <i class="bi bi-plus-circle"></i>
-                            افزودن وضعیت
-                        </button>
-                    }
+                    
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <label for="boardBackgroundSelect" class="text-muted small mb-0">پس‌زمینه:</label>

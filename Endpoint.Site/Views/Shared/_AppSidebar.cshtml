@@ -35,6 +35,10 @@
         <a class="@NavClass("Projects", "Index")" href="/Projects/Index"><i class="bi bi-briefcase"></i><span>پروژه‌ها</span></a>
         <a class="@NavClass("Boards", "Index")" href="/Boards/Index"><i class="bi bi-kanban"></i><span>تخته‌ها</span></a>
         <a class="@NavClass("Projects", "Statistics")" href="/Projects/Statistics"><i class="bi bi-graph-up"></i><span>گزارش پروژه‌ها</span></a>
+        @if (User.IsInRole("ADMIN"))
+        {
+            <a class="@NavClass("AdminUsers", "Index")" href="/Admin/AdminUsers/Index"><i class="bi bi-people"></i><span>مدیریت کاربران</span></a>
+        }
         <a class="@NavClass("Notifications", "Index")" href="/Notifications/Index"><i class="bi bi-bell"></i><span>اعلان‌ها</span></a>
         <a class="@NavClass("Invitations", "MyInvitations")" href="/Invitations/MyInvitations"><i class="bi bi-envelope"></i><span>دعوت‌ها</span></a>
         <a class="@NavClass("PersonalNotes", "Index")" href="/PersonalNotes/Index"><i class="bi bi-journal-text"></i><span>یادداشت‌های شخصی</span></a>

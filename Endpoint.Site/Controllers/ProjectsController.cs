@@ -1597,95 +1597,50 @@ namespace Endpoint.Site.Controllers
                     t.DueDate.Value < now);
                 var remainingTasks = totalTasks - completedTasks;
 
-                // محاسبه احتمال موفقیت پروژه
+                // محاسبه امتیاز سلامت پروژه (ساده و کاربردی)
                 int successProbability = 0;
                 string successStatus = "نامشخص";
                 
                 if (totalTasks == 0)
                 {
                     successProbability = 100;
-                    successStatus = "بدون کار";
+                    successStatus = "بدون تسک";
                 }
                 else
                 {
-                    // درصد کارهای تکمیل شده
-                    var completionRate = (double)completedTasks / totalTasks * 100;
-                    
-                    // درصد کارهای عقب‌مانده نسبت به کل
-                    var overdueRate = (double)overdueTasks / totalTasks * 100;
-                    
-                    // محاسبه احتمال موفقیت بر اساس فرمول بهبود یافته
-                    // استفاده از نسبت کارهای تکمیل شده به کل و تاثیر کارهای عقب‌مانده
-                    
-                    // امتیاز پایه از کارهای تکمیل شده (0-100)
-                    var baseScore = completionRate;
-                    
-                    // ضریب کاهش بر اساس کارهای عقب‌مانده
-                    // اگر کارهای عقب‌مانده بیشتر از 50% باشد، کاهش شدید
-                    // اگر بین 30-50% باشد، کاهش متوسط
-                    // اگر کمتر از 30% باشد، کاهش کم
-                    double reductionFactor = 1.0;
-                    
-                    if (overdueRate > 50)
-                    {
-                        // کاهش شدید: ضریب 0.3 تا 0.5
-                        reductionFactor = Math.Max(0.3, 1.0 - (overdueRate / 100) * 0.7);
-                    }
-                    else if (overdueRate > 30)
-                    {
-                        // کاهش متوسط: ضریب 0.5 تا 0.7
-                        reductionFactor = 0.7 - ((overdueRate - 30) / 20) * 0.2;
-                    }
-                    else if (overdueRate > 10)
-                    {
-                        // کاهش کم: ضریب 0.7 تا 0.9
-                        reductionFactor = 0.9 - ((overdueRate - 10) / 20) * 0.2;
-                    }
-                    
-                    // محاسبه نهایی
-                    successProbability = (int)(baseScore * reductionFactor);
-                    
-                    // اگر کارهایی تکمیل شده وجود دارد، حداقل بر اساس نسبت تکمیل شده در نظر بگیر
-                    if (completedTasks > 0)
-                    {
-                        // حداقل امتیاز: 20% از درصد تکمیل شده (حداقل 5%)
-                        var minScore = Math.Max(completionRate * 0.2, 5);
-                        successProbability = Math.Max((int)minScore, successProbability);
-                    }
-                    
-                    // اگر همه کارها تکمیل شده باشند
+                    // درصد انجام و درصد تاخیر نسبت به کل تسک‌ها
+                    var completionRate = (double)completedTasks / totalTasks; // 0..1
+                    var overdueRate = (double)overdueTasks / totalTasks;       // 0..1
+
+                    // منطق ساده:
+                    // امتیاز پایه = درصد انجام * 100
+                    // جریمه تاخیر = درصد تاخیر * 50
+                    // خروجی نهایی در بازه 0..100
+                    var rawScore = (completionRate * 100.0) - (overdueRate * 50.0);
+                    successProbability = (int)Math.Round(rawScore);
+                    successProbability = Math.Max(0, Math.Min(100, successProbability));
+
+                    // وضعیت قابل فهم و عملی
                     if (completedTasks == totalTasks)
                     {
-                        successProbability = 100;
-                        successStatus = "موفق";
+                        successStatus = "تکمیل شده";
                     }
-                    // اگر احتمال موفقیت بالا باشد
-                    else if (successProbability >= 80)
+                    else if (successProbability >= 85)
                     {
-                        successStatus = "احتمال موفقیت بالا";
+                        successStatus = "عالی";
                     }
-                    // اگر احتمال موفقیت متوسط باشد
+                    else if (successProbability >= 70)
+                    {
+                        successStatus = "خوب";
+                    }
                     else if (successProbability >= 50)
                     {
-                        successStatus = "احتمال موفقیت متوسط";
-                    }
-                    // اگر احتمال موفقیت پایین باشد
-                    else if (successProbability >= 30)
-                    {
-                        successStatus = "احتمال موفقیت پایین";
-                    }
-                    // اگر احتمال شکست بالا باشد
-                    else if (successProbability >= 15)
-                    {
-                        successStatus = "در معرض شکست";
+                        successStatus = "نیازمند توجه";
                     }
                     else
                     {
-                        successStatus = "خطر بالا";
+                        successStatus = "بحرانی";
                     }
-                    
-                    // محدود کردن به بازه 0-100
-                    successProbability = Math.Max(0, Math.Min(100, successProbability));
                 }
 
                 statistics.Add(new ProjectStatisticItem

@@ -1,17 +1,20 @@
 @model IEnumerable<UserListVm>
 @using Endpoint.Site.Models
+@using System.Globalization
 @using System.Security.Claims
 @{
     ViewData["Title"] = "مدیریت کاربران";
+    ViewData["UseFluidLayout"] = true;
     Layout = "/Views/Shared/_Layout.cshtml";
     var searchTerm = ViewBag.SearchTerm as string ?? "";
     var currentPage = ViewBag.CurrentPage as int? ?? 1;
     var pageSize = ViewBag.PageSize as int? ?? 20;
     var totalCount = ViewBag.TotalCount as int? ?? 0;
     var totalPages = ViewBag.TotalPages as int? ?? 1;
+    var allRoles = ViewBag.AllRoles as List<string> ?? new List<string>();
 }
 
-<div class="container-fluid">
+<div class="container-fluid px-0 admin-users-page">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold">
             <i class="bi bi-people-fill me-2"></i>
@@ -49,6 +52,26 @@
                     </div>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- تعریف نقش جدید -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-8">
+                    <input type="text"
+                           id="newRoleName"
+                           class="form-control"
+                           placeholder="تعریف نقش جدید (مثال: PROJECT_MANAGER)" />
+                </div>
+                <div class="col-md-4">
+                    <button type="button" id="createRoleBtn" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        ایجاد نقش جدید
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -100,13 +123,38 @@
                                         {
                                             @foreach (var role in user.Roles)
                                             {
-                                                <span class="badge bg-info me-1">@role</span>
+                                                <span class="badge role-badge">
+                                                    @role
+                                                    <button type="button"
+                                                            class="btn btn-sm p-0 ms-1 text-dark border-0 bg-transparent remove-role-btn"
+                                                            data-user-id="@user.Id"
+                                                            data-role-name="@role"
+                                                            title="حذف نقش @role">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                </span>
                                             }
                                         }
                                         else
                                         {
                                             <span class="text-muted">-</span>
                                         }
+                                        <div class="input-group input-group-sm role-actions">
+                                            <select class="form-select add-role-select" data-user-id="@user.Id">
+                                                <option value="">انتخاب نقش</option>
+                                                @foreach (var roleName in allRoles)
+                                                {
+                                                    <option value="@roleName">@roleName</option>
+                                                }
+                                            </select>
+                                            <button type="button"
+                                                    class="btn btn-outline-secondary add-role-btn"
+                                                    data-user-id="@user.Id"
+                                                    title="افزودن نقش">
+                                                <i class="bi bi-plus-lg me-1"></i>
+                                                افزودن نقش
+                                            </button>
+                                        </div>
                                     </td>
                                     <td>
                                         @if (user.IsActive)
@@ -118,23 +166,23 @@
                                             <span class="badge bg-danger">غیرفعال</span>
                                         }
                                     </td>
-                                    <td>@user.InsertTime.ToString("yyyy/MM/dd HH:mm")</td>
-                                    <td>
-                                        <div class="btn-group" role="group">
+                                    <td>@FormatTehranPersianDateTime(user.InsertTime)</td>
+                                    <td class="operations-cell">
+                                        <div class="user-actions" role="group">
                                             <a href="@Url.Action("ChangePassword", new { id = user.Id })" 
-                                               class="btn btn-sm btn-outline-primary" 
+                                               class="btn btn-sm btn-outline-secondary" 
                                                title="تغییر رمز عبور">
                                                 <i class="bi bi-key"></i>
                                             </a>
                                             <button type="button" 
-                                                    class="btn btn-sm btn-outline-warning toggle-active-btn" 
+                                                    class="btn btn-sm btn-outline-secondary toggle-active-btn" 
                                                     data-user-id="@user.Id"
                                                     data-is-active="@user.IsActive.ToString().ToLower()"
                                                     title="@(user.IsActive ? "غیرفعال کردن" : "فعال کردن")">
                                                 <i class="bi bi-@(user.IsActive ? "toggle-on" : "toggle-off")"></i>
                                             </button>
                                             <button type="button" 
-                                                    class="btn btn-sm btn-outline-danger delete-user-btn" 
+                                                    class="btn btn-sm btn-outline-secondary delete-user-btn" 
                                                     data-user-id="@user.Id"
                                                     data-user-name="@user.UserName"
                                                     title="حذف کاربر">
@@ -269,28 +317,264 @@
                     });
                 });
             });
+
+            // افزودن نقش
+            document.querySelectorAll('.add-role-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const userId = this.dataset.userId;
+                    const select = document.querySelector(`.add-role-select[data-user-id="${userId}"]`);
+                    const roleName = select?.value || '';
+
+                    if (!roleName) {
+                        alert('لطفا یک نقش انتخاب کنید');
+                        return;
+                    }
+
+                    fetch('@Url.Action("AddRole")', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'RequestVerificationToken': antiforgeryToken
+                        },
+                        body: `id=${encodeURIComponent(userId)}&roleName=${encodeURIComponent(roleName)}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message);
+                            location.reload();
+                        } else {
+                            alert('خطا: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('خطا در افزودن نقش');
+                    });
+                });
+            });
+
+            // حذف نقش
+            document.querySelectorAll('.remove-role-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const userId = this.dataset.userId;
+                    const roleName = this.dataset.roleName;
+
+                    if (!confirm(`آیا از حذف نقش "${roleName}" اطمینان دارید؟`)) {
+                        return;
+                    }
+
+                    fetch('@Url.Action("RemoveRole")', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'RequestVerificationToken': antiforgeryToken
+                        },
+                        body: `id=${encodeURIComponent(userId)}&roleName=${encodeURIComponent(roleName)}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message);
+                            location.reload();
+                        } else {
+                            alert('خطا: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('خطا در حذف نقش');
+                    });
+                });
+            });
+
+            // تعریف نقش جدید
+            const createRoleBtn = document.getElementById('createRoleBtn');
+            const newRoleNameInput = document.getElementById('newRoleName');
+            if (createRoleBtn && newRoleNameInput) {
+                createRoleBtn.addEventListener('click', function () {
+                    const roleName = (newRoleNameInput.value || '').trim();
+                    if (!roleName) {
+                        alert('لطفا نام نقش را وارد کنید');
+                        return;
+                    }
+
+                    fetch('@Url.Action("CreateRole")', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'RequestVerificationToken': antiforgeryToken
+                        },
+                        body: `roleName=${encodeURIComponent(roleName)}`
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message);
+                            location.reload();
+                        } else {
+                            alert('خطا: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('خطا در ایجاد نقش جدید');
+                    });
+                });
+            }
         });
     </script>
 }
 
+@functions {
+    private static TimeZoneInfo TehranTimeZone()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Iran Standard Time"); } catch { }
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran"); } catch { }
+        return TimeZoneInfo.Local;
+    }
+
+    private static DateTime ToTehranTime(DateTime dateTime)
+    {
+        var utc = dateTime.Kind == DateTimeKind.Utc ? dateTime : dateTime.ToUniversalTime();
+        return TimeZoneInfo.ConvertTimeFromUtc(utc, TehranTimeZone());
+    }
+
+    public string FormatTehranPersianDateTime(DateTime dateTime)
+    {
+        var tehran = ToTehranTime(dateTime);
+        var pc = new PersianCalendar();
+        var value = $"{pc.GetYear(tehran):0000}/{pc.GetMonth(tehran):00}/{pc.GetDayOfMonth(tehran):00} " +
+                    $"{tehran.Hour:00}:{tehran.Minute:00}";
+
+        return ToPersianDigits(value);
+    }
+
+    private static string ToPersianDigits(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+
+        return input
+            .Replace('0', '۰')
+            .Replace('1', '۱')
+            .Replace('2', '۲')
+            .Replace('3', '۳')
+            .Replace('4', '۴')
+            .Replace('5', '۵')
+            .Replace('6', '۶')
+            .Replace('7', '۷')
+            .Replace('8', '۸')
+            .Replace('9', '۹');
+    }
+}
+
 <style>
+    .app-main-body {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    .admin-users-page {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .admin-users-page > .card,
+    .admin-users-page > .alert,
+    .admin-users-page > .d-flex {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
     .table th {
         font-weight: 600;
         background-color: #f8f9fa;
     }
 
-    .btn-group .btn {
-        border-radius: 0;
+    .table-responsive {
+        overflow-x: auto;
+        overflow-y: visible;
     }
 
-    .btn-group .btn:first-child {
+    .table {
+        width: max-content;
+        min-width: 100%;
+    }
+
+    .table th,
+    .table td {
+        white-space: normal;
+        padding: 0.45rem 0.5rem;
+        vertical-align: middle;
+    }
+
+    .table td:nth-child(1),
+    .table td:nth-child(3),
+    .table td:nth-child(4),
+    .table td:nth-child(7),
+    .table td:nth-child(8) {
+        white-space: nowrap;
+    }
+
+    .operations-cell,
+    .table th:last-child {
+        white-space: nowrap;
+        min-width: 132px;
+    }
+
+    .user-actions {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: nowrap;
+    }
+
+    .user-actions .btn {
+        border-radius: 0;
+        margin: 0;
+    }
+
+    .user-actions .btn:first-child {
         border-top-right-radius: 0.375rem;
         border-bottom-right-radius: 0.375rem;
     }
 
-    .btn-group .btn:last-child {
+    .user-actions .btn:last-child {
         border-top-left-radius: 0.375rem;
         border-bottom-left-radius: 0.375rem;
+    }
+
+    .role-badge {
+        background: #f2f2f2;
+        color: #333;
+        border: 1px solid #d3d3d3;
+        margin: 0 0.2rem 0.2rem 0;
+        font-weight: 500;
+    }
+
+    .role-actions {
+        margin-top: 0.35rem;
+    }
+
+    .role-actions .form-select,
+    .role-actions .btn {
+        border-color: #b9b9b9;
+    }
+
+    .role-actions .form-select {
+        min-width: 140px;
+    }
+
+    .role-actions .add-role-btn {
+        white-space: nowrap;
+    }
+
+    .card-body {
+        overflow-x: auto;
     }
 </style>
 

@@ -1,10 +1,22 @@
 @model Endpoint.Site.Models.ProjectStatisticsVm
 @{
     ViewData["Title"] = "گزارش آماری پروژه‌ها";
+    ViewData["UseFluidLayout"] = true;
     Layout = "/Views/Shared/_Layout.cshtml";
 }
 
 <style>
+    .app-main-body {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    /* حالت مینیمال: حذف بخش‌های شلوغ صفحه */
+    .stats-page.simple-view .advanced-visual,
+    .stats-page.simple-view .advanced-cards {
+        display: none !important;
+    }
+
     .stats-page {
         background: #f8f9fa;
         min-height: 100vh;
@@ -511,8 +523,8 @@
     }
 </style>
 
-<div class="stats-page">
-    <div class="container-fluid">
+<div class="stats-page simple-view">
+    <div class="container-fluid px-0">
         <!-- Header -->
         <div class="page-header">
             <h2>
@@ -525,7 +537,7 @@
         @if (Model.Projects.Any())
         {
             <!-- نمودار میله‌ای -->
-            <div class="row mb-4">
+            <div class="row mb-4 advanced-visual">
                 <div class="col-12">
                     <div class="stat-card">
                         <div class="stat-card-header">
@@ -541,58 +553,58 @@
                 </div>
             </div>
 
-            <!-- احتمال موفقیت پروژه‌ها -->
+            <!-- سلامت پروژه‌ها -->
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="stat-card">
                         <div class="stat-card-header warning">
                             <i class="bi bi-speedometer2 me-2"></i>
-                            تحلیل احتمال موفقیت پروژه‌ها
+                            تحلیل ساده سلامت پروژه‌ها
                         </div>
                         <div class="card-body p-4">
                             @{
-                                var highSuccess = Model.Projects.Count(p => p.SuccessProbability >= 80);
-                                var mediumSuccess = Model.Projects.Count(p => p.SuccessProbability >= 50 && p.SuccessProbability < 80);
-                                var lowSuccess = Model.Projects.Count(p => p.SuccessProbability >= 30 && p.SuccessProbability < 50);
-                                var atRisk = Model.Projects.Count(p => p.SuccessProbability < 30);
+                                var highSuccess = Model.Projects.Count(p => p.SuccessProbability >= 85);
+                                var mediumSuccess = Model.Projects.Count(p => p.SuccessProbability >= 70 && p.SuccessProbability < 85);
+                                var lowSuccess = Model.Projects.Count(p => p.SuccessProbability >= 50 && p.SuccessProbability < 70);
+                                var atRisk = Model.Projects.Count(p => p.SuccessProbability < 50);
                             }
                             <div class="row mb-4">
                                 <div class="col-md-3 col-sm-6 mb-3">
                                     <div class="summary-card high">
                                         <h4>@highSuccess</h4>
-                                        <small><i class="bi bi-check-circle-fill me-1"></i>موفقیت بالا (≥80%)</small>
+                                        <small><i class="bi bi-check-circle-fill me-1"></i>عالی (≥85)</small>
                                     </div>
                                 </div>
                                 <div class="col-md-3 col-sm-6 mb-3">
                                     <div class="summary-card medium">
                                         <h4>@mediumSuccess</h4>
-                                        <small><i class="bi bi-info-circle-fill me-1"></i>موفقیت متوسط (50-79%)</small>
+                                        <small><i class="bi bi-info-circle-fill me-1"></i>خوب (70-84)</small>
                                     </div>
                                 </div>
                                 <div class="col-md-3 col-sm-6 mb-3">
                                     <div class="summary-card low">
                                         <h4>@lowSuccess</h4>
-                                        <small><i class="bi bi-exclamation-triangle-fill me-1"></i>موفقیت پایین (30-49%)</small>
+                                        <small><i class="bi bi-exclamation-triangle-fill me-1"></i>نیازمند توجه (50-69)</small>
                                     </div>
                                 </div>
                                 <div class="col-md-3 col-sm-6 mb-3">
                                     <div class="summary-card risk">
                                         <h4>@atRisk</h4>
-                                        <small><i class="bi bi-x-circle-fill me-1"></i>در معرض شکست (&lt;30%)</small>
+                                        <small><i class="bi bi-x-circle-fill me-1"></i>بحرانی (&lt;50)</small>
                                     </div>
                                 </div>
                             </div>
-                            <div class="row">
+                            <div class="row advanced-cards">
                                 @foreach (var project in Model.Projects.OrderByDescending(p => p.SuccessProbability))
                                 {
-                                    var badgeClass = project.SuccessProbability >= 80 ? "bg-success" 
-                                        : project.SuccessProbability >= 50 ? "bg-info" 
-                                        : project.SuccessProbability >= 30 ? "bg-warning" 
+                                    var badgeClass = project.SuccessProbability >= 85 ? "bg-success" 
+                                        : project.SuccessProbability >= 70 ? "bg-info" 
+                                        : project.SuccessProbability >= 50 ? "bg-warning" 
                                         : "bg-danger";
                                     
-                                    var progressBarClass = project.SuccessProbability >= 80 ? "bg-success" 
-                                        : project.SuccessProbability >= 50 ? "bg-info" 
-                                        : project.SuccessProbability >= 30 ? "bg-warning" 
+                                    var progressBarClass = project.SuccessProbability >= 85 ? "bg-success" 
+                                        : project.SuccessProbability >= 70 ? "bg-info" 
+                                        : project.SuccessProbability >= 50 ? "bg-warning" 
                                         : "bg-danger";
 
                                     <div class="col-md-6 col-lg-4 mb-3">
@@ -640,7 +652,7 @@
             </div>
 
             <!-- نمودار زمانی -->
-            <div class="row mb-4">
+            <div class="row mb-4 advanced-visual">
                 <div class="col-12">
                     <div class="stat-card">
                         <div class="stat-card-header success">
@@ -747,13 +759,13 @@
                 </div>
             </div>
 
-            <!-- جدول آمار -->
+            <!-- گزارش اولویت رسیدگی -->
             <div class="row">
                 <div class="col-12">
                     <div class="stat-card">
                         <div class="stat-card-header info">
-                            <i class="bi bi-table me-2"></i>
-                            گزارش تفصیلی پروژه‌ها
+                            <i class="bi bi-clipboard2-pulse me-2"></i>
+                            گزارش اولویت رسیدگی
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
@@ -761,84 +773,76 @@
                                     <thead>
                                         <tr>
                                             <th>نام پروژه</th>
-                                            <th class="text-center">کل کارها</th>
-                                            <th class="text-center">تکمیل شده</th>
-                                            <th class="text-center">عقب‌مانده</th>
-                                            <th class="text-center">باقیمانده</th>
-                                            <th class="text-center">پیشرفت</th>
+                                            <th class="text-center">شاخص سلامت</th>
+                                            <th class="text-center">تسک عقب‌مانده</th>
+                                            <th class="text-center">اولویت</th>
+                                            <th>اقدام پیشنهادی</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var project in Model.Projects)
+                                        @foreach (var project in Model.Projects
+                                            .OrderByDescending(p => p.OverdueTasks)
+                                            .ThenBy(p => p.SuccessProbability)
+                                            .ThenByDescending(p => p.RemainingTasks))
                                         {
-                                            var progressPercentage = project.TotalTasks > 0 
-                                                ? (int)((double)project.CompletedTasks / project.TotalTasks * 100) 
-                                                : 0;
+                                            var priority = project.SuccessProbability < 50 || project.OverdueTasks >= 5
+                                                ? "فوری"
+                                                : project.SuccessProbability < 70 || project.OverdueTasks >= 2
+                                                    ? "بالا"
+                                                    : "عادی";
+
+                                            var priorityClass = priority == "فوری"
+                                                ? "bg-danger"
+                                                : priority == "بالا"
+                                                    ? "bg-warning text-dark"
+                                                    : "bg-success";
+
+                                            var actionText = project.OverdueTasks > 0
+                                                ? "ابتدا تسک‌های عقب‌مانده را تعیین‌تکلیف کنید."
+                                                : project.RemainingTasks > project.CompletedTasks
+                                                    ? "تقسیم کار و پیگیری روزانه برای افزایش سرعت انجام."
+                                                    : "وضعیت پایدار است؛ روی حفظ ریتم تیم تمرکز کنید.";
+
                                             <tr>
                                                 <td>
-                                                <a href="/Projects/Details/@project.ProjectId" class="text-decoration-none fw-semibold">
-                                                    <i class="bi bi-folder-fill me-2" style="color: #495057;"></i>
-                                                    @project.ProjectName
-                                                </a>
+                                                    <a href="/Projects/Details/@project.ProjectId" class="text-decoration-none fw-semibold">
+                                                        <i class="bi bi-folder-fill me-2" style="color: #495057;"></i>
+                                                        @project.ProjectName
+                                                    </a>
                                                 </td>
                                                 <td class="text-center">
-                                                    <span class="badge badge-modern bg-secondary">@project.TotalTasks</span>
+                                                    <span class="badge badge-modern @(project.SuccessProbability >= 70 ? "bg-success" : project.SuccessProbability >= 50 ? "bg-warning text-dark" : "bg-danger")">
+                                                        @project.SuccessProbability%
+                                                    </span>
                                                 </td>
                                                 <td class="text-center">
-                                                    <span class="badge badge-modern bg-success">@project.CompletedTasks</span>
+                                                    <span class="badge badge-modern @(project.OverdueTasks > 0 ? "bg-danger" : "bg-secondary")">
+                                                        @project.OverdueTasks
+                                                    </span>
                                                 </td>
                                                 <td class="text-center">
-                                                    <span class="badge badge-modern bg-danger">@project.OverdueTasks</span>
+                                                    <span class="badge badge-modern @priorityClass">@priority</span>
                                                 </td>
-                                                <td class="text-center">
-                                                    <span class="badge badge-modern bg-warning text-dark">@project.RemainingTasks</span>
-                                                </td>
-                                                <td class="text-center" style="min-width: 150px;">
-                                                    <div class="progress-modern">
-                                                        <div class="progress-bar-modern @(progressPercentage == 100 ? "bg-success" : progressPercentage >= 50 ? "bg-info" : "bg-warning")" 
-                                                             role="progressbar" 
-                                                             style="width: @progressPercentage%" 
-                                                             aria-valuenow="@progressPercentage" 
-                                                             aria-valuemin="0" 
-                                                             aria-valuemax="100">
-                                                            @progressPercentage%
-                                                        </div>
-                                                    </div>
+                                                <td>
+                                                    @actionText
                                                 </td>
                                             </tr>
                                         }
                                     </tbody>
                                     <tfoot class="table-light">
                                         <tr>
-                                            <th class="fw-bold">جمع کل</th>
+                                            <th class="fw-bold">خلاصه</th>
                                             <th class="text-center">
-                                                <span class="badge badge-modern bg-secondary">@Model.Projects.Sum(p => p.TotalTasks)</span>
-                                            </th>
-                                            <th class="text-center">
-                                                <span class="badge badge-modern bg-success">@Model.Projects.Sum(p => p.CompletedTasks)</span>
+                                                <span class="badge badge-modern bg-secondary">@((int)Model.Projects.Average(p => p.SuccessProbability))%</span>
                                             </th>
                                             <th class="text-center">
                                                 <span class="badge badge-modern bg-danger">@Model.Projects.Sum(p => p.OverdueTasks)</span>
                                             </th>
                                             <th class="text-center">
-                                                <span class="badge badge-modern bg-warning text-dark">@Model.Projects.Sum(p => p.RemainingTasks)</span>
+                                                <span class="badge badge-modern bg-secondary">-</span>
                                             </th>
-                                            <th class="text-center">
-                                                @{
-                                                    var totalTasks = Model.Projects.Sum(p => p.TotalTasks);
-                                                    var totalCompleted = Model.Projects.Sum(p => p.CompletedTasks);
-                                                    var totalProgress = totalTasks > 0 ? (int)((double)totalCompleted / totalTasks * 100) : 0;
-                                                }
-                                                <div class="progress-modern">
-                                                    <div class="progress-bar-modern @(totalProgress == 100 ? "bg-success" : totalProgress >= 50 ? "bg-info" : "bg-warning")" 
-                                                         role="progressbar" 
-                                                         style="width: @totalProgress%" 
-                                                         aria-valuenow="@totalProgress" 
-                                                         aria-valuemin="0" 
-                                                         aria-valuemax="100">
-                                                        @totalProgress%
-                                                    </div>
-                                                </div>
+                                            <th>
+                                                میانگین سلامت کل پروژه‌ها و تعداد تسک‌های عقب‌مانده.
                                             </th>
                                         </tr>
                                     </tfoot>

@@ -8,7 +8,7 @@ using System.Security.Claims;
 
 namespace Endpoint.Site.Controllers
 {
-    //[Authorize(Roles = "ADMIN")]
+    [Authorize(Roles = "ADMIN")]
     [Route("Admin/[controller]/[action]")]
     public class AdminUsersController : Controller
     {
@@ -76,6 +76,10 @@ namespace Endpoint.Site.Controllers
             ViewBag.PageSize = pageSize;
             ViewBag.TotalCount = totalCount;
             ViewBag.TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+            ViewBag.AllRoles = await _roleManager.Roles
+                .OrderBy(r => r.Name)
+                .Select(r => r.Name!)
+                .ToListAsync();
 
             return View(users);
         }
@@ -216,6 +220,101 @@ namespace Endpoint.Site.Controllers
 
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
             return Json(new { success = false, message = $"خطا در تغییر وضعیت: {errors}" });
+        }
+
+        // POST: افزودن نقش به کاربر
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddRole(string id, string roleName)
+        {
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(roleName))
+            {
+                return Json(new { success = false, message = "شناسه کاربر یا نقش نامعتبر است" });
+            }
+
+            roleName = roleName.Trim();
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                return Json(new { success = false, message = "کاربر یافت نشد" });
+            }
+
+            if (!await _roleManager.RoleExistsAsync(roleName))
+            {
+                return Json(new { success = false, message = "نقش انتخاب شده وجود ندارد" });
+            }
+
+            if (await _userManager.IsInRoleAsync(user, roleName))
+            {
+                return Json(new { success = false, message = "این نقش قبلا برای کاربر ثبت شده است" });
+            }
+
+            var result = await _userManager.AddToRoleAsync(user, roleName);
+            if (result.Succeeded)
+            {
+                return Json(new { success = true, message = "نقش با موفقیت افزوده شد" });
+            }
+
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            return Json(new { success = false, message = $"خطا در افزودن نقش: {errors}" });
+        }
+
+        // POST: حذف نقش از کاربر
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveRole(string id, string roleName)
+        {
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(roleName))
+            {
+                return Json(new { success = false, message = "شناسه کاربر یا نقش نامعتبر است" });
+            }
+
+            roleName = roleName.Trim();
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                return Json(new { success = false, message = "کاربر یافت نشد" });
+            }
+
+            if (!await _userManager.IsInRoleAsync(user, roleName))
+            {
+                return Json(new { success = false, message = "کاربر این نقش را ندارد" });
+            }
+
+            var result = await _userManager.RemoveFromRoleAsync(user, roleName);
+            if (result.Succeeded)
+            {
+                return Json(new { success = true, message = "نقش با موفقیت حذف شد" });
+            }
+
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            return Json(new { success = false, message = $"خطا در حذف نقش: {errors}" });
+        }
+
+        // POST: تعریف نقش جدید
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateRole(string roleName)
+        {
+            if (string.IsNullOrWhiteSpace(roleName))
+            {
+                return Json(new { success = false, message = "نام نقش نمی‌تواند خالی باشد" });
+            }
+
+            roleName = roleName.Trim();
+            if (await _roleManager.RoleExistsAsync(roleName))
+            {
+                return Json(new { success = false, message = "این نقش قبلا تعریف شده است" });
+            }
+
+            var result = await _roleManager.CreateAsync(new IdentityRole(roleName));
+            if (result.Succeeded)
+            {
+                return Json(new { success = true, message = "نقش جدید با موفقیت ایجاد شد" });
+            }
+
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            return Json(new { success = false, message = $"خطا در ایجاد نقش: {errors}" });
         }
     }
 }

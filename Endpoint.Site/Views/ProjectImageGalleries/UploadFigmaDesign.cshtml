@@ -1,13 +1,14 @@
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = "آپلود طراحی";
+    ViewData["UseFluidLayout"] = true;
     var projectId = ViewBag.ProjectId as int?;
     var folderId = ViewBag.FolderId as int?;
 }
 
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
+<div class="container-fluid px-0 mt-2 upload-figma-page">
+    <div class="row g-0">
+        <div class="col-12">
             <div class="card shadow-sm">
                 <div class="card-header text-white" style="background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);">
                     <h4 class="mb-0">
@@ -96,6 +97,16 @@
         }
     </script>
     <style>
+        .app-main-body {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        .upload-figma-page {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
         .file-upload-area:hover { background: #e9ecef !important; border-color: #8B5CF6 !important; }
     </style>
 }

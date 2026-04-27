@@ -81,10 +81,10 @@
                 <p class="gallery-subtitle">عکس‌ها و تصاویر مربوط به این پروژه</p>
             </div>
             <div class="header-actions">
-                <a class="btn-figma-design" href="/ProjectImageGalleries/UploadFigmaDesign?projectId=@projectId&folderId=@folderId">
+                <button type="button" class="btn-figma-design" data-bs-toggle="modal" data-bs-target="#uploadFigmaDesignModal">
                     <i class="bi bi-file-earmark-zip"></i>
                     <span>آپلود طراحی</span>
-                </a>
+                </button>
                 <a class="btn-view-figma" href="/ProjectImageGalleries/ViewFigmaDesign?projectId=@projectId@(folderId.HasValue ? "&folderId=" + folderId : "")">
                     <i class="bi bi-palette-fill"></i>
                     <span>نمایش طراحی</span>
@@ -173,6 +173,48 @@
                 </button>
             </div>
         }
+    </div>
+</div>
+
+<!-- مودال آپلود طراحی فیگما -->
+<div class="modal fade" id="uploadFigmaDesignModal" tabindex="-1" aria-labelledby="uploadFigmaDesignModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadFigmaDesignModalLabel">
+                    <i class="bi bi-file-earmark-zip"></i>
+                    آپلود طراحی
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+            </div>
+            <form method="post" action="@Url.Action("UploadFigmaDesign", "ProjectImageGalleries")" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="projectId" value="@projectId" />
+                @if (folderId.HasValue)
+                {
+                    <input type="hidden" name="folderId" value="@folderId" />
+                }
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        فایل zip اکسپورت شده از فیگما را انتخاب کنید تا تصاویر به گالری پروژه اضافه شوند.
+                    </p>
+                    <div class="file-upload-area border rounded p-4 text-center" id="figmaUploadDropArea" style="background: #f8f9fa; cursor: pointer;">
+                        <i class="bi bi-file-earmark-zip" style="font-size: 2.25rem; color: #8B5CF6;"></i>
+                        <p class="mt-2 mb-1 fw-bold">برای انتخاب فایل zip کلیک کنید</p>
+                        <small class="text-muted">فقط فایل‌های .zip</small>
+                        <input type="file" name="figmaZipFile" id="figmaZipFileInput" class="form-control d-none" accept=".zip" />
+                    </div>
+                    <div id="figmaZipChosenText" class="mt-2 text-muted small"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary" id="figmaUploadSubmitBtn" disabled>
+                        <i class="bi bi-upload"></i>
+                        آپلود و نمایش طراحی
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -289,6 +331,27 @@
     const createModalImageFiles = document.getElementById('createModalImageFiles');
     const createModalFilePreview = document.getElementById('createModalFilePreview');
     const createImageSubmitBtn = document.getElementById('createImageSubmitBtn');
+    const figmaUploadDropArea = document.getElementById('figmaUploadDropArea');
+    const figmaZipFileInput = document.getElementById('figmaZipFileInput');
+    const figmaZipChosenText = document.getElementById('figmaZipChosenText');
+    const figmaUploadSubmitBtn = document.getElementById('figmaUploadSubmitBtn');
+
+    if (figmaUploadDropArea && figmaZipFileInput) {
+        figmaUploadDropArea.addEventListener('click', function () {
+            figmaZipFileInput.click();
+        });
+
+        figmaZipFileInput.addEventListener('change', function () {
+            if (!figmaZipChosenText || !figmaUploadSubmitBtn) return;
+            if (this.files && this.files.length > 0) {
+                figmaZipChosenText.textContent = 'انتخاب شده: ' + this.files[0].name;
+                figmaUploadSubmitBtn.disabled = false;
+            } else {
+                figmaZipChosenText.textContent = '';
+                figmaUploadSubmitBtn.disabled = true;
+            }
+        });
+    }
 
     const deleteImageModal = document.getElementById('deleteImageModal');
     const deleteImageForm = document.getElementById('deleteImageForm');
