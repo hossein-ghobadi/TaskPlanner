@@ -4,6 +4,7 @@
 
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["UseFluidLayout"] = true;
     var projectId = Context.Request.Query["projectId"].ToString();
     var projectIdInt = !string.IsNullOrEmpty(projectId) ? int.Parse(projectId) : (int?)null;
     var today = DateTime.Today;
@@ -60,12 +61,19 @@
 
 <style>
     /* استایل مینیمال و مدرن */
+    .tasks-page {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0.35rem 0.2rem 0.8rem;
+    }
     .page-header {
         background: white;
         border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        padding: 1rem 1.1rem;
+        margin-bottom: 0.95rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        border: 1px solid #e5e7eb;
     }
     .page-title {
         font-size: 1.5rem;
@@ -76,7 +84,7 @@
     .stats-minimal {
         display: flex;
         gap: 1rem;
-        margin-bottom: 1.5rem;
+        margin-bottom: 0.95rem;
         flex-wrap: wrap;
     }
     .stat-minimal {
@@ -111,8 +119,8 @@
     .filter-section {
         background: white;
         border-radius: 12px;
-        padding: 1.25rem;
-        margin-bottom: 1.5rem;
+        padding: 0.9rem 1rem;
+        margin-bottom: 0.95rem;
         border: 1px solid #e5e7eb;
     }
     .filter-row {
@@ -149,7 +157,7 @@
     .tasks-container {
         background: white;
         border-radius: 12px;
-        padding: 1.5rem;
+        padding: 1rem;
         border: 1px solid #e5e7eb;
     }
     .task-card {
@@ -208,6 +216,7 @@
     }
 </style>
 
+<div class="tasks-page">
 <!-- هدر ساده -->
 <div class="page-header">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -281,6 +290,7 @@
         </div>
     }
 </div>
+ </div>
 
 <!-- فیلترها -->
 <div class="filter-section">

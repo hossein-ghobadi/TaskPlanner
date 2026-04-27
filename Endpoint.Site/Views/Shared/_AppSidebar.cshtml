@@ -1,0 +1,52 @@
+@{
+    var c = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var a = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+    string NavClass(string controller, string action = "Index", string? altAction = null)
+    {
+        var match = string.Equals(c, controller, StringComparison.OrdinalIgnoreCase)
+            && (string.Equals(a, action, StringComparison.OrdinalIgnoreCase)
+                || (altAction != null && string.Equals(a, altAction, StringComparison.OrdinalIgnoreCase)));
+        return "app-sidebar-link" + (match ? " active" : "");
+    }
+}
+
+<aside class="app-sidebar">
+    <div class="app-sidebar-mobile-header d-lg-none">
+        <span>منوی برنامه</span>
+        <button type="button" class="btn btn-sm btn-light" id="mobileSidebarClose" aria-label="بستن منو">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+
+    @*<div class="app-sidebar-brand">
+        <a href="/Projects/Index"><i class="bi bi-grid-3x3-gap-fill me-2"></i>Task Planner</a>
+    </div>*@
+
+    <div class="app-sidebar-user">
+        <div class="app-sidebar-user-avatar"><i class="bi bi-person-fill"></i></div>
+        <div>
+            <div class="app-sidebar-user-name">@(User.Identity?.Name ?? "کاربر")</div>
+            <div class="app-sidebar-user-meta">خوش آمدید</div>
+        </div>
+    </div>
+
+    <nav class="app-sidebar-nav" aria-label="ناوبری اصلی">
+        <a class="@NavClass("Projects", "Index")" href="/Projects/Index"><i class="bi bi-speedometer2"></i><span>داشبورد</span></a>
+        <a class="@NavClass("Projects", "Index")" href="/Projects/Index"><i class="bi bi-briefcase"></i><span>پروژه‌ها</span></a>
+        <a class="@NavClass("Boards", "Index")" href="/Boards/Index"><i class="bi bi-kanban"></i><span>تخته‌ها</span></a>
+        <a class="@NavClass("Projects", "Statistics")" href="/Projects/Statistics"><i class="bi bi-graph-up"></i><span>گزارش پروژه‌ها</span></a>
+        <a class="@NavClass("Notifications", "Index")" href="/Notifications/Index"><i class="bi bi-bell"></i><span>اعلان‌ها</span></a>
+        <a class="@NavClass("Invitations", "MyInvitations")" href="/Invitations/MyInvitations"><i class="bi bi-envelope"></i><span>دعوت‌ها</span></a>
+        <a class="@NavClass("PersonalNotes", "Index")" href="/PersonalNotes/Index"><i class="bi bi-journal-text"></i><span>یادداشت‌های شخصی</span></a>
+    </nav>
+
+    <div class="app-sidebar-footer">
+        <form method="post" action="/account/logout" class="m-0">
+            <input name="__RequestVerificationToken" type="hidden" value="@ViewBag.AntiforgeryToken" />
+            <button class="app-sidebar-logout" type="submit">
+                <i class="bi bi-box-arrow-right"></i>
+                خروج از حساب
+            </button>
+        </form>
+    </div>
+</aside>

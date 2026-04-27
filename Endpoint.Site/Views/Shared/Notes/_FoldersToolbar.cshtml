@@ -1,0 +1,252 @@
+@using System.Collections
+@using System.Collections.Generic
+@using System.Linq
+@{
+    var folders = ViewData["Folders"] as IEnumerable<dynamic> ?? new List<dynamic>();
+    var folderId = ViewData["FolderId"] as int?;
+    var folderNotesCount = ViewData["FolderNotesCount"] as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var createFolderUrl = ViewData["CreateFolderUrl"] as string ?? "#";
+    var createFolderPostUrl = ViewData["CreateFolderPostUrl"] as string ?? createFolderUrl;
+    var createFolderModalId = ViewData["CreateFolderModalId"] as string ?? "createFolderModal";
+    var createFolderProjectId = ViewData["CreateFolderProjectId"] as int?;
+    var createNoteUrl = ViewData["CreateNoteUrl"] as string;
+    var editFolderPostUrl = ViewData["EditFolderPostUrl"] as string ?? "#";
+    var deleteFolderPostUrl = ViewData["DeleteFolderPostUrl"] as string ?? "#";
+    var allNotesUrl = ViewData["AllNotesUrl"] as string ?? "#";
+    var allItemsLabel = ViewData["AllItemsLabel"] as string ?? "همه یادداشت‌ها";
+    var allItemsIcon = ViewData["AllItemsIcon"] as string ?? "bi-journal-text";
+    var folderUrlTemplate = ViewData["FolderUrlTemplate"] as string ?? "#";
+    var editUrlTemplate = ViewData["EditFolderUrlTemplate"] as string ?? "#";
+    var deleteUrlTemplate = ViewData["DeleteFolderUrlTemplate"] as string ?? "#";
+
+    string BuildUrl(string template, int id) => template.Replace("{id}", id.ToString());
+}
+
+<div class="folders-toolbar card-modern mb-3">
+    <div class="folders-toolbar-head">
+        <div class="folders-toolbar-title">
+            <i class="bi bi-folder2-open"></i>
+            <span>پوشه ها</span>
+        </div>
+        <div class="folders-toolbar-actions">
+            @if (!string.IsNullOrWhiteSpace(createNoteUrl))
+            {
+                <a href="@createNoteUrl" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus-lg"></i>
+                    یادداشت جدید
+                </a>
+            }
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#@createFolderModalId">
+                <i class="bi bi-folder-plus"></i>
+                پوشه جدید
+            </button>
+        </div>
+    </div>
+
+    <div class="folders-toolbar-body">
+        <div class="folder-group">
+            <span class="folder-chip-wrap">
+                <a href="@allNotesUrl" class="folder-chip @(!folderId.HasValue ? "active" : "")">
+                    <i class="bi @allItemsIcon"></i>
+                    @allItemsLabel
+                </a>
+            </span>
+        </div>
+
+        @foreach (var folder in folders)
+        {
+            var isActive = folderId.HasValue && folder.Id == folderId.Value;
+            var count = folderNotesCount.ContainsKey((int)folder.Id) ? folderNotesCount[(int)folder.Id] : 0;
+            var childrenEnumerable = folder.Children as IEnumerable;
+            var children = childrenEnumerable?.Cast<dynamic>().ToList() ?? new List<dynamic>();
+
+            <div class="folder-group">
+                <span class="folder-chip-wrap">
+                    <a href="@BuildUrl(folderUrlTemplate, (int)folder.Id)" class="folder-chip @(isActive ? "active" : "")">
+                        <i class="bi bi-folder"></i>
+                        @folder.Name
+                        <span class="folder-chip-count">@count</span>
+                    </a>
+                    <button type="button"
+                            class="folder-mini-action"
+                            title="ویرایش"
+                            data-bs-toggle="modal"
+                            data-bs-target="#editFolderModal"
+                            data-folder-id="@folder.Id"
+                            data-folder-name="@folder.Name"
+                            data-folder-color="@((string?)folder.Color ?? "#64748b")"
+                            data-parent-id="">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button"
+                            class="folder-mini-action danger"
+                            title="حذف"
+                            data-bs-toggle="modal"
+                            data-bs-target="#deleteFolderModal"
+                            data-folder-id="@folder.Id"
+                            data-folder-name="@folder.Name">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </span>
+
+                @if (children.Count > 0)
+                {
+                    <div class="folder-children-list">
+                        @foreach (var child in children)
+                        {
+                            var childIsActive = folderId.HasValue && child.Id == folderId.Value;
+                            var childCount = folderNotesCount.ContainsKey((int)child.Id) ? folderNotesCount[(int)child.Id] : 0;
+                            <span class="folder-chip-wrap child">
+                                <a href="@BuildUrl(folderUrlTemplate, (int)child.Id)" class="folder-chip @(childIsActive ? "active" : "")">
+                                    <i class="bi bi-arrow-return-left"></i>
+                                    @child.Name
+                                    <span class="folder-chip-count">@childCount</span>
+                                </a>
+                                <button type="button"
+                                        class="folder-mini-action"
+                                        title="ویرایش"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editFolderModal"
+                                        data-folder-id="@child.Id"
+                                        data-folder-name="@child.Name"
+                                        data-folder-color="@((string?)child.Color ?? "#64748b")"
+                                        data-parent-id="@folder.Id">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button"
+                                        class="folder-mini-action danger"
+                                        title="حذف"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#deleteFolderModal"
+                                        data-folder-id="@child.Id"
+                                        data-folder-name="@child.Name">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<div class="modal fade" id="@createFolderModalId" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="@createFolderPostUrl">
+                @Html.AntiForgeryToken()
+                @if (createFolderProjectId.HasValue)
+                {
+                    <input type="hidden" name="ProjectId" value="@createFolderProjectId.Value" />
+                }
+                @if (folderId.HasValue)
+                {
+                    <input type="hidden" name="ParentFolderId" value="@folderId.Value" />
+                }
+                <div class="modal-header">
+                    <h5 class="modal-title">پوشه جدید</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">نام پوشه</label>
+                        <input type="text" class="form-control" name="Name" required maxlength="100" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">رنگ (اختیاری)</label>
+                        <input type="color" class="form-control form-control-color" name="Color" value="#64748b" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ایجاد پوشه</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editFolderModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="@editFolderPostUrl" id="editFolderForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" id="editFolderId" />
+                @if (createFolderProjectId.HasValue)
+                {
+                    <input type="hidden" name="ProjectId" value="@createFolderProjectId.Value" />
+                }
+                <input type="hidden" name="ParentFolderId" id="editFolderParentId" />
+                <div class="modal-header">
+                    <h5 class="modal-title">ویرایش پوشه</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">نام پوشه</label>
+                        <input type="text" class="form-control" name="Name" id="editFolderName" required maxlength="100" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">رنگ</label>
+                        <input type="color" class="form-control form-control-color" name="Color" id="editFolderColor" value="#64748b" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteFolderModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="@deleteFolderPostUrl">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="deleteFolderId" />
+                <div class="modal-header">
+                    <h5 class="modal-title">حذف پوشه</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">پوشه <strong id="deleteFolderName"></strong> حذف شود؟</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger">حذف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var editModal = document.getElementById('editFolderModal');
+        if (editModal) {
+            editModal.addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                if (!button) return;
+                document.getElementById('editFolderId').value = button.getAttribute('data-folder-id') || '';
+                document.getElementById('editFolderName').value = button.getAttribute('data-folder-name') || '';
+                document.getElementById('editFolderColor').value = button.getAttribute('data-folder-color') || '#64748b';
+                document.getElementById('editFolderParentId').value = button.getAttribute('data-parent-id') || '';
+            });
+        }
+
+        var deleteModal = document.getElementById('deleteFolderModal');
+        if (deleteModal) {
+            deleteModal.addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                if (!button) return;
+                var id = button.getAttribute('data-folder-id') || '';
+                var name = button.getAttribute('data-folder-name') || '';
+                document.getElementById('deleteFolderId').value = id;
+                document.getElementById('deleteFolderName').textContent = name;
+            });
+        }
+    })();
+</script>

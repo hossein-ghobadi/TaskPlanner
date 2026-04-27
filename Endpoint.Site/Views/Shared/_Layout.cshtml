@@ -1,6 +1,8 @@
 ﻿@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+    var useFluidLayout = (ViewData["UseFluidLayout"] as bool?) ?? false;
+    ViewBag.AntiforgeryToken = antiforgeryToken;
 }
 
 <!DOCTYPE html>
@@ -8,7 +10,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Task Planner</title>
+    <title>@ViewData["Title"] - ProjectMannaging</title>
 
     <!-- فونت Vazir -->
     <!-- CDN: <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vazir-font@30.1.0/dist/font-face.css" /> -->
@@ -26,6 +28,7 @@
 
     <!-- استایل‌های اصلی پروژه -->
     <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="~/css/app-shell.css" />
     <link href="~/css/ChatBox.css" rel="stylesheet" />
     <style>
         body {
@@ -136,11 +139,8 @@
         
 
         .notification-menu {
-            width: 260px !important; /* جلوگیری از خارج شدن از صفحه */
-            inset: auto !important; /* ریست کردن موقعیت قدیمی */
-            right: 0 !important; /* تو RTL طرف راست دکمه */
-            left: auto !important;
-            transform: translateX(10px); /* کمی فاصله زیبایی */
+            width: 260px !important;
+            inset: auto !important;
         }
 
         /* جلوگیری از بهم‌ریختگی badge */
@@ -148,7 +148,6 @@
             transform: translate(-50%, -50%) !important;
         }
 
-        }
         .notification-menu-header {
             background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
             color: #fff;
@@ -264,96 +263,91 @@
     </style>
 </head>
 <body data-antiforgery-token="@antiforgeryToken">
-    <!-- 🔹 نوار ناوبری -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-
-            <a class="navbar-brand d-flex align-items-center" href="/Projects/Index">
-                <i class="bi bi-grid-3x3-gap-fill me-2"></i>
-                داشبورد
-            </a>
-
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-                    data-bs-target="#navbarNav" aria-controls="navbarNav"
-                    aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
+    @if (User?.Identity?.IsAuthenticated == true)
+    {
+        <div class="app-mobile-topbar d-lg-none">
+            <button type="button" class="app-mobile-menu-btn" id="mobileSidebarToggle" aria-label="باز کردن منو">
+                <i class="bi bi-list"></i>
             </button>
+            @*<span class="app-mobile-brand">Task Planner</span>*@
+        </div>
+        <div class="app-mobile-backdrop d-lg-none" id="mobileSidebarBackdrop"></div>
+        <div class="app-global-notification d-none">
+            <button type="button" class="app-global-notification-btn position-relative"
+                    id="notificationBell" aria-expanded="false" aria-controls="notificationPanel">
+                <i class="bi bi-bell"></i>
+                <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-danger d-none"
+                      id="notificationBadge">0</span>
+            </button>
+            <div id="notificationPanel" class="app-notification-panel" role="dialog" aria-label="اعلان‌ها">
+                <div class="notification-menu-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="bg-white bg-opacity-20 rounded-circle d-inline-flex align-items-center justify-content-center"
+                              style="width:28px;height:28px;">
+                            <i class="bi bi-bell-fill"></i>
+                        </span>
+                        <h6 class="mb-0">اعلان‌ها</h6>
+                    </div>
+                    <button class="btn-notification-refresh" id="refreshNotificationsBtn" type="button">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </button>
+                </div>
+                <div id="notificationList" class="notification-list">
+                    <div class="notification-empty" id="notificationEmpty">
+                        <i class="bi bi-bell-slash"></i>
+                        در حال بارگذاری...
+                    </div>
+                </div>
+                <div class="notification-footer">
+                    <form id="markAllNotificationsForm" class="d-grid gap-1">
+                        <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
+                        <button class="btn btn-light" type="submit">علامت‌گذاری همه</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="app-notification-backdrop d-none" id="notificationBackdrop"></div>
 
-            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-
-                <div class="d-flex align-items-center gap-3">
-
-                    @if (User?.Identity?.IsAuthenticated == true)
-                    {
-                        <div class="dropdown me-2">
-                            <button type="button" class="btn navbar-notification-btn position-relative text-light"
-                                    id="notificationBell" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-bell"></i>
-                                <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-danger d-none"
-                                      id="notificationBadge">0</span>
-                            </button>
-
-                            <div class="dropdown-menu dropdown-menu-end notification-menu">
-                                <div class="notification-menu-header d-flex justify-content-between align-items-center">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="bg-white bg-opacity-20 rounded-circle d-inline-flex align-items-center justify-content-center"
-                                              style="width:28px;height:28px;">
-                                            <i class="bi bi-bell-fill"></i>
-                                        </span>
-                                        <h6 class="mb-0">نوتیفیکیشن‌ها</h6>
-                                    </div>
-                                    <button class="btn-notification-refresh" id="refreshNotificationsBtn" type="button">
-                                        <i class="bi bi-arrow-repeat"></i>
-                                    </button>
-                                </div>
-
-                                <div id="notificationList" class="notification-list">
-                                    <div class="notification-empty" id="notificationEmpty">
-                                        <i class="bi bi-bell-slash"></i>
-                                        در حال بارگذاری...
-                                    </div>
-                                </div>
-
-                                <div class="notification-footer">
-                                    <form id="markAllNotificationsForm" class="d-grid gap-1">
-                                        <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
-                                        <button class="btn btn-light" type="submit">علامت‌گذاری همه</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="user-info">سلام، <span>@User.Identity.Name</span></div>
-
-                        <form method="post" action="/account/logout" class="m-0">
-                            <input name="__RequestVerificationToken" type="hidden" value="@antiforgeryToken" />
-                            <button class="btn-logout" type="submit">خروج</button>
-                        </form>
-                    }
-                    else
-                    {
+        <div class="app-shell">
+            @await Html.PartialAsync("_AppSidebar")
+            <div class="app-main">
+                <main class="app-main-body @(useFluidLayout ? "px-1 px-md-2 py-2" : "container mt-3 mt-md-4")">
+                    @RenderBody()
+                </main>
+                
+            </div>
+        </div>
+    }
+    else
+    {
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container-fluid">
+                @*<a class="navbar-brand d-flex align-items-center" href="/">
+                    <i class="bi bi-grid-3x3-gap-fill me-2"></i>
+                    Task Planner
+                </a>*@
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#navbarNav" aria-controls="navbarNav"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                    <div class="d-flex align-items-center gap-3">
                         <a class="btn-login" href="/login">ورود</a>
                         <a class="btn-register ms-2" href="/register">ثبت‌نام</a>
-                    }
+                    </div>
                 </div>
-
             </div>
+        </nav>
 
-        </div>
-    </nav>
+        <main class="@(useFluidLayout ? "container-fluid px-2 px-md-3 px-xl-4 mt-3" : "container mt-4")">
+            @RenderBody()
+        </main>
 
-    <!-- 🔸 محتوای اصلی -->
-    <main class="container mt-4">
-        @RenderBody()
-    </main>
-
-    <!-- 🔹 فوتر -->
-    <footer class="text-center p-4 mt-5" style="background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); border-top: 1px solid #e5e7eb;">
-        <p class="mb-0 text-muted">
-            <i class="bi bi-calendar-check me-1"></i>
-            © 2025 - Task Planner
-        </p>
-    </footer>
+        <footer class="text-center p-4 mt-5" style="background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); border-top: 1px solid #e5e7eb;">
+            
+        </footer>
+    }
 
     <!-- Scripts -->
     <!-- CDN: <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script> -->
@@ -460,7 +454,7 @@
                             <div class="notification-item-message">${notification.message}</div>
                             <div class="notification-item-time">
                                 <i class="bi bi-clock"></i>
-                                <span>${formatRelativeTime(notification.createdAt)}</span>
+                                <span>${formatTehranPersianDateTime(notification.createdAt)}</span>
                             </div>
                         `;
                         item.addEventListener('click', async () => {
@@ -519,27 +513,62 @@
                     }
                 }
 
-                function formatRelativeTime(dateString) {
+                function formatTehranPersianDateTime(dateString) {
                     try {
                         const date = new Date(dateString);
                         if (Number.isNaN(date.getTime())) {
                             return '';
                         }
-                        const diffMs = Date.now() - date.getTime();
-                        const diffMinutes = Math.floor(diffMs / 60000);
-                        if (diffMinutes < 1) return 'همین حالا';
-                        if (diffMinutes < 60) return `${diffMinutes} دقیقه پیش`;
-                        const diffHours = Math.floor(diffMinutes / 60);
-                        if (diffHours < 24) return `${diffHours} ساعت پیش`;
-                        const diffDays = Math.floor(diffHours / 24);
-                        return `${diffDays} روز پیش`;
+                        return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+                            timeZone: 'Asia/Tehran',
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        }).format(date);
                     } catch {
                         return '';
                     }
                 }
 
-                notificationBell.addEventListener('show.bs.dropdown', () => loadLatest());
+                const notificationPanel = document.getElementById('notificationPanel');
+                const notificationBackdrop = document.getElementById('notificationBackdrop');
+
+                function openNotifications() {
+                    const isMobile = window.innerWidth < 992;
+                    notificationPanel?.classList.add('is-open');
+                    notificationBell?.setAttribute('aria-expanded', 'true');
+                    if (isMobile) {
+                        // در موبایل بک‌دراپ و قفل اسکرول غیرفعال است تا تداخل کلیک رخ ندهد.
+                        notificationBackdrop?.classList.remove('is-open');
+                    } else {
+                        notificationBackdrop?.classList.add('is-open');
+                        document.body.classList.add('notifications-open');
+                    }
+                    loadLatest(true);
+                }
+
+                function closeNotifications() {
+                    notificationPanel?.classList.remove('is-open');
+                    notificationBackdrop?.classList.remove('is-open');
+                    notificationBell?.setAttribute('aria-expanded', 'false');
+                    document.body.classList.remove('notifications-open');
+                }
+
+                notificationBell?.addEventListener('click', () => {
+                    const isOpen = notificationPanel?.classList.contains('is-open');
+                    if (isOpen) {
+                        closeNotifications();
+                    } else {
+                        openNotifications();
+                    }
+                });
+
+                notificationBackdrop?.addEventListener('click', closeNotifications);
                 refreshBtn?.addEventListener('click', () => loadLatest(true));
+
                 markAllForm?.addEventListener('submit', async (event) => {
                     event.preventDefault();
                     try {
@@ -561,6 +590,43 @@
 
                 loadCount();
                 setInterval(loadCount, 60000);
+
+                // Mobile sidebar (hamburger)
+                const mobileToggle = document.getElementById('mobileSidebarToggle');
+                const mobileBackdrop = document.getElementById('mobileSidebarBackdrop');
+                const mobileClose = document.getElementById('mobileSidebarClose');
+                const appShell = document.querySelector('.app-shell');
+                const mobileNavLinks = document.querySelectorAll('.app-sidebar-nav a');
+
+                function closeMobileSidebar() {
+                    appShell?.classList.remove('sidebar-open');
+                    document.body.classList.remove('mobile-menu-open');
+                }
+
+                function resetInteractiveOverlays() {
+                    closeMobileSidebar();
+                    closeNotifications();
+                }
+
+                // وقتی صفحه با back/forward cache برمی‌گردد، گاهی overlayها باز می‌مانند.
+                // این ریست از گیر افتادن کلیک‌ها جلوگیری می‌کند.
+                resetInteractiveOverlays();
+                window.addEventListener('pageshow', resetInteractiveOverlays);
+
+                mobileToggle?.addEventListener('click', function () {
+                    appShell?.classList.add('sidebar-open');
+                    document.body.classList.add('mobile-menu-open');
+                });
+
+                mobileClose?.addEventListener('click', closeMobileSidebar);
+                mobileBackdrop?.addEventListener('click', closeMobileSidebar);
+                mobileNavLinks.forEach(link => link.addEventListener('click', closeMobileSidebar));
+
+                window.addEventListener('resize', () => {
+                    if (window.innerWidth >= 992) {
+                        closeMobileSidebar();
+                    }
+                });
             });
         </script>
     }

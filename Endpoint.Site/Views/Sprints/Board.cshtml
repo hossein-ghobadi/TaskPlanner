@@ -6,6 +6,7 @@
 @{
 
     Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["UseFluidLayout"] = true;
     var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
     var sprintId = ViewBag.SprintId as int?;
     var projectId = ViewBag.ProjectId as int?;
@@ -67,8 +68,11 @@
 <style>
     .board-container {
     direction: rtl;
-    padding: 1rem;
+    padding: 0.45rem 0.2rem 0.75rem;
     transition: background-color 0.3s ease, background-image 0.3s ease;
+    width: 100%;
+    max-width: none;
+    margin: 0;
     }
     /* تم‌های پس‌زمینه */
     .board-bg-plain {
@@ -108,11 +112,11 @@
     background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80');
     }
     .board-header {
-    margin-bottom: 1.5rem;
-    padding: 1rem;
+    margin-bottom: 0.85rem;
+    padding: 0.8rem 0.9rem;
     background: white;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
     .board-header h2 {
     font-size: 1.5rem;
@@ -183,8 +187,8 @@
     }
     .kanban-board {
     display: flex;
-    gap: 1rem;
-    padding: 0.5rem 0;
+    gap: 0.75rem;
+    padding: 0.35rem 0;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
@@ -197,20 +201,20 @@
     .board-columns {
     display: flex;
     flex-direction: row;
-    gap: 1rem;
+    gap: 0.75rem;
     overflow-x: auto;
-    padding-bottom: 1rem;
+    padding-bottom: 0.65rem;
     }
     .kanban-column {
-    min-width: 300px;
+    min-width: 280px;
     background: #f4f5f7;
     border-radius: 8px;
-    padding: 1rem;
+    padding: 0.75rem;
     display: flex;
     flex-direction: column;
     position: relative;
     overflow: visible;
-    max-height: calc(100vh - 250px);
+    max-height: calc(100vh - 210px);
     flex-shrink: 0;
     /* برای بهبود scroll در موبایل */
     scroll-snap-align: start;

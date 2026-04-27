@@ -402,6 +402,70 @@
         font-size: 0.82rem;
         color: #6b7280;
     }
+
+    .subtask-input-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .subtask-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+    }
+
+    .subtask-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #fff;
+        padding: 0.4rem 0.55rem;
+    }
+
+    .subtask-item-main {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+    }
+
+    .subtask-title {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 260px;
+        font-size: 0.88rem;
+    }
+
+    .subtask-title.completed {
+        text-decoration: line-through;
+        color: #9ca3af;
+    }
+
+    .subtask-delete-btn {
+        border: none;
+        background: transparent;
+        color: #dc2626;
+        font-size: 0.8rem;
+        cursor: pointer;
+    }
+
+    .subtask-empty {
+        border: 1px dashed #d1d5db;
+        border-radius: 8px;
+        padding: 0.5rem 0.6rem;
+        font-size: 0.84rem;
+        color: #6b7280;
+        background: #f9fafb;
+    }
     
     @@media (max-width: 768px) {
         .form-header {
@@ -591,6 +655,19 @@
                             </select>
                             <span asp-validation-for="AssignedUserId" class="text-danger small"></span>
                         </div>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-card-title">
+                            <i class="bi bi-list-check"></i>
+                            کارک‌ها
+                        </div>
+                        <div class="subtask-input-row">
+                            <input type="text" id="inlineSubtaskTitle" class="form-control" placeholder="عنوان کارک..." />
+                            <button type="button" id="addInlineSubtaskBtn" class="btn btn-modern btn-modern-warning">افزودن</button>
+                        </div>
+                        <ul id="inlineSubtasksList" class="subtask-list"></ul>
+                        <div id="inlineSubtaskNote" class="chat-note"></div>
                     </div>
                 </div>
             </div>
@@ -1089,6 +1166,130 @@
         fileInput?.addEventListener('change', showSelectedFiles);
         recordBtn?.addEventListener('click', toggleRecording);
     }
+
+    function renderInlineSubtasks(items) {
+        const listEl = document.getElementById('inlineSubtasksList');
+        if (!listEl) return;
+
+        const subtasks = Array.isArray(items) ? items : [];
+        if (subtasks.length === 0) {
+            listEl.innerHTML = '<li class="subtask-empty">هنوز کارکی ثبت نشده است.</li>';
+            return;
+        }
+
+        listEl.innerHTML = subtasks.map(st => {
+            const id = Number(st.id || 0);
+            const title = escapeHtml(st.title || '');
+            const completed = !!st.isCompleted;
+            return `
+                <li class="subtask-item">
+                    <div class="subtask-item-main">
+                        <input type="checkbox" ${completed ? 'checked' : ''} onchange="toggleInlineSubtask(${id})" />
+                        <span class="subtask-title ${completed ? 'completed' : ''}">${title}</span>
+                    </div>
+                    <button type="button" class="subtask-delete-btn" onclick="deleteInlineSubtask(${id})">حذف</button>
+                </li>
+            `;
+        }).join('');
+    }
+
+    async function loadInlineSubtasks(parentTaskId) {
+        const listEl = document.getElementById('inlineSubtasksList');
+        if (!listEl) return;
+        try {
+            const response = await fetch(`/Tasks/GetSubtasks?parentId=${parentTaskId}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!response.ok) throw new Error('load_failed');
+            const data = await response.json();
+            renderInlineSubtasks(data);
+        } catch {
+            listEl.innerHTML = '<li class="subtask-empty">خطا در دریافت کارک‌ها.</li>';
+        }
+    }
+
+    async function addInlineSubtask(parentTaskId) {
+        const input = document.getElementById('inlineSubtaskTitle');
+        const noteEl = document.getElementById('inlineSubtaskNote');
+        if (!input) return;
+        const title = (input.value || '').trim();
+        if (!title) {
+            if (noteEl) noteEl.textContent = 'عنوان کارک الزامی است.';
+            return;
+        }
+
+        try {
+            if (noteEl) noteEl.textContent = 'در حال افزودن...';
+            const response = await fetch('/Tasks/AddInlineSubtask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ parentId: parentTaskId, title })
+            });
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(err || 'add_failed');
+            }
+            input.value = '';
+            if (noteEl) noteEl.textContent = '';
+            await loadInlineSubtasks(parentTaskId);
+        } catch (error) {
+            if (noteEl) noteEl.textContent = error?.message || 'افزودن کارک انجام نشد.';
+        }
+    }
+
+    async function toggleInlineSubtask(subtaskId) {
+        const noteEl = document.getElementById('inlineSubtaskNote');
+        try {
+            const response = await fetch('/Tasks/ToggleInlineSubtask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subtaskId })
+            });
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(err || 'toggle_failed');
+            }
+            await loadInlineSubtasks(editTaskIdForChat);
+        } catch (error) {
+            if (noteEl) noteEl.textContent = error?.message || 'تغییر وضعیت کارک انجام نشد.';
+            await loadInlineSubtasks(editTaskIdForChat);
+        }
+    }
+
+    async function deleteInlineSubtask(subtaskId) {
+        const noteEl = document.getElementById('inlineSubtaskNote');
+        if (!confirm('این کارک حذف شود؟')) return;
+        try {
+            const response = await fetch('/Tasks/DeleteTask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ taskId: subtaskId })
+            });
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(err || 'delete_failed');
+            }
+            await loadInlineSubtasks(editTaskIdForChat);
+        } catch (error) {
+            if (noteEl) noteEl.textContent = error?.message || 'حذف کارک انجام نشد.';
+        }
+    }
+
+    function initInlineSubtaskPanel(parentTaskId) {
+        const addBtn = document.getElementById('addInlineSubtaskBtn');
+        const input = document.getElementById('inlineSubtaskTitle');
+        if (!addBtn || !input) return;
+
+        addBtn.addEventListener('click', () => addInlineSubtask(parentTaskId));
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                addInlineSubtask(parentTaskId);
+            }
+        });
+
+        loadInlineSubtasks(parentTaskId);
+    }
 </script>
 
 @if (isModal)
@@ -1156,6 +1357,7 @@
 
             loadTaskChat(@Model.Id);
             initTaskChatComposer(@Model.Id);
+            initInlineSubtaskPanel(@Model.Id);
         })();
 
         function closeEditTaskModal() {

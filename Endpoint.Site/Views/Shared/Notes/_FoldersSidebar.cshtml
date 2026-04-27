@@ -1,0 +1,94 @@
+@using System.Collections
+@using System.Collections.Generic
+@using System.Linq
+@{
+    var folders = ViewData["Folders"] as IEnumerable<dynamic> ?? new List<dynamic>();
+    var folderId = ViewData["FolderId"] as int?;
+    var folderNotesCount = ViewData["FolderNotesCount"] as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var sidebarTitle = ViewData["SidebarTitle"] as string ?? "پوشه‌ها";
+    var createFolderUrl = ViewData["CreateFolderUrl"] as string ?? "#";
+    var allNotesUrl = ViewData["AllNotesUrl"] as string ?? "#";
+    var folderUrlTemplate = ViewData["FolderUrlTemplate"] as string ?? "#";
+    var editUrlTemplate = ViewData["EditFolderUrlTemplate"] as string ?? "#";
+    var deleteUrlTemplate = ViewData["DeleteFolderUrlTemplate"] as string ?? "#";
+
+    string BuildUrl(string template, int id) => template.Replace("{id}", id.ToString());
+}
+
+<div class="folders-sidebar">
+    <div class="sidebar-header">
+        <h3>
+            <i class="bi bi-folder-fill"></i>
+            @sidebarTitle
+        </h3>
+        <a href="@createFolderUrl" class="btn-add-folder" title="ایجاد پوشه جدید">
+            <i class="bi bi-plus-lg"></i>
+        </a>
+    </div>
+
+    <div class="folders-list">
+        <a href="@allNotesUrl" class="folder-item @(!folderId.HasValue ? "active" : "")">
+            <i class="bi bi-journal-text"></i>
+            <span>همه یادداشت‌ها</span>
+        </a>
+
+        @foreach (var folder in folders)
+        {
+            var isActive = folderId.HasValue && folder.Id == folderId.Value;
+            var folderColor = (string?)folder.Color ?? "#64748b";
+            var notesCount = folderNotesCount.ContainsKey((int)folder.Id) ? folderNotesCount[(int)folder.Id] : 0;
+
+            <div class="folder-item-wrapper">
+                <div class="folder-item-with-actions">
+                    <a href="@BuildUrl(folderUrlTemplate, (int)folder.Id)" class="folder-item @(isActive ? "active" : "")" style="border-right: 3px solid @folderColor;">
+                        <i class="bi bi-folder@(isActive ? "-fill" : "")" style="color: @folderColor;"></i>
+                        <span>@folder.Name</span>
+                        <span class="folder-count">@notesCount</span>
+                    </a>
+                    <div class="folder-actions" onclick="event.stopPropagation();">
+                        <a href="@BuildUrl(editUrlTemplate, (int)folder.Id)" class="folder-action-btn" title="ویرایش پوشه">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="@BuildUrl(deleteUrlTemplate, (int)folder.Id)" class="folder-action-btn folder-action-danger" title="حذف پوشه">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </div>
+                </div>
+
+                @{
+                    var childrenEnumerable = folder.Children as IEnumerable;
+                    var children = childrenEnumerable?.Cast<dynamic>().ToList() ?? new List<dynamic>();
+                }
+                @if (children.Count > 0)
+                {
+                    <div class="folder-children">
+                        @foreach (var child in children)
+                        {
+                            var childIsActive = folderId.HasValue && child.Id == folderId.Value;
+                            var childColor = (string?)child.Color ?? "#64748b";
+                            var childCount = folderNotesCount.ContainsKey((int)child.Id) ? folderNotesCount[(int)child.Id] : 0;
+
+                            <div class="folder-item-wrapper">
+                                <div class="folder-item-with-actions">
+                                    <a href="@BuildUrl(folderUrlTemplate, (int)child.Id)" class="folder-item @(childIsActive ? "active" : "")" style="border-right: 3px solid @childColor;">
+                                        <i class="bi bi-folder@(childIsActive ? "-fill" : "")" style="color: @childColor;"></i>
+                                        <span>@child.Name</span>
+                                        <span class="folder-count">@childCount</span>
+                                    </a>
+                                    <div class="folder-actions" onclick="event.stopPropagation();">
+                                        <a href="@BuildUrl(editUrlTemplate, (int)child.Id)" class="folder-action-btn" title="ویرایش پوشه">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="@BuildUrl(deleteUrlTemplate, (int)child.Id)" class="folder-action-btn folder-action-danger" title="حذف پوشه">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

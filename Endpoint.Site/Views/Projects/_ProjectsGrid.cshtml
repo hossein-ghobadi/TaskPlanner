@@ -1,0 +1,59 @@
+@model IEnumerable<Project>
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@using System.Collections.Generic
+
+@{
+    var currentUserId = ViewData["CurrentUserId"] as string;
+    var sprintLookup = ViewData["SprintLookup"] as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var projects = Model?.ToList() ?? new List<Project>();
+}
+
+<div class="projects-section" id="projectsSection">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="section-title"><i class="bi bi-briefcase me-2"></i>پروژه‌های من</h2>
+    </div>
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3">
+        <partial name="_ProjectAddCard" />
+        @foreach (var project in projects)
+        {
+            @await Html.PartialAsync("_ProjectCard", project, new ViewDataDictionary(ViewData)
+            {
+                ["CurrentUserId"] = currentUserId,
+                ["SprintLookup"] = sprintLookup
+            })
+        }
+    </div>
+
+    @if (!projects.Any())
+    {
+        <div class="empty-state text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+            <h4 class="text-muted">هنوز پروژه‌ای ندارید</h4>
+            <p class="text-muted mb-4">با ایجاد اولین پروژه شروع کنید</p>
+            <a href="/Projects/Create" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>ایجاد اولین پروژه
+            </a>
+        </div>
+    }
+</div>
+
+<script>
+    (function () {
+        if (window.__projectsCardTapBinding) return;
+        window.__projectsCardTapBinding = true;
+
+        document.addEventListener('click', function (event) {
+            var card = event.target.closest('.js-project-card');
+            if (!card) return;
+
+            var interactive = event.target.closest('a, button, input, textarea, select, label, form');
+            if (interactive) return;
+
+            var detailsUrl = card.getAttribute('data-details-url');
+            if (detailsUrl) {
+                window.location.href = detailsUrl;
+            }
+        });
+    })();
+</script>

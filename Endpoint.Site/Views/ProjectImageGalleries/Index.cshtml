@@ -2,6 +2,7 @@
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["UseFluidLayout"] = true;
 }
 
 @{
@@ -13,54 +14,26 @@
     var folderImagesCount = ViewBag.FolderImagesCount as Dictionary<int, int> ?? new Dictionary<int, int>();
 }
 
-<div class="gallery-container-wrapper">
-    <!-- Sidebar for Folders -->
-    <div class="folders-sidebar">
-        <div class="sidebar-header">
-            <h3>
-                <i class="bi bi-folder-fill"></i>
-                پوشه‌ها
-            </h3>
-            <a asp-action="Create" asp-controller="ProjectImageGalleryFolders" asp-route-projectId="@projectId" class="btn-add-folder" title="ایجاد پوشه جدید">
-                <i class="bi bi-plus-lg"></i>
-            </a>
-        </div>
-        
-        <div class="folders-list">
-            <!-- Root Level - All Images -->
-            <a href="/ProjectImageGalleries/Index?projectId=@projectId" class="folder-item @(!folderId.HasValue ? "active" : "")">
-                <i class="bi bi-images"></i>
-                <span>همه عکس‌ها</span>
-            </a>
+<div class="gallery-page">
+    @await Html.PartialAsync("/Views/Shared/Notes/_FoldersToolbar.cshtml", viewData: new ViewDataDictionary(ViewData)
+    {
+        ["Folders"] = folders,
+        ["FolderId"] = folderId,
+        ["FolderNotesCount"] = folderImagesCount,
+        ["CreateFolderUrl"] = $"/ProjectImageGalleryFolders/Create?projectId={projectId}&parentFolderId={folderId}",
+        ["CreateFolderPostUrl"] = Url.Action("Create", "ProjectImageGalleryFolders"),
+        ["CreateFolderModalId"] = "galleryCreateFolderModal",
+        ["CreateFolderProjectId"] = projectId,
+        ["AllNotesUrl"] = $"/ProjectImageGalleries/Index?projectId={projectId}",
+        ["AllItemsLabel"] = "همه عکس‌ها",
+        ["AllItemsIcon"] = "bi-images",
+        ["FolderUrlTemplate"] = $"/ProjectImageGalleries/Index?projectId={projectId}&folderId={{id}}",
+        ["EditFolderPostUrl"] = Url.Action("Edit", "ProjectImageGalleryFolders"),
+        ["DeleteFolderPostUrl"] = Url.Action("Delete", "ProjectImageGalleryFolders"),
+        ["EditFolderUrlTemplate"] = "/ProjectImageGalleryFolders/Edit?id={id}",
+        ["DeleteFolderUrlTemplate"] = "/ProjectImageGalleryFolders/Delete?id={id}"
+    })
 
-            <!-- Folders Tree -->
-            @foreach (var folder in folders)
-            {
-                var isActive = folderId.HasValue && folder.Id == folderId.Value;
-                var folderColor = folder.Color ?? "#3b82f6";
-                
-                <div class="folder-item-wrapper">
-                    <div class="folder-item-with-actions">
-                        <a href="/ProjectImageGalleries/Index?projectId=@projectId&folderId=@folder.Id" class="folder-item @(isActive ? "active" : "")" style="border-right: 3px solid @folderColor;">
-                            <i class="bi bi-folder@(isActive ? "-fill" : "")" style="color: @folderColor;"></i>
-                            <span>@folder.Name</span>
-                            <span class="folder-count">@(folderImagesCount.ContainsKey(folder.Id) ? folderImagesCount[folder.Id] : 0)</span>
-                        </a>
-                        <div class="folder-actions" onclick="event.stopPropagation();">
-                            <a href="/ProjectImageGalleryFolders/Edit?id=@folder.Id" class="folder-action-btn" title="ویرایش پوشه">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <button type="button" class="folder-action-btn folder-action-danger btn-delete-folder" title="حذف پوشه" data-folder-id="@folder.Id" data-folder-name="@folder.Name" data-bs-toggle="modal" data-bs-target="#deleteFolderModal">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            }
-        </div>
-    </div>
-
-    <!-- Main Content -->
     <div class="gallery-content">
         <!-- Header Section -->
         <div class="gallery-header">
@@ -108,10 +81,6 @@
                 <p class="gallery-subtitle">عکس‌ها و تصاویر مربوط به این پروژه</p>
             </div>
             <div class="header-actions">
-                <a class="btn-create-folder" asp-action="Create" asp-controller="ProjectImageGalleryFolders" asp-route-projectId="@projectId" asp-route-parentFolderId="@folderId">
-                    <i class="bi bi-folder-plus"></i>
-                    <span>پوشه جدید</span>
-                </a>
                 <a class="btn-figma-design" href="/ProjectImageGalleries/UploadFigmaDesign?projectId=@projectId&folderId=@folderId">
                     <i class="bi bi-file-earmark-zip"></i>
                     <span>آپلود طراحی</span>
@@ -279,35 +248,6 @@
     </div>
 </div>
 
-<!-- مودال تأیید حذف پوشه -->
-<div class="modal fade" id="deleteFolderModal" tabindex="-1" aria-labelledby="deleteFolderModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteFolderModalLabel">
-                    <i class="bi bi-trash text-danger"></i>
-                    حذف پوشه
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
-            </div>
-            <form id="deleteFolderForm">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="id" id="deleteFolderId" value="" />
-                <div class="modal-body">
-                    <p class="mb-0" id="deleteFolderConfirmText">آیا از حذف این پوشه و تمام زیرپوشه‌های آن اطمینان دارید؟</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
-                    <button type="submit" class="btn btn-danger" id="deleteFolderSubmitBtn">
-                        <i class="bi bi-trash"></i>
-                        حذف
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <!-- مودال تأیید حذف دسته‌ای عکس‌ها -->
 <div class="modal fade" id="deleteBatchImageModal" tabindex="-1" aria-labelledby="deleteBatchImageModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -342,8 +282,6 @@
     const deleteImageUrl = '@Url.Action("Delete", "ProjectImageGalleries")';
     const deleteBatchImageUrl = '@Url.Action("DeleteBatch", "ProjectImageGalleries")';
     const createImageUrl = '@Url.Action("Create", "ProjectImageGalleries")';
-    const deleteFolderUrl = '@Url.Action("Delete", "ProjectImageGalleryFolders")';
-    const galleryIndexUrl = '@Url.Action("Index", "ProjectImageGalleries")';
 
     const createImageModal = document.getElementById('createImageModal');
     const createImageForm = document.getElementById('createImageForm');
@@ -355,55 +293,6 @@
     const deleteImageModal = document.getElementById('deleteImageModal');
     const deleteImageForm = document.getElementById('deleteImageForm');
     const deleteImageId = document.getElementById('deleteImageId');
-
-    const deleteFolderModal = document.getElementById('deleteFolderModal');
-    const deleteFolderForm = document.getElementById('deleteFolderForm');
-    const deleteFolderId = document.getElementById('deleteFolderId');
-
-    if (deleteFolderModal) {
-        deleteFolderModal.addEventListener('shown.bs.modal', function(e) {
-            const trigger = e.relatedTarget;
-            if (trigger && trigger.getAttribute('data-folder-id')) {
-                deleteFolderId.value = trigger.getAttribute('data-folder-id');
-                const nameEl = document.getElementById('deleteFolderConfirmText');
-                if (nameEl) nameEl.textContent = 'آیا از حذف پوشه «' + (trigger.getAttribute('data-folder-name') || '') + '» و تمام زیرپوشه‌های آن اطمینان دارید؟';
-            }
-        });
-    }
-
-    if (deleteFolderForm) {
-        deleteFolderForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const id = deleteFolderId.value;
-            if (!id) return;
-            const formData = new FormData(deleteFolderForm);
-            const btn = document.getElementById('deleteFolderSubmitBtn');
-            btn.disabled = true;
-            fetch(deleteFolderUrl, {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(function(r) { return r.text().then(function(t) { return { ok: r.ok, status: r.status, text: t }; }); })
-            .then(function(o) {
-                var data;
-                try { data = JSON.parse(o.text); } catch(_) {
-                    data = { success: false, message: o.status === 400 ? 'درخواست نامعتبر. لطفاً صفحه را یک‌بار رفرش کنید و دوباره تلاش کنید.' : 'خطا در سرور (کد: ' + o.status + ')' };
-                }
-                if (!data.success && !data.message) data.message = 'خطا در حذف پوشه';
-                if (data.success) {
-                    const bsModal = bootstrap.Modal.getInstance(deleteFolderModal);
-                    if (bsModal) bsModal.hide();
-                    window.location.href = galleryIndexUrl + '?projectId=' + data.projectId + (data.parentFolderId ? '&folderId=' + data.parentFolderId : '');
-                } else {
-                    alert(data.message);
-                }
-            })
-            .catch(function() { alert('خطا در ارتباط با سرور. اتصال اینترنت یا سرور را بررسی کنید.'); })
-            .finally(function() { btn.disabled = false; });
-        });
-    }
 
     if (deleteImageModal) {
         deleteImageModal.addEventListener('shown.bs.modal', function(e) {
@@ -595,160 +484,122 @@
 }
 
 <style>
-    .gallery-container-wrapper {
-        display: flex;
-        gap: 1.5rem;
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 2rem 1rem;
-    }
-
-    .folders-sidebar {
-        width: 280px;
-        flex-shrink: 0;
-        background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        height: fit-content;
-        position: sticky;
-        top: 2rem;
-    }
-
-    .sidebar-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-        padding-bottom: 1rem;
-        border-bottom: 2px solid #e9ecef;
-    }
-
-    .sidebar-header h3 {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #1a1a1a;
+    .gallery-page {
+        width: 100%;
         margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+        padding: 0.75rem 0.25rem 1rem;
     }
 
-    .btn-add-folder {
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #f8f9fa;
-        border-radius: 8px;
-        color: #3b82f6;
-        text-decoration: none;
-        transition: all 0.2s ease;
-    }
-
-    .btn-add-folder:hover {
-        background: #e9ecef;
-        color: #2563eb;
-        transform: scale(1.1);
-    }
-
-    .folders-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-
-    .folder-item-wrapper {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .folder-item {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        text-decoration: none;
-        color: #4a5568;
-        transition: all 0.2s ease;
-        border-right: 3px solid transparent;
-    }
-
-    .folder-item:hover {
-        background: #f8f9fa;
-        color: #1a1a1a;
-        text-decoration: none;
-    }
-
-    .folder-item.active {
-        background: #e3f2fd;
-        color: #1976d2;
-        font-weight: 600;
-    }
-
-    .folder-count {
-        background: #e9ecef;
-        color: #6c757d;
-        padding: 0.25rem 0.5rem;
+    .gallery-page .folders-toolbar {
+        border: 1px solid #d9dee5;
         border-radius: 12px;
-        font-size: 0.75rem;
+        background: #fff;
+        box-shadow: 0 1px 4px rgba(17, 24, 39, 0.06);
+        margin-bottom: 0.9rem;
+    }
+
+    .gallery-page .folders-toolbar-head {
+        padding: 0.7rem 0.85rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .gallery-page .folders-toolbar-title {
+        font-size: 0.95rem;
+        color: #1f2937;
+    }
+
+    .gallery-page .folders-toolbar-body {
+        padding: 0.6rem 0.75rem;
+        gap: 0.6rem;
+    }
+
+    .gallery-page .folders-toolbar-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+    }
+
+    .gallery-page .folder-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        padding: 0.35rem 0.45rem;
+        border: 1px solid #edf0f4;
+        border-radius: 8px;
+        background: #fcfdff;
+        max-width: 100%;
+    }
+
+    .gallery-page .folder-chip-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+    }
+
+    .gallery-page .folder-chip-wrap.child {
+        margin-right: 0;
+    }
+
+    .gallery-page .folder-children-list {
+        margin-top: 0.4rem;
+        margin-right: 1.1rem;
+        padding-right: 0.8rem;
+        border-right: 2px solid #e2e8f0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+
+    .gallery-page .folder-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.55rem;
+        border-radius: 7px;
+        border: 1px solid #dbe0e6;
+        background: #f8fafc;
+        color: #334155;
+        text-decoration: none;
+        font-size: 0.84rem;
+    }
+
+    .gallery-page .folder-chip.active {
+        background: #eef2f7;
+        border-color: #bfc8d4;
+        color: #0f172a;
         font-weight: 600;
     }
 
-    .folder-item.active .folder-count {
-        background: #1976d2;
-        color: white;
+    .gallery-page .folder-chip-count {
+        font-size: 0.72rem;
+        color: #64748b;
+        background: #e2e8f0;
+        border-radius: 10px;
+        padding: 0.08rem 0.35rem;
     }
 
-    .folder-item-with-actions {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.25rem;
-    }
-
-    .folder-actions {
-        display: flex;
-        gap: 0.15rem;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-    }
-
-    .folder-item-wrapper:hover .folder-actions {
-        opacity: 1;
-    }
-
-    .folder-action-btn {
-        width: 24px;
-        height: 24px;
-        display: flex;
+    .gallery-page .folder-mini-action {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        border-radius: 6px;
+        color: #64748b;
         text-decoration: none;
-        font-size: 0.85rem;
-        color: #6c757d;
-        transition: all 0.2s ease;
-    }
-
-    .folder-action-btn:hover {
-        background: #e9ecef;
-        color: #1a1a1a;
-    }
-
-    .folder-action-danger:hover {
-        background: #fee;
-        color: #dc3545;
-    }
-
-    .btn-delete-folder {
         border: none;
-        background: inherit;
+        background: transparent;
         cursor: pointer;
-        padding: 0;
-        font: inherit;
+    }
+
+    .gallery-page .folder-mini-action:hover {
+        background: #eef2f7;
+        color: #334155;
+    }
+
+    .gallery-page .folder-mini-action.danger:hover {
+        background: #fee2e2;
+        color: #b91c1c;
     }
 
     .gallery-content {
@@ -760,9 +611,9 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 2rem;
-        padding-bottom: 1.5rem;
-        border-bottom: 2px solid #e9ecef;
+        margin-bottom: 0.9rem;
+        padding: 0.8rem 0.2rem 0.65rem;
+        border-bottom: 1px solid #e5e7eb;
     }
 
     .gallery-title {
@@ -793,14 +644,14 @@
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        color: #3b82f6;
+        color: #4b5563;
         text-decoration: none;
         transition: color 0.2s ease;
     }
 
     .breadcrumb-item:hover {
-        color: #2563eb;
-        text-decoration: underline;
+        color: #111827;
+        text-decoration: none;
     }
 
     .breadcrumb-separator {
@@ -817,28 +668,28 @@
 
     .header-actions {
         display: flex;
-        gap: 1rem;
+        gap: 0.5rem;
         align-items: center;
+        flex-wrap: wrap;
     }
 
     .btn-create-image {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        padding: 0.56rem 0.95rem;
+        background: #2563eb;
         color: white;
-        border: none;
-        border-radius: 12px;
-        font-weight: 600;
+        border: 1px solid #1d4ed8;
+        border-radius: 8px;
+        font-weight: 500;
         text-decoration: none;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        transition: all 0.2s ease;
+        box-shadow: none;
     }
 
     .btn-create-image:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        background: #1d4ed8;
         color: white;
     }
 
@@ -867,51 +718,48 @@
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
-        background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);
-        color: white;
-        border: none;
-        border-radius: 12px;
-        font-weight: 600;
+        padding: 0.56rem 0.95rem;
+        background: #ffffff;
+        color: #374151;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-weight: 500;
         text-decoration: none;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        transition: all 0.2s ease;
+        box-shadow: none;
     }
     .btn-figma-design:hover {
-        color: white;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        color: #111827;
+        background: #f3f4f6;
     }
 
     .btn-view-figma {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
-        background: transparent;
-        color: #8B5CF6;
-        border: 2px solid #8B5CF6;
-        border-radius: 12px;
-        font-weight: 600;
+        padding: 0.56rem 0.95rem;
+        background: #ffffff;
+        color: #374151;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-weight: 500;
         text-decoration: none;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
     }
     .btn-view-figma:hover {
-        background: #8B5CF6;
-        color: white;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        background: #f3f4f6;
+        color: #111827;
     }
 
     .btn-back-project {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
+        padding: 0.56rem 0.95rem;
         background: #f8f9fa;
         color: #4a5568;
-        border: 2px solid #e9ecef;
-        border-radius: 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
         font-weight: 500;
         text-decoration: none;
         transition: all 0.2s ease;
@@ -1104,20 +952,25 @@
     }
 
     @@media (max-width: 768px) {
-        .gallery-container-wrapper {
-            flex-direction: column;
-            padding: 1rem 0.5rem;
+        .gallery-page {
+            padding: 0.5rem 0 0.75rem;
         }
 
-        .folders-sidebar {
+        .gallery-page .folders-toolbar-head {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .gallery-page .folders-toolbar-actions {
             width: 100%;
-            position: static;
+            flex-wrap: wrap;
         }
 
         .gallery-header {
             flex-direction: column;
             align-items: flex-start;
-            gap: 1rem;
+            gap: 0.6rem;
         }
 
         .header-actions {

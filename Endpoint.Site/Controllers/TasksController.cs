@@ -1830,6 +1830,191 @@ namespace Endpoint.Site.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> GetSubtasks(int parentId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (parentId <= 0) return BadRequest("parentId نامعتبر است.");
+
+            var parent = await _context.TaskItems
+                .Include(t => t.Project)
+                .FirstOrDefaultAsync(t => t.Id == parentId);
+            if (parent == null) return NotFound();
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == parent.ProjectId &&
+                    (p.CreatorUserId == userId ||
+                     p.Members.Any(m => m.UserId == userId) ||
+                     _context.ProjectInvitations.Any(i => i.ProjectId == parent.ProjectId &&
+                                                          i.InviteeId == userId &&
+                                                          i.Status == InvitationStatus.Accepted)));
+            if (!hasAccess) return Forbid();
+
+            var subtasks = await _context.TaskItems
+                .Where(t => t.ParentTaskId == parentId)
+                .OrderBy(t => t.CreatedAt)
+                .Select(t => new
+                {
+                    id = t.Id,
+                    title = t.Title,
+                    isCompleted = t.IsCompleted
+                })
+                .ToListAsync();
+
+            return Json(subtasks);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddInlineSubtask([FromBody] JsonElement data)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!data.TryGetProperty("parentId", out var parentIdProp) || parentIdProp.ValueKind != JsonValueKind.Number)
+                return BadRequest("parentId الزامی است.");
+            if (!data.TryGetProperty("title", out var titleProp))
+                return BadRequest("title الزامی است.");
+
+            var parentId = parentIdProp.GetInt32();
+            var title = (titleProp.GetString() ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(title))
+                return BadRequest("عنوان کارک الزامی است.");
+
+            var parent = await _context.TaskItems
+                .Include(t => t.Project)
+                .FirstOrDefaultAsync(t => t.Id == parentId);
+            if (parent == null) return NotFound("کار والد یافت نشد.");
+            if (!parent.CanHaveChildren) return BadRequest("این کار امکان افزودن کارک ندارد.");
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == parent.ProjectId &&
+                    (p.CreatorUserId == userId ||
+                     p.Members.Any(m => m.UserId == userId) ||
+                     _context.ProjectInvitations.Any(i => i.ProjectId == parent.ProjectId &&
+                                                          i.InviteeId == userId &&
+                                                          i.Status == InvitationStatus.Accepted)));
+            if (!hasAccess) return Forbid();
+
+            var project = parent.Project ?? await _context.Projects.FindAsync(parent.ProjectId);
+            if (project == null) return BadRequest("پروژه یافت نشد.");
+
+            var subtaskProjectIssueType = await _context.ProjectIssueTypes
+                .FirstOrDefaultAsync(pit => pit.ProjectId == parent.ProjectId && pit.Level == IssueTypeLevel.Subtask);
+
+            if (parent.IsCompleted)
+            {
+                parent.IsCompleted = false;
+                parent.UpdatedAt = DateTime.UtcNow;
+            }
+
+            const int maxRetries = 5;
+            TaskItem? subtask = null;
+
+            for (var attempt = 0; attempt < maxRetries; attempt++)
+            {
+                try
+                {
+                    // برای جلوگیری از race condition، هر بار پروژه را تازه از دیتابیس می‌خوانیم
+                    _context.Entry(project).State = EntityState.Detached;
+                    project = await _context.Projects.FindAsync(parent.ProjectId);
+                    if (project == null) return BadRequest("پروژه یافت نشد.");
+
+                    var generatedIssueKey = project.GenerateNextIssueKey();
+                    if (await _context.TaskItems.AnyAsync(t => t.IssueKey == generatedIssueKey))
+                    {
+                        project.LastIssueNumber++;
+                        generatedIssueKey = project.GenerateNextIssueKey();
+                    }
+
+                    subtask = new TaskItem
+                    {
+                        Title = title,
+                        Description = null,
+                        IssueType = IssueType.Subtask,
+                        IssueKey = generatedIssueKey,
+                        StartDate = DateTime.Today,
+                        DueDate = parent.DueDate,
+                        ProjectId = parent.ProjectId,
+                        ProjectIssueTypeId = subtaskProjectIssueType?.Id,
+                        CategoryId = parent.CategoryId,
+                        ParentTaskId = parent.Id,
+                        AssignedUserId = parent.AssignedUserId,
+                        IsCompleted = false,
+                        CreatedByUserId = userId,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    _context.TaskItems.Add(subtask);
+                    _context.Projects.Update(project);
+                    await _context.SaveChangesAsync();
+                    break;
+                }
+                catch (DbUpdateException ex)
+                    when (ex.InnerException is Microsoft.Data.SqlClient.SqlException sqlEx &&
+                          (sqlEx.Number == 2601 || sqlEx.Number == 2627) &&
+                          attempt < maxRetries - 1)
+                {
+                    if (subtask != null)
+                    {
+                        _context.Entry(subtask).State = EntityState.Detached;
+                        subtask = null;
+                    }
+                    await Task.Delay(40 * (attempt + 1));
+                }
+            }
+
+            if (subtask == null)
+            {
+                return BadRequest("خطا در ایجاد کارک. لطفاً دوباره تلاش کنید.");
+            }
+
+            return Json(new
+            {
+                success = true,
+                id = subtask.Id,
+                title = subtask.Title,
+                isCompleted = subtask.IsCompleted
+            });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ToggleInlineSubtask([FromBody] JsonElement data)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!data.TryGetProperty("subtaskId", out var subtaskIdProp) || subtaskIdProp.ValueKind != JsonValueKind.Number)
+                return BadRequest("subtaskId الزامی است.");
+
+            var subtaskId = subtaskIdProp.GetInt32();
+            var subtask = await _context.TaskItems
+                .Include(t => t.Project)
+                .FirstOrDefaultAsync(t => t.Id == subtaskId && t.ParentTaskId != null);
+            if (subtask == null) return NotFound("کارک یافت نشد.");
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == subtask.ProjectId &&
+                    (p.CreatorUserId == userId ||
+                     p.Members.Any(m => m.UserId == userId) ||
+                     _context.ProjectInvitations.Any(i => i.ProjectId == subtask.ProjectId &&
+                                                          i.InviteeId == userId &&
+                                                          i.Status == InvitationStatus.Accepted)));
+            if (!hasAccess) return Forbid();
+
+            subtask.IsCompleted = !subtask.IsCompleted;
+            subtask.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            if (subtask.IsCompleted)
+            {
+                await UpdateParentCompletionStatusAsync(subtask.ParentTaskId);
+            }
+            else
+            {
+                await MarkAncestorsIncompleteAsync(subtask.ParentTaskId);
+            }
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, isCompleted = subtask.IsCompleted });
+        }
+
+        [HttpGet]
         public async Task<IActionResult> Edit(int? id)
         {
             // پشتیبانی از query parameter

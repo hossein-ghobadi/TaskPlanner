@@ -1,0 +1,61 @@
+@model Project
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@using System.Collections.Generic
+
+@{
+    var currentUserId = ViewData["CurrentUserId"] as string;
+    var sprintLookup = ViewData["SprintLookup"] as Dictionary<int, int>;
+}
+
+<div class="col">
+    <div class="project-card js-project-card" data-details-url="@Url.Action("Details", "Projects", new { id = Model.Id })">
+        <a asp-action="Details" asp-route-id="@Model.Id" class="text-decoration-none text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="card-title fw-bold mb-0">@Model.Name</h5>
+                    <span class="badge bg-primary">
+                        @{
+                            var filteredTaskCount = Model.Tasks?.Count(t => t.CanAddToSprint) ?? 0;
+                        }
+                        @filteredTaskCount کار
+                    </span>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    <p class="card-text text-muted description-text">@Model.Description</p>
+                }
+                else
+                {
+                    <p class="card-text text-muted">بدون توضیحات</p>
+                }
+            </div>
+        </a>
+
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex gap-2">
+                    @if (sprintLookup != null && sprintLookup.ContainsKey(Model.Id))
+                    {
+                        <a class="btn btn-sm btn-outline-success" asp-controller="Sprints" asp-action="Board" asp-route-id="@sprintLookup[Model.Id]" title="برد اسپرینت فعال">
+                            <i class="bi bi-kanban"></i>
+                        </a>
+                    }
+                    <a class="btn btn-sm btn-outline-primary" asp-controller="Tasks" asp-action="Index" asp-route-projectId="@Model.Id" title="لیست کارها">
+                        <i class="bi bi-list-task"></i>
+                    </a>
+                </div>
+                @if (Model.CreatorUserId == currentUserId)
+                {
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@Model.Id" title="ویرایش">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@Model.Id" title="حذف">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

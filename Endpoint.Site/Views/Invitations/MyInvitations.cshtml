@@ -5,67 +5,187 @@
 
 @{
     ViewData["Title"] = "دعوت‌های من";
+    ViewData["UseFluidLayout"] = true;
     Layout = "/Views/Shared/_Layout.cshtml";
 }
 
 <style>
-    /* === ریسپانسیو موبایل - دعوت‌های من === */
-    .invitations-page .card-body { padding: 0 !important; }
-    .invitations-page .card-header { font-size: 0.95rem; padding: 0.75rem 1rem; }
+    /* === Invitations: clean, classic, accessible redesign === */
+    .invitations-page {
+        padding: 0.35rem 0.25rem 1rem;
+        color: #1f2937;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+    }
+
+    .invitations-page h2 {
+        font-size: 1.38rem;
+        margin-bottom: 0.45rem !important;
+        color: #1f2937;
+        font-weight: 700;
+    }
+
+    .invitations-subtitle {
+        color: #6b7280;
+        font-size: 0.9rem;
+        margin-bottom: 0.95rem;
+    }
+
+    .invitations-page .card {
+        border: 1px solid #d7dce2;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+        margin-bottom: 0.85rem !important;
+        overflow: hidden;
+    }
+
+    .invitations-page .card-body {
+        padding: 0 !important;
+        background: #fff;
+    }
+
+    .invitations-page .card-header {
+        font-size: 0.94rem;
+        padding: 0.65rem 0.9rem;
+        background: #f8f9fa !important;
+        color: #374151;
+        border-bottom: 1px solid #e4e7eb;
+        font-weight: 700;
+        letter-spacing: 0;
+    }
 
     .invitations-page .table-mobile-cards { border: none; }
     .invitations-page .table-mobile-cards thead { display: none; }
     .invitations-page .table-mobile-cards tbody tr {
         display: block;
-        border: 1px solid #dee2e6;
-        border-radius: 12px;
-        margin-bottom: 1rem;
-        padding: 1rem;
+        border: 1px solid #e1e5ea;
+        border-radius: 9px;
+        margin: 0.65rem;
+        padding: 0.75rem 0.8rem;
         background: #fff;
-        box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
     }
     .invitations-page .table-mobile-cards tbody tr td {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 0.4rem 0;
+        padding: 0.38rem 0;
         border: none !important;
-        gap: 0.5rem;
+        gap: 0.65rem;
         word-break: break-word;
     }
     .invitations-page .table-mobile-cards tbody tr td::before {
         content: attr(data-label);
         font-weight: 600;
-        color: #6c757d;
+        color: #6b7280;
         font-size: 0.8rem;
         flex-shrink: 0;
     }
     .invitations-page .table-mobile-cards tbody tr td[data-actions] {
         flex-wrap: wrap;
         justify-content: flex-start;
-        padding-top: 0.75rem;
-        border-top: 1px solid #eee;
-        margin-top: 0.25rem;
+        align-items: center;
+        gap: 0.4rem;
+        padding-top: 0.6rem;
+        border-top: 1px solid #eceff3;
+        margin-top: 0.2rem;
     }
     .invitations-page .table-mobile-cards tbody tr td[data-actions]::before { display: none; }
-    .invitations-page .table-mobile-cards .btn-sm { font-size: 0.8rem; }
+    .invitations-page .table-mobile-cards .btn-sm {
+        font-size: 0.78rem;
+        border-radius: 7px;
+        padding: 0.26rem 0.55rem;
+    }
+
+    .invitations-page .table-mobile-cards [data-actions] form {
+        margin: 0;
+    }
+
+    .invitations-page .btn {
+        min-height: 34px;
+    }
+
+    .invitations-page .table-mobile-cards .badge {
+        font-weight: 600;
+        border-radius: 7px;
+        font-size: 0.74rem;
+        padding: 0.35em 0.55em;
+    }
 
     .invitations-page .invite-form-mobile .col-md-8,
     .invitations-page .invite-form-mobile .col-md-4 {
         flex: 0 0 100%;
         max-width: 100%;
     }
-    .invitations-page .invite-form-mobile .col-md-4 .btn { margin-top: 0.5rem; }
+    .invitations-page .invite-form-mobile .col-md-4 .btn { margin-top: 0.45rem; }
 
     .invitations-page .invite-form-mobile .row { margin: 0 -0.25rem; }
     .invitations-page .invite-form-mobile .row > [class^="col"] { padding: 0 0.25rem; }
+
+    .invitations-page .table-responsive {
+        margin: 0;
+        border-radius: 0;
+    }
+
+    .invitations-page .table {
+        --bs-table-bg: #fff;
+        --bs-table-striped-bg: #fafafa;
+        --bs-table-border-color: #e5e7eb;
+    }
+
+    .invitations-page .table thead th {
+        background: #f6f7f9 !important;
+        color: #374151;
+        font-size: 0.84rem;
+        font-weight: 700;
+        padding: 0.62rem 0.7rem;
+    }
+
+    .invitations-page .table td {
+        color: #374151;
+        font-size: 0.86rem;
+    }
+
+    .invitations-page .table td[data-label="عملیات"] {
+        min-width: 175px;
+    }
+
+    .invitations-page .border-top.p-3.bg-light {
+        background: #f8f9fa !important;
+        border-top: 1px solid #e5e7eb !important;
+        padding: 0.85rem !important;
+    }
+
+    .invitations-page .invite-form-mobile .form-control {
+        border-radius: 8px;
+        border-color: #cfd6df;
+        min-height: 38px;
+    }
+
+    .invitations-page .invite-form-mobile .btn-primary {
+        border-radius: 8px;
+        min-height: 38px;
+    }
+
+    .invitations-page .table .btn-outline-danger,
+    .invitations-page .table .btn-danger {
+        border-width: 1px;
+    }
+
+    .invitations-page .section-empty {
+        padding: 1rem 1rem 1.1rem;
+        margin: 0;
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
 
     @@media (min-width: 768px) {
         .invitations-page .table-mobile-cards thead { display: table-header-group; }
         .invitations-page .table-mobile-cards tbody tr {
             display: table-row;
             border: none;
-            border-bottom: 1px solid #dee2e6;
+            border-bottom: 1px solid #e5e7eb;
             margin: 0;
             padding: 0;
             border-radius: 0;
@@ -73,30 +193,41 @@
         }
         .invitations-page .table-mobile-cards tbody tr td {
             display: table-cell;
-            padding: 0.75rem;
+            padding: 0.65rem 0.72rem;
             border: none;
-            border-bottom: 1px solid #dee2e6;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: middle;
         }
         .invitations-page .table-mobile-cards tbody tr td::before { display: none; }
         .invitations-page .table-mobile-cards tbody tr td[data-actions] {
             border-top: none;
             margin-top: 0;
-            padding-top: 0.75rem;
+            padding-top: 0.65rem;
+            white-space: nowrap;
+        }
+        .invitations-page .table-mobile-cards tbody tr td[data-actions] .btn {
+            margin: 0 0.12rem;
         }
     }
 
-    .invitations-page h2 { font-size: 1.35rem; }
     @@media (min-width: 576px) {
         .invitations-page h2 { font-size: 1.5rem; }
     }
 
     @@media (max-width: 575.98px) {
-        .invitations-page .alert { font-size: 0.9rem; padding: 0.75rem 1rem; }
+        .invitations-page .alert { font-size: 0.9rem; padding: 0.72rem 0.9rem; }
+        .invitations-page h2 { font-size: 1.2rem; }
+        .invitations-page .table-mobile-cards tbody tr {
+            margin: 0.5rem;
+            padding: 0.65rem 0.7rem;
+        }
+        .invitations-subtitle { font-size: 0.84rem; }
     }
 </style>
 
 <div class="invitations-page">
-<h2 class="mb-4">📨 دعوت‌های من</h2>
+<h2>دعوت‌های من</h2>
+<p class="invitations-subtitle">مدیریت دعوت‌های پروژه، همکاری و اعضای سیستم در یک نمای ساده و قابل‌دسترسی</p>
 
 <!-- ✅ پیام‌های عمومی -->
 @if (TempData["Success"] != null)
@@ -114,9 +245,8 @@
     </div>
 }
 
-<!-- 🧩 دعوت‌های پروژه -->
 <div class="card mb-4 shadow-sm">
-    <div class="card-header bg-light fw-bold">🧩 دعوت‌های پروژه</div>
+    <div class="card-header bg-light fw-bold">دعوت‌های پروژه</div>
     <div class="card-body p-0">
         @if (Model.ProjectInvitations.Any())
         {
@@ -181,14 +311,13 @@
         }
         else
         {
-            <p class="text-muted p-3 mb-0">هیچ دعوت پروژه‌ای در انتظار پاسخ نیست.</p>
+            <p class="section-empty">هیچ دعوت پروژه‌ای در انتظار پاسخ نیست.</p>
         }
     </div>
 </div>
 
-<!-- 🌐 دعوت‌های عضویت در سیستم -->
 <div class="card mb-4 shadow-sm">
-    <div class="card-header bg-light fw-bold">🌐 دعوت‌های همکاری</div>
+    <div class="card-header bg-light fw-bold">دعوت‌های همکاری</div>
     <div class="card-body p-0">
         @if (Model.UserInvitations.Any())
         {
@@ -251,12 +380,11 @@
         }
         else
         {
-            <p class="text-muted p-3 mb-0">هیچ دعوتی برای همکاری در انتظار پاسخ نیست.</p>
+            <p class="section-empty">هیچ دعوتی برای همکاری در انتظار پاسخ نیست.</p>
         }
 
-        <!-- 🔹 فرم ارسال دعوت جدید -->
         <div class="border-top p-3 bg-light">
-            <h6 class="fw-bold mb-3">➕ ارسال دعوت جدید به همکاری</h6>
+            <h6 class="fw-bold mb-3">ارسال دعوت جدید به همکاری</h6>
 
             <!-- پیام فقط برای فرم دعوت -->
             @if (TempData["InviteSuccess"] != null)
@@ -295,9 +423,8 @@
     </div>
 </div>
 
-<!-- 📤 دعوت‌های ارسال‌شده توسط من -->
 <div class="card mb-4 shadow-sm">
-    <div class="card-header bg-light fw-bold">📤 دعوت‌هایی که ارسال کرده‌اید</div>
+    <div class="card-header bg-light fw-bold">دعوت‌هایی که ارسال کرده‌اید</div>
     <div class="card-body p-0">
         @if (Model.SentProjectInvitations.Any() || Model.SentSystemInvitations.Any())
         {
@@ -435,7 +562,7 @@
         }
         else
         {
-            <p class="text-muted p-3 mb-0">هیچ دعوتی ارسال نکرده‌اید.</p>
+            <p class="section-empty">هیچ دعوتی ارسال نکرده‌اید.</p>
         }
     </div>
 </div>

@@ -18,6 +18,19 @@ namespace Endpoint.Site.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> Index()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var notifications = await _notificationService.GetUserNotificationsAsync(userId, unreadOnly: false, take: 100);
+            return View(notifications);
+        }
+
+        [HttpGet]
         public async Task<IActionResult> Latest(int take = 10, bool unreadOnly = false)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

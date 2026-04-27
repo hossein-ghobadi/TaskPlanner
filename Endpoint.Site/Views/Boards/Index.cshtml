@@ -5,32 +5,134 @@
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     ViewData["Title"] = "تخته‌های من";
+    ViewData["UseFluidLayout"] = true;
     Layout = "/Views/Shared/_Layout.cshtml";
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
     var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="section-title">
-        <i class="bi bi-kanban me-2"></i>
-        تخته‌های من
-    </h2>
+<style>
+    .boards-page {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0.35rem 0.25rem 0.9rem;
+    }
+
+    .boards-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.8rem;
+        padding-bottom: 0.55rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .boards-title {
+        margin: 0;
+        color: #1f2937;
+        font-size: 1.45rem;
+        font-weight: 700;
+    }
+
+    .boards-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+        gap: 0.9rem;
+    }
+
+    .boards-grid > .col {
+        width: auto;
+        max-width: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .boards-page .project-card {
+        border: 1px solid #d8dee5;
+        border-radius: 10px;
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+        transition: box-shadow 0.18s ease, border-color 0.18s ease;
+        background: #fff;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .boards-page .project-card:hover {
+        border-color: #c6d0dc;
+        box-shadow: 0 5px 14px rgba(15, 23, 42, 0.08);
+    }
+
+    .boards-page .project-card .card-body {
+        padding: 0.85rem 0.9rem;
+    }
+
+    .boards-page .project-card .card-title {
+        font-size: 1.02rem;
+    }
+
+    .boards-page .description-text {
+        min-height: 2.4rem;
+        line-height: 1.55;
+        display: -webkit-box;
+        line-clamp: 2;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .boards-page .project-card .card-footer {
+        background: #f8f9fa;
+        border-top: 1px solid #e6e9ed;
+        padding: 0.52rem 0.75rem;
+    }
+
+    .boards-page .project-card-add {
+        border: 2px dashed #cfd6de;
+        background: #fcfcfb;
+    }
+
+    .boards-page .add-project-icon {
+        width: 58px;
+        height: 58px;
+        border-radius: 12px;
+        background: #e5e7eb;
+        color: #374151;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.6rem;
+    }
+
+   @@media (max-width: 768px) {
+        .boards-title {
+            font-size: 1.25rem;
+        }
+
+        .boards-grid {
+            row-gap: 0.7rem !important;
+        }
+    }
+</style>
+
+<div class="boards-page">
+<div class="boards-head">
+    <h2 class="boards-title"><i class="bi bi-kanban me-2"></i>تخته‌های من</h2>
 </div>
 
-<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
+<div class="row boards-grid">
     <!-- کارت افزودن تخته جدید -->
     <div class="col">
-        <a href="/Boards/Create" class="text-decoration-none">
-            <div class="project-card project-card-add">
-                <div class="card-body d-flex flex-column align-items-center justify-content-center" style="min-height: 200px;">
-                    <div class="add-project-icon mb-3">
-                        <i class="bi bi-plus-circle"></i>
-                    </div>
-                    <h5 class="card-title fw-bold mb-2">تخته جدید</h5>
-                    <p class="card-text text-muted text-center mb-0">ایجاد یک تخته جدید</p>
+        <button type="button" class="project-card project-card-add w-100 text-start border-0" data-bs-toggle="modal" data-bs-target="#createBoardModal">
+            <div class="card-body d-flex flex-column align-items-center justify-content-center" style="min-height: 172px;">
+                <div class="add-project-icon mb-3">
+                    <i class="bi bi-plus-circle"></i>
                 </div>
+                <h5 class="card-title fw-bold mb-2">تخته جدید</h5>
+                <p class="card-text text-muted text-center mb-0">ایجاد یک تخته جدید</p>
             </div>
-        </a>
+        </button>
     </div>
 
     @if (Model != null && Model.Any())
@@ -88,12 +190,45 @@
     else
     {
         <div class="col-12">
-            <div class="alert alert-info text-center">
+            <div class="alert alert-info text-center mb-0">
                 <i class="bi bi-info-circle me-2"></i>
                 هنوز تخته‌ای ایجاد نکرده‌اید. برای شروع، یک تخته جدید ایجاد کنید.
             </div>
         </div>
     }
+</div>
+
+<!-- Modal برای ایجاد تخته -->
+<div class="modal fade" id="createBoardModal" tabindex="-1" aria-labelledby="createBoardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createBoardModalLabel">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    ایجاد تخته جدید
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="Create" asp-controller="Boards" method="post">
+                <div class="modal-body">
+                    <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
+                    <div class="mb-3">
+                        <label class="form-label">نام تخته <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="Name" id="createBoardName" required placeholder="نام تخته" />
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">توضیحات</label>
+                        <textarea class="form-control" name="Description" rows="3" placeholder="توضیحات اختیاری"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ایجاد تخته</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 </div>
 
 <!-- Modal برای حذف تخته -->
@@ -172,6 +307,10 @@
 </div>
 
 <script>
+    document.getElementById('createBoardModal')?.addEventListener('shown.bs.modal', function () {
+        document.getElementById('createBoardName')?.focus();
+    });
+
     // تبدیل ارقام انگلیسی به فارسی
     function toPersianNumbers(str) {
         const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];

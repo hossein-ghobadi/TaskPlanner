@@ -3,6 +3,7 @@
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["UseFluidLayout"] = true;
 }
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 
@@ -14,80 +15,22 @@
 }
 
 <div class="notes-container-wrapper">
-    <!-- Sidebar for Folders -->
-    <div class="folders-sidebar">
-        <div class="sidebar-header">
-            <h3>
-                <i class="bi bi-folder-fill"></i>
-                پوشه‌ها
-            </h3>
-            <a asp-action="Create" asp-controller="PersonalNoteFolders" class="btn-add-folder" title="ایجاد پوشه جدید">
-                <i class="bi bi-plus-lg"></i>
-            </a>
-        </div>
-        
-        <div class="folders-list">
-            <!-- Root Level - All Notes -->
-            <a href="/PersonalNotes/Index" class="folder-item @(!folderId.HasValue ? "active" : "")">
-                <i class="bi bi-journal-text"></i>
-                <span>همه یادداشت‌ها</span>
-            </a>
-
-            <!-- Folders Tree -->
-            @foreach (var folder in folders)
-            {
-                var isActive = folderId.HasValue && folder.Id == folderId.Value;
-                var folderColor = folder.Color ?? "#3b82f6";
-                
-                <div class="folder-item-wrapper">
-                    <div class="folder-item-with-actions">
-                        <a href="/PersonalNotes/Index?folderId=@folder.Id" class="folder-item @(isActive ? "active" : "")" style="border-right: 3px solid @folderColor;">
-                            <i class="bi bi-folder@(isActive ? "-fill" : "")" style="color: @folderColor;"></i>
-                            <span>@folder.Name</span>
-                            <span class="folder-count">@(folderNotesCount.ContainsKey(folder.Id) ? folderNotesCount[folder.Id] : 0)</span>
-                        </a>
-                        <div class="folder-actions" onclick="event.stopPropagation();">
-                            <a href="/PersonalNoteFolders/Edit?id=@folder.Id" class="folder-action-btn" title="ویرایش پوشه">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <a href="/PersonalNoteFolders/Delete?id=@folder.Id" class="folder-action-btn folder-action-danger" title="حذف پوشه">
-                                <i class="bi bi-trash"></i>
-                            </a>
-                        </div>
-                    </div>
-                    
-                    @if (folder.Children != null && folder.Children.Any())
-                    {
-                        <div class="folder-children">
-                            @foreach (var child in folder.Children.OrderBy(f => f.Name))
-                            {
-                                var childIsActive = folderId.HasValue && child.Id == folderId.Value;
-                                var childColor = child.Color ?? "#3b82f6";
-                                
-                                <div class="folder-item-wrapper">
-                                    <div class="folder-item-with-actions">
-                                        <a href="/PersonalNotes/Index?folderId=@child.Id" class="folder-item @(childIsActive ? "active" : "")" style="border-right: 3px solid @childColor;">
-                                            <i class="bi bi-folder@(childIsActive ? "-fill" : "")" style="color: @childColor;"></i>
-                                            <span>@child.Name</span>
-                                            <span class="folder-count">@(folderNotesCount.ContainsKey(child.Id) ? folderNotesCount[child.Id] : 0)</span>
-                                        </a>
-                                        <div class="folder-actions" onclick="event.stopPropagation();">
-                                            <a href="/PersonalNoteFolders/Edit?id=@child.Id" class="folder-action-btn" title="ویرایش پوشه">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <a href="/PersonalNoteFolders/Delete?id=@child.Id" class="folder-action-btn folder-action-danger" title="حذف پوشه">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-            }
-        </div>
-    </div>
+    @await Html.PartialAsync("/Views/Shared/Notes/_FoldersToolbar.cshtml", viewData: new ViewDataDictionary(ViewData)
+    {
+        ["Folders"] = folders,
+        ["FolderId"] = folderId,
+        ["FolderNotesCount"] = folderNotesCount,
+        ["CreateFolderUrl"] = Url.Action("Create", "PersonalNoteFolders", new { parentFolderId = folderId }),
+        ["CreateFolderPostUrl"] = Url.Action("Create", "PersonalNoteFolders"),
+        ["CreateFolderModalId"] = "personalCreateFolderModal",
+        ["CreateNoteUrl"] = Url.Action("Create", "PersonalNotes", new { folderId }),
+        ["EditFolderPostUrl"] = Url.Action("Edit", "PersonalNoteFolders"),
+        ["DeleteFolderPostUrl"] = Url.Action("Delete", "PersonalNoteFolders"),
+        ["AllNotesUrl"] = Url.Action("Index", "PersonalNotes"),
+        ["FolderUrlTemplate"] = "/PersonalNotes/Index?folderId={id}",
+        ["EditFolderUrlTemplate"] = "/PersonalNoteFolders/Edit?id={id}",
+        ["DeleteFolderUrlTemplate"] = "/PersonalNoteFolders/Delete?id={id}"
+    })
 
     <!-- Main Content -->
 <div class="social-feed-container">
@@ -117,16 +60,6 @@
                 </div>
             <p class="feed-subtitle">افکار، ایده‌ها و یادداشت‌های شما</p>
         </div>
-        <div class="header-actions">
-                <a class="btn-create-folder" asp-action="Create" asp-controller="PersonalNoteFolders" asp-route-parentFolderId="@folderId">
-                    <i class="bi bi-folder-plus"></i>
-                    <span>پوشه جدید</span>
-                </a>
-                <a class="btn-create-note" asp-action="Create" asp-route-folderId="@folderId">
-                <i class="bi bi-plus-lg"></i>
-                <span>یادداشت جدید</span>
-        </a>
-    </div>
 </div>
 
 @if (TempData["Success"] != null)
@@ -153,7 +86,7 @@
             var noteColor = !string.IsNullOrEmpty(note.Color) ? note.Color : "#3b82f6";
             var timeAgo = GetTimeAgo(note.CreatedAt);
             
-            <article class="note-post" onclick="window.location.href='/PersonalNotes/Details?id=@note.Id'" style="border-top: 4px solid @noteColor;">
+            <article class="note-post" data-detail-url="/PersonalNotes/Details?id=@note.Id" style="border-top: 2px solid #d8dee6;">
                 <!-- Post Header -->
                 <div class="post-header">
                     <!-- Pin Button - Left Side -->
@@ -176,7 +109,7 @@
                         <div class="post-time">
                                 <i class="bi bi-clock"></i>
                             <span>@timeAgo</span>
-                            <span class="time-full">(@note.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm"))</span>
+                            <span class="time-full">(@FormatTehranPersianDateTime(note.CreatedAt))</span>
                         </div>
                     </div>
                 </div>
@@ -312,8 +245,16 @@ else
     </div>
 }
         <script>
+            document.addEventListener('click', function (event) {
+                const card = event.target.closest('.note-post[data-detail-url]');
+                if (!card) return;
 
+                const interactive = event.target.closest('a, button, input, textarea, select, label, form, audio, .post-actions, .post-footer, .post-attachments');
+                if (interactive) return;
 
+                const url = card.getAttribute('data-detail-url');
+                if (url) window.location.href = url;
+            });
 
             function openImageModal(src)
                 {
@@ -347,10 +288,29 @@ else
                 });
         </script>
 @functions {
+    private static TimeZoneInfo TehranTimeZone()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Iran Standard Time"); } catch { }
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Asia/Tehran"); } catch { }
+        return TimeZoneInfo.Local;
+    }
+
+    private static DateTime ToTehranTime(DateTime dateTime)
+    {
+        var utc = dateTime.Kind == DateTimeKind.Utc ? dateTime : dateTime.ToUniversalTime();
+        return TimeZoneInfo.ConvertTimeFromUtc(utc, TehranTimeZone());
+    }
+
+    public string FormatTehranPersianDateTime(DateTime dateTime)
+    {
+        var culture = new CultureInfo("fa-IR");
+        return ToTehranTime(dateTime).ToString("yyyy/MM/dd HH:mm", culture);
+    }
+
     public string GetTimeAgo(DateTime dateTime)
     {
-        var now = DateTime.Now;
-        var diff = now - dateTime.AddHours(3.5);
+        var now = TimeZoneInfo.ConvertTime(DateTime.UtcNow, TehranTimeZone());
+        var diff = now - ToTehranTime(dateTime);
         
         if (diff.TotalSeconds < 60)
             return "همین الان";
@@ -377,21 +337,136 @@ else
 
 <style>
     .notes-container-wrapper {
-        display: flex;
-        gap: 1.5rem;
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 2rem 1rem;
+        display: block;
+        max-width: none;
+        margin: 0;
+        padding: 0.75rem 0.35rem;
     }
 
-    /* Folders Sidebar */
+    .folders-toolbar {
+        border: 1px solid #d6d9de;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        padding: 0.75rem;
+    }
+
+    .folders-toolbar-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.6rem;
+    }
+
+    .folders-toolbar-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+    }
+
+    .folders-toolbar-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-weight: 700;
+        color: #334155;
+    }
+
+    .folders-toolbar-body {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 0.6rem;
+    }
+
+    .folder-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        padding: 0.35rem 0.45rem;
+        border: 1px solid #edf0f4;
+        border-radius: 8px;
+        background: #fcfdff;
+        max-width: 100%;
+    }
+
+    .folder-chip-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+    }
+
+    .folder-chip-wrap.child {
+        margin-right: 0;
+    }
+
+    .folder-children-list {
+        margin-top: 0.4rem;
+        margin-right: 1.1rem;
+        padding-right: 0.8rem;
+        border-right: 2px solid #e2e8f0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+
+    .folder-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.55rem;
+        border-radius: 7px;
+        border: 1px solid #dbe0e6;
+        background: #f8fafc;
+        color: #334155;
+        text-decoration: none;
+        font-size: 0.84rem;
+    }
+
+    .folder-chip.active {
+        background: #eef2f7;
+        border-color: #bfc8d4;
+        color: #0f172a;
+        font-weight: 600;
+    }
+
+    .folder-chip-count {
+        font-size: 0.72rem;
+        color: #64748b;
+        background: #e2e8f0;
+        border-radius: 10px;
+        padding: 0.08rem 0.35rem;
+    }
+
+    .folder-mini-action {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        text-decoration: none;
+    }
+
+    .folder-mini-action:hover {
+        background: #eef2f7;
+        color: #334155;
+    }
+
+    .folder-mini-action.danger:hover {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    /* Legacy Folders Sidebar (unused after redesign) */
     .folders-sidebar {
         width: 280px;
         flex-shrink: 0;
         background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
         height: fit-content;
         position: sticky;
         top: 2rem;
@@ -403,7 +478,7 @@ else
         align-items: center;
         margin-bottom: 1rem;
         padding-bottom: 1rem;
-        border-bottom: 2px solid #e9ecef;
+        border-bottom: 1px solid #e5e7eb;
     }
 
     .sidebar-header h3 {
@@ -424,7 +499,7 @@ else
         justify-content: center;
         background: #f8f9fa;
         border-radius: 8px;
-        color: #3b82f6;
+        color: #64748b;
         text-decoration: none;
         transition: all 0.2s ease;
     }
@@ -465,8 +540,8 @@ else
     }
 
     .folder-item.active {
-        background: #e3f2fd;
-        color: #1976d2;
+        background: #f1f5f9;
+        color: #1f2937;
         font-weight: 600;
     }
 
@@ -540,27 +615,6 @@ else
         color: #dc3545;
     }
 
-    .btn-create-folder {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
-        background: #f8f9fa;
-        color: #4a5568;
-        border: 2px solid #e9ecef;
-        border-radius: 12px;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.3s ease;
-    }
-
-    .btn-create-folder:hover {
-        background: #e9ecef;
-        color: #1a1a1a;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
     .breadcrumb-nav {
         display: flex;
         align-items: center;
@@ -605,9 +659,9 @@ else
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 2rem;
-        padding-bottom: 1.5rem;
-        border-bottom: 2px solid #e9ecef;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.9rem;
+        border-bottom: 1px solid #e4e8ee;
     }
 
     .header-content {
@@ -615,9 +669,9 @@ else
     }
 
     .feed-title {
-        font-size: 2rem;
+        font-size: 1.75rem;
         font-weight: 700;
-        color: #1a1a1a;
+        color: #0f172a;
         margin: 0 0 0.5rem 0;
         display: flex;
         align-items: center;
@@ -625,7 +679,7 @@ else
     }
 
     .feed-title i {
-        color: #3b82f6;
+        color: #64748b;
     }
 
     .feed-subtitle {
@@ -638,21 +692,20 @@ else
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.75rem 1.5rem;
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        color: white;
-        border: none;
-        border-radius: 12px;
+        padding: 0.55rem 0.9rem;
+        background: #f1f5f9;
+        color: #334155;
+        border: 1px solid #cfd8e3;
+        border-radius: 8px;
         font-weight: 600;
         text-decoration: none;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        transition: background-color 0.2s ease, color 0.2s ease;
+        box-shadow: none;
     }
 
     .btn-create-note:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-        color: white;
+        background: #e2e8f0;
+        color: #0f172a;
     }
 
     /* Alert Styles */
@@ -667,35 +720,52 @@ else
         font-weight: 500;
     }
 
-    /* Post Styles */
+    /* Post Styles - Card Grid View */
     .social-feed {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
     }
 
     .note-post {
-        background: white;
-        border-radius: 16px;
-        padding: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s ease;
-        cursor: pointer;
-        border-top: 4px solid #3b82f6;
+        background: #fff;
+        border-radius: 12px;
+        padding: 0.95rem 1rem;
+        border: 1px solid #dbe2ea;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        position: relative;
+        pointer-events: auto;
+        display: flex;
+        flex-direction: column;
+        min-height: 250px;
     }
 
     .note-post:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        border-color: #c9d5e4;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.1);
+    }
+
+    .note-post::before {
+        content: "";
+        position: absolute;
+        top: 0.7rem;
+        bottom: 0.7rem;
+        right: 0;
+        width: 3px;
+        border-radius: 3px;
+        background: #cbd5e1;
+        pointer-events: none;
     }
 
     /* Post Header */
     .post-header {
         display: flex;
         align-items: flex-start;
-        gap: 1rem;
-        margin-bottom: 1rem;
+        gap: 0.6rem;
+        margin-bottom: 0.55rem;
         position: relative;
+        pointer-events: auto;
     }
 
     /* Pin Button - Left Side */
@@ -712,8 +782,8 @@ else
     }
 
     .pin-btn {
-        width: 36px;
-        height: 36px;
+        width: 30px;
+        height: 30px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -750,8 +820,7 @@ else
     }
 
     .post-avatar {
-        flex-shrink: 0;
-        margin-left: 2.5rem; /* فاصله برای pin button */
+        display: none;
     }
 
     .avatar-circle {
@@ -773,16 +842,16 @@ else
 
     .author-name {
         font-weight: 600;
-        font-size: 0.95rem;
+        font-size: 0.82rem;
         color: #1a1a1a;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.1rem;
     }
 
     .post-time {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        font-size: 0.85rem;
+        gap: 0.35rem;
+        font-size: 0.76rem;
         color: #6c757d;
     }
 
@@ -800,54 +869,61 @@ else
 
     /* Post Content */
     .post-content {
-        margin-bottom: 1rem;
+        margin-bottom: 0.7rem;
+        pointer-events: auto;
+        flex: 1 1 auto;
     }
 
     .post-title {
-        font-size: 1.25rem;
+        font-size: 1.05rem;
         font-weight: 700;
         color: #1a1a1a;
-        margin: 0 0 0.75rem 0;
-        line-height: 1.4;
+        margin: 0 0 0.35rem 0;
+        line-height: 1.45;
     }
 
     .post-text {
         color: #4a5568;
-        line-height: 1.6;
+        line-height: 1.55;
         white-space: pre-wrap;
         word-wrap: break-word;
-        max-height: 300px;
+        max-height: none;
         overflow: hidden;
         position: relative;
+        display: -webkit-box;
+        line-clamp: 2;
+        -webkit-line-clamp: 4;
+        -webkit-box-orient: vertical;
+        font-size: 0.9rem;
     }
 
     .post-text::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 50px;
-        background: linear-gradient(to bottom, transparent, white);
+        content: none;
     }
 
     /* Attachments */
     .post-attachments {
-        margin: 1rem 0;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 0.75rem;
+        margin: 0.1rem 0 0.65rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        position: relative;
+        z-index: 1;
+        pointer-events: auto;
+        max-height: 72px;
+        overflow: auto;
     }
 
     .attachment-item {
-        border-radius: 12px;
+        border-radius: 7px;
         overflow: hidden;
-        transition: transform 0.2s ease;
+        transition: none;
         position: relative;
+        max-width: 160px;
     }
 
     .attachment-item:hover {
-        transform: scale(1.02);
+        transform: none;
     }
 
             .attachment-image {
@@ -1027,10 +1103,28 @@ else
     .post-footer {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        padding-top: 1rem;
-        border-top: 1px solid #e9ecef;
-        margin-top: 0.5rem;
+        align-items: flex-start;
+        padding-top: 0.55rem;
+        border-top: 1px solid #e2e8f0;
+        margin-top: auto;
+        position: relative;
+        z-index: 20;
+        pointer-events: auto;
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 0.45rem 0.5rem;
+    }
+
+    .post-footer a,
+    .post-footer button,
+    .pin-action-left,
+    .pin-action-left *,
+    .post-attachments a,
+    .post-attachments button,
+    .post-attachments img,
+    .post-attachments audio,
+    .attachment-overlay {
+        pointer-events: auto;
     }
 
     .post-meta {
@@ -1048,27 +1142,33 @@ else
 
     .post-actions {
         display: flex;
-        gap: 0.5rem;
+        gap: 0.4rem;
+        flex-wrap: wrap;
     }
 
     .action-btn {
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background: #f8f9fa;
+        gap: 0.4rem;
+        min-height: 33px;
+        padding: 0.38rem 0.66rem;
+        background: #ffffff;
         color: #4a5568;
-        border: none;
-        border-radius: 8px;
+        border: 1px solid #dbe3ed;
+        border-radius: 7px;
         text-decoration: none;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         font-weight: 500;
         transition: all 0.2s ease;
         cursor: pointer;
+        position: relative;
+        z-index: 21;
+        pointer-events: auto;
+        touch-action: manipulation;
     }
 
     .action-btn:hover {
-        background: #e9ecef;
+        background: #f1f5f9;
         color: #1a1a1a;
         transform: translateY(-1px);
     }
@@ -1132,17 +1232,24 @@ else
             gap: 1rem;
         }
 
-        .header-actions {
-            width: 100%;
-        }
-
         .btn-create-note {
             width: 100%;
             justify-content: center;
         }
 
-        .post-attachments {
+        .social-feed {
             grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        .note-post {
+            min-height: auto;
+            padding: 0.8rem 0.85rem;
+        }
+
+        .post-attachments {
+            gap: 0.35rem;
+            max-height: 64px;
         }
 
         .post-footer {

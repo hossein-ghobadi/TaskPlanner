@@ -1,0 +1,33 @@
+@{
+    var projectCount = (ViewData["ProjectCount"] as int?) ?? 0;
+    var pendingInviteCount = (ViewData["PendingInviteCount"] as int?) ?? 0;
+    var collaboratorCount = (ViewData["CollaboratorCount"] as int?) ?? 0;
+    var recentNoteCount = (ViewData["RecentNoteCount"] as int?) ?? 0;
+}
+
+<div class="dashboard-summary row g-2 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="dashboard-stat-card">
+            <span class="dashboard-stat-label">پروژه‌ها</span>
+            <span class="dashboard-stat-value">@projectCount</span>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="dashboard-stat-card">
+            <span class="dashboard-stat-label">دعوت در انتظار</span>
+            <span class="dashboard-stat-value">@pendingInviteCount</span>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="dashboard-stat-card">
+            <span class="dashboard-stat-label">همکاران</span>
+            <span class="dashboard-stat-value">@collaboratorCount</span>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="dashboard-stat-card">
+            <span class="dashboard-stat-label">یادداشت اخیر</span>
+            <span class="dashboard-stat-value">@recentNoteCount</span>
+        </div>
+    </div>
+</div>
