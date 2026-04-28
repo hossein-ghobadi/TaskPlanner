@@ -490,20 +490,6 @@ namespace Endpoint.Site.Controllers
 
 
 
-        // افزودن کاربر به پروژه
-        [HttpPost]
-        public async Task<IActionResult> AddMember(int projectId, string userId)
-        {
-            var member = new ProjectMember
-            {
-                ProjectId = projectId,
-                UserId = userId
-            };
-            _context.ProjectMembers.Add(member);
-            await _context.SaveChangesAsync();
-            return RedirectToAction("Details", new { id = projectId });
-        }
-
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ProjectCreateVm vm)
@@ -727,54 +713,6 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
-
-        // ✅ برخی View ها ممکن است به طور مستقیم به /DeleteConfirmed پست کنند
-        [HttpPost]
-        [ActionName("DeleteConfirmed")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmedRoute(int id)
-        {
-            var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser == null)
-            {
-                TempData["Error"] = "کاربر لاگین‌شده یافت نشد.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            try
-            {
-                await _projectCommandService.DeleteProjectAsync(id, currentUser.Id);
-                TempData["Success"] = "پروژه با موفقیت حذف شد.";
-                return RedirectToAction(nameof(Index));
-            }
-            catch (InvalidOperationException ex)
-            {
-                TempData["Error"] = ex.Message;
-                return RedirectToAction(nameof(Index));
-            }
-            catch (DbUpdateException ex)
-            {
-                // بررسی نوع خطای Foreign Key
-                if (ex.InnerException is SqlException sqlEx && sqlEx.Number == 547)
-                {
-                    TempData["Error"] = "نمی‌توان پروژه را حذف کرد زیرا دارای وابستگی‌های مهمی است. لطفاً ابتدا تمام کارهای مرتبط با اسپرینت‌ها را بررسی کنید.";
-                }
-                else
-                {
-                    TempData["Error"] = "خطا در حذف پروژه. لطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.";
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = "خطای غیرمنتظره‌ای رخ داد. لطفاً دوباره تلاش کنید.";
-                return RedirectToAction(nameof(Index));
-            }
-        }
-
-
-
-
 
         [HttpPost]
         [ValidateAntiForgeryToken]

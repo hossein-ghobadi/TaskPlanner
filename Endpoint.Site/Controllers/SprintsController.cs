@@ -471,62 +471,6 @@ namespace Endpoint.Site.Controllers
             return View(vm);
         }
 
-        // 🔄 به‌روزرسانی ترتیب اولویت Issues در اسپرینت
-        [HttpPost]
-        public async Task<IActionResult> UpdateSprintOrder(int sprintId, [FromBody] List<int> taskIds)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            var sprint = await _context.Sprints
-                .Include(s => s.Project)
-                .FirstOrDefaultAsync(s => s.Id == sprintId);
-
-            if (sprint == null)
-            {
-                return Json(new { success = false, message = "اسپرینت یافت نشد." });
-            }
-
-            // بررسی دسترسی
-            var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == sprint.ProjectId &&
-                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
-
-            if (!hasAccess)
-            {
-                return Json(new { success = false, message = "شما به این اسپرینت دسترسی ندارید." });
-            }
-
-            // فقط برای Sprint های غیر Completed
-            if (sprint.Status == SprintStatus.Completed)
-            {
-                return Json(new { success = false, message = "اسپرینت تکمیل شده قابل ویرایش نیست." });
-            }
-
-            try
-            {
-                // به‌روزرسانی SprintPriority برای هر Issue
-                for (int i = 0; i < taskIds.Count; i++)
-                {
-                    var sprintTask = await _context.SprintTasks
-                        .FirstOrDefaultAsync(st => st.SprintId == sprintId && st.TaskId == taskIds[i]);
-
-                    if (sprintTask != null)
-                    {
-                        sprintTask.SprintPriority = i + 1; // اولویت از 1 شروع می‌شود
-                    }
-                }
-
-                await _context.SaveChangesAsync();
-
-                return Json(new { success = true, message = "ترتیب اولویت با موفقیت به‌روزرسانی شد." });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = "خطا در به‌روزرسانی: " + ex.Message });
-            }
-        }
-
-
         // 📌 دریافت تسک‌های پروژه برای اضافه کردن به اسپرینت
         [HttpGet]
         public async Task<IActionResult> GetProjectTasks(int projectId, int sprintId)
@@ -1035,66 +979,6 @@ namespace Endpoint.Site.Controllers
                 statusId = targetStatusId,
                 statusName = targetStatusName
             });
-        }
-
-        // 📌 تغییر وضعیت تسک در اسپرینت
-        [HttpPost]
-        public async Task<IActionResult> UpdateTaskStatus(int sprintId, int taskId, SprintTaskStatus status)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            var sprint = await _context.Sprints
-                .Include(s => s.Project)
-                .FirstOrDefaultAsync(s => s.Id == sprintId);
-
-            if (sprint == null)
-            {
-                return Json(new { success = false, message = "اسپرینت یافت نشد." });
-            }
-
-            // بررسی دسترسی
-            var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == sprint.ProjectId &&
-                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
-
-            if (!hasAccess)
-            {
-                return Json(new { success = false, message = "شما به این اسپرینت دسترسی ندارید." });
-            }
-
-            // Check if task exists
-            var exists = await _context.SprintTasks
-                .AnyAsync(st => st.SprintId == sprintId && st.TaskId == taskId);
-
-            if (!exists)
-            {
-                return Json(new { success = false, message = "تسک در اسپرینت یافت نشد." });
-            }
-
-            try
-            {
-                // Update using SQL to avoid Entity Framework tracking issues
-                var completedAt = status == SprintTaskStatus.Completed ? DateTime.UtcNow : (DateTime?)null;
-
-                if (completedAt.HasValue)
-                {
-                    await _context.Database.ExecuteSqlRawAsync(
-                        "UPDATE SprintTasks SET Status = {0}, CompletedAt = {1} WHERE SprintId = {2} AND TaskId = {3}",
-                        (int)status, completedAt, sprintId, taskId);
-                }
-                else
-                {
-                    await _context.Database.ExecuteSqlRawAsync(
-                        "UPDATE SprintTasks SET Status = {0} WHERE SprintId = {1} AND TaskId = {2}",
-                        (int)status, sprintId, taskId);
-                }
-
-                return Json(new { success = true, message = "وضعیت تسک با موفقیت تغییر کرد." });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = "خطا در تغییر وضعیت تسک: " + ex.Message });
-            }
         }
 
         // 📌 ایجاد اسپرینت جدید

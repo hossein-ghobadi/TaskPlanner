@@ -602,42 +602,6 @@ namespace Endpoint.Site.Controllers
             return Json(new { success = true, message = "کار با موفقیت حذف شد", boardId = boardId });
         }
 
-        // POST: تغییر وضعیت کار (AJAX)
-        [HttpPost]
-        public async Task<IActionResult> UpdateStatus(int taskId, string newStatus)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            var task = await _context.BoardTasks
-                .Include(t => t.Board)
-                .ThenInclude(b => b.Members)
-                .FirstOrDefaultAsync(t => t.Id == taskId);
-
-            if (task == null)
-                return Json(new { success = false, message = "کار یافت نشد" });
-
-            // بررسی دسترسی
-            if (task.Board.CreatorUserId != userId && !task.Board.Members.Any(m => m.UserId == userId))
-                return Json(new { success = false, message = "دسترسی ندارید" });
-
-            var oldStatus = task.Status;
-            task.Status = newStatus;
-            task.UpdatedAt = DateTime.UtcNow;
-
-            // اگر وضعیت تغییر کرده، ترتیب را در ستون جدید تنظیم کن
-            if (oldStatus != newStatus)
-            {
-                var maxOrder = await _context.BoardTasks
-                    .Where(t => t.BoardId == task.BoardId && t.Status == newStatus && t.Id != taskId && t.ParentTaskId == null)
-                    .MaxAsync(t => (int?)t.Order) ?? 0;
-                task.Order = maxOrder + 1;
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Json(new { success = true });
-        }
-
         // POST: به‌روزرسانی ترتیب کارها (برای drag and drop)
         [HttpPost]
         public async Task<IActionResult> UpdateTaskOrder([FromBody] UpdateTaskOrderRequest request)
