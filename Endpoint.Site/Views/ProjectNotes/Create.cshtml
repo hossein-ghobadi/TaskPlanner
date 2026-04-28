@@ -2,6 +2,7 @@
 @model ProjectNoteCreateVm
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["UseFluidLayout"] = true;
 }
 
 <div class="create-note-container">
@@ -102,10 +103,16 @@
 </div>
 
 <style>
+    .app-main-body {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
     .create-note-container {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 2rem 1rem;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 1rem 0.25rem;
     }
 
     /* Header */
