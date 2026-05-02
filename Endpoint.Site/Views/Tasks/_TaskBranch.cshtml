@@ -7,43 +7,21 @@
 }
 
 <style>
-    /* اطمینان از نمایش کامل منوی dropdown */
-    .task-card .dropdown-menu {
-        z-index: 1060 !important;
-    }
-    
-    /* اجازه به dropdown برای خروج از محدودیت overflow در children */
     .task-card__children {
         overflow: visible !important;
     }
-    
-    /* برای container های والد که ممکن است overflow داشته باشند */
     .task-tree-wrapper,
     .task-node {
         overflow: visible !important;
     }
-    
-    /* اطمینان از اینکه task-card خودش overflow ایجاد نمی‌کند */
     .task-card {
         overflow: visible !important;
-    }
-    
-    /* برای dropdown wrapper */
-    .task-dropdown-wrapper {
-        position: static !important;
-    }
-    
-    /* وقتی dropdown باز است، آن را با position fixed نمایش بده */
-    .task-dropdown-wrapper .dropdown-menu.show {
-        position: fixed !important;
-        z-index: 1070 !important;
-        display: block !important;
-        transform: none !important;
-        will-change: auto !important;
+        cursor: pointer;
     }
 </style>
 
 @{
+    var isChildCard = Model.ParentTaskId != null;
     var isCompleted = Model.IsCompleted;
     var dueState = Model.DueDate switch
     {
@@ -86,7 +64,13 @@
     }
 }
 
-<div class="task-card @(isCompleted ? "task-card--completed" : "")">
+<div class="task-card @(isCompleted ? "task-card--completed" : "")"
+     role="button"
+     tabindex="0"
+     onclick="@(isChildCard ? $"event.stopPropagation(); openEditTaskModal({Model.Id})" : $"openEditTaskModal({Model.Id})")"
+     onkeydown="@(isChildCard
+         ? $"if(event.key==='Enter' || event.key===' '){{ event.preventDefault(); event.stopPropagation(); openEditTaskModal({Model.Id}); }}"
+         : $"if(event.key==='Enter' || event.key===' '){{ event.preventDefault(); openEditTaskModal({Model.Id}); }}")">
     <div class="task-card__body">
         <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
             <div class="d-flex align-items-start gap-3">
@@ -143,59 +127,21 @@
                             data-bs-target="#@collapseId"
                             aria-expanded="false"
                             aria-controls="@collapseId"
+                            onclick="event.stopPropagation();"
                             title="زیرکارها">
                         <i class="bi bi-diagram-3"></i>
                     </button>
                 }
-                <div class="dropdown task-dropdown-wrapper" data-task-id="@Model.Id">
-                    <button class="btn btn-sm task-dropdown-toggle" style="border: 1px solid #e5e7eb; background: white; color: #6b7280; border-radius: 6px; padding: 0.25rem 0.5rem;"
-                            type="button"
-                            id="taskActions_@Model.Id"
-                            data-bs-toggle="dropdown"
-                            data-bs-boundary="viewport"
-                            data-bs-offset="0,8"
-                            aria-expanded="false"
-                            title="عملیات">
-                        <i class="bi bi-three-dots-vertical"></i>
+                @if (!Model.IsCompleted)
+                {
+                    <button type="button"
+                            class="btn btn-sm btn-outline-danger"
+                            style="border-radius: 6px; padding: 0.25rem 0.5rem;"
+                            onclick="event.stopPropagation(); deleteTask(@Model.Id)"
+                            title="حذف کار">
+                        <i class="bi bi-trash"></i>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="taskActions_@Model.Id">
-                        @if (!Model.IsCompleted)
-                        {
-                            <li>
-                                <button type="button" class="dropdown-item" onclick="openEditTaskModal(@Model.Id)">
-                                    <i class="bi bi-pencil-square me-2"></i> ویرایش
-                                </button>
-                            </li>
-                        }
-                        <li>
-                            <a class="dropdown-item" asp-controller="Tasks" asp-action="Details" asp-route-id="@Model.Id">
-                                <i class="bi bi-chat-dots me-2"></i> گفتگو
-                            </a>
-                        </li>
-                        @if (!Model.IsCompleted && Model.CanHaveChildren)
-                        {
-                            <li>
-                                <button class="dropdown-item" onclick="openChildIssueModal(@Model.Id, '@Model.IssueType')">
-                                    <i class="bi bi-plus-circle me-2"></i> افزودن @(Model.ProjectIssueType?.Level == IssueTypeLevel.Epic ? "کار" : Model.ProjectIssueType?.Level == IssueTypeLevel.StoryLevel ? "کارک" : Model.IssueType == IssueType.Epic ? "کار" : "کارک")
-                                </button>
-                            </li>
-                        }
-                        @if (!Model.IsCompleted)
-                        {
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <button class="dropdown-item text-success" onclick="completeTask(@Model.Id)">
-                                    <i class="bi bi-check-lg me-2"></i> خاتمه
-                                </button>
-                            </li>
-                            <li>
-                                <button class="dropdown-item text-danger" onclick="deleteTask(@Model.Id)">
-                                    <i class="bi bi-trash me-2"></i> حذف
-                                </button>
-                            </li>
-                        }
-                    </ul>
-                </div>
+                }
             </div>
         </div>
     </div>
@@ -213,206 +159,3 @@
     }
 </div>
 
-@* اسکریپت مدیریت dropdown - راه حل جامع برای همه سطوح (Feature/Task/Subtask) *@
-<script>
-    (function() {
-        if (window.taskDropdownInitialized) return;
-        window.taskDropdownInitialized = true;
-        
-        // ذخیره اطلاعات dropdown برای بازگرداندن
-        const dropdownData = new WeakMap();
-        
-        // تابع برای تنظیم موقعیت dropdown با انتقال به body
-        function setupDropdownPosition(dropdownToggle) {
-            if (!dropdownToggle) return;
-            
-            const dropdownMenu = dropdownToggle.nextElementSibling;
-            if (!dropdownMenu || !dropdownMenu.classList.contains('dropdown-menu')) return;
-            if (!dropdownMenu.classList.contains('show')) return;
-            
-            // ذخیره اطلاعات برای بازگرداندن
-            if (!dropdownData.has(dropdownMenu)) {
-                dropdownData.set(dropdownMenu, {
-                    parent: dropdownMenu.parentElement,
-                    nextSibling: dropdownMenu.nextSibling
-                });
-            }
-            
-            // محاسبه موقعیت دکمه
-            const buttonRect = dropdownToggle.getBoundingClientRect();
-            const isRTL = document.documentElement.dir === 'rtl';
-            const padding = 8;
-            
-            // انتقال dropdown به body اگر هنوز در جای قبلی است
-            const wasInBody = dropdownMenu.parentElement === document.body;
-            if (!wasInBody) {
-                // حفظ display برای محاسبه اندازه
-                const currentDisplay = dropdownMenu.style.display || 'block';
-                dropdownMenu.style.display = 'block';
-                dropdownMenu.style.visibility = 'hidden';
-                dropdownMenu.style.position = 'fixed';
-                document.body.appendChild(dropdownMenu);
-            }
-            
-            // گرفتن اندازه واقعی menu
-            const menuRect = dropdownMenu.getBoundingClientRect();
-            const menuHeight = menuRect.height || dropdownMenu.scrollHeight || 200;
-            const menuWidth = menuRect.width || 200;
-            
-            if (!wasInBody) {
-                dropdownMenu.style.visibility = 'visible';
-            }
-            
-            // تنظیم استایل‌های پایه
-            dropdownMenu.style.position = 'fixed';
-            dropdownMenu.style.zIndex = '1070';
-            dropdownMenu.style.display = 'block';
-            dropdownMenu.style.visibility = 'visible';
-            dropdownMenu.style.transform = 'none';
-            
-            // محاسبه و تنظیم موقعیت افقی
-            if (isRTL) {
-                // برای dropdown-menu-end در RTL
-                dropdownMenu.style.right = (window.innerWidth - buttonRect.right) + 'px';
-                dropdownMenu.style.left = 'auto';
-            } else {
-                dropdownMenu.style.left = buttonRect.left + 'px';
-                dropdownMenu.style.right = 'auto';
-            }
-            
-            // محاسبه موقعیت عمودی
-            const spaceBelow = window.innerHeight - buttonRect.bottom;
-            const spaceAbove = buttonRect.top;
-            
-            if (spaceBelow >= menuHeight + padding) {
-                // فضای کافی در پایین
-                dropdownMenu.style.top = (buttonRect.bottom + padding) + 'px';
-                dropdownMenu.style.bottom = 'auto';
-                dropdownMenu.style.maxHeight = '';
-                dropdownMenu.style.overflowY = '';
-            } else if (spaceAbove >= menuHeight + padding) {
-                // فضای کافی در بالا
-                dropdownMenu.style.top = 'auto';
-                dropdownMenu.style.bottom = (window.innerHeight - buttonRect.top + padding) + 'px';
-                dropdownMenu.style.maxHeight = '';
-                dropdownMenu.style.overflowY = '';
-            } else {
-                // فضای کافی در هیچ کدام نیست
-                if (spaceBelow > spaceAbove) {
-                    dropdownMenu.style.top = (buttonRect.bottom + padding) + 'px';
-                    dropdownMenu.style.bottom = 'auto';
-                    dropdownMenu.style.maxHeight = Math.max(spaceBelow - padding, 100) + 'px';
-                    dropdownMenu.style.overflowY = 'auto';
-                } else {
-                    dropdownMenu.style.top = 'auto';
-                    dropdownMenu.style.bottom = (window.innerHeight - buttonRect.top + padding) + 'px';
-                    dropdownMenu.style.maxHeight = Math.max(spaceAbove - padding, 100) + 'px';
-                    dropdownMenu.style.overflowY = 'auto';
-                }
-            }
-        }
-        
-        // تابع برای بازگرداندن dropdown به جای اصلی
-        function restoreDropdown(dropdownMenu) {
-            const data = dropdownData.get(dropdownMenu);
-            if (data && dropdownMenu.parentElement === document.body) {
-                // پاک کردن استایل‌های inline
-                dropdownMenu.style.cssText = '';
-                
-                // بازگرداندن به جای اصلی
-                if (data.nextSibling && data.nextSibling.parentElement) {
-                    data.parent.insertBefore(dropdownMenu, data.nextSibling);
-                } else if (data.parent) {
-                    data.parent.appendChild(dropdownMenu);
-                }
-            }
-        }
-        
-        // مدیریت باز شدن dropdown
-        document.addEventListener('shown.bs.dropdown', function(event) {
-            const dropdownToggle = event.target;
-            
-            if (dropdownToggle && dropdownToggle.classList.contains('task-dropdown-toggle')) {
-                const dropdownMenu = dropdownToggle.nextElementSibling;
-                
-                // تنظیم موقعیت با تاخیر کوتاه
-                setTimeout(function() {
-                    setupDropdownPosition(dropdownToggle);
-                }, 10);
-                
-                // تنظیم مجدد برای اطمینان
-                setTimeout(function() {
-                    setupDropdownPosition(dropdownToggle);
-                }, 100);
-                
-                // اضافه کردن event listener مستقیم روی dropdown menu برای مدیریت کلیک
-                if (dropdownMenu) {
-                    // حذف listener های قبلی اگر وجود دارند
-                    if (dropdownMenu._taskDropdownHandler) {
-                        dropdownMenu.removeEventListener('click', dropdownMenu._taskDropdownHandler);
-                    }
-                    
-                    // اضافه کردن handler جدید
-                    dropdownMenu._taskDropdownHandler = function(e) {
-                        const clickedItem = e.target.closest('.dropdown-item');
-                        if (clickedItem) {
-                            // بستن dropdown بعد از کلیک روی item
-                            const dropdownInstance = bootstrap.Dropdown.getInstance(dropdownToggle);
-                            if (dropdownInstance) {
-                                setTimeout(function() {
-                                    if (dropdownInstance._isShown) {
-                                        dropdownInstance.hide();
-                                    }
-                                }, 250);
-                            }
-                        }
-                    };
-                    
-                    dropdownMenu.addEventListener('click', dropdownMenu._taskDropdownHandler);
-                }
-            }
-        });
-        
-        // مدیریت بسته شدن dropdown
-        document.addEventListener('hidden.bs.dropdown', function(event) {
-            const dropdownToggle = event.target;
-            if (dropdownToggle && dropdownToggle.classList.contains('task-dropdown-toggle')) {
-                const dropdownMenu = dropdownToggle.nextElementSibling;
-                if (dropdownMenu && dropdownMenu.classList.contains('dropdown-menu')) {
-                    restoreDropdown(dropdownMenu);
-                }
-            }
-        });
-        
-        // مدیریت کلیک روی document - فقط برای جلوگیری از بسته شدن با کلیک خارج از dropdown
-        // این listener فقط برای کلیک‌های خارج از dropdown menu است
-        document.addEventListener('click', function(e) {
-            const clickedMenu = e.target.closest('.dropdown-menu.show');
-            if (!clickedMenu || clickedMenu.parentElement !== document.body) {
-                // کلیک خارج از dropdown - Bootstrap خودش مدیریت می‌کند
-                return;
-            }
-            
-            // اگر کلیک روی background dropdown menu (نه روی item) است
-            const clickedItem = e.target.closest('.dropdown-item');
-            if (!clickedItem) {
-                // جلوگیری از بسته شدن با کلیک روی background
-                e.stopPropagation();
-            }
-            // اگر روی item کلیک شده، handler مستقیم روی menu مدیریت می‌کند
-        }, true);
-        
-        // مدیریت تغییر اندازه صفحه و scroll
-        function updateAllDropdowns() {
-            document.querySelectorAll('.task-dropdown-toggle').forEach(function(btn) {
-                const dropdownMenu = btn.nextElementSibling;
-                if (dropdownMenu && dropdownMenu.classList.contains('dropdown-menu') && dropdownMenu.classList.contains('show')) {
-                    setupDropdownPosition(btn);
-                }
-            });
-        }
-        
-        window.addEventListener('resize', updateAllDropdowns);
-        window.addEventListener('scroll', updateAllDropdowns, true);
-    })();
-</script>

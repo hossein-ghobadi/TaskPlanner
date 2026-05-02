@@ -69,6 +69,8 @@
         $("#StartDateDisplay").persianDatepicker({
             format: 'YYYY/MM/DD',      // نمایش شمسی
             autoClose: true,
+            initialValue: true,
+            initialValueType: 'persian',
             altField: '#StartDate',    // فروارد به hidden
             altFormat: 'YYYY/MM/DD',   // 👈 خروجی شمسی، نه میلادی
             timePicker: { enabled: false },
@@ -79,11 +81,15 @@
         $("#EndDateDisplay").persianDatepicker({
             format: 'YYYY/MM/DD',
             autoClose: true,
+            initialValue: true,
+            initialValueType: 'persian',
             altField: '#EndDate',
             altFormat: 'YYYY/MM/DD',   // 👈 جلوگیری از اختلاف روز
             timePicker: { enabled: false },
             calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' }}
         });
+        $("#StartDate").val($("#StartDateDisplay").val() || "");
+        $("#EndDate").val($("#EndDateDisplay").val() || "");
     </script>
 }
 

@@ -1,11 +1,31 @@
 @model IEnumerable<Endpoint.Site.Models.SprintVm>
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @using DNTPersianUtils.Core
+@using System.Globalization
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     ViewData["UseFluidLayout"] = true;
     var projectId = ViewBag.ProjectId as int?;
     var projectName = ViewBag.ProjectName as string;
+    var openCreateModal = ViewBag.OpenCreateSprintModal as bool? == true;
+    var jalaliCal = new PersianCalendar();
+    DateTime todayIran = DateTime.Today;
+    try
+    {
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("Iran Standard Time");
+        todayIran = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz).Date;
+    }
+    catch
+    {
+        try { todayIran = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "Asia/Tehran").Date; }
+        catch { }
+    }
+
+    string JalaliLatin(DateTime dt) =>
+        $"{jalaliCal.GetYear(dt):0000}/{jalaliCal.GetMonth(dt):00}/{jalaliCal.GetDayOfMonth(dt):00}";
+
+    var defaultStartPersian = JalaliLatin(todayIran);
+    var defaultEndPersian = JalaliLatin(todayIran.AddDays(14));
 }
 
 <style>
@@ -80,7 +100,6 @@
     </div>
 }
 
-</div>
 @if (TempData["Error"] != null)
 {
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -207,6 +226,8 @@ else
     </div>
 }
 
+</div>
+
 <!-- مودال ایجاد اسپرینت -->
 <div class="modal fade" id="createSprintModal" tabindex="-1" aria-labelledby="createSprintModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -220,32 +241,40 @@ else
                 <div class="modal-body">
                     <input type="hidden" name="ProjectId" value="@projectId" />
 
+                    @if (projectId.HasValue && !string.IsNullOrEmpty(projectName))
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">پروژه</label>
+                            <input type="text" class="form-control" value="@projectName" readonly />
+                        </div>
+                    }
+
                     <div class="mb-3">
-                        <label class="form-label">نام اسپرینت</label>
-                        <input name="Name" class="form-control" required />
+                        <label class="form-label">نام اسپرینت <span class="text-danger">*</span></label>
+                        <input name="Name" class="form-control" required maxlength="200" />
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">توضیحات</label>
-                        <textarea name="Description" class="form-control" rows="3"></textarea>
+                        <textarea name="Description" class="form-control" rows="3" maxlength="1000"></textarea>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">تاریخ شروع</label>
-                            <input type="text" id="CreateStartDateDisplay" class="form-control" autocomplete="off" />
-                            <input type="hidden" name="StartDate" id="CreateStartDate" />
+                            <label class="form-label">تاریخ شروع <span class="text-danger">*</span></label>
+                            <input type="text" id="CreateStartDateDisplay" class="form-control" autocomplete="off" value="@defaultStartPersian" />
+                            <input type="hidden" name="StartDate" id="CreateStartDate" value="@defaultStartPersian" />
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">تاریخ پایان</label>
-                            <input type="text" id="CreateEndDateDisplay" class="form-control" autocomplete="off" />
-                            <input type="hidden" name="EndDate" id="CreateEndDate" />
+                            <label class="form-label">تاریخ پایان <span class="text-danger">*</span></label>
+                            <input type="text" id="CreateEndDateDisplay" class="form-control" autocomplete="off" value="@defaultEndPersian" />
+                            <input type="hidden" name="EndDate" id="CreateEndDate" value="@defaultEndPersian" />
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">هدف اسپرینت</label>
-                        <textarea name="Goal" class="form-control" rows="2"></textarea>
+                        <textarea name="Goal" class="form-control" rows="2" maxlength="500"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -319,10 +348,19 @@ else
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            if (@(openCreateModal ? "true" : "false")) {
+                const openCreateEl = document.getElementById('createSprintModal');
+                if (openCreateEl && window.bootstrap) {
+                    bootstrap.Modal.getOrCreateInstance(openCreateEl).show();
+                }
+            }
+
             if (window.$ && $.fn.persianDatepicker) {
                 $("#CreateStartDateDisplay").persianDatepicker({
                     format: 'YYYY/MM/DD',
                     autoClose: true,
+                    initialValue: true,
+                    initialValueType: 'persian',
                     altField: '#CreateStartDate',
                     altFormat: 'YYYY/MM/DD',
                     timePicker: { enabled: false },
@@ -332,6 +370,8 @@ else
                 $("#CreateEndDateDisplay").persianDatepicker({
                     format: 'YYYY/MM/DD',
                     autoClose: true,
+                    initialValue: true,
+                    initialValueType: 'persian',
                     altField: '#CreateEndDate',
                     altFormat: 'YYYY/MM/DD',
                     timePicker: { enabled: false },
@@ -341,6 +381,8 @@ else
                 $("#EditStartDateDisplay").persianDatepicker({
                     format: 'YYYY/MM/DD',
                     autoClose: true,
+                    initialValue: true,
+                    initialValueType: 'persian',
                     altField: '#EditStartDate',
                     altFormat: 'YYYY/MM/DD',
                     timePicker: { enabled: false },
@@ -350,11 +392,16 @@ else
                 $("#EditEndDateDisplay").persianDatepicker({
                     format: 'YYYY/MM/DD',
                     autoClose: true,
+                    initialValue: true,
+                    initialValueType: 'persian',
                     altField: '#EditEndDate',
                     altFormat: 'YYYY/MM/DD',
                     timePicker: { enabled: false },
                     calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
                 });
+
+                $("#CreateStartDate").val($("#CreateStartDateDisplay").val() || "");
+                $("#CreateEndDate").val($("#CreateEndDateDisplay").val() || "");
             }
 
             const editForm = document.getElementById('editSprintForm');

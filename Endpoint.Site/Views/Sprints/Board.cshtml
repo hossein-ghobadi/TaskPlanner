@@ -1,6 +1,7 @@
 @model Endpoint.Site.Models.SprintBoardVm
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @using DNTPersianUtils.Core
+@using System.Globalization
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 
 @{
@@ -10,6 +11,29 @@
     var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
     var sprintId = ViewBag.SprintId as int?;
     var projectId = ViewBag.ProjectId as int?;
+    var noActiveSprintBoard = ViewBag.NoActiveSprint as bool? == true;
+    var hasPlanningSprint = ViewBag.HasPlanningSprint as bool? == true;
+    var planningSprintId = ViewBag.PlanningSprintId as int?;
+    var openCreateFromProjectBoard = ViewBag.OpenCreateSprintModal as bool? == true;
+    // تاریخ شمسی با ارقام لاتین — persian-datepicker ورودی با ارقام فارسی را اشتباه پارس می‌کند
+    var jalaliCal = new PersianCalendar();
+    DateTime todayIran = DateTime.Today;
+    try
+    {
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("Iran Standard Time");
+        todayIran = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz).Date;
+    }
+    catch
+    {
+        try { todayIran = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "Asia/Tehran").Date; }
+        catch { /* DateTime.Today */ }
+    }
+
+    string JalaliLatin(DateTime dt) =>
+        $"{jalaliCal.GetYear(dt):0000}/{jalaliCal.GetMonth(dt):00}/{jalaliCal.GetDayOfMonth(dt):00}";
+
+    var defaultStartPersianSprint = JalaliLatin(todayIran);
+    var defaultEndPersianSprint = JalaliLatin(todayIran.AddDays(14));
     var workflowStatuses = ViewBag.WorkflowStatuses as List<WorkflowStatus> ?? new List<WorkflowStatus>();
     var defaultStatus = Model.Statuses.FirstOrDefault(s => s.IsDefault) ?? Model.Statuses.FirstOrDefault();
     var defaultStatusName = defaultStatus?.Name ?? "ستون اول";
@@ -435,6 +459,126 @@
     }
     .edit-task-side-card .info-block:last-child {
     margin-bottom: 0;
+    }
+    /* چک‌لیست داخل ستون اطلاعات و زیر "مسئول کار" */
+    #editTaskModal .checklist-card-board.checklist-board-floating {
+    margin-top: 0.75rem;
+    background: #fff !important;
+    border: 1px solid #e8eaef;
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    direction: rtl;
+    text-align: right;
+    }
+    #editTaskModal .checklist-header-board {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    }
+    #editTaskModal .checklist-title-board {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1f2937;
+    }
+    #editTaskModal .checklist-title-board i {
+    color: #4b5563;
+    }
+    #editTaskModal .checklist-progress-badge-board {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.4rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #4b5563;
+    color: #fff;
+    }
+    #editTaskModal .subtask-input-row-board {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+    }
+    #editTaskModal .subtask-list-board {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    }
+    #editTaskModal .subtask-item-board {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    padding: 0.5rem 0.6rem;
+    }
+    #editTaskModal .subtask-item-main-board {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    flex: 1;
+    min-width: 0;
+    }
+    #editTaskModal .subtask-item-main-board input[type="checkbox"] {
+    width: 1.05rem;
+    height: 1.05rem;
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+    cursor: pointer;
+    }
+    #editTaskModal .subtask-title-board {
+    white-space: normal;
+    word-break: break-word;
+    font-size: 0.88rem;
+    line-height: 1.4;
+    flex: 1;
+    min-width: 0;
+    }
+    #editTaskModal .subtask-title-board.completed {
+    text-decoration: line-through;
+    color: #9ca3af;
+    }
+    #editTaskModal .subtask-delete-btn-board {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: #ef4444;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    }
+    #editTaskModal .subtask-delete-btn-board:hover {
+    background: #dc2626;
+    color: #fff;
+    }
+    #editTaskModal .subtask-empty-board {
+    border: 1px dashed #d1d5db;
+    border-radius: 10px;
+    padding: 0.55rem;
+    font-size: 0.82rem;
+    color: #6b7280;
+    background: #f9fafb;
+    text-align: center;
     }
     @@media (max-width: 992px) {
     #editTaskModal .modal-dialog {
@@ -1568,6 +1712,337 @@
 
 
 
+    /* تم کلاسیک خنثی: پس‌زمینه #f4f7f6، آبی دودی #3f4d67، حاشیه #e2e5e8 — بدون گرادیان سنگین */
+    .board-container.board-theme-classic:not(.board-bg-photo) {
+    background: #f4f7f6 !important;
+    }
+    .board-container.board-theme-classic .board-header {
+    background: #ffffff;
+    border: 1px solid #e2e5e8;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(63, 77, 103, 0.06);
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.75rem;
+    }
+    .board-container.board-theme-classic .board-header h2 {
+    color: #3f4d67;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    }
+    .board-container.board-theme-classic .board-header .text-muted,
+    .board-container.board-theme-classic .board-header small.text-muted {
+    color: #6b7280 !important;
+    }
+    .board-container.board-theme-classic .board-header a:not(.btn) {
+    color: #3f4d67 !important;
+    text-decoration: none;
+    font-weight: 500;
+    }
+    .board-container.board-theme-classic .board-header a:not(.btn):hover {
+    text-decoration: underline;
+    }
+    .board-container.board-theme-classic .board-header .btn {
+    border-radius: 5px;
+    font-weight: 600;
+    }
+    .board-container.board-theme-classic .board-header .btn-outline-primary {
+    color: #3f4d67;
+    border-color: #c5cbd6;
+    background: #ffffff;
+    }
+    .board-container.board-theme-classic .board-header .btn-outline-primary:hover {
+    background: #f4f7f6;
+    border-color: #3f4d67;
+    color: #3f4d67;
+    }
+    .board-container.board-theme-classic .board-header .btn-outline-secondary {
+    color: #3f4d67;
+    border-color: #e2e5e8;
+    background: #ffffff;
+    }
+    .board-container.board-theme-classic .board-header .btn-outline-secondary:hover {
+    background: #f4f7f6;
+    border-color: #aeb8c4;
+    color: #2d3748;
+    }
+    .board-container.board-theme-classic .board-header .btn-outline-danger {
+    color: #c62828;
+    border-color: #e57373;
+    background: #ffffff;
+    }
+    .board-container.board-theme-classic .board-header .btn-outline-danger:hover {
+    background: #fff5f5;
+    border-color: #c62828;
+    color: #b71c1c;
+    }
+    .board-container.board-theme-classic .board-header label[for="boardBackgroundSelect"] {
+    color: #5c6570 !important;
+    }
+    .board-container.board-theme-classic #boardBackgroundSelect {
+    border-radius: 5px;
+    border: 1px solid #e2e5e8;
+    background: #ffffff;
+    color: #3f4d67;
+    font-weight: 500;
+    }
+    .board-container.board-theme-classic #showToolbarBtn {
+    border-radius: 5px;
+    border: 1px solid #e2e5e8;
+    background: #ffffff;
+    color: #3f4d67;
+    font-weight: 600;
+    }
+    .board-container.board-theme-classic #showToolbarBtn:hover {
+    background: #f4f7f6;
+    border-color: #c5cbd6;
+    }
+    .board-container.board-theme-classic .board-toolbar {
+    background: #ffffff;
+    border: 1px solid #e2e5e8;
+    border-radius: 6px;
+    padding: 0.65rem 0.75rem;
+    margin-bottom: 0.75rem;
+    gap: 0.5rem;
+    }
+    .board-container.board-theme-classic .toolbar-input,
+    .board-container.board-theme-classic .toolbar-select {
+    border-color: #e2e5e8;
+    border-radius: 5px;
+    }
+    .board-container.board-theme-classic .toolbar-input:focus,
+    .board-container.board-theme-classic .toolbar-select:focus {
+    border-color: #3f4d67;
+    box-shadow: 0 0 0 2px rgba(63, 77, 103, 0.12);
+    }
+    .board-container.board-theme-classic .kanban-board {
+    gap: 0.65rem;
+    padding: 0.35rem 0;
+    }
+    .board-container.board-theme-classic .kanban-column {
+    background: #ffffff;
+    border: 1px solid #e2e5e8;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(63, 77, 103, 0.05);
+    padding: 0.65rem 0.7rem;
+    }
+    /* ستون خالی: به‌جز دکمه "افزودن کار" بخش سفید نداشته باشد */
+    .board-container.board-theme-classic .kanban-column.empty-column,
+    .board-container.board-theme-classic .kanban-column:has(.column-tasks .empty-message) {
+    background: #ebecee;
+    border-color: #dfe3e8;
+    }
+    .board-container.board-theme-classic .column-header {
+    margin: -0.65rem -0.7rem 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 6px 6px 0 0;
+    border: none;
+    border-bottom: 1px solid #e2e5e8;
+    background: #f0f2f5;
+    color: #2d3748;
+    font-weight: 700;
+    }
+    .board-container.board-theme-classic .column-header .badge.bg-primary {
+    background: #3f4d67 !important;
+    border: 1px solid #344056;
+    border-radius: 999px;
+    font-weight: 700;
+    min-width: 1.5rem;
+    padding: 0.25em 0.45em;
+    }
+    .board-container.board-theme-classic .task-card {
+    background: #ffffff;
+    border: 1px solid #e2e5e8;
+    border-radius: 5px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+    .board-container.board-theme-classic .task-card:hover {
+    border-color: #cbd2da;
+    box-shadow: 0 1px 3px rgba(63, 77, 103, 0.08);
+    transform: none;
+    }
+    .board-container.board-theme-classic .task-title a {
+    color: #1a202c;
+    }
+    .board-container.board-theme-classic .task-title a:hover {
+    color: #3f4d67;
+    }
+    .board-container.board-theme-classic .add-task-btn {
+    border: 1px solid #e2e5e8;
+    border-style: solid;
+    background: #ffffff;
+    border-radius: 5px;
+    color: #3f4d67;
+    font-weight: 600;
+    }
+    .board-container.board-theme-classic .add-task-btn:hover {
+    background: #f4f7f6;
+    border-color: #c5cbd6;
+    color: #2d3748;
+    }
+    /* ناحیه کارت‌ها: پس‌زمینه خاکستری ملایم (مثل نمونه) — کارت‌ها سفید می‌مانند */
+    .board-container.board-theme-classic .column-tasks {
+    background: #ebecee;
+    border-radius: 5px;
+    padding: 0.5rem 0.55rem;
+    min-height: 120px;
+    border: 1px solid #dfe3e8;
+    }
+    .board-container.board-theme-classic .empty-message {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    color: #94a3b8 !important;
+    font-weight: 500;
+    padding: 2rem 1rem !important;
+    background: transparent !important;
+    }
+    .board-container.board-theme-classic .empty-message i {
+    font-size: 1.45rem;
+    line-height: 1;
+    opacity: 0.65;
+    color: #9ca3af !important;
+    }
+    .board-container.board-theme-classic .column-empty-msg-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    text-align: center;
+    }
+    .board-container.board-theme-classic .column-empty-msg-inner > span:last-child {
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #94a3b8;
+    }
+    .board-container.board-theme-classic .column-header .bi-grip-vertical {
+    color: #8b95a3;
+    }
+    .board-container.board-theme-classic .delete-status-btn {
+    color: #e53935;
+    opacity: 0.9;
+    }
+    .board-container.board-theme-classic .delete-status-btn:hover {
+    color: #c62828;
+    opacity: 1;
+    }
+    .board-container.board-theme-classic .task-meta,
+    .board-container.board-theme-classic .task-footer {
+    color: #6b7280;
+    }
+    /* حالت «بدون اسپرینت فعال» — ظاهر کلاسیک و خنثی */
+    .board-container.board-theme-classic .board-awaiting-wrap {
+    max-width: 480px;
+    margin: 0.75rem auto 0;
+    }
+    .board-container.board-theme-classic .board-awaiting-sprint {
+    background: #fafbfc;
+    border: 1px solid #aeb8c4 !important;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(45, 55, 72, 0.06);
+    }
+    .board-container.board-theme-classic .board-awaiting-sprint .card-body {
+    padding: 1.35rem 1.25rem !important;
+    }
+    .board-container.board-theme-classic .board-awaiting-icon {
+    font-size: 2rem !important;
+    line-height: 1;
+    color: #3f4d67 !important;
+    }
+    .board-container.board-theme-classic .board-awaiting-icon-planning {
+    color: #92400e !important;
+    }
+    .board-container.board-theme-classic .board-awaiting-sprint h5 {
+    color: #1a202c;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: -0.02em;
+    }
+    .board-container.board-theme-classic .board-awaiting-sprint .awaiting-desc {
+    color: #5c6570 !important;
+    font-size: 0.875rem;
+    line-height: 1.65;
+    max-width: 34em;
+    margin-left: auto;
+    margin-right: auto;
+    }
+    .board-container.board-theme-classic .btn-awaiting-primary {
+    background: linear-gradient(180deg, #f8fafc 0%, #eef1f5 100%);
+    color: #2c3a52;
+    border: 1px solid #7d8b9e;
+    border-radius: 4px;
+    font-weight: 600;
+    padding: 0.45rem 1.15rem;
+    font-size: 0.9rem;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+    }
+    .board-container.board-theme-classic .btn-awaiting-primary:hover {
+    background: linear-gradient(180deg, #fff 0%, #f4f7f6 100%);
+    border-color: #3f4d67;
+    color: #1a2433;
+    }
+    .board-container.board-theme-classic .btn-awaiting-success {
+    background: linear-gradient(180deg, #f4faf4 0%, #e8f5e9 100%);
+    color: #1b5e20;
+    border: 1px solid #66bb6a;
+    border-radius: 4px;
+    font-weight: 600;
+    padding: 0.45rem 1.15rem;
+    font-size: 0.9rem;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+    }
+    .board-container.board-theme-classic .btn-awaiting-success:hover {
+    background: #e8f5e9;
+    border-color: #2e7d32;
+    color: #0d3d10;
+    }
+    .board-container.board-theme-classic .board-awaiting-sprint .awaiting-link {
+    color: #3f4d67 !important;
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-size: 0.82rem;
+    }
+    /* مودال ایجاد اسپرینت (خارج از .board-container در DOM) */
+    .modal.project-board-create-modal .modal-content {
+    border: 1px solid #aeb8c4;
+    border-radius: 4px;
+    box-shadow: 0 4px 14px rgba(26, 32, 44, 0.12);
+    }
+    .modal.project-board-create-modal .modal-header {
+    background: linear-gradient(180deg, #f0f2f5 0%, #e4e9ef 100%);
+    border-bottom: 1px solid #c5cbd6;
+    padding: 0.65rem 1rem;
+    }
+    .modal.project-board-create-modal .modal-title {
+    font-weight: 700;
+    color: #2d3748;
+    font-size: 1rem;
+    }
+    .modal.project-board-create-modal .modal-footer {
+    border-top: 1px solid #e2e5e8;
+    background: #fafbfc;
+    }
+    .modal.project-board-create-modal .btn-primary {
+    background: linear-gradient(180deg, #f8fafc 0%, #eef1f5 100%);
+    color: #2c3a52;
+    border: 1px solid #7d8b9e;
+    font-weight: 600;
+    }
+    .modal.project-board-create-modal .btn-primary:hover {
+    background: #f4f7f6;
+    border-color: #3f4d67;
+    color: #1a2433;
+    }
+    .modal.project-board-create-modal .form-control,
+    .modal.project-board-create-modal .form-label {
+    border-radius: 3px;
+    }
+    .modal.project-board-create-modal .form-control {
+    border-color: #c5cbd6;
+    }
+
 </style>
 
 @using System.Security.Claims
@@ -1578,7 +2053,136 @@
     var creatorName = projectCreator?.FullName?.Replace(" - سازنده پروژه", "") ?? "نامشخص";
 }
 
-<div class="board-container board-bg-plain" id="boardContainer">
+@if (noActiveSprintBoard)
+{
+    <div class="board-container board-bg-plain board-theme-classic" id="boardContainer">
+        <div class="board-header">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h2>@Model.SprintName</h2>
+                    @if (!string.IsNullOrWhiteSpace(Model.Description))
+                    {
+                        <p class="text-muted mb-2">@Model.Description</p>
+                    }
+                    <div class="d-flex gap-3 align-items-center flex-wrap">
+                        <small class="text-muted">
+                            <i class="bi bi-folder"></i>
+                            پروژه: <a href="/Projects/Details/@Model.ProjectId" class="text-decoration-none">@Model.ProjectName</a>
+                        </small>
+                    </div>
+                </div>
+                <div>
+                    <a href="/Projects/Details/@Model.ProjectId" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-right"></i>
+                        بازگشت به پروژه
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show mt-2" role="alert">
+                @TempData["Error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show mt-2" role="alert">
+                @TempData["Success"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+
+        <div class="board-awaiting-wrap px-2">
+            <div class="board-awaiting-sprint card border-0">
+                <div class="card-body text-center py-4 px-3">
+                @if (hasPlanningSprint && planningSprintId.HasValue)
+                {
+                    <i class="bi bi-calendar2-event board-awaiting-icon board-awaiting-icon-planning d-block"></i>
+                    <h5 class="mt-3 mb-2">اسپرینت در حال برنامه‌ریزی دارید</h5>
+                    <p class="awaiting-desc small mb-0">ستون‌های کانبان پس از فعال‌سازی اسپرینت نمایش داده می‌شوند.</p>
+                    <form method="post" action="/Sprints/ChangeStatus" class="mt-3">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@planningSprintId.Value" />
+                        <input type="hidden" name="status" value="@((int)SprintStatus.Active)" />
+                        <button type="submit" class="btn btn-awaiting-success">
+                            <i class="bi bi-play-circle"></i> فعال‌سازی اسپرینت
+                        </button>
+                    </form>
+                    <div class="mt-2">
+                        <a class="awaiting-link small" href="/Sprints/Index?projectId=@Model.ProjectId">مدیریت اسپرینت‌ها</a>
+                    </div>
+                }
+                else
+                {
+                    <i class="bi bi-kanban board-awaiting-icon d-block"></i>
+                    <h5 class="mt-3 mb-2">اسپرینت فعالی وجود ندارد</h5>
+                    <p class="awaiting-desc small mb-0">یک اسپرینت بسازید و همزمان آن را شروع کنید تا ستون‌های تخته ظاهر شوند.</p>
+                    <button type="button" class="btn btn-awaiting-primary mt-3" data-bs-toggle="modal" data-bs-target="#projectBoardCreateSprintModal">
+                        <i class="bi bi-play-fill"></i> شروع اسپرینت
+                    </button>
+                }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade project-board-create-modal" id="projectBoardCreateSprintModal" tabindex="-1" aria-labelledby="projectBoardCreateSprintModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="projectBoardCreateSprintModalLabel">شروع اسپرینت جدید</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+                </div>
+                <form method="post" action="/Sprints/Create">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ProjectId" value="@Model.ProjectId" />
+                    <input type="hidden" name="ActivateNow" value="true" />
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">پروژه</label>
+                            <input type="text" class="form-control" value="@Model.ProjectName" readonly />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">نام اسپرینت <span class="text-danger">*</span></label>
+                            <input name="Name" class="form-control" required maxlength="200" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">توضیحات</label>
+                            <textarea name="Description" class="form-control" rows="3" maxlength="1000"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">تاریخ شروع <span class="text-danger">*</span></label>
+                                <input type="text" id="projectBoardCreateStartDisplay" class="form-control" autocomplete="off" value="@defaultStartPersianSprint" />
+                                <input type="hidden" name="StartDate" id="projectBoardCreateStart" value="@defaultStartPersianSprint" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">تاریخ پایان <span class="text-danger">*</span></label>
+                                <input type="text" id="projectBoardCreateEndDisplay" class="form-control" autocomplete="off" value="@defaultEndPersianSprint" />
+                                <input type="hidden" name="EndDate" id="projectBoardCreateEnd" value="@defaultEndPersianSprint" />
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">هدف اسپرینت</label>
+                            <textarea name="Goal" class="form-control" rows="2" maxlength="500"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                        <button type="submit" class="btn btn-primary">ایجاد و شروع</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@if (!noActiveSprintBoard)
+{
+<div class="board-container board-bg-plain board-theme-classic" id="boardContainer">
     <div class="board-header">
         <div class="d-flex justify-content-between align-items-start">
             <div>
@@ -1607,7 +2211,7 @@
                 </div>
             </div>
             <div class="d-flex flex-column align-items-end gap-2">
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 flex-wrap justify-content-end board-header-actions">
                     @if (Model.Status != SprintStatus.Completed)
                     {
                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="openAddStatusModal()">
@@ -1615,10 +2219,6 @@
                             افزودن وضعیت
                         </button>
                     }
-                    <a href="/Projects/Details/@Model.ProjectId" class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-arrow-right"></i>
-                        بازگشت به پروژه
-                    </a>
                     @if (Model.Status == SprintStatus.Active)
                     {
                         <form method="post" action="/Sprints/ChangeStatus" class="d-inline" id="completeSprintForm">
@@ -1631,7 +2231,10 @@
                             </button>
                         </form>
                     }
-                    
+                    <a href="/Projects/Details/@Model.ProjectId" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-arrow-right"></i>
+                        بازگشت به پروژه
+                    </a>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <label for="boardBackgroundSelect" class="text-muted small mb-0">پس‌زمینه:</label>
@@ -1696,7 +2299,7 @@
              style="width: 250px; flex-shrink: 0;"
              ondragover="onDragOverColumn(event)"
              ondragenter="onDragEnter(event)"
-             ondragleave="onDragLeave(event)"
+             ondragleave="onDragLeave(event)">
 
                 <div class="column-header"
                      draggable="false"
@@ -1716,7 +2319,7 @@
                         @count0.ToString().ToPersianNumbers()
                                 </span>
                 </div>
-
+                </div>
 
                 <div class="column-tasks"  ondragover="onDragOverColumn(event)" ondragleave="onDragLeave(event)">
 
@@ -1852,8 +2455,11 @@
                     }
                     else
                     {
-                            <div class="empty-message text-muted text-center small p-4">
-                                <i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد
+                            <div class="empty-message text-muted text-center small p-4" role="status">
+                                <span class="column-empty-msg-inner">
+                                    <i class="bi bi-inbox" aria-hidden="true"></i>
+                                    <span>هیچ آیتمی وجود ندارد</span>
+                                </span>
                             </div>
                     }
                 </div>
@@ -2112,15 +2718,18 @@
                             }
                             else
                             {
-                                <div class="empty-message text-muted text-center small p-4">
-                                    <i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد
+                                <div class="empty-message text-muted text-center small p-4" role="status">
+                                    <span class="column-empty-msg-inner">
+                                        <i class="bi bi-inbox" aria-hidden="true"></i>
+                                        <span>هیچ آیتمی وجود ندارد</span>
+                                    </span>
                                 </div>
                             }
                         </div>
                         <!-- دکمه افزودن کار -->
                         @if (Model.Status == SprintStatus.Active)
                         {
-                            <button type="button" class="add-task-btn" onclick="openQuickTaskModalForStatus(@status.Id, '@status.Name')">
+                            <button type="button" class="add-task-btn quick-add-column-btn" data-status-id="@status.Id" data-status-name="@status.Name">
                                 <i class="bi bi-plus"></i>
                                 <span>افزودن کار</span>
                             </button>
@@ -2130,7 +2739,6 @@
             </div>
     </div>
 </div>
-
 
 <!-- Modal افزودن کارک -->
 <div class="modal fade" id="addSubtaskModal" tabindex="-1" aria-labelledby="addSubtaskModalLabel" aria-hidden="true">
@@ -2229,6 +2837,14 @@
                             <label for="quickTaskTitle" class="form-label">عنوان کار <span class="text-danger">*</span></label>
                             <input type="text" class="form-control form-control-lg" id="quickTaskTitle" required placeholder="مثلاً گزارش خطای صفحه گزارش‌ها">
                             <div class="helper-text">عنوان واضح بنویسید تا اعضا بدون باز کردن جزئیات متوجه شوند.</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">نوع کار</label>
+                            <div id="issueTypeChipsContainer" class="d-flex flex-wrap gap-2">
+                                <div class="text-muted small">در حال بارگذاری...</div>
+                            </div>
+                            <select id="quickTaskType" class="d-none" aria-hidden="true"></select>
+                            <input type="hidden" id="quickTaskProjectIssueTypeId" />
                         </div>
                        
                         <div class="col-lg-6">
@@ -2380,6 +2996,21 @@
                                         <option value="">-- انتخاب کاربر --</option>
                                     </select>
 
+                                    <div class="checklist-card-board checklist-board-floating" id="boardChecklistPanel" style="display:none;" aria-label="چک لیست کارک‌ها">
+                                        <div class="checklist-header-board">
+                                            <div class="checklist-title-board">
+                                                <i class="bi bi-list-check"></i>
+                                                چک لیست
+                                            </div>
+                                            <span class="checklist-progress-badge-board" id="boardSubtaskProgressBadge">0/0</span>
+                                        </div>
+                                        <div class="subtask-input-row-board">
+                                            <input type="text" id="boardInlineSubtaskTitle" class="form-control" placeholder="عنوان کارک..." autocomplete="off" />
+                                            <button type="button" id="boardAddSubtaskBtn" class="btn btn-sm btn-primary">افزودن</button>
+                                        </div>
+                                        <ul id="boardInlineSubtasksList" class="subtask-list-board"></ul>
+                                        <div id="boardInlineSubtaskNote" class="text-muted small mt-1"></div>
+                                    </div>
                                 </div>
 
                                 
@@ -2399,10 +3030,55 @@
         </div>
     </div>
 </div>
+}
 
 @section Scripts {
     @Html.AntiForgeryToken()
     <script>
+        const __noActiveSprintBoard = @(noActiveSprintBoard.ToString().ToLowerInvariant());
+        if (__noActiveSprintBoard) {
+            document.addEventListener('DOMContentLoaded', function () {
+                if (window.$ && $.fn.persianDatepicker) {
+                    $('#projectBoardCreateStartDisplay').persianDatepicker({
+                        format: 'YYYY/MM/DD',
+                        autoClose: true,
+                        initialValue: true,
+                        initialValueType: 'persian',
+                        altField: '#projectBoardCreateStart',
+                        altFormat: 'YYYY/MM/DD',
+                        timePicker: { enabled: false },
+                        calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+                    });
+                    $('#projectBoardCreateEndDisplay').persianDatepicker({
+                        format: 'YYYY/MM/DD',
+                        autoClose: true,
+                        initialValue: true,
+                        initialValueType: 'persian',
+                        altField: '#projectBoardCreateEnd',
+                        altFormat: 'YYYY/MM/DD',
+                        timePicker: { enabled: false },
+                        calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+                    });
+                    $('#projectBoardCreateStart').val($('#projectBoardCreateStartDisplay').val() || '');
+                    $('#projectBoardCreateEnd').val($('#projectBoardCreateEndDisplay').val() || '');
+                }
+                if (@(openCreateFromProjectBoard.ToString().ToLowerInvariant())) {
+                    var __pcmOpen = document.getElementById('projectBoardCreateSprintModal');
+                    if (__pcmOpen && window.bootstrap) {
+                        bootstrap.Modal.getOrCreateInstance(__pcmOpen).show();
+                    }
+                }
+                var __params = new URLSearchParams(window.location.search);
+                if (__params.get('openCreate') === 'true') {
+                    var __pcm2 = document.getElementById('projectBoardCreateSprintModal');
+                    if (__pcm2 && window.bootstrap) {
+                        bootstrap.Modal.getOrCreateInstance(__pcm2).show();
+                    }
+                }
+            });
+        }
+
+        if (!__noActiveSprintBoard) {
         let draggedIssueId = null;
         let draggedCard = null;
         let isDragging = false;
@@ -2458,6 +3134,13 @@
             const now = new Date();
             const diffHours = (dueDate.getTime() - now.getTime()) / 36e5;
             return diffHours >= 0 && diffHours <= 72;
+        }
+
+        function refreshEmptyColumnStyles() {
+            document.querySelectorAll('.kanban-column').forEach(column => {
+                const hasEmptyMessage = !!column.querySelector('.column-tasks .empty-message');
+                column.classList.toggle('empty-column', hasEmptyMessage);
+            });
         }
 
         function applyBoardFilters() {
@@ -2616,6 +3299,10 @@
                 showNotification('ستون انتخاب‌شده معتبر نیست', 'error');
                 return;
             }
+            if (typeof window.bootstrap === 'undefined') {
+                showNotification('کتابخانه رابط کاربری (Bootstrap) بارگذاری نشده است. صفحه را تازه‌سازی کنید.', 'error');
+                return;
+            }
             setQuickTaskTarget(statusId, statusName);
             const modalElement = document.getElementById('quickTaskModal');
             if (!modalElement) {
@@ -2631,9 +3318,11 @@
             const issueTypes = await loadProjectIssueTypes();
             renderIssueTypeChips(issueTypes);
             
-            const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+            const modalInstance = window.bootstrap.Modal.getOrCreateInstance(modalElement);
             modalInstance.show();
         }
+        // onclick در HTML به window نگاه می‌کند؛ تابع داخل بلوک if است و در همه مرورگرها global نیست
+        window.openQuickTaskModalForStatus = openQuickTaskModalForStatus;
 
         // دریافت ProjectIssueTypes به صورت داینامیک
         async function loadProjectIssueTypes() {
@@ -2664,7 +3353,7 @@
             const hiddenSelect = document.getElementById('quickTaskType');
             const projectIssueTypeIdInput = document.getElementById('quickTaskProjectIssueTypeId');
             
-            if (!container) return;
+            if (!container || !hiddenSelect || !projectIssueTypeIdInput) return;
 
             // فیلتر کردن فقط انواعی که می‌توانند به Sprint اضافه شوند
             const availableTypes = issueTypes.filter(type => 
@@ -2741,7 +3430,7 @@
         function initQuickAddTypeChips() {
             const hiddenSelect = document.getElementById('quickTaskType');
             const projectIssueTypeIdInput = document.getElementById('quickTaskProjectIssueTypeId');
-            const chipButtons = document.querySelectorAll('.issue-type-chips .chip-option');
+            const chipButtons = document.querySelectorAll('#issueTypeChipsContainer .chip-option');
             
             if (!hiddenSelect || !chipButtons.length) {
                 return;
@@ -2754,7 +3443,7 @@
                 
                 newBtn.addEventListener('click', () => {
                     // دریافت دوباره همه دکمه‌ها از DOM (نه از متغیر قدیمی)
-                    const allChipButtons = document.querySelectorAll('.issue-type-chips .chip-option');
+                    const allChipButtons = document.querySelectorAll('#issueTypeChipsContainer .chip-option');
                     allChipButtons.forEach(b => b.classList.remove('active'));
                     newBtn.classList.add('active');
                     hiddenSelect.value = newBtn.dataset.issueType;
@@ -2772,7 +3461,7 @@
         function resetQuickTaskTypeChips() {
             // این تابع دیگر استفاده نمی‌شود چون issue types به صورت داینامیک بارگذاری می‌شوند
             // اما برای سازگاری با کدهای قدیمی، آن را نگه می‌داریم
-            const chipButtons = document.querySelectorAll('.issue-type-chips .chip-option');
+            const chipButtons = document.querySelectorAll('#issueTypeChipsContainer .chip-option');
             if (chipButtons.length > 0) {
                 chipButtons.forEach(btn => btn.classList.remove('active'));
                 chipButtons[0]?.classList.add('active');
@@ -2899,7 +3588,7 @@
             if (!emptyMessage) {
                 emptyMessage = document.createElement('div');
                 emptyMessage.className = 'empty-message text-muted text-center small p-4';
-                emptyMessage.innerHTML = '<i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد';
+                emptyMessage.innerHTML = '<span class="column-empty-msg-inner"><i class="bi bi-inbox" aria-hidden="true"></i><span>هیچ آیتمی وجود ندارد</span></span>';
                 columnBody.appendChild(emptyMessage);
             } else {
                 emptyMessage.style.display = 'block';
@@ -3477,7 +4166,7 @@
                         } else {
                             const emptyMsg = document.createElement('div');
                             emptyMsg.className = 'empty-message text-muted text-center small p-4';
-                            emptyMsg.innerHTML = '<i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد';
+                            emptyMsg.innerHTML = '<span class="column-empty-msg-inner"><i class="bi bi-inbox" aria-hidden="true"></i><span>هیچ آیتمی وجود ندارد</span></span>';
                             sourceColumn.appendChild(emptyMsg);
                         }
                     }
@@ -3622,7 +4311,7 @@
                             } else {
                                 const emptyMsg = document.createElement('div');
                                 emptyMsg.className = 'empty-message text-muted text-center small p-4';
-                                emptyMsg.innerHTML = '<i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد';
+                                emptyMsg.innerHTML = '<span class="column-empty-msg-inner"><i class="bi bi-inbox" aria-hidden="true"></i><span>هیچ آیتمی وجود ندارد</span></span>';
                                 sourceColumn.appendChild(emptyMsg);
                             }
                         }
@@ -3711,6 +4400,153 @@
         // باز کردن modal ویرایش تسک
         // ذخیره اطلاعات اصلی تسک برای استفاده در submit
         let originalTaskData = null;
+        let boardSubtaskParentId = null;
+        let boardSubtaskPanelBound = false;
+
+        function renderBoardSubtasks(items) {
+            const listEl = document.getElementById('boardInlineSubtasksList');
+            if (!listEl) return;
+            const subtasks = Array.isArray(items) ? items : [];
+            const badge = document.getElementById('boardSubtaskProgressBadge');
+            if (badge) {
+                const done = subtasks.filter(s => s.isCompleted).length;
+                badge.textContent = subtasks.length ? `${done}/${subtasks.length}` : '0/0';
+            }
+            if (subtasks.length === 0) {
+                listEl.innerHTML = '<li class="subtask-empty-board">هنوز کارکی ثبت نشده است.</li>';
+                return;
+            }
+            listEl.innerHTML = subtasks.map(st => {
+                const id = Number(st.id || 0);
+                const title = escapeHtml(st.title || '');
+                const completed = !!st.isCompleted;
+                return `
+                    <li class="subtask-item-board">
+                        <div class="subtask-item-main-board">
+                            <input type="checkbox" class="board-subtask-check" data-subtask-id="${id}" ${completed ? 'checked' : ''} />
+                            <span class="subtask-title-board ${completed ? 'completed' : ''}">${title}</span>
+                        </div>
+                        <button type="button" class="subtask-delete-btn-board" data-subtask-id="${id}" title="حذف" aria-label="حذف"><i class="bi bi-trash"></i></button>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        async function loadBoardSubtasks(parentId) {
+            const listEl = document.getElementById('boardInlineSubtasksList');
+            if (!listEl) return;
+            try {
+                const response = await fetch(`/Tasks/GetSubtasks?parentId=${parentId}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) throw new Error('load_failed');
+                const data = await response.json();
+                renderBoardSubtasks(data);
+            } catch {
+                listEl.innerHTML = '<li class="subtask-empty-board">خطا در دریافت کارک‌ها.</li>';
+            }
+        }
+
+        async function addBoardSubtask(parentId) {
+            const input = document.getElementById('boardInlineSubtaskTitle');
+            const noteEl = document.getElementById('boardInlineSubtaskNote');
+            if (!input) return;
+            const title = (input.value || '').trim();
+            if (!title) {
+                if (noteEl) noteEl.textContent = 'عنوان کارک الزامی است.';
+                return;
+            }
+            try {
+                if (noteEl) noteEl.textContent = 'در حال افزودن...';
+                const response = await fetch('/Tasks/AddInlineSubtask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ parentId, title })
+                });
+                if (!response.ok) {
+                    const err = await response.text();
+                    throw new Error(err || 'add_failed');
+                }
+                input.value = '';
+                if (noteEl) noteEl.textContent = '';
+                await loadBoardSubtasks(parentId);
+            } catch (error) {
+                if (noteEl) noteEl.textContent = (error && error.message) || 'افزودن کارک انجام نشد.';
+            }
+        }
+
+        async function toggleBoardSubtask(subtaskId) {
+            const noteEl = document.getElementById('boardInlineSubtaskNote');
+            try {
+                const response = await fetch('/Tasks/ToggleInlineSubtask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subtaskId })
+                });
+                if (!response.ok) {
+                    const err = await response.text();
+                    throw new Error(err || 'toggle_failed');
+                }
+                if (boardSubtaskParentId) await loadBoardSubtasks(boardSubtaskParentId);
+            } catch (error) {
+                if (noteEl) noteEl.textContent = (error && error.message) || 'تغییر وضعیت کارک انجام نشد.';
+                if (boardSubtaskParentId) await loadBoardSubtasks(boardSubtaskParentId);
+            }
+        }
+
+        async function deleteBoardSubtask(subtaskId) {
+            const noteEl = document.getElementById('boardInlineSubtaskNote');
+            if (!confirm('این کارک حذف شود؟')) return;
+            try {
+                const response = await fetch('/Tasks/DeleteTask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ taskId: subtaskId })
+                });
+                if (!response.ok) {
+                    const err = await response.text();
+                    throw new Error(err || 'delete_failed');
+                }
+                if (boardSubtaskParentId) await loadBoardSubtasks(boardSubtaskParentId);
+            } catch (error) {
+                if (noteEl) noteEl.textContent = (error && error.message) || 'حذف کارک انجام نشد.';
+            }
+        }
+
+        function ensureBoardSubtaskPanelBound() {
+            if (boardSubtaskPanelBound) return;
+            const addBtn = document.getElementById('boardAddSubtaskBtn');
+            const input = document.getElementById('boardInlineSubtaskTitle');
+            const listEl = document.getElementById('boardInlineSubtasksList');
+            if (!addBtn || !input) return;
+            boardSubtaskPanelBound = true;
+            addBtn.addEventListener('click', function () {
+                if (boardSubtaskParentId) addBoardSubtask(boardSubtaskParentId);
+            });
+            input.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    if (boardSubtaskParentId) addBoardSubtask(boardSubtaskParentId);
+                }
+            });
+            if (listEl && !listEl.dataset.delegationBound) {
+                listEl.dataset.delegationBound = '1';
+                listEl.addEventListener('change', function (e) {
+                    const t = e.target;
+                    if (t.classList && t.classList.contains('board-subtask-check')) {
+                        const sid = parseInt(t.getAttribute('data-subtask-id'), 10);
+                        if (sid) toggleBoardSubtask(sid);
+                    }
+                });
+                listEl.addEventListener('click', function (e) {
+                    const btn = e.target.closest('.subtask-delete-btn-board');
+                    if (btn) {
+                        const sid = parseInt(btn.getAttribute('data-subtask-id'), 10);
+                        if (sid) deleteBoardSubtask(sid);
+                    }
+                });
+            }
+        }
         
         async function openEditTaskModal(taskId) {
             if (!taskId) {
@@ -3901,6 +4737,23 @@
                     document.getElementById('editTaskStartDate').value = $startInput.val() || '';
                     document.getElementById('editTaskDueDate').value = $dueInput.val() || '';
                 }
+
+                const boardChecklist = document.getElementById('boardChecklistPanel');
+                const et = taskData.issueType != null ? parseInt(taskData.issueType, 10) : NaN;
+                const isTaskForChecklist = !isSubtask && et === 3;
+                if (boardChecklist) {
+                    if (isTaskForChecklist) {
+                        boardChecklist.style.display = '';
+                        boardSubtaskParentId = taskData.id;
+                        ensureBoardSubtaskPanelBound();
+                        const noteSub = document.getElementById('boardInlineSubtaskNote');
+                        if (noteSub) noteSub.textContent = '';
+                        await loadBoardSubtasks(taskData.id);
+                    } else {
+                        boardChecklist.style.display = 'none';
+                        boardSubtaskParentId = null;
+                    }
+                }
                 
             } catch (error) {
                 showNotification('خطا در بارگذاری اطلاعات کار: ' + error.message, 'error');
@@ -4053,6 +4906,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             registerBoardFilterEvents();
             applyBoardFilters();
+            refreshEmptyColumnStyles();
             const quickTaskModal = document.getElementById('quickTaskModal');
             if (quickTaskModal) {
                 quickTaskModal.addEventListener('hidden.bs.modal', () => {
@@ -4105,6 +4959,12 @@
                     sessionStorage.removeItem('scrollToStatusAfterReload');
                     sessionStorage.removeItem('highlightTaskAfterReload');
                 }, 300);
+            }
+
+            const boardElement = document.querySelector('.kanban-board');
+            if (boardElement && window.MutationObserver) {
+                const emptyColumnObserver = new MutationObserver(() => refreshEmptyColumnStyles());
+                emptyColumnObserver.observe(boardElement, { childList: true, subtree: true });
             }
         });
 
@@ -4260,7 +5120,7 @@
                                     if (remainingCards.length === 0) {
                                         const emptyMsg = document.createElement('div');
                                         emptyMsg.className = 'empty-message text-muted text-center small p-4';
-                                        emptyMsg.innerHTML = '<i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد';
+                                        emptyMsg.innerHTML = '<span class="column-empty-msg-inner"><i class="bi bi-inbox" aria-hidden="true"></i><span>هیچ آیتمی وجود ندارد</span></span>';
                                         column.appendChild(emptyMsg);
                                     }
                                 }, 300);
@@ -4316,7 +5176,7 @@
                                     if (remainingCards.length === 0) {
                                         const emptyMsg = document.createElement('div');
                                         emptyMsg.className = 'empty-message text-muted text-center small p-4';
-                                        emptyMsg.innerHTML = '<i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد';
+                                        emptyMsg.innerHTML = '<span class="column-empty-msg-inner"><i class="bi bi-inbox" aria-hidden="true"></i><span>هیچ آیتمی وجود ندارد</span></span>';
                                         column.appendChild(emptyMsg);
                                     }
                                 }, 300);
@@ -4456,7 +5316,7 @@
                                 if (remainingCards.length === 0) {
                                     const emptyMsg = document.createElement('div');
                                     emptyMsg.className = 'empty-message text-muted text-center small p-4';
-                                    emptyMsg.innerHTML = '<i class="bi bi-inbox"></i><br>هیچ آیتمی وجود ندارد';
+                                    emptyMsg.innerHTML = '<span class="column-empty-msg-inner"><i class="bi bi-inbox" aria-hidden="true"></i><span>هیچ آیتمی وجود ندارد</span></span>';
                                     column.appendChild(emptyMsg);
                                 }
                             }, 300);
@@ -5309,5 +6169,6 @@
                  
             });
 
+        }
     </script>
 }

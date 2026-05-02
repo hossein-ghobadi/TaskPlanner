@@ -39,7 +39,7 @@ namespace Endpoint.Site.Controllers
 
         // 📌 لیست اسپرینت‌های پروژه
         [HttpGet]
-        public async Task<IActionResult> Index(int projectId)
+        public async Task<IActionResult> Index(int projectId, bool openCreate = false)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -64,6 +64,7 @@ namespace Endpoint.Site.Controllers
             var project = await _context.Projects.FindAsync(projectId);
             ViewBag.ProjectName = project?.Name;
             ViewBag.ProjectId = projectId;
+            ViewBag.OpenCreateSprintModal = openCreate;
 
             var sprints = await _context.Sprints
                 .Where(s => s.ProjectId == projectId)
@@ -129,6 +130,9 @@ namespace Endpoint.Site.Controllers
                 .Include(s => s.SprintTasks)
                     .ThenInclude(st => st.Task)
                         .ThenInclude(t => t.AssignedUser)
+                .Include(s => s.SprintTasks)
+                    .ThenInclude(st => st.Task)
+                        .ThenInclude(t => t.ProjectIssueType)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (sprint == null)
@@ -147,16 +151,28 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
-            var tasksWithoutSprint = _context.TaskItems
-                        .Where(t => t.ProjectId == sprint.ProjectId && !t.IsCompleted && (t.SprintId != sprint.Id || t.SprintId == null) && (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task))
-                        .ToList();
+            var sprintTaskIds = sprint.SprintTasks.Select(st => st.TaskId).ToList();
+            var tasksWithoutSprint = await _context.TaskItems
+                .Include(t => t.AssignedUser)
+                .Include(t => t.Category)
+                .Include(t => t.ProjectIssueType)
+                .Where(t => t.ProjectId == sprint.ProjectId
+                            && !t.IsCompleted
+                            && !sprintTaskIds.Contains(t.Id)
+                            && (t.ProjectIssueType != null ? t.ProjectIssueType.BaseType : t.IssueType) == IssueType.Task)
+                .OrderByDescending(t => t.Priority)
+                .ThenBy(t => t.DueDate)
+                .ToListAsync();
             // وضعیت‌های اسپرینت (ستون‌ها)
             var statuses = await _context.WorkflowStatuses
                 .Where(ws => ws.SprintId == sprint.Id)
                 .OrderBy(ws => ws.Order)
                 .ToListAsync();
 
-            var sprintTasks = sprint.SprintTasks.Select(st => st.Task).ToList();
+            var sprintTasks = sprint.SprintTasks
+                .Select(st => st.Task)
+                .Where(IsSprintBoardVisibleTask)
+                .ToList();
             // محاسبه آمار
             var completedTasks = sprintTasks.Count(t => t.StatusId.HasValue && statuses.Any(ws => ws.Id == t.StatusId && ws.IsFinal));
             var inProgressTasks = sprintTasks.Count(t => t.StatusId.HasValue && statuses.Any(ws => ws.Id == t.StatusId && ws.Type == WorkflowType.InProgress));
@@ -241,6 +257,115 @@ namespace Endpoint.Site.Controllers
             return View(vm);
         }
 
+        // 📌 برد پروژه — فقط وقتی اسپرینت فعال وجود دارد به برد اسپرینت هدایت می‌شود؛ در غیر این صورت فقط درخواست ایجاد/فعال‌سازی اسپرینت
+        [HttpGet]
+        public async Task<IActionResult> ProjectBoard(int projectId, bool openCreate = false)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var project = await _context.Projects
+                .FirstOrDefaultAsync(p => p.Id == projectId);
+
+            if (project == null)
+            {
+                TempData["Error"] = "پروژه یافت نشد.";
+                return RedirectToAction("Index", "Projects");
+            }
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == projectId &&
+                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+            if (!hasAccess)
+            {
+                TempData["Error"] = "شما به این پروژه دسترسی ندارید.";
+                return RedirectToAction("Index", "Projects");
+            }
+
+            var activeSprint = await _context.Sprints
+                .FirstOrDefaultAsync(s => s.ProjectId == projectId && s.Status == SprintStatus.Active);
+
+            if (activeSprint != null)
+            {
+                return RedirectToAction(nameof(Board), new { id = activeSprint.Id });
+            }
+
+            var planningSprint = await _context.Sprints
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.ProjectId == projectId && s.Status == SprintStatus.Planning);
+
+            ViewBag.NoActiveSprint = true;
+            ViewBag.HasPlanningSprint = planningSprint != null;
+            ViewBag.PlanningSprintId = planningSprint?.Id;
+            ViewBag.ProjectId = projectId;
+            ViewBag.SprintId = 0;
+            ViewBag.ProjectBoardMode = true;
+            ViewBag.OpenCreateSprintModal = openCreate;
+            ViewBag.WorkflowStatuses = new List<WorkflowStatus>();
+            ViewBag.backLog = new List<TaskItem>();
+
+            var vm = new SprintBoardVm
+            {
+                SprintId = 0,
+                SprintName = $"تخته پروژه: {project.Name}",
+                Description = planningSprint != null
+                    ? "برای نمایش ستون‌های کانبان، اسپرینت در حال برنامه‌ریزی را فعال کنید."
+                    : "هنوز اسپرینت فعالی وجود ندارد. یک اسپرینت بسازید و همزمان آن را شروع کنید.",
+                Goal = null,
+                StartDate = DateTime.Today,
+                EndDate = DateTime.Today,
+                Status = SprintStatus.Planning,
+                ProjectId = projectId,
+                ProjectName = project.Name,
+                Statuses = new List<WorkflowStatus>(),
+                SprintIssues = new List<TaskItem>(),
+                TotalTasks = 0,
+                CompletedTasks = 0,
+                InProgressTasks = 0,
+                PendingTasks = 0,
+                BlockedTasks = 0
+            };
+
+            var categories = await _context.TaskCategories
+                .Where(c => c.ProjectId == projectId)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+            ViewBag.Categories = categories;
+
+            var memberUserIds = await _context.ProjectMembers
+                .Where(m => m.ProjectId == projectId)
+                .Select(m => m.UserId)
+                .ToListAsync();
+
+            var projectMembers = await _context.Users
+                .Where(u => memberUserIds.Contains(u.Id))
+                .Select(u => new ProjectMemberVm
+                {
+                    UserId = u.Id,
+                    FullName = u.FullName ?? u.UserName,
+                    UserName = u.UserName
+                })
+                .ToListAsync();
+
+            var creatorExists = projectMembers.Any(pm => pm.UserId == project.CreatorUserId);
+            if (!creatorExists && !string.IsNullOrEmpty(project.CreatorUserId))
+            {
+                var creatorInfo = await _userManager.FindByIdAsync(project.CreatorUserId);
+                if (creatorInfo != null)
+                {
+                    projectMembers.Add(new ProjectMemberVm
+                    {
+                        UserId = project.CreatorUserId,
+                        FullName = $"{creatorInfo.FullName ?? creatorInfo.UserName} - سازنده پروژه",
+                        UserName = creatorInfo.UserName ?? ""
+                    });
+                }
+            }
+            ViewBag.ProjectMembers = projectMembers.OrderBy(u => u.FullName).ToList();
+
+            // استفاده مجدد از ویوی برد فعلی
+            return View("Board", vm);
+        }
+
         // 📅 Sprint Planning: صفحه برنامه‌ریزی اسپرینت (مثل Jira)
         [HttpGet("Planning/{id}")]
         public async Task<IActionResult> Planning(int id)
@@ -255,6 +380,9 @@ namespace Endpoint.Site.Controllers
                 .Include(s => s.SprintTasks)
                     .ThenInclude(st => st.Task)
                         .ThenInclude(t => t.Status)
+                .Include(s => s.SprintTasks)
+                    .ThenInclude(st => st.Task)
+                        .ThenInclude(t => t.ProjectIssueType)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (sprint == null)
@@ -278,6 +406,7 @@ namespace Endpoint.Site.Controllers
                 .OrderBy(st => st.SprintPriority)
                 .ThenBy(st => st.Task.Priority)
                 .Select(st => st.Task)
+                .Where(IsSprintBoardVisibleTask)
                 .ToList();
 
             // Issues موجود در Backlog (خارج از تمام Sprint های باز)
@@ -295,6 +424,7 @@ namespace Endpoint.Site.Controllers
                             && !t.IsCompleted
                             && (t.ProjectIssueType != null ? t.ProjectIssueType.CanAddToSprint : 
                                 (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug)) // منطق CanAddToSprint
+                            && (t.ProjectIssueType != null ? t.ProjectIssueType.BaseType : t.IssueType) == IssueType.Task
                             && !tasksInOpenSprints.Contains(t.Id))
                 .OrderByDescending(t => t.Priority)
                 .ThenBy(t => t.DueDate)
@@ -506,7 +636,8 @@ namespace Endpoint.Site.Controllers
                     && !sprintTaskIds.Contains(t.Id)
                     && !t.IsCompleted // فقط تسک‌های انجام نشده
                     && (t.ProjectIssueType != null ? t.ProjectIssueType.CanAddToSprint : 
-                        (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug))) // منطق CanAddToSprint
+                        (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug)) // منطق CanAddToSprint
+                    && (t.ProjectIssueType != null ? t.ProjectIssueType.BaseType : t.IssueType) == IssueType.Task)
                 .Include(t => t.Category)
                 .Include(t => t.AssignedUser)
                 .Include(t => t.ProjectIssueType)
@@ -709,6 +840,11 @@ namespace Endpoint.Site.Controllers
                 return Json(new { success = false, message = "این نوع Issue قابل اضافه شدن به اسپرینت نیست. فقط Story-level types قابل اضافه شدن هستند." });
             }
 
+            if (!IsSprintBoardVisibleTask(task))
+            {
+                return Json(new { success = false, message = "به تخته اسپرینت فقط کارهای نوع «کار» اضافه می‌شود؛ ویژگی، باگ و نوع‌های دیگر در این برد نیستند." });
+            }
+
             // تسک‌های انجام شده یا لغو شده قابل اضافه شدن نیستند
             if (task.IsCompleted)
             {
@@ -723,6 +859,32 @@ namespace Endpoint.Site.Controllers
             {
                 return Json(new { success = false, message = "این تسک قبلاً در اسپرینت اضافه شده است." });
             }
+
+            // ستون «باید انجام شود» (نوع Todo) — نه Done یا سایر وضعیت‌های قبلی کار
+            var todoColumn = await _context.WorkflowStatuses
+                .Where(ws => ws.SprintId == sprintId && ws.Type == WorkflowType.Todo)
+                .OrderBy(ws => ws.IsDefault ? 0 : 1)
+                .ThenBy(ws => ws.Order)
+                .FirstOrDefaultAsync();
+
+            if (todoColumn == null)
+            {
+                todoColumn = await _context.WorkflowStatuses
+                    .Where(ws => ws.SprintId == sprintId)
+                    .OrderBy(ws => ws.IsDefault ? 0 : 1)
+                    .ThenBy(ws => ws.Order)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (todoColumn == null)
+            {
+                return Json(new { success = false, message = "هیچ ستون وضعیتی برای این اسپرینت تعریف نشده است." });
+            }
+
+            task.StatusId = todoColumn.Id;
+            task.WorkflowStatusId = todoColumn.Id;
+            task.SprintId = sprintId;
+            task.IsCompleted = todoColumn.IsFinal;
 
             // به‌روزرسانی UpdatedAt کارت تا در ابتدای لیست قرار بگیرد
             task.UpdatedAt = DateTime.UtcNow;
@@ -905,6 +1067,15 @@ namespace Endpoint.Site.Controllers
             }
 
             if (targetStatus == null)
+            {
+                targetStatus = await _context.WorkflowStatuses
+                    .Where(ws => ws.SprintId == sprintId && ws.Type == WorkflowType.Todo)
+                    .OrderBy(ws => ws.IsDefault ? 0 : 1)
+                    .ThenBy(ws => ws.Order)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (targetStatus == null)
                 targetStatus = await _context.WorkflowStatuses
                     .Where(ws => ws.SprintId == sprintId)
                     .OrderBy(ws => ws.IsDefault ? 0 : ws.Order)
@@ -998,17 +1169,7 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
-            var project = await _context.Projects.FindAsync(projectId);
-            ViewBag.ProjectName = project?.Name;
-
-            var vm = new SprintCreateVm
-            {
-                ProjectId = projectId,
-                StartDate = DateTime.Today,
-                EndDate = DateTime.Today.AddDays(14)
-            };
-
-            return View(vm);
+            return RedirectToAction(nameof(Index), new { projectId, openCreate = true });
         }
 
         [HttpPost]
@@ -1018,6 +1179,10 @@ namespace Endpoint.Site.Controllers
             Console.WriteLine($"[Create POST] Received - Name: {vm.Name}, ProjectId: {vm.ProjectId}");
             Console.WriteLine($"[Create POST] StartDate (initial): {vm.StartDate}, EndDate (initial): {vm.EndDate}");
 
+            var activateNow = Request.Form.TryGetValue("ActivateNow", out var activateNowVals)
+                && (string.Equals(activateNowVals.ToString(), "true", StringComparison.OrdinalIgnoreCase)
+                    || activateNowVals.ToString() == "1");
+
             // بررسی اینکه آیا اسپرینت فعال وجود دارد
             var hasActiveSprint = await _context.Sprints
                 .AnyAsync(s => s.ProjectId == vm.ProjectId && (s.Status == SprintStatus.Active || s.Status == SprintStatus.Planning));
@@ -1026,7 +1191,9 @@ namespace Endpoint.Site.Controllers
             {
                 Console.WriteLine("[Create POST] Active sprint exists");
                 TempData["Error"] = "فقط یک اسپرینت می‌تواند در هر پروژه فعال باشد. لطفاً اسپرینت فعال یا در حال برنامه ریزی را مدیریت کنید.";
-                return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId });
+                return activateNow
+                    ? RedirectToAction(nameof(ProjectBoard), new { projectId = vm.ProjectId, openCreate = true })
+                    : RedirectToAction(nameof(Index), new { projectId = vm.ProjectId, openCreate = true });
             }
 
             // Parse dates - check if they come as Persian dates
@@ -1139,9 +1306,15 @@ namespace Endpoint.Site.Controllers
                         Console.WriteLine($"  - {error.Key}: {err.ErrorMessage}");
                     }
                 }
-                var project = await _context.Projects.FindAsync(vm.ProjectId);
-                ViewBag.ProjectName = project?.Name;
-                return View(vm);
+
+                var validationMsg = string.Join(" ",
+                    ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Where(m => !string.IsNullOrWhiteSpace(m)));
+                TempData["Error"] = string.IsNullOrWhiteSpace(validationMsg)
+                    ? "اطلاعات ایجاد اسپرینت معتبر نیست."
+                    : validationMsg;
+                return activateNow
+                    ? RedirectToAction(nameof(ProjectBoard), new { projectId = vm.ProjectId, openCreate = true })
+                    : RedirectToAction(nameof(Index), new { projectId = vm.ProjectId, openCreate = true });
             }
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -1173,6 +1346,9 @@ namespace Endpoint.Site.Controllers
                     EndDate = vm.EndDate,
                     ProjectId = vm.ProjectId,
                     CreatorUserId = userId,
+                    Status = activateNow ? SprintStatus.Active : SprintStatus.Planning,
+                    IsActive = activateNow,
+                    IsCompleted = false,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -1217,6 +1393,12 @@ namespace Endpoint.Site.Controllers
 
                 Console.WriteLine($"[Create POST] Default workflow statuses created for sprint {sprint.Id}");
 
+                if (activateNow)
+                {
+                    TempData["Success"] = "اسپرینت ایجاد و به‌صورت فعال آغاز شد.";
+                    return RedirectToAction(nameof(Board), new { id = sprint.Id });
+                }
+
                 TempData["Success"] = "اسپرینت با موفقیت ایجاد شد و وضعیت‌های پیش‌فرض تنظیم شدند.";
                 return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId });
             }
@@ -1233,9 +1415,11 @@ namespace Endpoint.Site.Controllers
                 }
 
                 TempData["Error"] = $"خطا در ایجاد اسپرینت: {ex.Message}";
-                var project = await _context.Projects.FindAsync(vm.ProjectId);
-                ViewBag.ProjectName = project?.Name;
-                return View(vm);
+                var reopenProjectBoard = Request.Form.TryGetValue("ActivateNow", out var avErr)
+                    && string.Equals(avErr.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+                return reopenProjectBoard
+                    ? RedirectToAction(nameof(ProjectBoard), new { projectId = vm.ProjectId, openCreate = true })
+                    : RedirectToAction(nameof(Index), new { projectId = vm.ProjectId, openCreate = true });
             }
         }
 
@@ -1559,5 +1743,9 @@ namespace Endpoint.Site.Controllers
 
             return RedirectToAction(nameof(Details), new { id });
         }
+
+        /// <summary>تخته اسپرینت فقط آیتم‌هایی با نوع پایه «کار» (Task) را نشان می‌دهد؛ Story/Bug/Epic/Subtask نه.</summary>
+        private static bool IsSprintBoardVisibleTask(TaskItem t) =>
+            (t.ProjectIssueType?.BaseType ?? t.IssueType) == IssueType.Task;
     }
 }

@@ -620,7 +620,7 @@
             toast.show();
         }
 
-        // بازکردن modal هوشمند برای افزودن کار فرزند
+        // بازکردن modal برای افزودن کار فرزند
         function openChildIssueModal(parentId, parentIssueType) {
             selectedParentId = parentId;
             
@@ -629,28 +629,16 @@
             document.getElementById('subTaskCategory').value = '';
             document.getElementById('storyPoints').value = '';
             
-            const issueTypeField = document.getElementById('issueTypeField');
             const storyPointsField = document.getElementById('storyPointsField');
             const modalTitle = document.getElementById('subTaskModalLabel');
-            const childIssueTypeSelect = document.getElementById('childIssueType');
-            
-            // اگه Parent = Epic → نمایش IssueType selector
+
+            // اگر Parent = Epic، فرزند همیشه Task است
             if (parentIssueType === 'Epic') {
-                issueTypeField.style.display = 'block';
                 modalTitle.textContent = 'افزودن کار';
-                
-                // Listen برای تغییر IssueType → نمایش StoryPoints
-                childIssueTypeSelect.onchange = function() {
-                    // همه Story-level types می‌توانند Story Points داشته باشند
-                    storyPointsField.style.display = 'block';
-                };
-                
-                // Default: Story-level types می‌توانند Story Points داشته باشند
                 storyPointsField.style.display = 'block';
-            } 
-            // اگه Parent = Story/Task/Bug → مخفی کردن IssueType (خودکار Subtask)
+            }
+            // اگر Parent = Task، فرزند همیشه Subtask است
             else {
-                issueTypeField.style.display = 'none';
                 storyPointsField.style.display = 'none';
                 modalTitle.textContent = '➕ افزودن کارک';
             }
@@ -669,7 +657,6 @@
 
             const title = document.getElementById('subTaskTitle').value.trim();
             const categoryId = document.getElementById('subTaskCategory').value || '0';
-            const issueTypeField = document.getElementById('issueTypeField');
             const storyPoints = document.getElementById('storyPoints').value;
             const submitButton = document.querySelector('#subTaskModal .btn-primary');
             const originalButtonContent = submitButton ? submitButton.innerHTML : '';
@@ -685,18 +672,8 @@
                 categoryId: parseInt(categoryId)
             };
             
-            // اگه IssueType field نمایش داده شده → یعنی Parent = Epic
-            if (issueTypeField.style.display !== 'none') {
-                const childIssueTypeSelect = document.getElementById('childIssueType');
-                const selectedOption = childIssueTypeSelect.options[childIssueTypeSelect.selectedIndex];
-                payload.issueType = parseInt(childIssueTypeSelect.value);
-                
-                // ارسال projectIssueTypeId اگر وجود دارد
-                const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
-                if (projectIssueTypeId) {
-                    payload.projectIssueTypeId = parseInt(projectIssueTypeId);
-                }
-                
+            // برای Parent = Epic مقدار StoryPoints می‌تواند ارسال شود
+            if (storyPointsField.style.display !== 'none') {
                 if (storyPoints) {
                     payload.storyPoints = parseInt(storyPoints);
                 }
@@ -799,46 +776,6 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <!-- فیلد IssueType (فقط برای Epic نمایش داده میشه) -->
-                <div class="mb-3" id="issueTypeField" style="display:none;">
-                    <label for="childIssueType" class="form-label">نوع کار</label>
-                    <select class="form-select" id="childIssueType">
-                        @{
-                            var projectIssueTypes = ViewBag.ProjectIssueTypes as List<ProjectIssueType> ?? new List<ProjectIssueType>();
-                            var storyLevelTypes = projectIssueTypes
-                                .Where(pit => pit.Level == IssueTypeLevel.StoryLevel)
-                                .OrderBy(pit => pit.Order)
-                                .ToList();
-                            
-                            // اگر ProjectIssueTypes وجود ندارد، از انواع پیش‌فرض استفاده کن
-                            if (!storyLevelTypes.Any())
-                            {
-                                <option value="2">📝 Story</option>
-                                <option value="3" selected>✅ Task</option>
-                                <option value="5">🐛 Bug</option>
-                            }
-                            else
-                            {
-                                var defaultTask = storyLevelTypes.FirstOrDefault(pit => pit.BaseType == IssueType.Task && !pit.IsCustom);
-                                var isFirst = true;
-                                foreach (var pit in storyLevelTypes)
-                                {
-                                    var isSelected = (isFirst && defaultTask == null) || (defaultTask != null && pit.Id == defaultTask.Id);
-                                    if (isSelected)
-                                    {
-                                        <option value="@((int)pit.BaseType)" data-project-issue-type-id="@pit.Id" selected>@pit.Icon @pit.Name</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="@((int)pit.BaseType)" data-project-issue-type-id="@pit.Id">@pit.Icon @pit.Name</option>
-                                    }
-                                    isFirst = false;
-                                }
-                            }
-                        }
-                    </select>
-                </div>
-
                 <div class="mb-3">
                     <label for="subTaskTitle" class="form-label">عنوان</label>
                     <input type="text" class="form-control" id="subTaskTitle" placeholder="مثلاً بررسی فاکتور خرید">

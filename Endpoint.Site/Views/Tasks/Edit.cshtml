@@ -6,9 +6,9 @@
     Layout = isModal ? null : "/Views/Shared/_Layout.cshtml";
     var projectIssueTypes = ViewBag.ProjectIssueTypes as List<ProjectIssueType> ?? new List<ProjectIssueType>();
     
-    // دریافت همه انواع به جز Subtask (کارک) - مرتب بر اساس Order
+    // به‌طور معمول کارک در لیست انتخاب نیست؛ اگر خود این آیتم کارک باشد، همان ProjectIssueType را نگه دار تا مقدار نمایش درست باشد
     var availableIssueTypes = projectIssueTypes
-        .Where(pit => pit.Level != IssueTypeLevel.Subtask)
+        .Where(pit => pit.Level != IssueTypeLevel.Subtask || Model.ProjectIssueTypeId == pit.Id)
         .OrderBy(pit => pit.Order)
         .ThenBy(pit => pit.Level)
         .ToList();
@@ -31,6 +31,9 @@
     .modal-mode-root {
         direction: rtl;
         font-family: var(--primary-font-family, 'Vazir', 'Tahoma', 'Arial', sans-serif);
+        position: relative;
+        min-height: 100vh;
+        min-height: 100dvh;
     }
     .task-form-container {
         max-width: 900px;
@@ -41,6 +44,9 @@
         max-width: 100%;
         margin: 0;
         padding: 0;
+        position: relative;
+        min-height: 100vh;
+        min-height: 100dvh;
     }
     .task-form-container.modal-mode .form-header {
         display: none;
@@ -403,6 +409,49 @@
         color: #6b7280;
     }
 
+    .checklist-card {
+        border: 1px solid #e8eaef;
+        border-radius: 12px;
+        background: #fafbfc;
+    }
+
+    .checklist-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.85rem;
+        padding-bottom: 0.65rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .checklist-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .checklist-title i {
+        color: #4b5563;
+        font-size: 1.1rem;
+    }
+
+    .checklist-progress-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 2.5rem;
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        background: #4b5563;
+        color: #fff;
+    }
+
     .subtask-input-row {
         display: grid;
         grid-template-columns: 1fr auto;
@@ -416,33 +465,43 @@
         padding: 0;
         display: flex;
         flex-direction: column;
-        gap: 0.45rem;
+        gap: 0.5rem;
     }
 
     .subtask-item {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
-        gap: 0.6rem;
+        gap: 0.65rem;
         border: 1px solid #e5e7eb;
-        border-radius: 8px;
+        border-radius: 10px;
         background: #fff;
-        padding: 0.4rem 0.55rem;
+        padding: 0.55rem 0.65rem;
     }
 
     .subtask-item-main {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.55rem;
         min-width: 0;
+        flex: 1;
+    }
+
+    .subtask-item-main input[type="checkbox"] {
+        width: 1.05rem;
+        height: 1.05rem;
+        margin-top: 0.2rem;
+        flex-shrink: 0;
+        cursor: pointer;
     }
 
     .subtask-title {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 260px;
-        font-size: 0.88rem;
+        white-space: normal;
+        word-break: break-word;
+        font-size: 0.9rem;
+        line-height: 1.45;
+        flex: 1;
+        min-width: 0;
     }
 
     .subtask-title.completed {
@@ -451,20 +510,53 @@
     }
 
     .subtask-delete-btn {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
         border: none;
-        background: transparent;
-        color: #dc2626;
-        font-size: 0.8rem;
+        border-radius: 50%;
+        background: #ef4444;
+        color: #fff;
+        font-size: 0.95rem;
         cursor: pointer;
+        transition: background 0.15s ease;
+    }
+
+    .subtask-delete-btn:hover {
+        background: #dc2626;
+        color: #fff;
     }
 
     .subtask-empty {
         border: 1px dashed #d1d5db;
-        border-radius: 8px;
-        padding: 0.5rem 0.6rem;
+        border-radius: 10px;
+        padding: 0.65rem 0.75rem;
         font-size: 0.84rem;
         color: #6b7280;
         background: #f9fafb;
+        text-align: center;
+    }
+
+    /* حالت مودال: چک‌لیست به‌صورت عادی زیر "مسئول کار" نمایش داده می‌شود */
+    .task-form-container.modal-mode .checklist-panel-corner--modal {
+        margin-top: 1rem;
+    }
+
+    /* صفحه کامل ویرایش: چک لیست پایین، هم‌تراز سمت چپ (در RTL با flex-end) */
+    .checklist-page-bottom-row {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .checklist-page-bottom-row .checklist-panel-corner--page {
+        width: 100%;
+        max-width: 420px;
     }
     
     @@media (max-width: 768px) {
@@ -655,19 +747,25 @@
                             </select>
                             <span asp-validation-for="AssignedUserId" class="text-danger small"></span>
                         </div>
-                    </div>
 
-                    <div class="form-card">
-                        <div class="form-card-title">
-                            <i class="bi bi-list-check"></i>
-                            کارک‌ها
-                        </div>
-                        <div class="subtask-input-row">
-                            <input type="text" id="inlineSubtaskTitle" class="form-control" placeholder="عنوان کارک..." />
-                            <button type="button" id="addInlineSubtaskBtn" class="btn btn-modern btn-modern-warning">افزودن</button>
-                        </div>
-                        <ul id="inlineSubtasksList" class="subtask-list"></ul>
-                        <div id="inlineSubtaskNote" class="chat-note"></div>
+                        @if (Model.IssueType == IssueType.Task)
+                        {
+                            <div class="form-card checklist-card checklist-panel-corner checklist-panel-corner--modal mt-3 mb-0" id="inlineSubtaskPanel">
+                                <div class="checklist-header">
+                                    <div class="checklist-title">
+                                        <i class="bi bi-list-check"></i>
+                                        چک لیست
+                                    </div>
+                                    <span class="checklist-progress-badge" id="inlineSubtaskProgressBadge">0/0</span>
+                                </div>
+                                <div class="subtask-input-row">
+                                    <input type="text" id="inlineSubtaskTitle" class="form-control" placeholder="عنوان کارک..." />
+                                    <button type="button" id="addInlineSubtaskBtn" class="btn btn-modern btn-modern-warning">افزودن</button>
+                                </div>
+                                <ul id="inlineSubtasksList" class="subtask-list"></ul>
+                                <div id="inlineSubtaskNote" class="chat-note"></div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -778,6 +876,27 @@
                     </div>
                 </div>
             </div>
+
+            @if (Model.IssueType == IssueType.Task)
+            {
+            <div class="checklist-page-bottom-row">
+                <div class="form-card checklist-card checklist-panel-corner checklist-panel-corner--page" id="inlineSubtaskPanel">
+                    <div class="checklist-header">
+                        <div class="checklist-title">
+                            <i class="bi bi-list-check"></i>
+                            چک لیست
+                        </div>
+                        <span class="checklist-progress-badge" id="inlineSubtaskProgressBadge">0/0</span>
+                    </div>
+                    <div class="subtask-input-row">
+                        <input type="text" id="inlineSubtaskTitle" class="form-control" placeholder="عنوان کارک..." />
+                        <button type="button" id="addInlineSubtaskBtn" class="btn btn-modern btn-modern-warning">افزودن</button>
+                    </div>
+                    <ul id="inlineSubtasksList" class="subtask-list"></ul>
+                    <div id="inlineSubtaskNote" class="chat-note"></div>
+                </div>
+            </div>
+            }
         }
 
         <!-- دکمه‌های عملیات -->
@@ -1172,6 +1291,11 @@
         if (!listEl) return;
 
         const subtasks = Array.isArray(items) ? items : [];
+        const badge = document.getElementById('inlineSubtaskProgressBadge');
+        if (badge) {
+            const done = subtasks.filter(s => s.isCompleted).length;
+            badge.textContent = subtasks.length ? `${done}/${subtasks.length}` : '0/0';
+        }
         if (subtasks.length === 0) {
             listEl.innerHTML = '<li class="subtask-empty">هنوز کارکی ثبت نشده است.</li>';
             return;
@@ -1187,7 +1311,7 @@
                         <input type="checkbox" ${completed ? 'checked' : ''} onchange="toggleInlineSubtask(${id})" />
                         <span class="subtask-title ${completed ? 'completed' : ''}">${title}</span>
                     </div>
-                    <button type="button" class="subtask-delete-btn" onclick="deleteInlineSubtask(${id})">حذف</button>
+                    <button type="button" class="subtask-delete-btn" onclick="deleteInlineSubtask(${id})" title="حذف" aria-label="حذف"><i class="bi bi-trash"></i></button>
                 </li>
             `;
         }).join('');
@@ -1357,7 +1481,10 @@
 
             loadTaskChat(@Model.Id);
             initTaskChatComposer(@Model.Id);
-            initInlineSubtaskPanel(@Model.Id);
+            @if (Model.IssueType == IssueType.Task)
+            {
+                <text>initInlineSubtaskPanel(@Model.Id);</text>
+            }
         })();
 
         function closeEditTaskModal() {
@@ -1446,6 +1573,10 @@
                 }
             }
 
+            @if (Model.IssueType == IssueType.Task)
+            {
+                <text>if (document.getElementById('inlineSubtasksList')) initInlineSubtaskPanel(@Model.Id);</text>
+            }
         });
     </script>
 }

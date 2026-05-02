@@ -569,22 +569,19 @@
     </div>
     
     <!-- تخته کانبان -->
-    @if (Model.ActiveSprintId != null)
-    {
-        <div class="col">
-            <a href="/Sprints/Board/Board/@Model.ActiveSprintId" class="text-decoration-none">
-                <div class="card-modern h-100 text-center" style="cursor: pointer;">
-                    <div class="card-body-modern py-5">
-                        <div class="mb-3">
-                            <i class="bi bi-kanban" style="font-size: 3.5rem; color: #3b82f6;"></i>
-                        </div>
-                        <h5 class="mb-2">تخته کانبان</h5>
-                        <p class="text-muted mb-0 small">اسپرینت فعال</p>
+    <div class="col">
+        <a href="/Sprints/ProjectBoard?projectId=@Model.Id" class="text-decoration-none">
+            <div class="card-modern h-100 text-center" style="cursor: pointer;">
+                <div class="card-body-modern py-5">
+                    <div class="mb-3">
+                        <i class="bi bi-kanban" style="font-size: 3.5rem; color: #3b82f6;"></i>
                     </div>
+                    <h5 class="mb-2">تخته کانبان</h5>
+                    <p class="text-muted mb-0 small">برد مستقل پروژه</p>
                 </div>
-            </a>
-        </div>
-    }
+            </div>
+        </a>
+    </div>
     
     <!-- اسپرینت‌ها -->
     <div class="col">

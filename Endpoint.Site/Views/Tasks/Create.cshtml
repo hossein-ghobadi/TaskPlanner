@@ -12,6 +12,9 @@
         .OrderBy(pit => pit.Order)
         .ThenBy(pit => pit.Level)
         .ToList();
+    var defaultTaskIssueType = availableIssueTypes.FirstOrDefault(pit => pit.BaseType == IssueType.Task)
+        ?? availableIssueTypes.FirstOrDefault();
+    var resolvedProjectIssueTypeId = Model?.ProjectIssueTypeId ?? defaultTaskIssueType?.Id;
 }
 
 @if (isModal)
@@ -235,8 +238,9 @@
         {
             <input type="hidden" name="fromModal" value="true" />
         }
-        <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" />
+        <input type="hidden" asp-for="ProjectIssueTypeId" id="projectIssueTypeId" value="@resolvedProjectIssueTypeId" />
         <input type="hidden" asp-for="ProjectId" id="projectSelect" />
+        <input type="hidden" asp-for="IssueType" value="@((int)IssueType.Task)" />
 
         <!-- اطلاعات اصلی -->
         <div class="form-card">
@@ -246,24 +250,12 @@
             </div>
             
             <div class="mb-4">
-                <label asp-for="IssueType" class="form-label">
+                <label class="form-label">
                     <i class="bi bi-tag"></i>
                     نوع کار
-                    <span class="text-danger">*</span>
                 </label>
-                <select asp-for="IssueType" class="form-select" id="issueTypeSelect">
-                    @foreach (var issueType in availableIssueTypes)
-                    {
-                        var isSelected = Model?.ProjectIssueTypeId == issueType.Id;
-                        <option value="@((int)issueType.BaseType)" 
-                                data-project-issue-type-id="@issueType.Id" 
-                                data-level="@((int)issueType.Level)" 
-                                selected="@isSelected">
-                            @issueType.Icon @issueType.Name
-                        </option>
-                    }
-                </select>
-                <span asp-validation-for="IssueType" class="text-danger small"></span>
+                <input type="text" class="form-control" value="Task" readonly />
+                <small class="text-muted">نوع این آیتم همیشه «تسک» است.</small>
             </div>
 
             <div class="mb-4">
@@ -351,7 +343,7 @@
                     <span asp-validation-for="AssignedUserId" class="text-danger small"></span>
                 </div>
 
-                <div id="storyPointsDiv" style="display:none">
+                <div id="storyPointsDiv">
                     <label asp-for="StoryPoints" class="form-label">
                         <i class="bi bi-star"></i>
                         امتیاز کار
@@ -410,47 +402,6 @@
                 calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } },
                 timePicker: { enabled: false }
             });
-
-            const IssueTypeLevels = { Epic: 1, StoryLevel: 2, Subtask: 3 };
-            const projectIssueTypeInput = document.getElementById('projectIssueTypeId');
-            const selectElement = document.getElementById('issueTypeSelect');
-
-            if (selectElement) {
-                selectElement.addEventListener('change', function () {
-                    const selectedOption = this.options[this.selectedIndex];
-                    const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
-                    if (projectIssueTypeId && projectIssueTypeInput) {
-                        projectIssueTypeInput.value = projectIssueTypeId;
-                    } else if (projectIssueTypeInput) {
-                        projectIssueTypeInput.value = '';
-                    }
-                });
-
-                const selectedOption = selectElement.options[selectElement.selectedIndex];
-                if (selectedOption) {
-                    const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
-                    if (projectIssueTypeId && projectIssueTypeInput) {
-                        projectIssueTypeInput.value = projectIssueTypeId;
-                    }
-                }
-            }
-
-            function updateFieldsBasedOnIssueType() {
-                const select = document.getElementById('issueTypeSelect');
-                if (!select) return;
-                const selectedOption = select.options[select.selectedIndex];
-                const level = parseInt(selectedOption.getAttribute('data-level') || '0');
-
-                if (level === IssueTypeLevels.StoryLevel) {
-                    $('#storyPointsDiv').show();
-                } else {
-                    $('#storyPointsDiv').hide();
-                    $('#StoryPoints').val('');
-                }
-            }
-
-            updateFieldsBasedOnIssueType();
-            $('#issueTypeSelect').on('change', updateFieldsBasedOnIssueType);
 
             let isSubmittingForm = false;
             const form = document.querySelector('form');
@@ -526,69 +477,6 @@
             calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' }},
             timePicker: { enabled: false }
         });
-        // 🎯 مدیریت نمایش فیلدها بر اساس IssueType و Level
-        const IssueTypes = {
-            Epic: 1,
-            Story: 2,
-            Task: 3,
-            Subtask: 4,
-            Bug: 5
-        };
-        
-        const IssueTypeLevels = {
-            Epic: 1,
-            StoryLevel: 2,
-            Subtask: 3
-        };
-
-        const projectIssueTypeInput = document.getElementById('projectIssueTypeId');
-        
-        // مدیریت تغییر نوع کار و تنظیم ProjectIssueTypeId
-        const selectElement = document.getElementById('issueTypeSelect');
-        if (selectElement) {
-            selectElement.addEventListener('change', function () {
-                const selectedOption = this.options[this.selectedIndex];
-                const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
-                
-                if (projectIssueTypeId && projectIssueTypeInput) {
-                    projectIssueTypeInput.value = projectIssueTypeId;
-                } else if (projectIssueTypeInput) {
-                    projectIssueTypeInput.value = '';
-                }
-            });
-            
-            // تنظیم مقدار اولیه
-            const selectedOption = selectElement.options[selectElement.selectedIndex];
-            if (selectedOption) {
-                const projectIssueTypeId = selectedOption.getAttribute('data-project-issue-type-id');
-                if (projectIssueTypeId && projectIssueTypeInput) {
-                    projectIssueTypeInput.value = projectIssueTypeId;
-                }
-            }
-        }
-
-        function updateFieldsBasedOnIssueType() {
-            const select = document.getElementById('issueTypeSelect');
-            const selectedOption = select.options[select.selectedIndex];
-            const level = parseInt(selectedOption.getAttribute('data-level') || '0');
-            
-            // Story Points: فقط برای Story-level types (Task و انواع سفارشی)
-            if (level === IssueTypeLevels.StoryLevel) {
-                $('#storyPointsDiv').show();
-            } else {
-                $('#storyPointsDiv').hide();
-                $('#StoryPoints').val(''); // پاک کردن مقدار
-            }
-        }
-
-        // اجرای اولیه
-        updateFieldsBasedOnIssueType();
-
-        // تغییر IssueType
-        $('#issueTypeSelect').on('change', function() {
-            updateFieldsBasedOnIssueType();
-        });
-
         document.addEventListener('DOMContentLoaded', function () {
             const form = document.querySelector('form');
             if (!form) return;

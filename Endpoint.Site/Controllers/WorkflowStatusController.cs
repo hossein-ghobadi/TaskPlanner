@@ -478,73 +478,130 @@ namespace Endpoint.Site.Controllers
             return RedirectToAction(nameof(Index), new { sprintId });
         }
 
-        // ایجاد وضعیت جدید به‌صورت AJAX در صفحه برد
+        // ایجاد وضعیت جدید به‌صورت AJAX در صفحه برد (اسپرینت یا تخته پروژه بدون اسپرینت)
         [HttpPost]
         public async Task<IActionResult> CreateInline([FromBody] InlineStatusCreateDto dto)
         {
-            if (dto == null || dto.SprintId <= 0 || string.IsNullOrWhiteSpace(dto.Name))
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Name))
             {
                 return BadRequest(new { success = false, message = "اطلاعات وضعیت نامعتبر است" });
             }
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var sprint = await _context.Sprints
-                .Include(s => s.Project)
-                .FirstOrDefaultAsync(s => s.Id == dto.SprintId);
-
-            if (sprint == null)
+            if (dto.SprintId > 0)
             {
-                return NotFound(new { success = false, message = "اسپرینت یافت نشد" });
-            }
+                var sprint = await _context.Sprints
+                    .Include(s => s.Project)
+                    .FirstOrDefaultAsync(s => s.Id == dto.SprintId);
 
-            var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == sprint.ProjectId &&
-                               (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
-
-            if (!hasAccess)
-            {
-                return Forbid();
-            }
-
-            if (sprint.Status == SprintStatus.Completed)
-            {
-                return BadRequest(new { success = false, message = "اسپرینت تکمیل‌شده قابل تغییر نیست" });
-            }
-
-            var statuses = await _context.WorkflowStatuses
-                .Where(s => s.SprintId == sprint.Id)
-                .OrderBy(s => s.Order)
-                .ToListAsync();
-
-            var status = new WorkflowStatus
-            {
-                Name = dto.Name.Trim(),
-                Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(),
-                Color = string.IsNullOrWhiteSpace(dto.Color) ? "#0d6efd" : dto.Color.Trim(),
-                Order = statuses.Any() ? statuses.Max(s => s.Order) + 1 : 1,
-                ProjectId = sprint.ProjectId,
-                SprintId = sprint.Id,
-                Type = WorkflowType.InProgress,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _context.WorkflowStatuses.Add(status);
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                success = true,
-                message = "وضعیت جدید با موفقیت ایجاد شد",
-                status = new
+                if (sprint == null)
                 {
-                    status.Id,
-                    status.Name,
-                    status.Color,
-                    status.Order
+                    return NotFound(new { success = false, message = "اسپرینت یافت نشد" });
                 }
-            });
+
+                var hasAccess = await _context.Projects
+                    .AnyAsync(p => p.Id == sprint.ProjectId &&
+                                   (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+                if (!hasAccess)
+                {
+                    return Forbid();
+                }
+
+                if (sprint.Status == SprintStatus.Completed)
+                {
+                    return BadRequest(new { success = false, message = "اسپرینت تکمیل‌شده قابل تغییر نیست" });
+                }
+
+                var sprintStatuses = await _context.WorkflowStatuses
+                    .Where(s => s.SprintId == sprint.Id)
+                    .OrderBy(s => s.Order)
+                    .ToListAsync();
+
+                var sprintStatus = new WorkflowStatus
+                {
+                    Name = dto.Name.Trim(),
+                    Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(),
+                    Color = string.IsNullOrWhiteSpace(dto.Color) ? "#0d6efd" : dto.Color.Trim(),
+                    Order = sprintStatuses.Any() ? sprintStatuses.Max(s => s.Order) + 1 : 1,
+                    ProjectId = sprint.ProjectId,
+                    SprintId = sprint.Id,
+                    Type = WorkflowType.InProgress,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.WorkflowStatuses.Add(sprintStatus);
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "وضعیت جدید با موفقیت ایجاد شد",
+                    status = new
+                    {
+                        sprintStatus.Id,
+                        sprintStatus.Name,
+                        sprintStatus.Color,
+                        sprintStatus.Order
+                    }
+                });
+            }
+
+            if (dto.ProjectId > 0)
+            {
+                var projectExists = await _context.Projects.AnyAsync(p => p.Id == dto.ProjectId);
+                if (!projectExists)
+                {
+                    return NotFound(new { success = false, message = "پروژه یافت نشد" });
+                }
+
+                var hasProjectAccess = await _context.Projects
+                    .AnyAsync(p => p.Id == dto.ProjectId &&
+                                   (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+                if (!hasProjectAccess)
+                {
+                    return Forbid();
+                }
+
+                var projectStatuses = await _context.WorkflowStatuses
+                    .Where(s => s.ProjectId == dto.ProjectId && s.SprintId == null)
+                    .OrderBy(s => s.Order)
+                    .ToListAsync();
+
+                var projectStatus = new WorkflowStatus
+                {
+                    Name = dto.Name.Trim(),
+                    Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(),
+                    Color = string.IsNullOrWhiteSpace(dto.Color) ? "#0d6efd" : dto.Color.Trim(),
+                    Order = projectStatuses.Any() ? projectStatuses.Max(s => s.Order) + 1 : 1,
+                    ProjectId = dto.ProjectId,
+                    SprintId = null,
+                    Type = WorkflowType.InProgress,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.WorkflowStatuses.Add(projectStatus);
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "وضعیت جدید با موفقیت ایجاد شد",
+                    status = new
+                    {
+                        projectStatus.Id,
+                        projectStatus.Name,
+                        projectStatus.Color,
+                        projectStatus.Order
+                    }
+                });
+            }
+
+            return BadRequest(new { success = false, message = "اطلاعات وضعیت نامعتبر است" });
         }
 
         // حذف وضعیت به‌صورت AJAX (به‌جز شروع و پایان)
@@ -562,7 +619,7 @@ namespace Endpoint.Site.Controllers
                 .Include(s => s.Sprint)
                 .FirstOrDefaultAsync(s => s.Id == dto.StatusId);
 
-            if (status == null || !status.SprintId.HasValue)
+            if (status == null)
             {
                 return NotFound(new { success = false, message = "وضعیت یافت نشد" });
             }
@@ -576,17 +633,80 @@ namespace Endpoint.Site.Controllers
                 return Forbid();
             }
 
-            if (status.Sprint.Status == SprintStatus.Completed)
-            {
-                return BadRequest(new { success = false, message = "اسپرینت تکمیل‌شده قابل تغییر نیست" });
-            }
-
             if (status.IsDefault || status.IsFinal || status.Type == WorkflowType.Todo || status.Type == WorkflowType.Done)
             {
                 return BadRequest(new { success = false, message = "وضعیت‌های شروع و پایان قابل حذف نیستند" });
             }
 
-            var sprintId = status.SprintId.Value;
+            // تخته پروژه: وضعیت‌های سطح پروژه (بدون اسپرینت)
+            if (!status.SprintId.HasValue)
+            {
+                var remainingProjectStatuses = await _context.WorkflowStatuses
+                    .Where(s => s.ProjectId == status.ProjectId && s.SprintId == null && s.Id != status.Id)
+                    .OrderBy(s => s.Order)
+                    .ToListAsync();
+
+                if (!remainingProjectStatuses.Any())
+                {
+                    return BadRequest(new { success = false, message = "حداقل باید یک وضعیت در تخته باقی بماند" });
+                }
+
+                var defaultProjectStatus = remainingProjectStatuses.FirstOrDefault(s => s.IsDefault) ?? remainingProjectStatuses.First();
+
+                await using var transactionProject = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var projectTasks = await _context.TaskItems
+                        .Where(t =>
+                            t.ProjectId == status.ProjectId &&
+                            t.SprintId == null &&
+                            (t.WorkflowStatusId == status.Id || t.StatusId == status.Id))
+                        .ToListAsync();
+
+                    foreach (var task in projectTasks)
+                    {
+                        task.WorkflowStatusId = defaultProjectStatus.Id;
+                        task.StatusId = defaultProjectStatus.Id;
+                    }
+
+                    if (projectTasks.Any())
+                    {
+                        _context.TaskItems.UpdateRange(projectTasks);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    var historiesProject = await _context.IssueStatusHistories
+                        .Where(h => h.FromStatusId == status.Id || h.ToStatusId == status.Id)
+                        .ToListAsync();
+
+                    if (historiesProject.Any())
+                    {
+                        _context.IssueStatusHistories.RemoveRange(historiesProject);
+                    }
+
+                    _context.WorkflowStatuses.Remove(status);
+                    await _context.SaveChangesAsync();
+                    await transactionProject.CommitAsync();
+
+                    var msgProject = projectTasks.Any()
+                        ? "وضعیت حذف شد و کارها به وضعیت شروع منتقل شدند."
+                        : "وضعیت با موفقیت حذف شد.";
+
+                    return Ok(new { success = true, message = msgProject });
+                }
+                catch (Exception ex)
+                {
+                    await transactionProject.RollbackAsync();
+                    return StatusCode(500, new { success = false, message = "خطا در حذف وضعیت: " + ex.Message });
+                }
+            }
+
+            if (status.Sprint == null || status.Sprint.Status == SprintStatus.Completed)
+            {
+                return BadRequest(new { success = false, message = "اسپرینت تکمیل‌شده قابل تغییر نیست" });
+            }
+
+            var sprintId = status.SprintId!.Value;
 
             var remainingStatuses = await _context.WorkflowStatuses
                 .Where(s => s.SprintId == sprintId && s.Id != status.Id)
@@ -669,18 +789,66 @@ namespace Endpoint.Site.Controllers
                 return BadRequest(new { success = false, message = "لیست وضعیت‌ها خالی است" });
             }
 
-            if (!dto.SprintId.HasValue)
+            var hasProjectScope = dto.ProjectId.HasValue && dto.ProjectId.Value > 0;
+            var hasSprintScope = dto.SprintId.HasValue && dto.SprintId.Value > 0;
+
+            if (!hasProjectScope && !hasSprintScope)
             {
-                return BadRequest(new { success = false, message = "اسپرینت مشخص نشده است" });
+                return BadRequest(new { success = false, message = "اسپرینت یا پروژه مشخص نشده است" });
+            }
+
+            if (hasProjectScope)
+            {
+                var project = await _context.Projects.FirstOrDefaultAsync(p => p.Id == dto.ProjectId!.Value);
+                if (project == null)
+                {
+                    return NotFound(new { success = false, message = "پروژه یافت نشد" });
+                }
+
+                var hasAccessProject = await _context.Projects
+                    .AnyAsync(p => p.Id == dto.ProjectId!.Value &&
+                                  (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+                if (!hasAccessProject)
+                {
+                    return Forbid();
+                }
+
+                var statusIdsProject = dto.StatusOrders.Select(s => s.StatusId).ToList();
+                var statusesProject = await _context.WorkflowStatuses
+                    .Where(s => s.ProjectId == dto.ProjectId!.Value && s.SprintId == null)
+                    .ToListAsync();
+
+                if (statusesProject.Count != statusIdsProject.Count || dto.StatusOrders.Count != statusesProject.Count)
+                {
+                    return BadRequest(new { success = false, message = "لیست وضعیت‌ها کامل نیست" });
+                }
+
+                var ordersProject = dto.StatusOrders.ToDictionary(s => s.StatusId, s => s.Order);
+
+                foreach (var ws in statusesProject)
+                {
+                    if (!ordersProject.TryGetValue(ws.Id, out var newOrder))
+                    {
+                        return BadRequest(new { success = false, message = "وضعیت نامعتبر در لیست مشاهده شد" });
+                    }
+
+                    ws.Order = newOrder;
+                    ws.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { success = true, message = "ترتیب وضعیت‌ها با موفقیت به‌روزرسانی شد" });
             }
 
             var sprint = await _context.Sprints
                 .Include(s => s.Project)
-                .FirstOrDefaultAsync(s => s.Id == dto.SprintId.Value);
+                .FirstOrDefaultAsync(s => s.Id == dto.SprintId!.Value);
 
             if (sprint == null)
             {
-                return NotFound();
+                return NotFound(new { success = false, message = "اسپرینت یافت نشد" });
             }
 
             // بررسی دسترسی
@@ -702,7 +870,7 @@ namespace Endpoint.Site.Controllers
             // بررسی اینکه همه وضعیت‌ها به همان اسپرینت تعلق دارند
             var statusIds = dto.StatusOrders.Select(s => s.StatusId).ToList();
             var statuses = await _context.WorkflowStatuses
-                .Where(s => s.SprintId == dto.SprintId.Value)
+                .Where(s => s.SprintId == dto.SprintId!.Value)
                 .ToListAsync();
 
             var statusesCount = statuses.Count;
@@ -716,15 +884,15 @@ namespace Endpoint.Site.Controllers
 
             var ordersDictionary = dto.StatusOrders.ToDictionary(s => s.StatusId, s => s.Order);
 
-            foreach (var status in statuses)
+            foreach (var ws in statuses)
             {
-                if (!ordersDictionary.TryGetValue(status.Id, out var newOrder))
+                if (!ordersDictionary.TryGetValue(ws.Id, out var newOrder))
                 {
                     return BadRequest(new { success = false, message = "وضعیت نامعتبر در لیست مشاهده شد" });
                 }
 
-                status.Order = newOrder;
-                status.UpdatedAt = DateTime.UtcNow;
+                ws.Order = newOrder;
+                ws.UpdatedAt = DateTime.UtcNow;
             }
 
             await _context.SaveChangesAsync();
@@ -736,6 +904,8 @@ namespace Endpoint.Site.Controllers
     public class UpdateStatusOrderDto
     {
         public int? SprintId { get; set; }
+        /// <summary>تخته پروژه (وضعیت‌های بدون اسپرینت)</summary>
+        public int? ProjectId { get; set; }
         public List<WorkflowStatusOrderItem> StatusOrders { get; set; } = new();
     }
 
@@ -748,6 +918,8 @@ namespace Endpoint.Site.Controllers
     public class InlineStatusCreateDto
     {
         public int SprintId { get; set; }
+        /// <summary>برای تخته پروژه وقتی SprintId صفر است</summary>
+        public int ProjectId { get; set; }
         public string? Name { get; set; }
         public string? Description { get; set; }
         public string? Color { get; set; }

@@ -206,8 +206,8 @@ namespace Endpoint.Site.Controllers
 
         /// <summary>
         /// 🎯 متد هوشمند برای افزودن Child Issue (Smart based on parent type)
-        /// - اگه Parent = Epic → باید IssueType مشخص بشه (Story/Task/Bug)
-        /// - اگه Parent = Story/Task/Bug → خودکار IssueType = Subtask
+        /// - اگه Parent = Epic → فرزند همیشه Task
+        /// - اگه Parent = Task → فرزند همیشه Subtask
         /// </summary>
         [HttpPost]
         public async Task<IActionResult> AddChildIssue([FromBody] JsonElement data)
@@ -218,13 +218,6 @@ namespace Endpoint.Site.Controllers
             string title = data.GetProperty("title").GetString();
             int parentId = data.GetProperty("parentId").GetInt32();
             int categoryId = data.TryGetProperty("categoryId", out var catProp) ? catProp.GetInt32() : 0;
-
-            // IssueType اختیاری: اگه ارسال نشد → خودکار Subtask
-            IssueType? issueType = null;
-            if (data.TryGetProperty("issueType", out var issueTypeProp))
-            {
-                issueType = (IssueType)issueTypeProp.GetInt32();
-            }
 
             // StoryPoints اختیاری
             int? storyPoints = null;
@@ -268,59 +261,20 @@ namespace Endpoint.Site.Controllers
 
             if (parentLevel == IssueTypeLevel.Epic)
             {
-                // اگه Parent = Epic → باید Story-level type مشخص شده باشد
-                if (!issueType.HasValue)
+                // اگه Parent = Epic → فقط Task
+                finalIssueType = IssueType.Task;
+                var taskType = await _context.ProjectIssueTypes
+                    .FirstOrDefaultAsync(pit => pit.ProjectId == parent.ProjectId &&
+                        pit.BaseType == IssueType.Task &&
+                        pit.Level == IssueTypeLevel.StoryLevel);
+                if (taskType != null)
                 {
-                    return BadRequest("برای افزودن Issue به Epic، باید نوع Issue (Story-level) مشخص شود.");
-                }
-
-                // باید Story-level type باشد (Task یا انواع سفارشی)
-                // پیدا کردن ProjectIssueType مربوطه
-                if (data.TryGetProperty("projectIssueTypeId", out var pitProp) && pitProp.ValueKind == JsonValueKind.Number)
-                {
-                    var pitId = pitProp.GetInt32();
-                    var projectIssueType = await _context.ProjectIssueTypes
-                        .FirstOrDefaultAsync(pit => pit.Id == pitId &&
-                            pit.ProjectId == parent.ProjectId &&
-                            pit.Level == IssueTypeLevel.StoryLevel);
-
-                    if (projectIssueType != null)
-                    {
-                        projectIssueTypeId = projectIssueType.Id;
-                        finalIssueType = projectIssueType.BaseType;
-                    }
-                    else
-                    {
-                        // اگر ProjectIssueType پیدا نشد، از IssueType استفاده کن
-                        finalIssueType = issueType.Value;
-                    }
-                }
-                else
-                {
-                    // اگر ProjectIssueTypeId ارسال نشد، از IssueType استفاده کن
-                    finalIssueType = issueType.Value;
-
-                    // پیدا کردن ProjectIssueType مربوطه بر اساس BaseType
-                    var projectIssueType = await _context.ProjectIssueTypes
-                        .FirstOrDefaultAsync(pit => pit.ProjectId == parent.ProjectId &&
-                            pit.BaseType == finalIssueType &&
-                            pit.Level == IssueTypeLevel.StoryLevel);
-
-                    if (projectIssueType != null)
-                    {
-                        projectIssueTypeId = projectIssueType.Id;
-                    }
-                }
-
-                // بررسی اینکه نوع انتخاب شده Story-level است
-                if (finalIssueType == IssueType.Epic || finalIssueType == IssueType.Subtask)
-                {
-                    return BadRequest("Epic فقط می‌تواند Story-level types (Task یا انواع سفارشی) داشته باشد.");
+                    projectIssueTypeId = taskType.Id;
                 }
             }
-            else if (parentLevel == IssueTypeLevel.StoryLevel)
+            else if (parent.IssueType == IssueType.Task)
             {
-                // اگه Parent = Story-level → خودکار Subtask
+                // اگه Parent = Task → خودکار Subtask
                 finalIssueType = IssueType.Subtask;
 
                 // پیدا کردن ProjectIssueType برای Subtask
@@ -335,7 +289,7 @@ namespace Endpoint.Site.Controllers
             }
             else
             {
-                return BadRequest("نمی‌توان به این نوع Issue، child اضافه کرد.");
+                return BadRequest("فقط برای تسک می‌توان کارک اضافه کرد.");
             }
 
             // 🔒 Validation: بررسی سلسله مراتبی بر اساس Level
@@ -604,66 +558,48 @@ namespace Endpoint.Site.Controllers
         public async Task<IActionResult> ToggleCompleteSubTask(int id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            var task = await _context.TaskItems
-                
-                .FirstOrDefaultAsync(t => t.Id == id);
-            var taskparent= await _context.TaskItems
-                .Include(t => t.ChildIssues)
-
-                .FirstOrDefaultAsync(t => t.Id == task.ParentTaskId);
-            var subtask = taskparent.ChildIssues.FirstOrDefault(t=>t.Id==id);
-            var sprintTask = await _context.SprintTasks
-
-                .FirstOrDefaultAsync(t => t.SprintId== taskparent.SprintId && t.TaskId== task.ParentTaskId);
+            var subtask = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id && t.ParentTaskId != null);
             if (subtask == null)
-                return Json(new { success = false, message = "کار یافت نشد" });
+                return Json(new { success = false, message = "کارک یافت نشد" });
 
-            // بررسی دسترسی
-            if (subtask.Project.CreatorUserId != userId && !subtask.Project.Members.Any(m => m.UserId == userId))
+            var taskparent = await _context.TaskItems
+                .Include(t => t.ChildIssues)
+                .FirstOrDefaultAsync(t => t.Id == subtask.ParentTaskId);
+            if (taskparent == null)
+                return Json(new { success = false, message = "کار والد یافت نشد" });
+
+            // بررسی دسترسی روی پروژه (بدون وابستگی به navigation های لودنشده)
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == subtask.ProjectId &&
+                    (p.CreatorUserId == userId ||
+                     p.Members.Any(m => m.UserId == userId) ||
+                     _context.ProjectInvitations.Any(i => i.ProjectId == subtask.ProjectId &&
+                                                          i.InviteeId == userId &&
+                                                          i.Status == InvitationStatus.Accepted)));
+            if (!hasAccess)
                 return Json(new { success = false, message = "دسترسی ندارید" });
 
-            subtask.IsCompleted = !task.IsCompleted;
+            subtask.IsCompleted = !subtask.IsCompleted;
             subtask.UpdatedAt = DateTime.UtcNow;
 
-            // اگر کار تکمیل شد، همه کارک‌ها رو هم تکمیل کن
-            if (subtask.IsCompleted)
+            // همگام‌سازی وضعیت والد بر اساس تکمیل بودن همه کارک‌ها
+            var allCompleted = taskparent.ChildIssues.All(s => s.Id == subtask.Id ? subtask.IsCompleted : s.IsCompleted);
+            taskparent.IsCompleted = allCompleted;
+            taskparent.UpdatedAt = DateTime.UtcNow;
+
+            var sprintTask = await _context.SprintTasks
+                .FirstOrDefaultAsync(t => t.SprintId == taskparent.SprintId && t.TaskId == taskparent.Id);
+            if (sprintTask != null)
             {
-                bool allCompleted = true;
-
-                foreach (var sub in taskparent.ChildIssues)
-                {
-                    if (!sub.IsCompleted)
-                    {
-                        allCompleted = false;
-                        break;
-                    }
-                }
-
-                if (!allCompleted)
-                {
-                    // عملیات مورد نظر در صورت وجود زیرتکمیل نشده
-                    
-                    taskparent.IsCompleted = true;
-                    taskparent.UpdatedAt = DateTime.UtcNow;
-                    sprintTask.CompletedAt = DateTime.UtcNow;
-                    subtask.UpdatedAt = DateTime.UtcNow;
-                }
+                sprintTask.CompletedAt = allCompleted ? DateTime.UtcNow : null;
             }
-
-            // اگر کار uncomplete شد، همه کارک‌ها رو هم uncomplete کن
-
-            //_context.TaskItems.update(taskparent.);
-            //await _context.TaskItems.update(subtask);
-            //await _context.SprintTasks.update(sprintTask);
 
             await _context.SaveChangesAsync();
 
             return Json(new
             {
                 success = true,
-                isCompleted = task.IsCompleted,
-                
+                isCompleted = subtask.IsCompleted
             });
         }
 
@@ -1006,12 +942,14 @@ namespace Endpoint.Site.Controllers
                 IssueType = IssueType.Task
             };
 
-            var defaultProjectIssueType = projectIssueTypes.FirstOrDefault();
+            var defaultProjectIssueType = projectIssueTypes
+                .FirstOrDefault(pit => pit.BaseType == IssueType.Task && pit.Level == IssueTypeLevel.StoryLevel)
+                ?? projectIssueTypes.FirstOrDefault();
             if (defaultProjectIssueType != null)
             {
                 model.ProjectIssueTypeId = defaultProjectIssueType.Id;
-                model.IssueType = defaultProjectIssueType.BaseType;
             }
+            model.IssueType = IssueType.Task;
 
             return View(model);
         }
@@ -1054,20 +992,32 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
+            vm.IssueType = IssueType.Task;
+
             ProjectIssueType? selectedProjectIssueType = null;
             if (vm.ProjectIssueTypeId.HasValue)
             {
                 selectedProjectIssueType = await _context.ProjectIssueTypes
-                    .FirstOrDefaultAsync(pit => pit.Id == vm.ProjectIssueTypeId.Value && pit.ProjectId == vm.ProjectId);
+                    .FirstOrDefaultAsync(pit =>
+                        pit.Id == vm.ProjectIssueTypeId.Value &&
+                        pit.ProjectId == vm.ProjectId &&
+                        pit.BaseType == IssueType.Task &&
+                        pit.Level == IssueTypeLevel.StoryLevel);
 
                 if (selectedProjectIssueType == null)
                 {
-                    ModelState.AddModelError(nameof(vm.ProjectIssueTypeId), "نوع کار انتخاب‌شده معتبر نیست.");
+                    ModelState.AddModelError(nameof(vm.ProjectIssueTypeId), "نوع کار تسک برای این پروژه معتبر نیست.");
                     await FillListsForCreate(vm.ProjectId);
                     return View(vm);
                 }
-
-                vm.IssueType = selectedProjectIssueType.BaseType;
+            }
+            else
+            {
+                selectedProjectIssueType = await _context.ProjectIssueTypes
+                    .FirstOrDefaultAsync(pit =>
+                        pit.ProjectId == vm.ProjectId &&
+                        pit.BaseType == IssueType.Task &&
+                        pit.Level == IssueTypeLevel.StoryLevel);
             }
 
             // ✅ اگر AssignedUserId ست شده، حتماً عضو پروژه یا سازنده پروژه باشد
@@ -1313,11 +1263,20 @@ namespace Endpoint.Site.Controllers
 
                     if (existingSprintTask == null)
                     {
-                        // دریافت وضعیت پیش‌فرض (Todo) برای اسپرینت
+                        // ستون «باید انجام شود» (نوع Todo)
                         var defaultStatus = await _context.WorkflowStatuses
-                            .Where(ws => ws.SprintId == activeSprint.Id)
-                            .OrderBy(ws => ws.IsDefault ? 0 : ws.Order)
+                            .Where(ws => ws.SprintId == activeSprint.Id && ws.Type == WorkflowType.Todo)
+                            .OrderBy(ws => ws.IsDefault ? 0 : 1)
+                            .ThenBy(ws => ws.Order)
                             .FirstOrDefaultAsync();
+
+                        if (defaultStatus == null)
+                        {
+                            defaultStatus = await _context.WorkflowStatuses
+                                .Where(ws => ws.SprintId == activeSprint.Id)
+                                .OrderBy(ws => ws.IsDefault ? 0 : ws.Order)
+                                .FirstOrDefaultAsync();
+                        }
 
                         // افزودن کار به اسپرینت
                         var sprintTask = new SprintTask
@@ -1331,11 +1290,12 @@ namespace Endpoint.Site.Controllers
                         };
                         _context.SprintTasks.Add(sprintTask);
 
-                        // تنظیم وضعیت کار به Todo (وضعیت پیش‌فرض اسپرینت)
                         if (defaultStatus != null)
                         {
                             newTask.StatusId = defaultStatus.Id;
+                            newTask.WorkflowStatusId = defaultStatus.Id;
                             newTask.SprintId = activeSprint.Id;
+                            newTask.IsCompleted = defaultStatus.IsFinal;
                         }
 
                         await _context.SaveChangesAsync();
@@ -1642,7 +1602,7 @@ namespace Endpoint.Site.Controllers
                 .Include(t => t.Project)
                 .FirstOrDefaultAsync(t => t.Id == parentId);
             if (parent == null) return NotFound("کار والد یافت نشد.");
-            if (!parent.CanHaveChildren) return BadRequest("این کار امکان افزودن کارک ندارد.");
+            if (parent.IssueType != IssueType.Task) return BadRequest("فقط برای تسک می‌توان کارک ثبت کرد.");
 
             var hasAccess = await _context.Projects
                 .AnyAsync(p => p.Id == parent.ProjectId &&
