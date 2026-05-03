@@ -1,0 +1,79 @@
+@model Endpoint.Site.Models.ProjectSidebarVm
+@{
+    string DetailsUrl(int id) => Url.Action("Details", "Projects", new { id })!;
+    var detailsBase = DetailsUrl(Model.ProjectId);
+    string SectionHref(string fragment) =>
+        Model.OnProjectDetailsPage ? fragment : $"{detailsBase}{fragment}";
+}
+
+<div class="project-sidebar-inner">
+    <div class="project-sidebar-title">بخش‌های پروژه</div>
+    <nav class="project-sidebar-nav">
+        <a class="project-nav-link @(Model.ActiveNav == "details" ? "active" : null)" href="@detailsBase">
+            <i class="bi bi-house-door"></i>
+            <span>پیشخوان پروژه</span>
+        </a>
+        <a class="project-nav-link @(Model.ActiveNav == "tasks" ? "active" : null)" asp-controller="Tasks" asp-action="Index" asp-route-projectId="@Model.ProjectId">
+            <i class="bi bi-list-task"></i>
+            <span>لیست کارها</span>
+            @if (Model.TotalTasks.HasValue)
+            {
+                <span class="project-nav-meta">@Model.TotalTasks</span>
+            }
+        </a>
+        <a class="project-nav-link @(Model.ActiveNav == "board" ? "active" : null)" href="/Sprints/ProjectBoard?projectId=@Model.ProjectId">
+            <i class="bi bi-kanban"></i>
+            <span>تخته کانبان</span>
+        </a>
+        <a class="project-nav-link @(Model.ActiveNav == "sprints" ? "active" : null)" href="/Sprints/Index?projectId=@Model.ProjectId">
+            <i class="bi bi-calendar-range"></i>
+            <span>اسپرینت‌ها</span>
+        </a>
+        <a class="project-nav-link @(Model.ActiveNav == "notes" ? "active" : null)" href="/ProjectNotes/Index?projectId=@Model.ProjectId">
+            <i class="bi bi-sticky"></i>
+            <span>یادداشت‌ها</span>
+            @if (Model.NotesCount is int nc && nc > 0)
+            {
+                <span class="project-nav-meta">@nc</span>
+            }
+        </a>
+        <a class="project-nav-link @(Model.ActiveNav == "gallery" ? "active" : null)" href="/ProjectImageGalleries/Index?projectId=@Model.ProjectId">
+            <i class="bi bi-images"></i>
+            <span>گالری عکس</span>
+            @if (Model.ImagesCount is int ic && ic > 0)
+            {
+                <span class="project-nav-meta">@ic</span>
+            }
+        </a>
+        <a class="project-nav-link" href="@SectionHref("#section-project-chat")">
+            <i class="bi bi-chat-dots-fill"></i>
+            <span>چت تیمی</span>
+        </a>
+        @if (Model.IsCreator)
+        {
+            <a class="project-nav-link" href="@SectionHref("#section-project-invites")">
+                <i class="bi bi-envelope-paper"></i>
+                <span>دعوت‌ها</span>
+                @if (Model.PendingInvitesCount is int pi && pi > 0)
+                {
+                    <span class="project-nav-meta">@pi</span>
+                }
+            </a>
+        }
+        <a class="project-nav-link" href="@SectionHref("#section-project-members")">
+            <i class="bi bi-people-fill"></i>
+            <span>اعضا</span>
+            @if (Model.MemberCount.HasValue)
+            {
+                <span class="project-nav-meta">@Model.MemberCount</span>
+            }
+        </a>
+        @if (Model.IsCreator)
+        {
+            <a class="project-nav-link" href="@SectionHref("#section-project-settings")">
+                <i class="bi bi-gear-fill"></i>
+                <span>تنظیمات پروژه</span>
+            </a>
+        }
+    </nav>
+</div>

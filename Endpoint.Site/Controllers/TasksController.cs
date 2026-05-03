@@ -129,6 +129,10 @@ namespace Endpoint.Site.Controllers
             // ارسال اطلاعات پروژه به ویو
             ViewBag.SelectedProjectId = projectId;
             ViewBag.SelectedProjectName = selectedProject?.Name;
+            if (projectId.HasValue)
+            {
+                ViewBag.ProjectId = projectId.Value;
+            }
 
             // پیدا کردن اسپرینت فعال برای پروژه (اگر projectId مشخص باشد)
             if (projectId.HasValue)
@@ -200,6 +204,10 @@ namespace Endpoint.Site.Controllers
                 .ToListAsync();
 
             ViewBag.SelectedProjectId = projectId;
+            if (projectId.HasValue)
+            {
+                ViewBag.ProjectId = projectId.Value;
+            }
 
             return View(tasks);
         }
@@ -834,6 +842,10 @@ namespace Endpoint.Site.Controllers
             ViewBag.Offset = weekOffset;
             ViewBag.UserProjects = userProjects;
             ViewBag.SelectedProjectId = projectId;
+            if (projectId.HasValue)
+            {
+                ViewBag.ProjectId = projectId.Value;
+            }
 
             return View(weeklyTasks);
         }
@@ -865,6 +877,7 @@ namespace Endpoint.Site.Controllers
 
             // نام پروژه برای نمایش
             ViewBag.ProjectName = project.Name;
+            ViewBag.ProjectId = projectId.Value;
 
             // 📂 دسته‌بندی‌ها
             ViewBag.Categories = await _context.TaskCategories
@@ -1801,7 +1814,8 @@ namespace Endpoint.Site.Controllers
                 .ToListAsync();
 
             ViewBag.ParentTaskTitle = await GetParentTaskTitleAsync(task.ParentTaskId);
-            
+            ViewBag.ProjectId = task.ProjectId;
+
             // 🔒 پروژه فقط برای نمایش (غیرفعال خواهد شد) - فقط پروژه فعلی
             ViewBag.Projects = new List<Project> { task.Project };
 
@@ -2400,6 +2414,7 @@ namespace Endpoint.Site.Controllers
             }
 
             ViewBag.CurrentUserId = userId;
+            ViewBag.ProjectId = task.ProjectId;
             return View(task);
         }
 

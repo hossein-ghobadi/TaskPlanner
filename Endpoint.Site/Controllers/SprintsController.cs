@@ -151,6 +151,9 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction("Index", "Projects");
             }
 
+            ViewBag.ProjectSidebarIsCreator = sprint.Project != null &&
+                string.Equals(sprint.Project.CreatorUserId, userId, StringComparison.Ordinal);
+
             var sprintTaskIds = sprint.SprintTasks.Select(st => st.TaskId).ToList();
             var tasksWithoutSprint = await _context.TaskItems
                 .Include(t => t.AssignedUser)
@@ -280,6 +283,8 @@ namespace Endpoint.Site.Controllers
                 TempData["Error"] = "شما به این پروژه دسترسی ندارید.";
                 return RedirectToAction("Index", "Projects");
             }
+
+            ViewBag.ProjectSidebarIsCreator = string.Equals(project.CreatorUserId, userId, StringComparison.Ordinal);
 
             var activeSprint = await _context.Sprints
                 .FirstOrDefaultAsync(s => s.ProjectId == projectId && s.Status == SprintStatus.Active);

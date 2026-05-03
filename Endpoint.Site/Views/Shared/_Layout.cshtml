@@ -1,8 +1,10 @@
 ﻿@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@using Endpoint.Site.Helpers
 @{
     var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
     var useFluidLayout = (ViewData["UseFluidLayout"] as bool?) ?? false;
     ViewBag.AntiforgeryToken = antiforgeryToken;
+    var layoutProjectId = ProjectSidebarResolver.ResolveProjectId(ViewContext);
 }
 
 <!DOCTYPE html>
@@ -29,6 +31,7 @@
     <!-- استایل‌های اصلی پروژه -->
     <link rel="stylesheet" href="~/css/site.css" />
     <link rel="stylesheet" href="~/css/app-shell.css" />
+    <link rel="stylesheet" href="~/css/project-sidebar.css" />
     <link href="~/css/ChatBox.css" rel="stylesheet" />
     <style>
         body {
@@ -312,7 +315,21 @@
             @await Html.PartialAsync("_AppSidebar")
             <div class="app-main">
                 <main class="app-main-body @(useFluidLayout ? "px-1 px-md-2 py-2" : "container mt-3 mt-md-4")">
-                    @RenderBody()
+                    @if (layoutProjectId.HasValue)
+                    {
+                        <div class="row g-4 project-details-shell align-items-start">
+                            <aside class="col-12 col-lg-3 col-xl-2 project-sidebar-col" aria-label="ناوبری پروژه">
+                                @await Component.InvokeAsync("ProjectSidebar", new { projectId = layoutProjectId.Value })
+                            </aside>
+                            <div class="col-12 col-lg-9 col-xl-10 project-details-main">
+                                @RenderBody()
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        @RenderBody()
+                    }
                 </main>
                 
             </div>

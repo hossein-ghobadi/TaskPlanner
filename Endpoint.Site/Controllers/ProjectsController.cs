@@ -458,7 +458,17 @@ namespace Endpoint.Site.Controllers
                     .Where(img => img.ProjectId == id)
                     .CountAsync();
                 ViewBag.ImagesCount = imagesCount;
-                
+
+                ViewBag.ProjectId = id;
+                ViewBag.SidebarTotalTasks = totalTasks;
+                ViewBag.SidebarPendingInvites = vm.Invitations.Count(i => i.Status == InvitationStatus.Pending);
+                var sidebarMemberCount = vm.Members?.Count ?? 0;
+                if (vm.Members == null || !vm.Members.Any(m => m.UserId == dto.CreatorUserId))
+                {
+                    sidebarMemberCount++;
+                }
+                ViewBag.SidebarMemberCount = sidebarMemberCount;
+
                 return View(vm);
             }
             catch (InvalidOperationException)
@@ -563,6 +573,8 @@ namespace Endpoint.Site.Controllers
                 var availableUsers = await _projectQueryService.GetAvailableUsersForEditAsync(currentUser.Id, id);
 
                 ViewBag.Users = availableUsers.Select(u => new { Id = u.Id, DisplayName = u.DisplayName }).ToList();
+
+                ViewBag.ProjectId = id;
 
                 var vm = new ProjectEditVm
                 {
