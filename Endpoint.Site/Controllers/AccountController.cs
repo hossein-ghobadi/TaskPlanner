@@ -154,6 +154,17 @@ namespace Endpoint.Site.Controllers
             return View(model);
         }
 
+        [HttpPost]
+        [Route("/account/logout")]
+        [Route("/logout")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Logout()
+        {
+            await _signInManager.SignOutAsync();
+            _logger.LogInformation("User signed out");
+            return RedirectToAction(nameof(Login), "Account");
+        }
+
         private IActionResult RedirectToLocal(string? returnUrl)
         {
             if (Url.IsLocalUrl(returnUrl))

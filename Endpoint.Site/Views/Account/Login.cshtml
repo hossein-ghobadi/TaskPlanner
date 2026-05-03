@@ -30,7 +30,12 @@
 
                     <div class="mb-3">
                         <label asp-for="Password" class="form-label">رمز عبور</label>
-                        <input asp-for="Password" class="form-control" placeholder="رمز عبور خود را وارد کنید" />
+                        <div class="password-field-wrap">
+                            <input asp-for="Password" id="loginPassword" class="form-control password-field-input" placeholder="رمز عبور خود را وارد کنید" autocomplete="current-password" />
+                            <button type="button" class="password-toggle-btn" id="loginPasswordToggle" aria-label="نمایش رمز عبور" aria-pressed="false" title="نمایش رمز عبور">
+                                <i class="bi bi-eye" aria-hidden="true"></i>
+                            </button>
+                        </div>
                         <span asp-validation-for="Password" class="text-danger"></span>
                     </div>
 
@@ -57,6 +62,24 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var input = document.getElementById('loginPassword');
+            var btn = document.getElementById('loginPasswordToggle');
+            if (!input || !btn) return;
+            var icon = btn.querySelector('i');
+            btn.addEventListener('click', function () {
+                var show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+                btn.setAttribute('aria-label', show ? 'مخفی کردن رمز عبور' : 'نمایش رمز عبور');
+                btn.setAttribute('title', show ? 'مخفی کردن رمز عبور' : 'نمایش رمز عبور');
+                if (icon) {
+                    icon.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+                }
+            });
+        })();
+    </script>
 }
 
 <style>
@@ -120,6 +143,44 @@
     .form-control::placeholder {
         color: #adb5bd;
         font-size: 0.9rem;
+    }
+
+    .password-field-wrap {
+        position: relative;
+    }
+
+    .password-field-wrap .password-field-input {
+        padding-inline-end: 2.75rem;
+    }
+
+    .password-toggle-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        inset-inline-end: 0.35rem;
+        width: 2.25rem;
+        height: 2.25rem;
+        padding: 0;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: #6c757d;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: color 0.2s ease, background 0.2s ease;
+    }
+
+    .password-toggle-btn:hover {
+        color: #495057;
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    .password-toggle-btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+        color: #4f46e5;
     }
     
     .form-check-input {
