@@ -164,7 +164,7 @@ body.mobile-menu-open .app-mobile-backdrop {
 }
 
 .app-sidebar {
-    width: 268px;
+    width: min(292px, 30vw);
     flex-shrink: 0;
     background: #ffffff;
     border-inline-end: 1px solid #dee2e6;

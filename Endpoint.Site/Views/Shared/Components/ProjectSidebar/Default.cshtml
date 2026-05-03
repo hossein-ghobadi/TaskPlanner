@@ -45,6 +45,10 @@
                 <span class="project-nav-meta">@ic</span>
             }
         </a>
+        <a class="project-nav-link @(Model.ActiveNav == "categories" ? "active" : null)" asp-controller="Categories" asp-action="Index" asp-route-projectId="@Model.ProjectId">
+            <i class="bi bi-folder2"></i>
+            <span>دسته‌بندی‌ها</span>
+        </a>
         <a class="project-nav-link" href="@SectionHref("#section-project-chat")">
             <i class="bi bi-chat-dots-fill"></i>
             <span>چت تیمی</span>

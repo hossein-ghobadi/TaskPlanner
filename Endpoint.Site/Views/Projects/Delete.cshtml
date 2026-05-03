@@ -247,8 +247,7 @@
         </div>
 
         <!-- دکمه‌های اقدام -->
-        <form asp-action="DeleteConfirmed" method="post">
-            <input type="hidden" asp-for="Id" />
+        <form asp-action="DeleteConfirmed" asp-route-id="@Model.Id" method="post">
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-4">
                     <div class="d-flex gap-3">

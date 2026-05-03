@@ -5,6 +5,11 @@
     var useFluidLayout = (ViewData["UseFluidLayout"] as bool?) ?? false;
     ViewBag.AntiforgeryToken = antiforgeryToken;
     var layoutProjectId = ProjectSidebarResolver.ResolveProjectId(ViewContext);
+    var appMainBodyClass = useFluidLayout
+        ? "px-1 px-md-2 py-2"
+        : (layoutProjectId.HasValue
+            ? "container-fluid px-3 px-md-4 px-xl-5 mt-3 mt-md-4"
+            : "container mt-3 mt-md-4");
 }
 
 <!DOCTYPE html>
@@ -314,14 +319,14 @@
         <div class="app-shell">
             @await Html.PartialAsync("_AppSidebar")
             <div class="app-main">
-                <main class="app-main-body @(useFluidLayout ? "px-1 px-md-2 py-2" : "container mt-3 mt-md-4")">
+                <main class="app-main-body @appMainBodyClass">
                     @if (layoutProjectId.HasValue)
                     {
-                        <div class="row g-4 project-details-shell align-items-start">
-                            <aside class="col-12 col-lg-3 col-xl-2 project-sidebar-col" aria-label="ناوبری پروژه">
+                        <div class="row g-3 g-lg-4 project-details-shell align-items-start">
+                            <aside class="col-12 col-lg-4 col-xl-3 project-sidebar-col" aria-label="ناوبری پروژه">
                                 @await Component.InvokeAsync("ProjectSidebar", new { projectId = layoutProjectId.Value })
                             </aside>
-                            <div class="col-12 col-lg-9 col-xl-10 project-details-main">
+                            <div class="col-12 col-lg-8 col-xl-9 project-details-main">
                                 @RenderBody()
                             </div>
                         </div>

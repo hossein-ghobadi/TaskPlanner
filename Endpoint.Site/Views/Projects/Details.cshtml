@@ -631,7 +631,7 @@
                
                 <!-- دسته‌بندی‌ها -->
                 <div class="col">
-                    <a href="/Categories/Create?projectId=@Model.Id" class="text-decoration-none">
+                    <a asp-controller="Categories" asp-action="Index" asp-route-projectId="@Model.Id" class="text-decoration-none">
                         <div class="d-flex align-items-center gap-3 p-3 settings-item" style="background: #f9fafb; border-radius: 12px; transition: all 0.2s ease; border: 2px solid transparent;">
                             <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">
                                 <i class="bi bi-folder-fill"></i>

@@ -19,10 +19,45 @@ namespace Endpoint.Site.Controllers
             _context = context;
         }
 
-        // GET: لیست دسته‌بندی‌ها - دیگر استفاده نمی‌شود، فقط redirect به پروژه‌ها
-        public IActionResult Index()
+        public async Task<IActionResult> Index(int? projectId, int? id)
         {
-            return RedirectToAction("Index", "Projects");
+            var pid = projectId ?? id;
+            if (!pid.HasValue)
+                return RedirectToAction("Index", "Projects");
+
+            var projectIdVal = pid.Value;
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var hasAccess = await _context.ProjectMembers
+                .AnyAsync(pm => pm.ProjectId == projectIdVal && pm.UserId == userId) ||
+                await _context.Projects
+                    .AnyAsync(p => p.Id == projectIdVal && p.CreatorUserId == userId);
+
+            if (!hasAccess)
+                return RedirectToAction("Index", "Projects");
+
+            var project = await _context.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectIdVal);
+            if (project == null)
+                return NotFound();
+
+            var categories = await _context.TaskCategories
+                .AsNoTracking()
+                .Where(c => c.ProjectId == projectIdVal)
+                .Include(c => c.Tasks)
+                .AsSplitQuery()
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+
+            ViewBag.ProjectId = projectIdVal;
+            ViewData["Title"] = "دسته‌بندی‌های پروژه";
+
+            var vm = new CategoryIndexVm
+            {
+                ProjectId = projectIdVal,
+                ProjectName = project.Name ?? "پروژه",
+                Categories = categories
+            };
+
+            return View(vm);
         }
 
         // GET: Create
@@ -77,7 +112,7 @@ namespace Endpoint.Site.Controllers
                 
                 _context.Add(category);
                 await _context.SaveChangesAsync();
-                return RedirectToAction("Details", "Projects", new { id = projectId });
+                return RedirectToAction(nameof(Index), new { projectId });
             }
             
             var project = await _context.Projects.FindAsync(projectId);
@@ -145,7 +180,7 @@ namespace Endpoint.Site.Controllers
                 
                 _context.Update(existingCategory);
                 await _context.SaveChangesAsync();
-                return RedirectToAction("Details", "Projects", new { id = existingCategory.ProjectId });
+                return RedirectToAction(nameof(Index), new { projectId = existingCategory.ProjectId });
             }
             
             ViewBag.ProjectId = existingCategory.ProjectId;
@@ -176,8 +211,7 @@ namespace Endpoint.Site.Controllers
             return View(category);
         }
 
-        // POST: Delete
-        [HttpPost, ActionName("Delete")]
+        [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
@@ -201,7 +235,7 @@ namespace Endpoint.Site.Controllers
             _context.TaskCategories.Remove(category);
             await _context.SaveChangesAsync();
             
-            return RedirectToAction("Details", "Projects", new { id = projectId });
+            return RedirectToAction(nameof(Index), new { projectId });
         }
     }
 }

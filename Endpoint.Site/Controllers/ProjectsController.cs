@@ -684,7 +684,7 @@ namespace Endpoint.Site.Controllers
             return View(project);
         }
 
-        [HttpPost, ActionName("Delete")]
+        [HttpPost("{id:int}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {

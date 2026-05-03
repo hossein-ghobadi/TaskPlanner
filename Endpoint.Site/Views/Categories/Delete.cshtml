@@ -22,14 +22,12 @@
                 <h5 class="text-danger">@Model.Name</h5>
             </div>
 
-            <form asp-action="Delete" method="post">
-                @Html.AntiForgeryToken()
-                @Html.HiddenFor(m => m.Id)
+            <form asp-action="DeleteConfirmed" asp-route-id="@Model.Id" method="post">
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-danger">
                         <i class="bi bi-trash"></i> بله، حذف شود
                     </button>
-                    <a asp-controller="Projects" asp-action="Details" asp-route-id="@Model.ProjectId" class="btn btn-secondary">
+                    <a asp-action="Index" asp-route-projectId="@Model.ProjectId" class="btn btn-secondary">
                         <i class="bi bi-x-circle"></i> انصراف
                     </a>
                 </div>

@@ -2,6 +2,10 @@
     align-items: flex-start;
 }
 
+.project-details-main {
+    min-width: 0;
+}
+
 .project-sidebar-col {
     position: relative;
 }
