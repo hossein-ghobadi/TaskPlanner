@@ -100,7 +100,7 @@
     }
     /* تم‌های پس‌زمینه */
     .board-bg-plain {
-    background: #f7f7f9;
+    background: #f4f4f4;
     }
     .board-bg-gradient {
     background: linear-gradient(135deg, #f7f8ff 0%, #eef3ff 50%, #fdf7ff 100%);
@@ -231,9 +231,9 @@
     }
     .kanban-column {
     min-width: 280px;
-    background: #f4f5f7;
-    border-radius: 8px;
-    padding: 0.75rem;
+    background: #e9eaec;
+    border-radius: 10px;
+    padding: 0.65rem 0.6rem;
     display: flex;
     flex-direction: column;
     position: relative;
@@ -262,25 +262,90 @@
     .add-task-btn {
     margin-top: 0.5rem;
     width: 100%;
-    border: none;
-    background: transparent;
-    color: #6c757d;
-    padding: 0.75rem;
-    border-radius: 6px;
+    border: 1px solid #dcdfe5;
+    background: #ffffff;
+    color: #4b5563;
+    padding: 0.65rem 0.75rem;
+    border-radius: 8px;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
     cursor: pointer;
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     }
     .add-task-btn:hover {
-    background: rgba(0, 0, 0, 0.05);
-    color: #007bff;
+    background: #fafafa;
+    color: #2563eb;
+    border-color: #c5cad4;
     }
     .add-task-btn i {
     font-size: 1.1rem;
+    }
+    .board-column-add-wrap {
+    width: 100%;
+    margin-top: 0.25rem;
+    }
+    .board-inline-add {
+    margin-top: 0.35rem;
+    padding: 0.55rem 0.6rem;
+    background: #ffffff;
+    border: 1px solid #e4e6ea;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+    .board-inline-add-input {
+    width: 100%;
+    border: 2px solid #3b82f6 !important;
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.95rem;
+    background: #fff;
+    direction: rtl;
+    }
+    .board-inline-add-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+    border-color: #2563eb !important;
+    }
+    .board-inline-add-actions {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.55rem;
+    }
+    .btn-board-inline-primary {
+    background: #2563eb;
+    border: 1px solid #2563eb;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 0.38rem 0.95rem;
+    font-size: 0.875rem;
+    }
+    .btn-board-inline-primary:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #fff;
+    }
+    .btn-board-inline-secondary {
+    background: #4b5563;
+    border: 1px solid #4b5563;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 0.38rem 0.85rem;
+    font-size: 0.875rem;
+    }
+    .btn-board-inline-secondary:hover {
+    background: #374151;
+    border-color: #374151;
+    color: #fff;
     }
     .column-tasks {
     flex: 1;
@@ -290,15 +355,15 @@
     gap: 0.5rem;
     }
     .task-card {
-    background: white;
-    border-radius: 6px;
+    background: #ffffff;
+    border-radius: 10px;
     padding: 1rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     cursor: grab;
     transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
     user-select: none;
     position: relative;
-    border: 1px solid transparent;
+    border: 1px solid #e4e6ea;
     }
     .task-card:hover {
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
@@ -1712,9 +1777,9 @@
 
 
 
-    /* تم کلاسیک خنثی: پس‌زمینه #f4f7f6، آبی دودی #3f4d67، حاشیه #e2e5e8 — بدون گرادیان سنگین */
+    /* تم کلاسیک: نزدیک به نمونه — فضای کار روشن، ستون خاکستری ملایم، کارت و افزودن کار سفید */
     .board-container.board-theme-classic:not(.board-bg-photo) {
-    background: #f4f7f6 !important;
+    background: #f4f4f4 !important;
     }
     .board-container.board-theme-classic .board-header {
     background: #ffffff;
@@ -1819,31 +1884,31 @@
     padding: 0.35rem 0;
     }
     .board-container.board-theme-classic .kanban-column {
-    background: #ffffff;
-    border: 1px solid #e2e5e8;
-    border-radius: 6px;
-    box-shadow: 0 1px 2px rgba(63, 77, 103, 0.05);
-    padding: 0.65rem 0.7rem;
+    background: #e9eaec;
+    border: 1px solid #dcdfe5;
+    border-radius: 10px;
+    box-shadow: none;
+    padding: 0.5rem 0.55rem;
     }
-    /* ستون خالی: به‌جز دکمه "افزودن کار" بخش سفید نداشته باشد */
+    /* ستون خالی: یکدست با ستون پر؛ فقط دکمه «افزودن کار» سفید می‌ماند */
     .board-container.board-theme-classic .kanban-column.empty-column,
     .board-container.board-theme-classic .kanban-column:has(.column-tasks .empty-message) {
-    background: #ebecee;
-    border-color: #dfe3e8;
+    background: #e9eaec;
+    border-color: #dcdfe5;
     }
     .board-container.board-theme-classic .column-header {
-    margin: -0.65rem -0.7rem 0.75rem;
-    padding: 0.65rem 0.75rem;
-    border-radius: 6px 6px 0 0;
+    margin: 0 0 0.55rem;
+    padding: 0.45rem 0.35rem 0.6rem;
+    border-radius: 0;
     border: none;
-    border-bottom: 1px solid #e2e5e8;
-    background: #f0f2f5;
-    color: #2d3748;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    background: transparent;
+    color: #374151;
     font-weight: 700;
     }
     .board-container.board-theme-classic .column-header .badge.bg-primary {
-    background: #3f4d67 !important;
-    border: 1px solid #344056;
+    background: #525863 !important;
+    border: 1px solid #434956;
     border-radius: 999px;
     font-weight: 700;
     min-width: 1.5rem;
@@ -1851,9 +1916,9 @@
     }
     .board-container.board-theme-classic .task-card {
     background: #ffffff;
-    border: 1px solid #e2e5e8;
-    border-radius: 5px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e4e6ea;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
     .board-container.board-theme-classic .task-card:hover {
     border-color: #cbd2da;
@@ -1867,25 +1932,32 @@
     color: #3f4d67;
     }
     .board-container.board-theme-classic .add-task-btn {
-    border: 1px solid #e2e5e8;
+    border: 1px solid #dcdfe5;
     border-style: solid;
     background: #ffffff;
-    border-radius: 5px;
-    color: #3f4d67;
+    border-radius: 8px;
+    color: #4b5563;
     font-weight: 600;
+    justify-content: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     }
     .board-container.board-theme-classic .add-task-btn:hover {
-    background: #f4f7f6;
-    border-color: #c5cbd6;
-    color: #2d3748;
+    background: #fafafa;
+    border-color: #c5cad4;
+    color: #2563eb;
     }
-    /* ناحیه کارت‌ها: پس‌زمینه خاکستری ملایم (مثل نمونه) — کارت‌ها سفید می‌مانند */
+    .board-container.board-theme-classic .board-inline-add {
+    background: #ffffff;
+    border: 1px solid #dcdfe5;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    /* ناحیه کارت‌ها: هم‌رنگ ستون (بدون کادر تو در تو) */
     .board-container.board-theme-classic .column-tasks {
-    background: #ebecee;
-    border-radius: 5px;
-    padding: 0.5rem 0.55rem;
-    min-height: 120px;
-    border: 1px solid #dfe3e8;
+    background: transparent;
+    border-radius: 0;
+    padding: 0.2rem 0;
+    min-height: 100px;
+    border: none;
     }
     .board-container.board-theme-classic .empty-message {
     flex-direction: column;
@@ -1930,6 +2002,20 @@
     .board-container.board-theme-classic .task-meta,
     .board-container.board-theme-classic .task-footer {
     color: #6b7280;
+    }
+    .board-container.board-theme-classic .task-footer .btn {
+    min-width: 2.45rem;
+    min-height: 2.45rem;
+    border-radius: 8px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    }
+    .board-container.board-theme-classic .stat-compact {
+    background: #ffffff;
+    border: 1px solid #e0e2e6;
+    border-radius: 8px;
     }
     /* حالت «بدون اسپرینت فعال» — ظاهر کلاسیک و خنثی */
     .board-container.board-theme-classic .board-awaiting-wrap {
@@ -2726,13 +2812,22 @@
                                 </div>
                             }
                         </div>
-                        <!-- دکمه افزودن کار -->
+                        <!-- افزودن کار درون‌خطی -->
                         @if (Model.Status == SprintStatus.Active)
                         {
-                            <button type="button" class="add-task-btn quick-add-column-btn" data-status-id="@status.Id" data-status-name="@status.Name">
-                                <i class="bi bi-plus"></i>
-                                <span>افزودن کار</span>
-                            </button>
+                            <div class="board-column-add-wrap">
+                                <button type="button" class="add-task-btn quick-add-column-btn board-inline-add-trigger" data-status-id="@status.Id" data-status-name="@status.Name">
+                                    <i class="bi bi-plus"></i>
+                                    <span>افزودن کار</span>
+                                </button>
+                                <div class="board-inline-add d-none" data-status-id="@status.Id" data-status-name="@status.Name" aria-hidden="true">
+                                    <input type="text" class="form-control board-inline-add-input" maxlength="500" placeholder="عنوان کار را وارد کنید..." autocomplete="off" />
+                                    <div class="board-inline-add-actions">
+                                        <button type="button" class="btn btn-sm btn-board-inline-primary board-inline-add-submit">افزودن</button>
+                                        <button type="button" class="btn btn-sm btn-board-inline-secondary board-inline-add-cancel">انصراف</button>
+                                    </div>
+                                </div>
+                            </div>
                         }
                     </div>
                 }
@@ -2820,56 +2915,10 @@
 
 @if (Model.Status == SprintStatus.Active)
 {
-    <div class="modal fade" id="quickTaskModal" tabindex="-1" aria-labelledby="quickTaskModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content quick-task-card">
-                <div class="modal-header d-flex flex-wrap gap-3">
-                    <div>
-                        <div class="text-uppercase fs-3 opacity-75">افزودن کار</div>
-                    </div>
-                   
-                    <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4">
-                    
-                    <form id="quickTaskForm" class="row g-4 align-items-end">
-                        <div class="col-lg-6">
-                            <label for="quickTaskTitle" class="form-label">عنوان کار <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control form-control-lg" id="quickTaskTitle" required placeholder="مثلاً گزارش خطای صفحه گزارش‌ها">
-                            <div class="helper-text">عنوان واضح بنویسید تا اعضا بدون باز کردن جزئیات متوجه شوند.</div>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">نوع کار</label>
-                            <div id="issueTypeChipsContainer" class="d-flex flex-wrap gap-2">
-                                <div class="text-muted small">در حال بارگذاری...</div>
-                            </div>
-                            <select id="quickTaskType" class="d-none" aria-hidden="true"></select>
-                            <input type="hidden" id="quickTaskProjectIssueTypeId" />
-                        </div>
-                       
-                        <div class="col-lg-6">
-                            <label for="quickTaskCategory" class="form-label">دسته‌بندی</label>
-                            <select class="form-select form-select-lg" id="quickTaskCategory">
-                                <option value="">دسته‌ای انتخاب نشده است</option>
-                                @{
-                                    var categories = ViewBag.Categories as List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory> ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory>();
-                                }
-                                @foreach (var cat in categories)
-                                {
-                                    <option value="@cat.Id">@cat.Name</option>
-                                }
-                            </select>
-                            <div class="helper-text">بر اساس نوع کار، دسته‌بندی مناسب را انتخاب کنید (اختیاری).</div>
-                        </div>
-                        <div class="col-lg-6 text-lg-end">
-                            <button type="submit" class="btn btn-primary btn-lg px-4">
-                                <i class="bi bi-magic me-1"></i> افزودن کار
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+    <div id="boardQuickTaskHiddenDefaults" class="visually-hidden" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap" aria-hidden="true">
+        <div id="issueTypeChipsContainer"></div>
+        <select id="quickTaskType" aria-hidden="true"></select>
+        <input type="hidden" id="quickTaskProjectIssueTypeId" value="" />
     </div>
 }
 
@@ -3294,32 +3343,55 @@
             }
         }
 
+        function closeInlineQuickAdd(wrap) {
+            if (!wrap) return;
+            const trig = wrap.querySelector('.board-inline-add-trigger');
+            const panel = wrap.querySelector('.board-inline-add');
+            const inp = wrap.querySelector('.board-inline-add-input');
+            if (trig) trig.classList.remove('d-none');
+            if (panel) {
+                panel.classList.add('d-none');
+                panel.setAttribute('aria-hidden', 'true');
+            }
+            if (inp) inp.value = '';
+        }
+
         async function openQuickTaskModalForStatus(statusId, statusName) {
             if (!statusId) {
                 showNotification('ستون انتخاب‌شده معتبر نیست', 'error');
                 return;
             }
-            if (typeof window.bootstrap === 'undefined') {
-                showNotification('کتابخانه رابط کاربری (Bootstrap) بارگذاری نشده است. صفحه را تازه‌سازی کنید.', 'error');
-                return;
-            }
             setQuickTaskTarget(statusId, statusName);
-            const modalElement = document.getElementById('quickTaskModal');
-            if (!modalElement) {
-                return;
-            }
-            
-            // بارگذاری issue types به صورت داینامیک
+            document.querySelectorAll('.board-column-add-wrap').forEach(function(wrap) {
+                const btn = wrap.querySelector('.quick-add-column-btn');
+                const panel = wrap.querySelector('.board-inline-add');
+                const inp = wrap.querySelector('.board-inline-add-input');
+                const sid = btn ? parseInt(btn.dataset.statusId, 10) : 0;
+                if (sid === statusId) {
+                    if (btn) btn.classList.add('d-none');
+                    if (panel) {
+                        panel.classList.remove('d-none');
+                        panel.removeAttribute('aria-hidden');
+                    }
+                    if (inp) {
+                        inp.value = '';
+                        setTimeout(function() { inp.focus(); }, 50);
+                    }
+                } else {
+                    closeInlineQuickAdd(wrap);
+                }
+            });
+
             const container = document.getElementById('issueTypeChipsContainer');
             if (container) {
                 container.innerHTML = '<div class="text-muted small">در حال بارگذاری...</div>';
             }
-            
-            const issueTypes = await loadProjectIssueTypes();
-            renderIssueTypeChips(issueTypes);
-            
-            const modalInstance = window.bootstrap.Modal.getOrCreateInstance(modalElement);
-            modalInstance.show();
+            try {
+                const issueTypes = await loadProjectIssueTypes();
+                renderIssueTypeChips(issueTypes);
+            } catch (err) {
+                console.error(err);
+            }
         }
         // onclick در HTML به window نگاه می‌کند؛ تابع داخل بلوک if است و در همه مرورگرها global نیست
         window.openQuickTaskModalForStatus = openQuickTaskModalForStatus;
@@ -3477,6 +3549,80 @@
                     projectIssueTypeIdInput.value = chipButtons[0].dataset.projectIssueTypeId;
                 }
             }
+        }
+
+        function runCreateQuickTask(title, submitBtn, inlineWrap) {
+            const t = (title || '').trim();
+            if (!t) {
+                showNotification('عنوان کار الزامی است', 'error');
+                return;
+            }
+            if (!quickTaskTargetStatusId) {
+                showNotification('ابتدا ستونی را برای افزودن کار انتخاب کنید', 'error');
+                return;
+            }
+            const typeEl = document.getElementById('quickTaskType');
+            const issueType = parseInt(typeEl && typeEl.value ? typeEl.value : '3', 10);
+            const projectIssueTypeIdEl = document.getElementById('quickTaskProjectIssueTypeId');
+            const projectIssueTypeId = projectIssueTypeIdEl && projectIssueTypeIdEl.value ? projectIssueTypeIdEl.value : '';
+
+            const data = {
+                sprintId: sprintId,
+                title: t,
+                issueType: issueType,
+                statusId: quickTaskTargetStatusId
+            };
+            if (projectIssueTypeId) {
+                data.projectIssueTypeId = parseInt(projectIssueTypeId, 10);
+            }
+
+            const $btn = submitBtn ? $(submitBtn) : null;
+            let originalText = '';
+            if ($btn && $btn.length) {
+                originalText = $btn.html();
+                $btn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> در حال ایجاد...');
+            }
+
+            $.ajax({
+                url: '/Sprints/CreateQuickTask',
+                type: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                data: JSON.stringify(data),
+                success: function(response) {
+                    if (response.success) {
+                        showNotification(response.message, 'success');
+                        if (inlineWrap) {
+                            closeInlineQuickAdd(inlineWrap);
+                        }
+                        resetQuickTaskTypeChips();
+                        const targetStatusId = response.statusId || quickTaskTargetStatusId;
+                        sessionStorage.setItem('scrollToStatusAfterReload', String(targetStatusId));
+                        if (response.taskId) {
+                            sessionStorage.setItem('highlightTaskAfterReload', String(response.taskId));
+                        }
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 800);
+                    } else {
+                        showNotification('خطا: ' + response.message, 'error');
+                        if ($btn && $btn.length) {
+                            $btn.prop('disabled', false).html(originalText);
+                        }
+                    }
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON && xhr.responseJSON.message
+                        ? xhr.responseJSON.message
+                        : 'خطا در ارتباط با سرور';
+                    showNotification('خطا: ' + errorMsg, 'error');
+                    if ($btn && $btn.length) {
+                        $btn.prop('disabled', false).html(originalText);
+                    }
+                }
+            });
         }
 
         function appendQuickTaskCard(task) {
@@ -4894,6 +5040,32 @@
         });
 
         document.addEventListener('click', function(e) {
+            const cancelBtn = e.target.closest('.board-inline-add-cancel');
+            if (cancelBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeInlineQuickAdd(cancelBtn.closest('.board-column-add-wrap'));
+                setQuickTaskTarget(defaultStatusId, defaultStatusName);
+                return;
+            }
+            const submitInline = e.target.closest('.board-inline-add-submit');
+            if (submitInline) {
+                e.preventDefault();
+                e.stopPropagation();
+                const wrap = submitInline.closest('.board-column-add-wrap');
+                const panel = wrap && wrap.querySelector('.board-inline-add');
+                const inp = wrap && wrap.querySelector('.board-inline-add-input');
+                const statusId = panel ? parseInt(panel.dataset.statusId, 10) : 0;
+                const title = (inp && inp.value) ? inp.value.trim() : '';
+                if (!title) {
+                    showNotification('عنوان کار الزامی است', 'error');
+                    return;
+                }
+                if (!statusId) return;
+                setQuickTaskTarget(statusId, panel.dataset.statusName || '');
+                runCreateQuickTask(title, submitInline, wrap);
+                return;
+            }
             const quickBtn = e.target.closest('.quick-add-column-btn');
             if (quickBtn) {
                 e.preventDefault();
@@ -4903,32 +5075,33 @@
             }
         });
 
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Enter' && e.key !== 'Escape') return;
+            const el = e.target;
+            if (!el || !el.classList || !el.classList.contains('board-inline-add-input')) return;
+            const wrap = el.closest('.board-column-add-wrap');
+            const panel = wrap && wrap.querySelector('.board-inline-add');
+            if (!wrap || !panel || panel.classList.contains('d-none')) return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeInlineQuickAdd(wrap);
+                setQuickTaskTarget(defaultStatusId, defaultStatusName);
+                return;
+            }
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const statusId = parseInt(panel.dataset.statusId, 10);
+                setQuickTaskTarget(statusId, panel.dataset.statusName || '');
+                const subBtn = wrap.querySelector('.board-inline-add-submit');
+                runCreateQuickTask((el.value || '').trim(), subBtn, wrap);
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', function() {
             registerBoardFilterEvents();
             applyBoardFilters();
             refreshEmptyColumnStyles();
-            const quickTaskModal = document.getElementById('quickTaskModal');
-            if (quickTaskModal) {
-                quickTaskModal.addEventListener('hidden.bs.modal', () => {
-                    setQuickTaskTarget(defaultStatusId, defaultStatusName);
-                    document.getElementById('quickTaskForm')?.reset();
-                    // پاک کردن issue type chips برای بارگذاری مجدد در دفعه بعد
-                    const container = document.getElementById('issueTypeChipsContainer');
-                    if (container) {
-                        container.innerHTML = '<div class="text-muted small">در حال بارگذاری...</div>';
-                    }
-                });
-                
-                // بارگذاری issue types هنگام باز شدن modal (برای اولین بار)
-                quickTaskModal.addEventListener('show.bs.modal', async function() {
-                    const container = document.getElementById('issueTypeChipsContainer');
-                    if (container && container.innerHTML.includes('در حال بارگذاری')) {
-                        const issueTypes = await loadProjectIssueTypes();
-                        renderIssueTypeChips(issueTypes);
-                    }
-                });
-            }
-            
+
             // اسکرول به ستون و highlight کارت جدید بعد از reload
             const scrollToStatusId = sessionStorage.getItem('scrollToStatusAfterReload');
             const highlightTaskId = sessionStorage.getItem('highlightTaskAfterReload');
@@ -5339,88 +5512,6 @@
                     }
                 });
             }
-
-            // فرم ایجاد تسک سریع
-            $('#quickTaskForm').on('submit', function(e) {
-                e.preventDefault();
-                
-                const title = $('#quickTaskTitle').val().trim();
-                if (!title) {
-                    showNotification('عنوان کار الزامی است', 'error');
-                    return;
-                }
-
-                if (!quickTaskTargetStatusId) {
-                    showNotification('ابتدا ستونی را برای افزودن کار انتخاب کنید', 'error');
-                    return;
-                }
-
-                const issueType = parseInt($('#quickTaskType').val());
-                const categoryId = $('#quickTaskCategory').val();
-                const projectIssueTypeId = $('#quickTaskProjectIssueTypeId').val();
-                
-                const data = {
-                    sprintId: sprintId,
-                    title: title,
-                    issueType: issueType,
-                    statusId: quickTaskTargetStatusId
-                };
-                
-                if (projectIssueTypeId) {
-                    data.projectIssueTypeId = parseInt(projectIssueTypeId);
-                }
-                
-                if (categoryId) {
-                    data.categoryId = parseInt(categoryId);
-                }
-
-                // نمایش loading
-                const submitBtn = $(this).find('button[type="submit"]');
-                const originalText = submitBtn.html();
-                submitBtn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> در حال ایجاد...');
-
-                $.ajax({
-                    url: '/Sprints/CreateQuickTask',
-                    type: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
-                    },
-                    data: JSON.stringify(data),
-                    success: function(response) {
-                        if (response.success) {
-                            showNotification(response.message, 'success');
-                            const modalElement = document.getElementById('quickTaskModal');
-                            if (modalElement) {
-                                bootstrap.Modal.getInstance(modalElement)?.hide();
-                            }
-                            $('#quickTaskTitle').val('');
-                            $('#quickTaskCategory').val('');
-                            resetQuickTaskTypeChips();
-                            
-                            // ذخیره اطلاعات برای scroll بعد از reload
-                            const targetStatusId = response.statusId || quickTaskTargetStatusId;
-                            sessionStorage.setItem('scrollToStatusAfterReload', targetStatusId.toString());
-                            sessionStorage.setItem('highlightTaskAfterReload', response.taskId.toString());
-                            
-                            // رفرش بهینه صفحه با تاخیر کوتاه برای نمایش پیام موفقیت
-                            setTimeout(function() {
-                                window.location.reload();
-                            }, 800);
-                        } else {
-                            showNotification('خطا: ' + response.message, 'error');
-                            submitBtn.prop('disabled', false).html(originalText);
-                            return;
-                        }
-                        submitBtn.prop('disabled', false).html(originalText);
-                    },
-                    error: function(xhr) {
-                        const errorMsg = xhr.responseJSON?.message || 'خطا در ارتباط با سرور';
-                        showNotification('خطا: ' + errorMsg, 'error');
-                        submitBtn.prop('disabled', false).html(originalText);
-                    }
-                });
-            });
 
             // خاتمه اسپرینت
             function completeSprint() {
