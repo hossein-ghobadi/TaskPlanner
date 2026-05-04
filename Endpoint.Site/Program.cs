@@ -167,6 +167,31 @@ using (var scope = app.Services.CreateScope())
                 );
             END;";
         await context.Database.ExecuteSqlRawAsync(chatTablesSql);
+
+        var leadsTableSql = @"
+            IF OBJECT_ID(N'[dbo].[Leads]', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[Leads](
+                    [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [Title] NVARCHAR(200) NOT NULL,
+                    [CompanyName] NVARCHAR(200) NULL,
+                    [ContactName] NVARCHAR(200) NULL,
+                    [Phone] NVARCHAR(50) NULL,
+                    [Email] NVARCHAR(256) NULL,
+                    [Notes] NVARCHAR(MAX) NULL,
+                    [Source] NVARCHAR(100) NULL,
+                    [Status] INT NOT NULL CONSTRAINT [DF_Leads_Status] DEFAULT 0,
+                    [OwnerUserId] NVARCHAR(450) NOT NULL,
+                    [CreatedAt] DATETIME2 NOT NULL CONSTRAINT [DF_Leads_CreatedAt] DEFAULT SYSUTCDATETIME(),
+                    [UpdatedAt] DATETIME2 NOT NULL CONSTRAINT [DF_Leads_UpdatedAt] DEFAULT SYSUTCDATETIME(),
+                    [ConvertedProjectId] INT NULL,
+                    [ConvertedAt] DATETIME2 NULL,
+                    CONSTRAINT [FK_Leads_Projects_ConvertedProjectId] FOREIGN KEY ([ConvertedProjectId]) REFERENCES [Projects]([Id]) ON DELETE SET NULL
+                );
+                CREATE INDEX [IX_Leads_OwnerUserId] ON [dbo].[Leads]([OwnerUserId]);
+                CREATE INDEX [IX_Leads_Status] ON [dbo].[Leads]([Status]);
+            END;";
+        await context.Database.ExecuteSqlRawAsync(leadsTableSql);
     }
     catch (Exception ex)
     {

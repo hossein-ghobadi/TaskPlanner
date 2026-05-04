@@ -1,0 +1,66 @@
+@model Endpoint.Site.Models.LeadFormVm
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@{
+    ViewData["Title"] = "لید جدید";
+    ViewData["UseFluidLayout"] = true;
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<div class="boards-page" style="max-width: 720px;">
+    <div class="boards-head">
+        <h1 class="boards-title mb-0">ثبت لید</h1>
+        <a class="btn btn-outline-secondary btn-sm" href="/Leads/Index">بازگشت</a>
+    </div>
+
+    <form asp-action="Create" method="post" class="mt-3 bg-white border rounded p-3 p-md-4">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+        <div class="mb-3">
+            <label asp-for="Title" class="form-label"></label>
+            <input asp-for="Title" class="form-control" />
+            <span asp-validation-for="Title" class="text-danger small"></span>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="CompanyName" class="form-label">نام شرکت</label>
+                <input asp-for="CompanyName" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="ContactName" class="form-label">نام تماس</label>
+                <input asp-for="ContactName" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Phone" class="form-label">تلفن</label>
+                <input asp-for="Phone" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Email" class="form-label">ایمیل</label>
+                <input asp-for="Email" class="form-control" />
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Source" class="form-label">منبع لید</label>
+                <input asp-for="Source" class="form-control" placeholder="مثلاً سایت، نمایشگاه، معرفی" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Status" class="form-label">مرحله فروش</label>
+                <select asp-for="Status" class="form-select">
+                    <option value="0">جدید</option>
+                    <option value="1">در تماس</option>
+                    <option value="2">قطعیت (آماده تبدیل به پروژه)</option>
+                    <option value="4">از دست رفته</option>
+                </select>
+            </div>
+        </div>
+        <div class="mb-3 mt-3">
+            <label asp-for="Notes" class="form-label">یادداشت</label>
+            <textarea asp-for="Notes" class="form-control" rows="4"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">ذخیره</button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

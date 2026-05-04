@@ -1,0 +1,105 @@
+@model TaskPlanner.Application.Services.LeadService.LeadDetailsDto
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@using DNTPersianUtils.Core
+@{
+    ViewData["Title"] = Model.Title;
+    ViewData["UseFluidLayout"] = true;
+    Layout = "/Views/Shared/_Layout.cshtml";
+
+    string StatusLabel(LeadPipelineStatus s) => s switch
+    {
+        LeadPipelineStatus.New => "جدید",
+        LeadPipelineStatus.Contacted => "در تماس",
+        LeadPipelineStatus.Qualified => "قطعیت (آماده تبدیل)",
+        LeadPipelineStatus.Converted => "تبدیل به پروژه",
+        LeadPipelineStatus.Lost => "از دست رفته",
+        _ => s.ToString()
+    };
+}
+
+<div class="boards-page" style="max-width: 800px;">
+    <div class="boards-head">
+        <h1 class="boards-title mb-0">@Model.Title</h1>
+        <div class="d-flex gap-2 flex-wrap">
+            <a class="btn btn-outline-secondary btn-sm" href="/Leads/Index">لیست لیدها</a>
+            @if (Model.Status != LeadPipelineStatus.Converted)
+            {
+                <a class="btn btn-outline-primary btn-sm" href="/Leads/Edit/@Model.Id">ویرایش</a>
+            }
+            @if (Model.ConvertedProjectId is int pid)
+            {
+                <a class="btn btn-primary btn-sm" href="/Projects/Details/@pid">رفتن به پروژه</a>
+            }
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success mt-2">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger mt-2">@TempData["Error"]</div>
+    }
+
+    <div class="card border mt-3">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">وضعیت</dt>
+                <dd class="col-sm-9">@StatusLabel(Model.Status)</dd>
+                <dt class="col-sm-3">شرکت</dt>
+                <dd class="col-sm-9">@(Model.CompanyName ?? "—")</dd>
+                <dt class="col-sm-3">تماس</dt>
+                <dd class="col-sm-9">@(Model.ContactName ?? "—")</dd>
+                <dt class="col-sm-3">تلفن</dt>
+                <dd class="col-sm-9">@(Model.Phone ?? "—")</dd>
+                <dt class="col-sm-3">ایمیل</dt>
+                <dd class="col-sm-9">@(Model.Email ?? "—")</dd>
+                <dt class="col-sm-3">منبع</dt>
+                <dd class="col-sm-9">@(Model.Source ?? "—")</dd>
+                <dt class="col-sm-3">ایجاد</dt>
+                <dd class="col-sm-9 text-muted small">@Model.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()</dd>
+                <dt class="col-sm-3">به‌روزرسانی</dt>
+                <dd class="col-sm-9 text-muted small">@Model.UpdatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()</dd>
+            </dl>
+            @if (!string.IsNullOrWhiteSpace(Model.Notes))
+            {
+                <hr />
+                <h6 class="text-muted">یادداشت</h6>
+                <p class="mb-0" style="white-space: pre-wrap;">@Model.Notes</p>
+            }
+        </div>
+    </div>
+
+    @if (Model.Status == LeadPipelineStatus.Qualified && Model.ConvertedProjectId == null)
+    {
+        <div class="card border-success mt-3">
+            <div class="card-header bg-success text-white">تبدیل به پروژه</div>
+            <div class="card-body">
+                <p class="small text-muted mb-3">با تبدیل، یک پروژه جدید با اطلاعات همین لید ساخته می‌شود و این لید به‌عنوان «تبدیل‌شده» علامت می‌خورد.</p>
+                <form method="post" action="/Leads/Convert">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="LeadId" value="@Model.Id" />
+                    <div class="mb-3">
+                        <label class="form-label">نام پروژه (اختیاری)</label>
+                        <input type="text" name="ProjectName" class="form-control" placeholder="@Model.Title" maxlength="200" />
+                        <div class="form-text">در صورت خالی بودن از عنوان لید استفاده می‌شود.</div>
+                    </div>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-briefcase ms-1"></i>ایجاد پروژه</button>
+                </form>
+            </div>
+        </div>
+    }
+    else if (Model.Status == LeadPipelineStatus.Converted && Model.ConvertedProjectId is int convId)
+    {
+        <div class="alert alert-info mt-3 mb-0">
+            این لید در @(Model.ConvertedAt.HasValue ? Model.ConvertedAt.Value.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers() : "—") به <a href="/Projects/Details/@convId">پروژه شماره @convId.ToString().ToPersianNumbers()</a> تبدیل شده است.
+        </div>
+    }
+    else if (Model.ConvertedProjectId == null)
+    {
+        <div class="alert alert-light border mt-3 mb-0 small">
+            برای فعال شدن دکمه تبدیل، در ویرایش لید وضعیت را به <strong>قطعیت</strong> (Qualified) تغییر دهید.
+        </div>
+    }
+</div>

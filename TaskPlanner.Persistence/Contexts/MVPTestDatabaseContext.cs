@@ -62,6 +62,7 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<ProjectImageGallery> ProjectImageGalleries { get; set; }
         public DbSet<ProjectImageGalleryFolder> ProjectImageGalleryFolders { get; set; }
 
+        public DbSet<Lead> Leads { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -592,6 +593,22 @@ namespace TaskPlanner.Persistence.Contexts
             // Index برای FolderId در ProjectImageGallery
             modelBuilder.Entity<ProjectImageGallery>()
                 .HasIndex(img => img.FolderId);
+
+            modelBuilder.Entity<Lead>()
+                .Property(l => l.OwnerUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<Lead>()
+                .HasOne(l => l.ConvertedProject)
+                .WithMany()
+                .HasForeignKey(l => l.ConvertedProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Lead>()
+                .HasIndex(l => l.OwnerUserId);
+
+            modelBuilder.Entity<Lead>()
+                .HasIndex(l => l.Status);
         }
         public void MarkAsModified<T>(T entity) where T : class
         {

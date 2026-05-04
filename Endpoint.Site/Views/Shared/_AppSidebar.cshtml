@@ -34,6 +34,7 @@
         <a class="@NavClass("Projects", "Index")" href="/Projects/Index"><i class="bi bi-speedometer2"></i><span>داشبورد</span></a>
         <a class="@NavClass("Projects", "Index")" href="/Projects/Index"><i class="bi bi-briefcase"></i><span>پروژه‌ها</span></a>
         <a class="@NavClass("Boards", "Index")" href="/Boards/Index"><i class="bi bi-kanban"></i><span>تخته‌ها</span></a>
+        <a class="@(string.Equals(c, "Leads", StringComparison.OrdinalIgnoreCase) ? "app-sidebar-link active" : "app-sidebar-link")" href="/Leads/Index"><i class="bi bi-person-lines-fill"></i><span>لیدها (CRM)</span></a>
         <a class="@NavClass("Projects", "Statistics")" href="/Projects/Statistics"><i class="bi bi-graph-up"></i><span>گزارش پروژه‌ها</span></a>
         @if (User.IsInRole("ADMIN"))
         {

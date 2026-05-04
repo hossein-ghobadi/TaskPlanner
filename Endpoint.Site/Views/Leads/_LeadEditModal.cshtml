@@ -1,0 +1,54 @@
+@model Endpoint.Site.Models.LeadFormVm
+@using TaskPlanner.Domain.Entities.TaskPlanner
+<form id="leadEditModalForm" asp-controller="Leads" asp-action="Edit" asp-route-id="@Model.Id" method="post" class="lead-edit-modal-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" name="returnTo" value="list" />
+    <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+
+    <div class="mb-3">
+        <label asp-for="Title" class="form-label"></label>
+        <input asp-for="Title" class="form-control form-control-sm" />
+        <span asp-validation-for="Title" class="text-danger small"></span>
+    </div>
+    <div class="row g-2">
+        <div class="col-md-6">
+            <label asp-for="CompanyName" class="form-label small">نام شرکت</label>
+            <input asp-for="CompanyName" class="form-control form-control-sm" />
+        </div>
+        <div class="col-md-6">
+            <label asp-for="ContactName" class="form-label small">نام تماس</label>
+            <input asp-for="ContactName" class="form-control form-control-sm" />
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Phone" class="form-label small">تلفن</label>
+            <input asp-for="Phone" class="form-control form-control-sm" />
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Email" class="form-label small">ایمیل</label>
+            <input asp-for="Email" class="form-control form-control-sm" />
+            <span asp-validation-for="Email" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Source" class="form-label small">منبع لید</label>
+            <input asp-for="Source" class="form-control form-control-sm" />
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Status" class="form-label small">مرحله فروش</label>
+            <select asp-for="Status" class="form-select form-select-sm">
+                <option value="0">جدید</option>
+                <option value="1">در تماس</option>
+                <option value="2">قطعیت (آماده تبدیل به پروژه)</option>
+                <option value="4">از دست رفته</option>
+            </select>
+        </div>
+    </div>
+    <div class="mb-0 mt-2">
+        <label asp-for="Notes" class="form-label small">یادداشت</label>
+        <textarea asp-for="Notes" class="form-control form-control-sm" rows="3"></textarea>
+    </div>
+    <div class="d-flex gap-2 justify-content-end mt-3 pt-2 border-top">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">انصراف</button>
+        <button type="submit" class="btn btn-primary btn-sm">ذخیره</button>
+    </div>
+</form>

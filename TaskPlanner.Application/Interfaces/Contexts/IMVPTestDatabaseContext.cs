@@ -48,6 +48,7 @@ namespace TaskPlanner.Application.Interfaces.Contexts
         DbSet<BoardTaskComment> BoardTaskComments { get; set; }
         DbSet<BoardTaskCommentAttachment> BoardTaskCommentAttachments { get; set; }
 
+        DbSet<Lead> Leads { get; set; }
 
         void MarkAsModified<T>(T entity) where T : class;
         void MarkPropertyAsModified<T, TProperty>(T entity, Expression<Func<T, TProperty>> property) where T : class;
