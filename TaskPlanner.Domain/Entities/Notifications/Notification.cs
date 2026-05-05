@@ -27,7 +27,8 @@ namespace TaskPlanner.Domain.Entities.Notifications
         TaskDueSoon = 2,
         TaskOverdue = 3,
         ProjectInvitation = 4,
-        CommentMention = 5
+        CommentMention = 5,
+        LeadInvitation = 6
     }
 }
 

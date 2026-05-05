@@ -63,6 +63,10 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<ProjectImageGalleryFolder> ProjectImageGalleryFolders { get; set; }
 
         public DbSet<Lead> Leads { get; set; }
+        public DbSet<LeadMember> LeadMembers { get; set; }
+        public DbSet<LeadInvitation> LeadInvitations { get; set; }
+        public DbSet<LeadSession> LeadSessions { get; set; }
+        public DbSet<LeadNote> LeadNotes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -609,6 +613,82 @@ namespace TaskPlanner.Persistence.Contexts
 
             modelBuilder.Entity<Lead>()
                 .HasIndex(l => l.Status);
+
+            modelBuilder.Entity<LeadMember>()
+                .HasOne(m => m.Lead)
+                .WithMany(l => l.LeadMembers)
+                .HasForeignKey(m => m.LeadId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<LeadMember>()
+                .Property(m => m.UserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<LeadMember>()
+                .Property(m => m.AddedByUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<LeadMember>()
+                .HasIndex(m => new { m.LeadId, m.UserId })
+                .IsUnique();
+
+            modelBuilder.Entity<LeadMember>()
+                .HasIndex(m => m.UserId);
+
+            modelBuilder.Entity<LeadInvitation>()
+                .HasOne(i => i.Lead)
+                .WithMany(l => l.LeadInvitations)
+                .HasForeignKey(i => i.LeadId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<LeadInvitation>()
+                .Property(i => i.InviterId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<LeadInvitation>()
+                .Property(i => i.InviteeId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<LeadInvitation>()
+                .Property(i => i.InviteePhone)
+                .HasMaxLength(50);
+
+            modelBuilder.Entity<LeadInvitation>()
+                .HasIndex(i => new { i.LeadId, i.Status });
+
+            modelBuilder.Entity<LeadSession>()
+                .HasOne(s => s.Lead)
+                .WithMany(l => l.Sessions)
+                .HasForeignKey(s => s.LeadId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<LeadSession>()
+                .Property(s => s.CreatedByUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<LeadSession>()
+                .Property(s => s.Notes)
+                .HasMaxLength(500);
+
+            modelBuilder.Entity<LeadSession>()
+                .HasIndex(s => new { s.LeadId, s.ScheduledAt });
+
+            modelBuilder.Entity<LeadNote>()
+                .HasOne(n => n.Lead)
+                .WithMany(l => l.LeadNotes)
+                .HasForeignKey(n => n.LeadId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<LeadNote>()
+                .Property(n => n.Title)
+                .HasMaxLength(200);
+
+            modelBuilder.Entity<LeadNote>()
+                .Property(n => n.CreatedByUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<LeadNote>()
+                .HasIndex(n => new { n.LeadId, n.CreatedAt });
         }
         public void MarkAsModified<T>(T entity) where T : class
         {

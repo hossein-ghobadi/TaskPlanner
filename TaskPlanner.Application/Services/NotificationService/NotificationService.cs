@@ -180,6 +180,7 @@ namespace TaskPlanner.Application.Services.NotificationService
                 NotificationCreateType.TaskOverdue => NotificationType.TaskOverdue,
                 NotificationCreateType.ProjectInvitation => NotificationType.ProjectInvitation,
                 NotificationCreateType.CommentMention => NotificationType.CommentMention,
+                NotificationCreateType.LeadInvitation => NotificationType.LeadInvitation,
                 _ => NotificationType.General
             };
         }

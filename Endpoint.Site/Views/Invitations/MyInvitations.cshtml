@@ -317,6 +317,73 @@
 </div>
 
 <div class="card mb-4 shadow-sm">
+    <div class="card-header bg-light fw-bold">دعوت‌های لید (CRM)</div>
+    <div class="card-body p-0">
+        @if (Model.LeadInvitationsReceived.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered mb-0 align-middle table-mobile-cards">
+                    <thead class="table-light">
+                        <tr>
+                            <th>لید</th>
+                            <th>دعوت‌کننده</th>
+                            <th>شماره شما</th>
+                            <th>تاریخ</th>
+                            <th>وضعیت</th>
+                            <th class="text-center">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inv in Model.LeadInvitationsReceived)
+                        {
+                            <tr>
+                                <td data-label="لید">@(inv.Lead?.Title ?? ("لید #" + inv.LeadId))</td>
+                                <td data-label="دعوت‌کننده">
+                                    @(ViewBag.UserLookup != null && ViewBag.UserLookup.ContainsKey(inv.InviterId)
+                                        ? ViewBag.UserLookup[inv.InviterId]
+                                        : "کاربر ناشناس")
+                                </td>
+                                <td data-label="شماره شما">@inv.InviteePhone</td>
+                                <td data-label="تاریخ">@inv.CreatedAt.ToLocalTime().ToShortPersianDateTimeString()</td>
+                                <td data-label="وضعیت">
+                                    @switch (inv.Status)
+                                    {
+                                        case InvitationStatus.Pending:
+                                            <span class="badge bg-warning text-dark">در انتظار پاسخ</span>
+                                            break;
+                                        case InvitationStatus.Accepted:
+                                            <span class="badge bg-success">پذیرفته‌شده</span>
+                                            break;
+                                        case InvitationStatus.Rejected:
+                                            <span class="badge bg-danger">رد شده</span>
+                                            break;
+                                    }
+                                </td>
+                                <td class="text-center" data-label="عملیات" data-actions>
+                                    @if (inv.Status == InvitationStatus.Pending)
+                                    {
+                                        <form asp-controller="Leads" asp-action="RespondLeadInvite" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@inv.Id" />
+                                            <button name="accept" value="true" type="submit" class="btn btn-success btn-sm">پذیرفتن</button>
+                                            <button name="accept" value="false" type="submit" class="btn btn-danger btn-sm">رد</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="section-empty">دعوت لید CRM دریافت نکرده‌اید.</p>
+        }
+    </div>
+</div>
+
+<div class="card mb-4 shadow-sm">
     <div class="card-header bg-light fw-bold">دعوت‌های همکاری</div>
     <div class="card-body p-0">
         @if (Model.UserInvitations.Any())
@@ -426,7 +493,7 @@
 <div class="card mb-4 shadow-sm">
     <div class="card-header bg-light fw-bold">دعوت‌هایی که ارسال کرده‌اید</div>
     <div class="card-body p-0">
-        @if (Model.SentProjectInvitations.Any() || Model.SentSystemInvitations.Any())
+        @if (Model.SentProjectInvitations.Any() || Model.SentSystemInvitations.Any() || Model.LeadInvitationsSent.Any())
         {
             <div class="table-responsive">
                 <table class="table table-striped table-bordered mb-0 align-middle table-mobile-cards">
@@ -551,6 +618,50 @@
                                             <button type="submit" class="btn btn-outline-danger btn-sm">
                                                 <i class="bi bi-trash"></i> حذف
                                             </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var inv in Model.LeadInvitationsSent)
+                        {
+                            <tr>
+                                <td data-label="نوع دعوت"><span class="badge bg-info text-dark">لید CRM</span></td>
+                                <td data-label="پروژه">@(inv.Lead?.Title ?? ("لید #" + inv.LeadId))</td>
+                                <td data-label="شماره دعوت‌شونده">@inv.InviteePhone</td>
+                                <td data-label="نام دعوت‌شونده">
+                                    @if (!string.IsNullOrEmpty(inv.InviteeId) && ViewBag.UserLookup != null && ViewBag.UserLookup.ContainsKey(inv.InviteeId))
+                                    {
+                                        @ViewBag.UserLookup[inv.InviteeId]
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td data-label="تاریخ ارسال">@inv.CreatedAt.ToLocalTime().ToShortPersianDateTimeString()</td>
+                                <td data-label="وضعیت">
+                                    @switch (inv.Status)
+                                    {
+                                        case InvitationStatus.Pending:
+                                            <span class="badge bg-warning text-dark">در انتظار پاسخ</span>
+                                            break;
+                                        case InvitationStatus.Accepted:
+                                            <span class="badge bg-success">پذیرفته‌شده</span>
+                                            break;
+                                        case InvitationStatus.Rejected:
+                                            <span class="badge bg-danger">رد شده</span>
+                                            break;
+                                    }
+                                </td>
+                                <td class="text-center" data-label="عملیات" data-actions>
+                                    @if (inv.Status == InvitationStatus.Pending)
+                                    {
+                                        <form asp-controller="Leads" asp-action="CancelLeadInvite" method="post" class="d-inline" onsubmit="return confirm('لغو این دعوت لید؟');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="invitationId" value="@inv.Id" />
+                                            <input type="hidden" name="leadId" value="@inv.LeadId" />
+                                            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> لغو</button>
                                         </form>
                                     }
                                 </td>

@@ -6260,6 +6260,28 @@
                  
             });
 
+            // Expose inline drag handlers to global scope.
+            // HTML attributes like ondrop/ondragover resolve functions from window.
+            window.onDropIssue = onDropIssue;
+            window.onDragOverColumn = onDragOverColumn;
+            window.onDragLeave = onDragLeave;
+            window.onDragIssue = onDragIssue;
+            window.onColumnDragStart = onColumnDragStart;
+            window.handleCardClick = handleCardClick;
+            window.submitEditTask = submitEditTask;
+            window.openEditTaskModal = openEditTaskModal;
+            window.completeTask = completeTask;
+            window.deleteTask = deleteTask;
+            window.toggleSubtask = toggleSubtask;
+            window.toggleToolbar = toggleToolbar;
+            window.openAddStatusModal = openAddStatusModal;
+            window.submitStatus = submitStatus;
+            window.submitSubtask = submitSubtask;
+            window.addTaskToSprint = addTaskToSprint;
+            window.completeSprint = completeSprint;
+            window.clearReplyContext = clearReplyContext;
+            window.toggleRecording = toggleRecording;
+
         }
     </script>
 }

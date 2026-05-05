@@ -1,4 +1,4 @@
-﻿using Endpoint.Site.Models;
+using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -168,17 +168,35 @@ namespace Endpoint.Site.Controllers
                 .OrderByDescending(i => i.CreatedAt)
                 .ToListAsync();
 
+            var leadInvitationsReceived = string.IsNullOrEmpty(phone)
+                ? new List<LeadInvitation>()
+                : await _context.LeadInvitations
+                    .Include(i => i.Lead)
+                    .Where(i => i.InviteePhone == phone)
+                    .OrderByDescending(i => i.CreatedAt)
+                    .ToListAsync();
+
+            var leadInvitationsSent = await _context.LeadInvitations
+                .Include(i => i.Lead)
+                .Where(i => i.InviterId == userId)
+                .OrderByDescending(i => i.CreatedAt)
+                .ToListAsync();
+
             // 📍 دیکشنری از نام کاربران (دعوت‌کنندگان و دعوت‌شوندگان)
             var inviterIds = projectInvitations.Select(i => i.InviterId)
                               .Concat(systemInvitations.Select(i => i.InviterId))
                               .Concat(sentProjectInvitations.Select(i => i.InviterId))
                               .Concat(sentSystemInvitations.Select(i => i.InviterId))
+                              .Concat(leadInvitationsReceived.Select(i => i.InviterId))
+                              .Concat(leadInvitationsSent.Select(i => i.InviterId))
                               .Distinct()
                               .ToList();
 
             var inviteeIds = sentProjectInvitations.Where(i => !string.IsNullOrEmpty(i.InviteeId))
                               .Select(i => i.InviteeId)
                               .Concat(sentSystemInvitations.Where(i => !string.IsNullOrEmpty(i.InviteeId))
+                                  .Select(i => i.InviteeId))
+                              .Concat(leadInvitationsSent.Where(i => !string.IsNullOrEmpty(i.InviteeId))
                                   .Select(i => i.InviteeId))
                               .Distinct()
                               .ToList();
@@ -250,7 +268,9 @@ namespace Endpoint.Site.Controllers
                 ProjectInvitations = projectInvitations,
                 UserInvitations = systemInvitations,
                 SentProjectInvitations = sentProjectInvitations,
-                SentSystemInvitations = sentSystemInvitations
+                SentSystemInvitations = sentSystemInvitations,
+                LeadInvitationsReceived = leadInvitationsReceived,
+                LeadInvitationsSent = leadInvitationsSent
             };
 
             return View(model);

@@ -36,8 +36,16 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+        /// <summary>زمان برنامه‌ریزی‌شدهٔ جلسه با لید (UTC).</summary>
+        public DateTime? MeetingAt { get; set; }
+
         public int? ConvertedProjectId { get; set; }
         public Project? ConvertedProject { get; set; }
         public DateTime? ConvertedAt { get; set; }
+
+        public ICollection<LeadMember> LeadMembers { get; set; } = new List<LeadMember>();
+        public ICollection<LeadInvitation> LeadInvitations { get; set; } = new List<LeadInvitation>();
+        public ICollection<LeadSession> Sessions { get; set; } = new List<LeadSession>();
+        public ICollection<LeadNote> LeadNotes { get; set; } = new List<LeadNote>();
     }
 }

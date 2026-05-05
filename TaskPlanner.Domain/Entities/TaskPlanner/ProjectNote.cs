@@ -17,6 +17,10 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public int ProjectId { get; set; }
         public Project Project { get; set; } = null!;
 
+        // در صورتی که این یادداشت از روی لید وارد پروژه شده باشد
+        public int? SourceLeadId { get; set; }
+        public Lead? SourceLead { get; set; }
+
         // کاربر ایجادکننده یادداشت
         public string CreatorUserId { get; set; } = null!;
 

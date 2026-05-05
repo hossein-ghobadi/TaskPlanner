@@ -174,6 +174,7 @@
                             <th>عنوان</th>
                             <th>شرکت</th>
                             <th>وضعیت</th>
+                            <th>جلسه پیش‌رو</th>
                             <th>تاریخ</th>
                             <th></th>
                         </tr>
@@ -185,11 +186,19 @@
                                 <td class="fw-semibold">@l.Title</td>
                                 <td>@(l.CompanyName ?? "—")</td>
                                 <td><span class="badge @StatusBadgeClass(l.Status)">@StatusLabel(l.Status)</span></td>
+                                @{
+                                    var displaySessionAt = l.NextSessionAt ?? l.MeetingAt;
+                                }
+                                <td class="text-muted small">@(displaySessionAt.HasValue ? displaySessionAt.Value.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers() : "—")</td>
                                 <td class="text-muted small">@l.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()</td>
                                 <td class="text-end">
                                     <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
                                         <a class="btn btn-sm btn-outline-primary" href="/Leads/Details/@l.Id">جزئیات</a>
-                                        @if (l.Status != LeadPipelineStatus.Converted)
+                                        @if (!l.IsOwner)
+                                        {
+                                            <span class="badge bg-light text-dark border">همکار</span>
+                                        }
+                                        @if (l.IsOwner && l.Status != LeadPipelineStatus.Converted)
                                         {
                                             <button type="button" class="btn btn-sm btn-outline-warning js-open-lead-edit" data-lead-id="@l.Id" title="ویرایش">ویرایش</button>
                                         }
@@ -197,11 +206,14 @@
                                         {
                                             <a class="btn btn-sm btn-outline-secondary" href="/Projects/Details/@pid">پروژه</a>
                                         }
-                                        <form asp-controller="Leads" asp-action="Delete" asp-route-id="@l.Id" method="post" class="d-inline"
-                                              onsubmit="return confirm('این لید برای همیشه حذف شود؟ پروژهٔ ساخته‌شده (در صورت وجود) حذف نمی‌شود.');">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">حذف</button>
-                                        </form>
+                                        @if (l.IsOwner)
+                                        {
+                                            <form asp-controller="Leads" asp-action="Delete" asp-route-id="@l.Id" method="post" class="d-inline"
+                                                  onsubmit="return confirm('این لید برای همیشه حذف شود؟ پروژهٔ ساخته‌شده (در صورت وجود) حذف نمی‌شود.');">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">حذف</button>
+                                            </form>
+                                        }
                                     </div>
                                 </td>
                             </tr>
@@ -234,10 +246,23 @@
                                 <div class="card leads-kanban-card mb-2">
                                     <div class="card-body">
                                         <div class="leads-kanban-card-title">@l.Title</div>
-                                        <div class="leads-kanban-card-meta mb-2">@(l.CompanyName ?? "—") · @l.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()</div>
+                                        <div class="leads-kanban-card-meta mb-2">
+                                            @(l.CompanyName ?? "—") · @l.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()
+                                            @{
+                                                var cardSessionAt = l.NextSessionAt ?? l.MeetingAt;
+                                            }
+                                            @if (cardSessionAt.HasValue)
+                                            {
+                                                <span class="d-block mt-1 text-primary">جلسه: @cardSessionAt.Value.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()</span>
+                                            }
+                                        </div>
                                         <div class="d-flex flex-wrap gap-1 justify-content-end">
                                             <a class="btn btn-sm btn-outline-primary py-0 px-2" href="/Leads/Details/@l.Id">جزئیات</a>
-                                            @if (l.Status != LeadPipelineStatus.Converted)
+                                            @if (!l.IsOwner)
+                                            {
+                                                <span class="badge bg-light text-dark border py-1">همکار</span>
+                                            }
+                                            @if (l.IsOwner && l.Status != LeadPipelineStatus.Converted)
                                             {
                                                 <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2 js-open-lead-edit" data-lead-id="@l.Id">ویرایش</button>
                                             }
@@ -245,11 +270,14 @@
                                             {
                                                 <a class="btn btn-sm btn-outline-secondary py-0 px-2" href="/Projects/Details/@pid">پروژه</a>
                                             }
-                                            <form asp-controller="Leads" asp-action="Delete" asp-route-id="@l.Id" method="post" class="d-inline"
-                                                  onsubmit="return confirm('این لید برای همیشه حذف شود؟ پروژهٔ ساخته‌شده (در صورت وجود) حذف نمی‌شود.');">
-                                                @Html.AntiForgeryToken()
-                                                <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2">حذف</button>
-                                            </form>
+                                            @if (l.IsOwner)
+                                            {
+                                                <form asp-controller="Leads" asp-action="Delete" asp-route-id="@l.Id" method="post" class="d-inline"
+                                                      onsubmit="return confirm('این لید برای همیشه حذف شود؟ پروژهٔ ساخته‌شده (در صورت وجود) حذف نمی‌شود.');">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2">حذف</button>
+                                                </form>
+                                            }
                                         </div>
                                     </div>
                                 </div>

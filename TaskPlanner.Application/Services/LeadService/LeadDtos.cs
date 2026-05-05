@@ -9,7 +9,39 @@ namespace TaskPlanner.Application.Services.LeadService
         public string? CompanyName { get; set; }
         public LeadPipelineStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime? MeetingAt { get; set; }
+        public DateTime? NextSessionAt { get; set; }
         public int? ConvertedProjectId { get; set; }
+        /// <summary>اگر false باشد، کاربر فقط به‌عنوان همکار به لید دسترسی دارد.</summary>
+        public bool IsOwner { get; set; }
+    }
+
+    public class LeadMemberSummaryDto
+    {
+        public string UserId { get; set; } = null!;
+        public string DisplayName { get; set; } = null!;
+    }
+
+    public class LeadPendingInviteDto
+    {
+        public int Id { get; set; }
+        public string InviteePhone { get; set; } = null!;
+        public string? InviteeDisplayName { get; set; }
+    }
+
+    public class LeadSessionDto
+    {
+        public int Id { get; set; }
+        public DateTime ScheduledAt { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    public class LeadNoteDto
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = null!;
+        public string? Content { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 
     public class LeadDetailsDto
@@ -25,8 +57,15 @@ namespace TaskPlanner.Application.Services.LeadService
         public LeadPipelineStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public DateTime? MeetingAt { get; set; }
         public int? ConvertedProjectId { get; set; }
         public DateTime? ConvertedAt { get; set; }
+        public string OwnerUserId { get; set; } = null!;
+        public bool IsOwner { get; set; }
+        public List<LeadMemberSummaryDto> Members { get; set; } = new();
+        public List<LeadPendingInviteDto> PendingInvitations { get; set; } = new();
+        public List<LeadSessionDto> Sessions { get; set; } = new();
+        public List<LeadNoteDto> NotesList { get; set; } = new();
     }
 
     public class CreateLeadDto
@@ -39,6 +78,7 @@ namespace TaskPlanner.Application.Services.LeadService
         public string? Notes { get; set; }
         public string? Source { get; set; }
         public LeadPipelineStatus Status { get; set; } = LeadPipelineStatus.New;
+        public DateTime? MeetingAt { get; set; }
     }
 
     public class UpdateLeadDto
@@ -52,5 +92,20 @@ namespace TaskPlanner.Application.Services.LeadService
         public string? Notes { get; set; }
         public string? Source { get; set; }
         public LeadPipelineStatus Status { get; set; }
+        public DateTime? MeetingAt { get; set; }
+    }
+
+    public class CreateLeadSessionDto
+    {
+        public int LeadId { get; set; }
+        public DateTime ScheduledAt { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    public class CreateLeadNoteDto
+    {
+        public int LeadId { get; set; }
+        public string Title { get; set; } = null!;
+        public string? Content { get; set; }
     }
 }
