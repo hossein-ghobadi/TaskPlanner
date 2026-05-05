@@ -42,6 +42,11 @@ namespace TaskPlanner.Application.Services.ProjectService
         /// دریافت لیست کاربران قابل انتخاب برای ویرایش پروژه
         /// </summary>
         Task<List<UserSelectDto>> GetAvailableUsersForEditAsync(string inviterId, int projectId);
+
+        /// <summary>
+        /// دریافت داده‌های داشبورد پروژه‌ها برای صفحه Index
+        /// </summary>
+        Task<ProjectDashboardDto> GetProjectsDashboardAsync(string userId);
     }
 
     /// <summary>

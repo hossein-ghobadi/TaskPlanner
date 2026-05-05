@@ -1,11 +1,10 @@
-@model IEnumerable<Project>
-@using TaskPlanner.Domain.Entities.TaskPlanner
+@model IEnumerable<Endpoint.Site.Models.ProjectCardVm>
 @using System.Collections.Generic
 
 @{
     var currentUserId = ViewData["CurrentUserId"] as string;
     var sprintLookup = ViewData["SprintLookup"] as Dictionary<int, int> ?? new Dictionary<int, int>();
-    var projects = Model?.ToList() ?? new List<Project>();
+    var projects = Model?.ToList() ?? new List<Endpoint.Site.Models.ProjectCardVm>();
 }
 
 <div class="projects-section" id="projectsSection">

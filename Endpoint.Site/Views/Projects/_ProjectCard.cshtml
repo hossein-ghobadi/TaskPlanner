@@ -1,5 +1,4 @@
-@model Project
-@using TaskPlanner.Domain.Entities.TaskPlanner
+@model Endpoint.Site.Models.ProjectCardVm
 @using System.Collections.Generic
 
 @{
@@ -14,10 +13,7 @@
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <h5 class="card-title fw-bold mb-0">@Model.Name</h5>
                     <span class="badge bg-primary">
-                        @{
-                            var filteredTaskCount = Model.Tasks?.Count(t => t.CanAddToSprint) ?? 0;
-                        }
-                        @filteredTaskCount کار
+                        @Model.TaskCount کار
                     </span>
                 </div>
                 <p class="card-text text-muted description-text">&nbsp;</p>

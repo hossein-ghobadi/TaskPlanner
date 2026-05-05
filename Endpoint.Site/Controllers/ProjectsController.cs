@@ -77,191 +77,24 @@ namespace Endpoint.Site.Controllers
         public async Task<IActionResult> Index()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var projects = await _projectQueryService.GetUserProjectsAsync(userId);
-
-            // Active sprint lookup for quick access in cards
-            var projectIds = projects.Select(p => p.Id).ToList();
-            var activeSprints = await _context.Sprints
-                .Where(s => projectIds.Contains(s.ProjectId) && s.Status == SprintStatus.Active)
-                .Select(s => new { s.ProjectId, s.Id })
-                .ToListAsync();
-
-            ViewBag.ActiveSprintByProject = activeSprints
-                .GroupBy(x => x.ProjectId)
-                .ToDictionary(g => g.Key, g => g.First().Id);
-
-            // دریافت دعوت‌های در انتظار برای سایدبار
-            var user = await _userManager.FindByIdAsync(userId);
-            var phone = user?.Phone;
-            
-            // دعوت‌های پروژه در انتظار
-            var pendingProjectInvitations = await _context.ProjectInvitations
-                .Include(i => i.Project)
-                .Where(i => i.InviteePhone == phone && i.ProjectId != null && i.Status == InvitationStatus.Pending)
-                .OrderByDescending(i => i.CreatedAt)
-                .Take(5)
-                .ToListAsync();
-
-            // دعوت‌های سیستم در انتظار
-            var pendingSystemInvitations = await _context.ProjectInvitations
-                .Where(i => i.InviteePhone == phone && i.ProjectId == null && i.Status == InvitationStatus.Pending)
-                .OrderByDescending(i => i.CreatedAt)
-                .Take(5)
-                .ToListAsync();
-
-            // دریافت نام دعوت‌کنندگان
-            var inviterIds = pendingProjectInvitations.Select(i => i.InviterId)
-                .Concat(pendingSystemInvitations.Select(i => i.InviterId))
-                .Distinct()
-                .ToList();
-
-            var inviterLookup = await _userManager.Users
-                .Where(u => inviterIds.Contains(u.Id))
-                .ToDictionaryAsync(u => u.Id, u => 
-                    !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : (u.UserName ?? "کاربر ناشناس"));
-
-            ViewBag.PendingProjectInvitations = pendingProjectInvitations;
-            ViewBag.PendingSystemInvitations = pendingSystemInvitations;
-            ViewBag.InviterLookup = inviterLookup;
-
-            // دریافت لیست همکاران (شامل همکاران دعوت سیستم و همکاران دعوت پروژه)
-            
-            // 1. همکاران دعوت سیستم (ProjectId == null)
-            // کسانی که من دعوتشان دادم و قبول کردند
-            var systemInvitationsISent = await _context.ProjectInvitations
-                .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
-                    i.InviterId == userId && !string.IsNullOrEmpty(i.InviteeId))
-                .Select(i => i.InviteeId)
-                .Distinct()
-                .ToListAsync();
-
-            // کسانی که من دعوتشان را قبول کردم
-            var systemInvitationsIAccepted = await _context.ProjectInvitations
-                .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
-                    i.InviteePhone == phone && !string.IsNullOrEmpty(i.InviteeId))
-                .Select(i => i.InviterId)
-                .Distinct()
-                .ToListAsync();
-
-            // همچنین کسانی که من دعوتشان دادم و با شماره تلفن قبول کردند (اگر InviteeId خالی باشد)
-            var systemInvitationsByPhone = await _context.ProjectInvitations
-                .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
-                    i.InviterId == userId && string.IsNullOrEmpty(i.InviteeId) && !string.IsNullOrEmpty(i.InviteePhone))
-                .ToListAsync();
-
-            // پیدا کردن کاربران با شماره تلفن (دعوت سیستم)
-            var systemPhoneNumbers = systemInvitationsByPhone.Select(i => i.InviteePhone).Distinct().ToList();
-            var systemUsersByPhone = await _userManager.Users
-                .Where(u => systemPhoneNumbers.Contains(u.Phone))
-                .Select(u => u.Id)
-                .ToListAsync();
-
-            // 2. همکاران دعوت پروژه (ProjectId != null)
-            // کسانی که من دعوتشان دادم به پروژه و قبول کردند
-            var projectInvitationsISent = await _context.ProjectInvitations
-                .Where(i => i.ProjectId != null && i.Status == InvitationStatus.Accepted && 
-                    i.InviterId == userId && !string.IsNullOrEmpty(i.InviteeId))
-                .Select(i => i.InviteeId)
-                .Distinct()
-                .ToListAsync();
-
-            // کسانی که من دعوتشان را در پروژه قبول کردم
-            var projectInvitationsIAccepted = await _context.ProjectInvitations
-                .Where(i => i.ProjectId != null && i.Status == InvitationStatus.Accepted && 
-                    i.InviteePhone == phone && !string.IsNullOrEmpty(i.InviteeId))
-                .Select(i => i.InviterId)
-                .Distinct()
-                .ToListAsync();
-
-            // همچنین کسانی که من دعوتشان دادم به پروژه و با شماره تلفن قبول کردند
-            var projectInvitationsByPhone = await _context.ProjectInvitations
-                .Where(i => i.ProjectId != null && i.Status == InvitationStatus.Accepted && 
-                    i.InviterId == userId && string.IsNullOrEmpty(i.InviteeId) && !string.IsNullOrEmpty(i.InviteePhone))
-                .ToListAsync();
-
-            // پیدا کردن کاربران با شماره تلفن (دعوت پروژه)
-            var projectPhoneNumbers = projectInvitationsByPhone.Select(i => i.InviteePhone).Distinct().ToList();
-            var projectUsersByPhone = await _userManager.Users
-                .Where(u => projectPhoneNumbers.Contains(u.Phone))
-                .Select(u => u.Id)
-                .ToListAsync();
-
-            // 3. اعضای پروژه‌ها (کسانی که عضو پروژه‌های من هستند یا من عضو پروژه‌های آنها هستم)
-            // پروژه‌هایی که من سازنده آنها هستم
-            var myProjects = await _context.Projects
-                .Where(p => p.CreatorUserId == userId)
-                .Select(p => p.Id)
-                .ToListAsync();
-
-            // اعضای پروژه‌های من
-            var membersOfMyProjects = await _context.ProjectMembers
-                .Where(pm => myProjects.Contains(pm.ProjectId.Value) && pm.UserId != userId)
-                .Select(pm => pm.UserId)
-                .Distinct()
-                .ToListAsync();
-
-            // پروژه‌هایی که من عضو آنها هستم
-            var projectsIMemberOf = await _context.ProjectMembers
-                .Where(pm => pm.UserId == userId)
-                .Select(pm => pm.ProjectId.Value)
-                .ToListAsync();
-
-            // سازندگان و اعضای پروژه‌هایی که من عضو آنها هستم
-            var creatorsOfMyProjects = await _context.Projects
-                .Where(p => projectsIMemberOf.Contains(p.Id) && p.CreatorUserId != userId)
-                .Select(p => p.CreatorUserId)
-                .Distinct()
-                .ToListAsync();
-
-            var otherMembersOfMyProjects = await _context.ProjectMembers
-                .Where(pm => projectsIMemberOf.Contains(pm.ProjectId.Value) && pm.UserId != userId)
-                .Select(pm => pm.UserId)
-                .Distinct()
-                .ToListAsync();
-
-            // ترکیب همه ID های همکاران
-            var collaboratorIds = systemInvitationsISent
-                .Concat(systemInvitationsIAccepted)
-                .Concat(systemUsersByPhone)
-                .Concat(projectInvitationsISent)
-                .Concat(projectInvitationsIAccepted)
-                .Concat(projectUsersByPhone)
-                .Concat(membersOfMyProjects)
-                .Concat(creatorsOfMyProjects)
-                .Concat(otherMembersOfMyProjects)
-                .Distinct()
-                .Where(id => id != userId && !string.IsNullOrEmpty(id))
-                .ToList();
-
-            // دریافت اطلاعات همکاران
-            var collaborators = await _userManager.Users
-                .Where(u => collaboratorIds.Contains(u.Id))
-                .Select(u => new Dictionary<string, object>
-                {
-                    { "Id", u.Id },
-                    { "DisplayName", !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : (u.UserName ?? "کاربر ناشناس") },
-                    { "Phone", u.Phone ?? "" },
-                    { "Email", u.Email ?? "" }
-                })
-                .ToListAsync();
-
-            ViewBag.Collaborators = collaborators;
-
-            // دریافت یادداشت‌های شخصی اخیر
-            var recentNotes = await _context.PersonalNotes
-                .Where(n => n.UserId == userId)
-                .OrderByDescending(n => n.IsPinned)
-                .ThenByDescending(n => n.CreatedAt)
-                .Take(5)
-                .ToListAsync();
-            recentNotes.ForEach(n =>
+            var dashboard = await _projectQueryService.GetProjectsDashboardAsync(userId);
+            var vm = new ProjectsIndexVm
             {
-                if (n.Content?.Length > 100)
-                    n.Content = n.Content.Substring(0, 100);
-            });
-            ViewBag.RecentNotes = recentNotes;
+                CurrentUserId = userId,
+                Projects = dashboard.Projects.Select(p => new ProjectCardVm
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    CreatorUserId = p.CreatorUserId,
+                    TaskCount = p.TaskCount
+                }).ToList(),
+                ActiveSprintByProject = dashboard.ActiveSprintByProject,
+                PendingInviteCount = dashboard.PendingProjectInvitations.Count + dashboard.PendingSystemInvitations.Count,
+                CollaboratorCount = dashboard.Collaborators.Count,
+                RecentNoteCount = dashboard.RecentNotes.Count
+            };
 
-            return View(projects);
+            return View(vm);
         }
         [HttpGet("{id}")]
         public async Task<IActionResult> Details(int id)
@@ -313,126 +146,7 @@ namespace Endpoint.Site.Controllers
                 // دریافت لیست همکاران برای دعوت به پروژه (شامل همکاران دعوت سیستم و همکاران دعوت پروژه)
                 var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 var currentUser = await _userManager.FindByIdAsync(currentUserId);
-                var phone = currentUser?.Phone;
-                
-                // 1. همکاران دعوت سیستم (ProjectId == null)
-                // کسانی که من دعوتشان دادم و قبول کردند
-                var systemInvitationsISent = await _context.ProjectInvitations
-                    .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
-                        i.InviterId == currentUserId && !string.IsNullOrEmpty(i.InviteeId))
-                    .Select(i => i.InviteeId)
-                    .Distinct()
-                    .ToListAsync();
-
-                // کسانی که من دعوتشان را قبول کردم
-                var systemInvitationsIAccepted = await _context.ProjectInvitations
-                    .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
-                        i.InviteePhone == phone && !string.IsNullOrEmpty(i.InviteeId))
-                    .Select(i => i.InviterId)
-                    .Distinct()
-                    .ToListAsync();
-
-                // همچنین کسانی که من دعوتشان دادم و با شماره تلفن قبول کردند (اگر InviteeId خالی باشد)
-                var systemInvitationsByPhone = await _context.ProjectInvitations
-                    .Where(i => i.ProjectId == null && i.Status == InvitationStatus.Accepted && 
-                        i.InviterId == currentUserId && string.IsNullOrEmpty(i.InviteeId) && !string.IsNullOrEmpty(i.InviteePhone))
-                    .ToListAsync();
-
-                // پیدا کردن کاربران با شماره تلفن (دعوت سیستم)
-                var systemPhoneNumbers = systemInvitationsByPhone.Select(i => i.InviteePhone).Distinct().ToList();
-                var systemUsersByPhone = await _userManager.Users
-                    .Where(u => systemPhoneNumbers.Contains(u.Phone))
-                    .Select(u => u.Id)
-                    .ToListAsync();
-
-                // 2. همکاران دعوت پروژه (ProjectId != null)
-                // کسانی که من دعوتشان دادم به پروژه و قبول کردند
-                var projectInvitationsISent = await _context.ProjectInvitations
-                    .Where(i => i.ProjectId != null && i.Status == InvitationStatus.Accepted && 
-                        i.InviterId == currentUserId && !string.IsNullOrEmpty(i.InviteeId))
-                    .Select(i => i.InviteeId)
-                    .Distinct()
-                    .ToListAsync();
-
-                // کسانی که من دعوتشان را در پروژه قبول کردم
-                var projectInvitationsIAccepted = await _context.ProjectInvitations
-                    .Where(i => i.ProjectId != null && i.Status == InvitationStatus.Accepted && 
-                        i.InviteePhone == phone && !string.IsNullOrEmpty(i.InviteeId))
-                    .Select(i => i.InviterId)
-                    .Distinct()
-                    .ToListAsync();
-
-                // همچنین کسانی که من دعوتشان دادم به پروژه و با شماره تلفن قبول کردند
-                var projectInvitationsByPhone = await _context.ProjectInvitations
-                    .Where(i => i.ProjectId != null && i.Status == InvitationStatus.Accepted && 
-                        i.InviterId == currentUserId && string.IsNullOrEmpty(i.InviteeId) && !string.IsNullOrEmpty(i.InviteePhone))
-                    .ToListAsync();
-
-                // پیدا کردن کاربران با شماره تلفن (دعوت پروژه)
-                var projectPhoneNumbers = projectInvitationsByPhone.Select(i => i.InviteePhone).Distinct().ToList();
-                var projectUsersByPhone = await _userManager.Users
-                    .Where(u => projectPhoneNumbers.Contains(u.Phone))
-                    .Select(u => u.Id)
-                    .ToListAsync();
-
-                // 3. اعضای پروژه‌ها (کسانی که عضو پروژه‌های من هستند یا من عضو پروژه‌های آنها هستم)
-                // پروژه‌هایی که من سازنده آنها هستم
-                var myProjects = await _context.Projects
-                    .Where(p => p.CreatorUserId == currentUserId)
-                    .Select(p => p.Id)
-                    .ToListAsync();
-
-                // اعضای پروژه‌های من
-                var membersOfMyProjects = await _context.ProjectMembers
-                    .Where(pm => myProjects.Contains(pm.ProjectId.Value) && pm.UserId != currentUserId)
-                    .Select(pm => pm.UserId)
-                    .Distinct()
-                    .ToListAsync();
-
-                // پروژه‌هایی که من عضو آنها هستم
-                var projectsIMemberOf = await _context.ProjectMembers
-                    .Where(pm => pm.UserId == currentUserId)
-                    .Select(pm => pm.ProjectId.Value)
-                    .ToListAsync();
-
-                // سازندگان و اعضای پروژه‌هایی که من عضو آنها هستم
-                var creatorsOfMyProjects = await _context.Projects
-                    .Where(p => projectsIMemberOf.Contains(p.Id) && p.CreatorUserId != currentUserId)
-                    .Select(p => p.CreatorUserId)
-                    .Distinct()
-                    .ToListAsync();
-
-                var otherMembersOfMyProjects = await _context.ProjectMembers
-                    .Where(pm => projectsIMemberOf.Contains(pm.ProjectId.Value) && pm.UserId != currentUserId)
-                    .Select(pm => pm.UserId)
-                    .Distinct()
-                    .ToListAsync();
-
-                // ترکیب همه ID های همکاران
-                var collaboratorIds = systemInvitationsISent
-                    .Concat(systemInvitationsIAccepted)
-                    .Concat(systemUsersByPhone)
-                    .Concat(projectInvitationsISent)
-                    .Concat(projectInvitationsIAccepted)
-                    .Concat(projectUsersByPhone)
-                    .Concat(membersOfMyProjects)
-                    .Concat(creatorsOfMyProjects)
-                    .Concat(otherMembersOfMyProjects)
-                    .Distinct()
-                    .Where(id => id != currentUserId && !string.IsNullOrEmpty(id))
-                    .ToList();
-
-                // دریافت اطلاعات همکاران
-                var collaborators = await _userManager.Users
-                    .Where(u => collaboratorIds.Contains(u.Id))
-                    .Select(u => new Dictionary<string, object>
-                    {
-                        { "Id", u.Id },
-                        { "DisplayName", !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : (u.UserName ?? "کاربر ناشناس") },
-                        { "Phone", u.Phone ?? "" },
-                        { "Email", u.Email ?? "" }
-                    })
-                    .ToListAsync();
+                var collaborators = await GetCollaboratorsAsync(currentUserId, currentUser?.Phone);
 
                 // فیلتر کردن همکارانی که قبلاً عضو پروژه هستند یا دعوت در انتظار دارند
                 var existingMemberIds = vm.Members.Select(m => m.UserId).ToList();
@@ -481,6 +195,108 @@ namespace Endpoint.Site.Controllers
         {
             var pc = new System.Globalization.PersianCalendar();
             return $"{pc.GetYear(date):0000}/{pc.GetMonth(date):00}/{pc.GetDayOfMonth(date):00}";
+        }
+
+        private async Task<List<Dictionary<string, object>>> GetCollaboratorsAsync(string currentUserId, string? phone)
+        {
+            var acceptedInvitations = await _context.ProjectInvitations
+                .AsNoTracking()
+                .Where(i =>
+                    i.Status == InvitationStatus.Accepted &&
+                    (
+                        (i.InviterId == currentUserId && (!string.IsNullOrEmpty(i.InviteeId) || !string.IsNullOrEmpty(i.InviteePhone))) ||
+                        (!string.IsNullOrWhiteSpace(phone) && i.InviteePhone == phone && !string.IsNullOrEmpty(i.InviteeId))
+                    ))
+                .Select(i => new
+                {
+                    i.InviterId,
+                    i.InviteeId,
+                    i.InviteePhone
+                })
+                .ToListAsync();
+
+            var inviteeIds = acceptedInvitations
+                .Where(i => i.InviterId == currentUserId && !string.IsNullOrEmpty(i.InviteeId))
+                .Select(i => i.InviteeId);
+
+            var inviterIds = acceptedInvitations
+                .Where(i => !string.IsNullOrWhiteSpace(phone) && i.InviteePhone == phone && !string.IsNullOrEmpty(i.InviteeId))
+                .Select(i => i.InviterId);
+
+            var phoneNumbers = acceptedInvitations
+                .Where(i => i.InviterId == currentUserId && string.IsNullOrEmpty(i.InviteeId) && !string.IsNullOrEmpty(i.InviteePhone))
+                .Select(i => i.InviteePhone)
+                .Distinct()
+                .Where(p => !string.IsNullOrEmpty(p))
+                .Select(p => p!)
+                .ToList();
+
+            var usersByPhoneIds = phoneNumbers.Count == 0
+                ? new List<string>()
+                : await _userManager.Users
+                    .AsNoTracking()
+                    .Where(u => phoneNumbers.Contains(u.Phone))
+                    .Select(u => u.Id)
+                    .ToListAsync();
+
+            var membersOfMyProjects = await (
+                from pm in _context.ProjectMembers.AsNoTracking()
+                join p in _context.Projects.AsNoTracking() on pm.ProjectId.Value equals p.Id
+                where p.CreatorUserId == currentUserId && pm.UserId != currentUserId
+                select pm.UserId)
+                .Distinct()
+                .ToListAsync();
+
+            var projectsIMemberOf = await _context.ProjectMembers
+                .AsNoTracking()
+                .Where(pm => pm.UserId == currentUserId)
+                .Select(pm => pm.ProjectId.Value)
+                .ToListAsync();
+
+            var creatorsOfMyProjects = projectsIMemberOf.Count == 0
+                ? new List<string>()
+                : await _context.Projects
+                    .AsNoTracking()
+                    .Where(p => projectsIMemberOf.Contains(p.Id) && p.CreatorUserId != currentUserId)
+                    .Select(p => p.CreatorUserId)
+                    .Distinct()
+                    .ToListAsync();
+
+            var otherMembersOfMyProjects = projectsIMemberOf.Count == 0
+                ? new List<string>()
+                : await _context.ProjectMembers
+                    .AsNoTracking()
+                    .Where(pm => projectsIMemberOf.Contains(pm.ProjectId.Value) && pm.UserId != currentUserId)
+                    .Select(pm => pm.UserId)
+                    .Distinct()
+                    .ToListAsync();
+
+            var collaboratorIds = inviteeIds
+                .Concat(inviterIds)
+                .Concat(usersByPhoneIds)
+                .Concat(membersOfMyProjects)
+                .Concat(creatorsOfMyProjects)
+                .Concat(otherMembersOfMyProjects)
+                .Where(id => !string.IsNullOrEmpty(id) && id != currentUserId)
+                .Distinct()
+                .ToList();
+
+            if (collaboratorIds.Count == 0)
+            {
+                return new List<Dictionary<string, object>>();
+            }
+
+            return await _userManager.Users
+                .AsNoTracking()
+                .Where(u => collaboratorIds.Contains(u.Id))
+                .Select(u => new Dictionary<string, object>
+                {
+                    { "Id", u.Id },
+                    { "DisplayName", !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : (u.UserName ?? "کاربر ناشناس") },
+                    { "Phone", u.Phone ?? string.Empty },
+                    { "Email", u.Email ?? string.Empty }
+                })
+                .ToListAsync();
         }
 
         // 📌 ایجاد پروژه

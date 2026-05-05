@@ -1,20 +1,9 @@
-﻿@model IEnumerable<Project>
-@using TaskPlanner.Domain.Entities.TaskPlanner
-@using System.Security.Claims
+﻿@model Endpoint.Site.Models.ProjectsIndexVm
 @{
     ViewData["Title"] = "داشبورد";
     ViewData["UseFluidLayout"] = true;
     Layout = "/Views/Shared/_Layout.cshtml";
-
-    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-    var sprintLookup = ViewBag.ActiveSprintByProject as Dictionary<int, int> ?? new Dictionary<int, int>();
-    var pendingProjectInvitations = ViewBag.PendingProjectInvitations as List<ProjectInvitation> ?? new List<ProjectInvitation>();
-    var pendingSystemInvitations = ViewBag.PendingSystemInvitations as List<ProjectInvitation> ?? new List<ProjectInvitation>();
-    var recentNotes = ViewBag.RecentNotes as List<PersonalNote> ?? new List<PersonalNote>();
-    var collaboratorsList = ViewBag.Collaborators as List<Dictionary<string, object>> ?? new List<Dictionary<string, object>>();
-
-    var projects = Model?.ToList() ?? new List<Project>();
-    var totalPendingInvites = pendingProjectInvitations.Count + pendingSystemInvitations.Count;
+    var projects = Model?.Projects ?? new List<Endpoint.Site.Models.ProjectCardVm>();
 }
 
 <link rel="stylesheet" href="~/css/projects-index.css" />
@@ -25,14 +14,14 @@
     @await Html.PartialAsync("_ProjectsStats", viewData: new ViewDataDictionary(ViewData)
     {
         ["ProjectCount"] = projects.Count,
-        ["PendingInviteCount"] = totalPendingInvites,
-        ["CollaboratorCount"] = collaboratorsList.Count,
-        ["RecentNoteCount"] = recentNotes.Count
+        ["PendingInviteCount"] = Model?.PendingInviteCount ?? 0,
+        ["CollaboratorCount"] = Model?.CollaboratorCount ?? 0,
+        ["RecentNoteCount"] = Model?.RecentNoteCount ?? 0
     })
 
     @await Html.PartialAsync("_ProjectsGrid", projects, new ViewDataDictionary(ViewData)
     {
-        ["CurrentUserId"] = currentUserId,
-        ["SprintLookup"] = sprintLookup
+        ["CurrentUserId"] = Model?.CurrentUserId ?? string.Empty,
+        ["SprintLookup"] = Model?.ActiveSprintByProject ?? new Dictionary<int, int>()
     })
 </div>

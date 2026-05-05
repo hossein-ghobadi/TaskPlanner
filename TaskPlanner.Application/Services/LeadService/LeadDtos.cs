@@ -42,6 +42,14 @@ namespace TaskPlanner.Application.Services.LeadService
         public string Title { get; set; } = null!;
         public string? Content { get; set; }
         public DateTime CreatedAt { get; set; }
+        public List<LeadNoteAttachmentDto> Attachments { get; set; } = new();
+    }
+
+    public class LeadNoteAttachmentDto
+    {
+        public int Id { get; set; }
+        public string FileName { get; set; } = null!;
+        public string FileType { get; set; } = null!;
     }
 
     public class LeadDetailsDto

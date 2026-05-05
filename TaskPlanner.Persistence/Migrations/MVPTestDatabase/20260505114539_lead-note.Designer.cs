@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskPlanner.Persistence.Contexts;
 
@@ -11,9 +12,11 @@ using TaskPlanner.Persistence.Contexts;
 namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 {
     [DbContext(typeof(MVPTestDatabaseContext))]
-    partial class MVPTestDatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260505114539_lead-note")]
+    partial class leadnote
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1306,10 +1309,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.Property<int?>("FolderId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("LeadId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ProjectId")
+                    b.Property<int>("ProjectId")
                         .HasColumnType("int");
 
                     b.Property<int?>("SourceLeadId")
@@ -1325,8 +1325,6 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.HasKey("Id");
 
                     b.HasIndex("FolderId");
-
-                    b.HasIndex("LeadId");
 
                     b.HasIndex("ProjectId");
 
@@ -2338,22 +2336,17 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                         .HasForeignKey("FolderId")
                         .OnDelete(DeleteBehavior.NoAction);
 
-                    b.HasOne("TaskPlanner.Domain.Entities.TaskPlanner.Lead", "Lead")
-                        .WithMany()
-                        .HasForeignKey("LeadId");
-
                     b.HasOne("TaskPlanner.Domain.Entities.TaskPlanner.Project", "Project")
                         .WithMany()
                         .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("TaskPlanner.Domain.Entities.TaskPlanner.Lead", "SourceLead")
                         .WithMany()
                         .HasForeignKey("SourceLeadId");
 
                     b.Navigation("Folder");
-
-                    b.Navigation("Lead");
 
                     b.Navigation("Project");
 

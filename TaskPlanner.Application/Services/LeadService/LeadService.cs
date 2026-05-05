@@ -113,8 +113,9 @@ namespace TaskPlanner.Application.Services.LeadService
                 .Where(s => s.LeadId == id)
                 .OrderBy(s => s.ScheduledAt)
                 .ToListAsync(cancellationToken);
-            var leadNotes = await _context.Set<LeadNote>()
+            var leadNotes = await _context.ProjectNotes
                 .AsNoTracking()
+                .Include(n => n.Attachments)
                 .Where(n => n.LeadId == id)
                 .OrderByDescending(n => n.CreatedAt)
                 .ToListAsync(cancellationToken);
@@ -164,7 +165,13 @@ namespace TaskPlanner.Application.Services.LeadService
                     Id = n.Id,
                     Title = n.Title,
                     Content = n.Content,
-                    CreatedAt = n.CreatedAt
+                    CreatedAt = n.CreatedAt,
+                    Attachments = n.Attachments.Select(a => new LeadNoteAttachmentDto
+                    {
+                        Id = a.Id,
+                        FileName = a.FileName,
+                        FileType = a.FileType
+                    }).ToList()
                 }).ToList()
             };
         }
@@ -252,21 +259,14 @@ namespace TaskPlanner.Application.Services.LeadService
                 },
                 ownerUserId);
 
-            var notesForProject = await _context.Set<LeadNote>()
+            var notesForProject = await _context.ProjectNotes
                 .Where(n => n.LeadId == leadId)
                 .OrderBy(n => n.CreatedAt)
                 .ToListAsync(cancellationToken);
             foreach (var leadNote in notesForProject)
             {
-                _context.ProjectNotes.Add(new ProjectNote
-                {
-                    Title = string.IsNullOrWhiteSpace(leadNote.Title) ? $"یادداشت لید #{leadId}" : leadNote.Title,
-                    Content = leadNote.Content,
-                    ProjectId = projectId,
-                    SourceLeadId = leadId,
-                    CreatorUserId = ownerUserId,
-                    CreatedAt = leadNote.CreatedAt
-                });
+                leadNote.ProjectId = projectId;
+                leadNote.SourceLeadId ??= leadId;
             }
 
             lead.ConvertedProjectId = projectId;
@@ -496,7 +496,7 @@ namespace TaskPlanner.Application.Services.LeadService
             await _context.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task AddNoteAsync(CreateLeadNoteDto dto, string requesterUserId, CancellationToken cancellationToken = default)
+        public async Task<int> AddNoteAsync(CreateLeadNoteDto dto, string requesterUserId, CancellationToken cancellationToken = default)
         {
             var lead = await _context.Set<Lead>().FirstOrDefaultAsync(l => l.Id == dto.LeadId, cancellationToken);
             if (lead == null || lead.OwnerUserId != requesterUserId)
@@ -505,27 +505,31 @@ namespace TaskPlanner.Application.Services.LeadService
             if (string.IsNullOrWhiteSpace(dto.Title))
                 throw new InvalidOperationException("عنوان یادداشت الزامی است.");
 
-            _context.Set<LeadNote>().Add(new LeadNote
+            var note = new ProjectNote
             {
                 LeadId = dto.LeadId,
                 Title = dto.Title.Trim(),
                 Content = string.IsNullOrWhiteSpace(dto.Content) ? null : dto.Content.Trim(),
-                CreatedByUserId = requesterUserId,
+                ProjectId = lead.ConvertedProjectId,
+                SourceLeadId = dto.LeadId,
+                CreatorUserId = requesterUserId,
                 CreatedAt = DateTime.UtcNow
-            });
+            };
+            _context.ProjectNotes.Add(note);
             lead.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
+            return note.Id;
         }
 
         public async Task RemoveNoteAsync(int noteId, string requesterUserId, CancellationToken cancellationToken = default)
         {
-            var note = await _context.Set<LeadNote>()
+            var note = await _context.ProjectNotes
                 .Include(n => n.Lead)
                 .FirstOrDefaultAsync(n => n.Id == noteId, cancellationToken);
-            if (note == null || note.Lead.OwnerUserId != requesterUserId)
+            if (note == null || note.Lead == null || note.Lead.OwnerUserId != requesterUserId)
                 throw new InvalidOperationException("فقط مالک لید می‌تواند یادداشت را حذف کند.");
 
-            _context.Set<LeadNote>().Remove(note);
+            _context.ProjectNotes.Remove(note);
             note.Lead.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
         }

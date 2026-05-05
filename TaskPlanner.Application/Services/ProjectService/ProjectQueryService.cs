@@ -309,5 +309,215 @@ namespace TaskPlanner.Application.Services.ProjectService
 
             return selectableUsers;
         }
+
+        public async Task<ProjectDashboardDto> GetProjectsDashboardAsync(string userId)
+        {
+            var userPhone = await _userManager.Users
+                .AsNoTracking()
+                .Where(u => u.Id == userId)
+                .Select(u => u.Phone)
+                .FirstOrDefaultAsync();
+
+            var projects = await _context.Projects
+                .AsNoTracking()
+                .Where(p => p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId))
+                .Select(p => new ProjectCardDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    CreatorUserId = p.CreatorUserId,
+                    TaskCount = p.Tasks.Count(t =>
+                        t.ProjectIssueTypeId != null
+                            ? t.ProjectIssueType != null && t.ProjectIssueType.CanAddToSprint
+                            : (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug))
+                })
+                .ToListAsync();
+
+            var projectIds = projects.Select(p => p.Id).ToList();
+            var activeSprintByProject = await _context.Sprints
+                .AsNoTracking()
+                .Where(s => projectIds.Contains(s.ProjectId) && s.Status == SprintStatus.Active)
+                .Select(s => new { s.ProjectId, s.Id })
+                .ToListAsync();
+
+            var pendingRawInvitations = string.IsNullOrWhiteSpace(userPhone)
+                ? new List<ProjectInvitation>()
+                : await _context.ProjectInvitations
+                    .AsNoTracking()
+                    .Where(i => i.InviteePhone == userPhone && i.Status == InvitationStatus.Pending)
+                    .OrderByDescending(i => i.CreatedAt)
+                    .ToListAsync();
+
+            var pendingProjectInvitations = pendingRawInvitations
+                .Where(i => i.ProjectId != null)
+                .Take(5)
+                .Select(i => new ProjectInvitationDto
+                    {
+                        Id = i.Id,
+                        InviteePhone = i.InviteePhone,
+                        Status = i.Status,
+                        CreatedAt = i.CreatedAt
+                    })
+                    .ToList();
+
+            var pendingSystemInvitations = pendingRawInvitations
+                .Where(i => i.ProjectId == null)
+                .Take(5)
+                .Select(i => new ProjectInvitationDto
+                {
+                    Id = i.Id,
+                    InviteePhone = i.InviteePhone,
+                    Status = i.Status,
+                    CreatedAt = i.CreatedAt
+                })
+                .ToList();
+
+            var inviterIds = pendingRawInvitations
+                .Select(i => i.InviterId)
+                .Distinct()
+                .ToList();
+
+            var inviterLookup = await _userManager.Users
+                .AsNoTracking()
+                .Where(u => inviterIds.Contains(u.Id))
+                .ToDictionaryAsync(
+                    u => u.Id,
+                    u => !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : (u.UserName ?? "کاربر ناشناس"));
+
+            var collaborators = await GetCollaboratorsAsync(userId, userPhone);
+
+            var recentNotes = await _context.PersonalNotes
+                .AsNoTracking()
+                .Where(n => n.UserId == userId)
+                .OrderByDescending(n => n.IsPinned)
+                .ThenByDescending(n => n.CreatedAt)
+                .Take(5)
+                .Select(n => new RecentPersonalNoteDto
+                {
+                    Id = n.Id,
+                    UserId = n.UserId,
+                    Title = n.Title,
+                    Content = n.Content != null && n.Content.Length > 100
+                        ? n.Content.Substring(0, 100)
+                        : n.Content,
+                    IsPinned = n.IsPinned,
+                    CreatedAt = n.CreatedAt,
+                    UpdatedAt = n.UpdatedAt
+                })
+                .ToListAsync();
+
+            return new ProjectDashboardDto
+            {
+                Projects = projects,
+                ActiveSprintByProject = activeSprintByProject
+                    .GroupBy(x => x.ProjectId)
+                    .ToDictionary(g => g.Key, g => g.First().Id),
+                PendingProjectInvitations = pendingProjectInvitations,
+                PendingSystemInvitations = pendingSystemInvitations,
+                InviterLookup = inviterLookup,
+                Collaborators = collaborators,
+                RecentNotes = recentNotes
+            };
+        }
+
+        private async Task<List<CollaboratorDto>> GetCollaboratorsAsync(string currentUserId, string? phone)
+        {
+            var acceptedInvitations = await _context.ProjectInvitations
+                .AsNoTracking()
+                .Where(i =>
+                    i.Status == InvitationStatus.Accepted &&
+                    (
+                        (i.InviterId == currentUserId && (!string.IsNullOrEmpty(i.InviteeId) || !string.IsNullOrEmpty(i.InviteePhone))) ||
+                        (!string.IsNullOrWhiteSpace(phone) && i.InviteePhone == phone && !string.IsNullOrEmpty(i.InviteeId))
+                    ))
+                .Select(i => new
+                {
+                    i.InviterId,
+                    i.InviteeId,
+                    i.InviteePhone
+                })
+                .ToListAsync();
+
+            var inviteeIds = acceptedInvitations
+                .Where(i => i.InviterId == currentUserId && !string.IsNullOrEmpty(i.InviteeId))
+                .Select(i => i.InviteeId!);
+
+            var inviterIds = acceptedInvitations
+                .Where(i => !string.IsNullOrWhiteSpace(phone) && i.InviteePhone == phone && !string.IsNullOrEmpty(i.InviteeId))
+                .Select(i => i.InviterId);
+
+            var phoneNumbers = acceptedInvitations
+                .Where(i => i.InviterId == currentUserId && string.IsNullOrEmpty(i.InviteeId) && !string.IsNullOrEmpty(i.InviteePhone))
+                .Select(i => i.InviteePhone!)
+                .Distinct()
+                .ToList();
+
+            var usersByPhoneIds = phoneNumbers.Count == 0
+                ? new List<string>()
+                : await _userManager.Users
+                    .AsNoTracking()
+                    .Where(u => phoneNumbers.Contains(u.Phone))
+                    .Select(u => u.Id)
+                    .ToListAsync();
+
+            var membersOfMyProjects = await (
+                from pm in _context.ProjectMembers.AsNoTracking()
+                join p in _context.Projects.AsNoTracking() on pm.ProjectId.Value equals p.Id
+                where p.CreatorUserId == currentUserId && pm.UserId != currentUserId
+                select pm.UserId)
+                .Distinct()
+                .ToListAsync();
+
+            var projectsIMemberOf = await _context.ProjectMembers
+                .AsNoTracking()
+                .Where(pm => pm.UserId == currentUserId)
+                .Select(pm => pm.ProjectId.Value)
+                .ToListAsync();
+
+            var creatorsOfMyProjects = projectsIMemberOf.Count == 0
+                ? new List<string>()
+                : await _context.Projects
+                    .AsNoTracking()
+                    .Where(p => projectsIMemberOf.Contains(p.Id) && p.CreatorUserId != currentUserId)
+                    .Select(p => p.CreatorUserId)
+                    .Distinct()
+                    .ToListAsync();
+
+            var otherMembersOfMyProjects = projectsIMemberOf.Count == 0
+                ? new List<string>()
+                : await _context.ProjectMembers
+                    .AsNoTracking()
+                    .Where(pm => projectsIMemberOf.Contains(pm.ProjectId.Value) && pm.UserId != currentUserId)
+                    .Select(pm => pm.UserId)
+                    .Distinct()
+                    .ToListAsync();
+
+            var collaboratorIds = inviteeIds
+                .Concat(inviterIds)
+                .Concat(usersByPhoneIds)
+                .Concat(membersOfMyProjects)
+                .Concat(creatorsOfMyProjects)
+                .Concat(otherMembersOfMyProjects)
+                .Where(id => !string.IsNullOrEmpty(id) && id != currentUserId)
+                .Distinct()
+                .ToList();
+
+            if (collaboratorIds.Count == 0)
+            {
+                return new List<CollaboratorDto>();
+            }
+
+            return await _userManager.Users
+                .AsNoTracking()
+                .Where(u => collaboratorIds.Contains(u.Id))
+                .Select(u => new CollaboratorDto
+                {
+                    Id = u.Id,
+                    DisplayName = !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName : (u.UserName ?? "کاربر ناشناس"),
+                    Phone = u.Phone ?? string.Empty,
+                    Email = u.Email ?? string.Empty
+                })
+                .ToListAsync();
+        }
     }
 }

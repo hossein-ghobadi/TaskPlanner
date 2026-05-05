@@ -109,11 +109,26 @@ namespace Endpoint.Site.Controllers
 
             if (note == null)
                 return NotFound();
+            if (!note.ProjectId.HasValue)
+            {
+                TempData["Error"] = "این یادداشت هنوز به پروژه‌ای متصل نیست.";
+                return RedirectToAction("Index", "Projects");
+            }
+            if (!note.ProjectId.HasValue)
+            {
+                TempData["Error"] = "این یادداشت هنوز به پروژه‌ای متصل نیست.";
+                return RedirectToAction("Index", "Projects");
+            }
+            if (!note.ProjectId.HasValue)
+            {
+                TempData["Error"] = "این یادداشت هنوز به پروژه‌ای متصل نیست.";
+                return RedirectToAction("Index", "Projects");
+            }
 
             // بررسی دسترسی
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == note.ProjectId && 
+                .AnyAsync(p => p.Id == note.ProjectId.Value && 
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -310,17 +325,28 @@ namespace Endpoint.Site.Controllers
 
             if (note == null)
                 return NotFound();
+            if (!note.ProjectId.HasValue)
+            {
+                TempData["Error"] = "این یادداشت هنوز به پروژه‌ای متصل نیست.";
+                return RedirectToAction("Index", "Projects");
+            }
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == note.ProjectId && 
+                .AnyAsync(p => p.Id == note.ProjectId.Value && 
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
             {
                 TempData["Error"] = "شما به این یادداشت دسترسی ندارید.";
+                return RedirectToAction("Index", "Projects");
+            }
+
+            if (!note.ProjectId.HasValue)
+            {
+                TempData["Error"] = "این یادداشت هنوز به پروژه‌ای متصل نیست.";
                 return RedirectToAction("Index", "Projects");
             }
 
@@ -332,12 +358,12 @@ namespace Endpoint.Site.Controllers
                 Id = note.Id,
                 Title = note.Title,
                 Content = note.Content,
-                ProjectId = note.ProjectId,
+                ProjectId = note.ProjectId.Value,
                 FolderId = note.FolderId
             };
 
             // لیست پوشه‌های موجود برای انتخاب
-            ViewBag.Folders = await GetFoldersSelectListAsync(note.ProjectId, userId, note.FolderId);
+            ViewBag.Folders = await GetFoldersSelectListAsync(note.ProjectId.Value, userId, note.FolderId);
 
             return View(vm);
         }
@@ -359,12 +385,17 @@ namespace Endpoint.Site.Controllers
             var note = await _context.ProjectNotes.FindAsync(vm.Id);
             if (note == null)
                 return NotFound();
+            if (!note.ProjectId.HasValue)
+            {
+                TempData["Error"] = "این یادداشت هنوز به پروژه‌ای متصل نیست.";
+                return RedirectToAction("Index", "Projects");
+            }
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == note.ProjectId && 
+                .AnyAsync(p => p.Id == note.ProjectId.Value && 
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -533,7 +564,7 @@ namespace Endpoint.Site.Controllers
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == note.ProjectId && 
+                .AnyAsync(p => p.Id == note.ProjectId.Value && 
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -581,7 +612,7 @@ namespace Endpoint.Site.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "یادداشت با موفقیت حذف شد.";
-            return RedirectToAction(nameof(Index), new { projectId });
+            return RedirectToAction(nameof(Index), new { projectId = projectId!.Value });
         }
         
         // 🗑️ حذف یک فایل پیوست (Ajax)
@@ -628,7 +659,7 @@ namespace Endpoint.Site.Controllers
 
             // بررسی دسترسی
             var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == note.ProjectId && 
+                .AnyAsync(p => p.Id == note.ProjectId.Value && 
                     (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
 
             if (!hasAccess)
@@ -640,12 +671,12 @@ namespace Endpoint.Site.Controllers
             var vm = new ProjectNoteMoveVm
             {
                 NoteId = note.Id,
-                ProjectId = note.ProjectId,
+                ProjectId = note.ProjectId.Value,
                 TargetFolderId = note.FolderId
             };
 
             // لیست پوشه‌های موجود برای انتخاب
-            ViewBag.Folders = await GetFoldersSelectListAsync(note.ProjectId, userId, note.FolderId);
+            ViewBag.Folders = await GetFoldersSelectListAsync(note.ProjectId.Value, userId, note.FolderId);
             ViewBag.ProjectName = note.Project?.Name;
 
             return View(vm);

@@ -2,11 +2,14 @@ using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Security.Claims;
+using TaskPlanner.Application.Services.FileUpload;
 using TaskPlanner.Application.Services.LeadService;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Users;
+using TaskPlanner.Persistence.Contexts;
 
 namespace Endpoint.Site.Controllers
 {
@@ -16,11 +19,19 @@ namespace Endpoint.Site.Controllers
     {
         private readonly ILeadService _leadService;
         private readonly UserManager<User> _userManager;
+        private readonly MVPTestDatabaseContext _context;
+        private readonly IFileUploadService _fileUploadService;
 
-        public LeadsController(ILeadService leadService, UserManager<User> userManager)
+        public LeadsController(
+            ILeadService leadService,
+            UserManager<User> userManager,
+            MVPTestDatabaseContext context,
+            IFileUploadService fileUploadService)
         {
             _leadService = leadService;
             _userManager = userManager;
+            _context = context;
+            _fileUploadService = fileUploadService;
         }
 
         public async Task<IActionResult> Index()
@@ -386,18 +397,75 @@ namespace Endpoint.Site.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddLeadNote([FromForm] int leadId, [FromForm] string title, [FromForm] string? content)
+        public async Task<IActionResult> AddLeadNote([FromForm] int leadId, [FromForm] string title, [FromForm] string? content, List<IFormFile>? attachments)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
             try
             {
-                await _leadService.AddNoteAsync(new CreateLeadNoteDto
+                await using var tx = await _context.Database.BeginTransactionAsync();
+                var noteId = 0;
+                var uploadedPaths = new List<string>();
+                try
                 {
-                    LeadId = leadId,
-                    Title = title,
-                    Content = content
-                }, userId);
-                TempData["Success"] = "یادداشت لید ثبت شد.";
+                    noteId = await _leadService.AddNoteAsync(new CreateLeadNoteDto
+                    {
+                        LeadId = leadId,
+                        Title = title,
+                        Content = content
+                    }, userId);
+
+                    if (attachments != null && attachments.Any())
+                    {
+                        foreach (var file in attachments.Where(f => f != null && f.Length > 0))
+                        {
+                            var uploadResult = await _fileUploadService.UploadFileAsync(file, "project-notes");
+                            if (!uploadResult.Success || string.IsNullOrWhiteSpace(uploadResult.FilePath))
+                                throw new InvalidOperationException($"آپلود فایل «{file.FileName}» ناموفق بود.");
+
+                            uploadedPaths.Add(uploadResult.FilePath);
+                            _context.ProjectNoteAttachments.Add(new ProjectNoteAttachment
+                            {
+                                ProjectNoteId = noteId,
+                                FileName = file.FileName,
+                                FilePath = uploadResult.FilePath,
+                                FileType = _fileUploadService.GetFileType(file.FileName),
+                                FileSize = file.Length,
+                                MimeType = file.ContentType,
+                                UploadedAt = DateTime.UtcNow
+                            });
+                        }
+                        await _context.SaveChangesAsync();
+                    }
+
+                    await tx.CommitAsync();
+                    TempData["Success"] = "یادداشت لید ثبت شد.";
+                }
+                catch
+                {
+                    await tx.RollbackAsync();
+
+                    // پاکسازی فایل‌های آپلود شده در صورت شکست بخشی از فرآیند
+                    foreach (var path in uploadedPaths)
+                    {
+                        _fileUploadService.DeleteFile(path);
+                    }
+
+                    // در صورت ثبت‌شدن یادداشت ولی شکست در مرحله بعد، حذف یادداشت
+                    if (noteId > 0)
+                    {
+                        var note = await _context.ProjectNotes
+                            .Include(n => n.Attachments)
+                            .FirstOrDefaultAsync(n => n.Id == noteId);
+                        if (note != null)
+                        {
+                            _context.ProjectNoteAttachments.RemoveRange(note.Attachments);
+                            _context.ProjectNotes.Remove(note);
+                            await _context.SaveChangesAsync();
+                        }
+                    }
+
+                    throw;
+                }
             }
             catch (Exception ex)
             {

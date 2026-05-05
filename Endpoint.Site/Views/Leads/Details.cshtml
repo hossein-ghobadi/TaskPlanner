@@ -89,18 +89,22 @@
         <div class="card-body">
             @if (Model.IsOwner)
             {
-                <form asp-controller="Leads" asp-action="AddLeadNote" method="post" class="row g-2 align-items-end">
+                <form asp-controller="Leads" asp-action="AddLeadNote" method="post" enctype="multipart/form-data" class="row g-2 align-items-end">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="leadId" value="@Model.Id" />
                     <div class="col-md-4">
                         <label class="form-label small mb-1">عنوان</label>
                         <input name="title" class="form-control form-control-sm" maxlength="200" required />
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label small mb-1">متن یادداشت</label>
                         <input name="content" class="form-control form-control-sm" />
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
+                        <label class="form-label small mb-1">پیوست فایل</label>
+                        <input name="attachments" type="file" class="form-control form-control-sm" multiple />
+                    </div>
+                    <div class="col-md-1">
                         <button type="submit" class="btn btn-primary btn-sm w-100">افزودن</button>
                     </div>
                 </form>
@@ -118,6 +122,16 @@
                                 @if (!string.IsNullOrWhiteSpace(n.Content))
                                 {
                                     <div class="small text-muted" style="white-space: pre-wrap;">@n.Content</div>
+                                }
+                                @if (n.Attachments.Any())
+                                {
+                                    <div class="small mt-1">
+                                        <span class="text-muted">پیوست‌ها:</span>
+                                        @foreach (var a in n.Attachments)
+                                        {
+                                            <span class="badge bg-light text-dark border me-1">@a.FileName</span>
+                                        }
+                                    </div>
                                 }
                                 <div class="small text-secondary mt-1">@n.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()</div>
                             </div>
