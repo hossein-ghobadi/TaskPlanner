@@ -23,21 +23,18 @@
 
     @{
         var page = (ViewData["Page"] as int?) ?? 1;
-        var pageSize = (ViewData["PageSize"] as int?) ?? 12;
+        var pageSize = (ViewData["PageSize"] as int?) ?? 4;
         var hasMoreProjects = (ViewData["HasMoreProjects"] as bool?) ?? false;
     }
-    @if (hasMoreProjects)
-    {
-        <div class="text-center mt-4">
-            <button id="loadMoreProjectsBtn"
-                    type="button"
-                    class="btn btn-outline-primary"
-                    data-next-page="@(page + 1)"
-                    data-page-size="@pageSize">
-                نمایش پروژه‌های بیشتر
-            </button>
-        </div>
-    }
+    <div id="projectsLoadMoreState"
+         class="text-center mt-4 text-muted"
+         data-next-page="@(page + 1)"
+         data-page-size="@pageSize"
+         data-has-more="@(hasMoreProjects ? "true" : "false")"
+         style="display:@(hasMoreProjects ? "block" : "none")">
+        <span id="projectsLoadMoreText">در حال آماده‌سازی بارگذاری بیشتر...</span>
+    </div>
+    <div id="projectsLoadMoreSentinel" style="height:1px;" aria-hidden="true"></div>
 
     @if (!projects.Any())
     {
@@ -54,35 +51,41 @@
 
 <script>
     (function () {
-        if (window.__projectsCardTapBinding) return;
-        window.__projectsCardTapBinding = true;
+        if (!window.__projectsCardTapBinding) {
+            window.__projectsCardTapBinding = true;
+            document.addEventListener('click', function (event) {
+                var card = event.target.closest('.js-project-card');
+                if (!card) return;
 
-        document.addEventListener('click', function (event) {
-            var card = event.target.closest('.js-project-card');
-            if (!card) return;
+                var interactive = event.target.closest('a, button, input, textarea, select, label, form');
+                if (interactive) return;
 
-            var interactive = event.target.closest('a, button, input, textarea, select, label, form');
-            if (interactive) return;
+                var detailsUrl = card.getAttribute('data-details-url');
+                if (detailsUrl) {
+                    window.location.href = detailsUrl;
+                }
+            });
+        }
 
-            var detailsUrl = card.getAttribute('data-details-url');
-            if (detailsUrl) {
-                window.location.href = detailsUrl;
-            }
-        });
-
-        var loadMoreBtn = document.getElementById('loadMoreProjectsBtn');
+        var loadMoreState = document.getElementById('projectsLoadMoreState');
+        var loadMoreText = document.getElementById('projectsLoadMoreText');
+        var sentinel = document.getElementById('projectsLoadMoreSentinel');
         var cardsContainer = document.getElementById('projectsCardsContainer');
 
-        if (loadMoreBtn && cardsContainer) {
-            loadMoreBtn.addEventListener('click', async function () {
-                if (loadMoreBtn.disabled) return;
+        if (loadMoreState && loadMoreText && sentinel && cardsContainer) {
+            var isLoading = false;
+            var ticking = false;
 
-                var nextPage = loadMoreBtn.getAttribute('data-next-page');
-                var pageSize = loadMoreBtn.getAttribute('data-page-size');
+            var loadNextPage = async function () {
+                if (isLoading) return;
+                if (loadMoreState.getAttribute('data-has-more') !== 'true') return;
+
+                var nextPage = loadMoreState.getAttribute('data-next-page');
+                var pageSize = loadMoreState.getAttribute('data-page-size');
                 if (!nextPage || !pageSize) return;
 
-                loadMoreBtn.disabled = true;
-                loadMoreBtn.textContent = 'در حال بارگذاری...';
+                isLoading = true;
+                loadMoreText.textContent = 'در حال بارگذاری...';
 
                 try {
                     var url = '/Projects/IndexCards?page=' + encodeURIComponent(nextPage) + '&pageSize=' + encodeURIComponent(pageSize);
@@ -95,18 +98,66 @@
                     cardsContainer.insertAdjacentHTML('beforeend', html);
 
                     var hasMore = response.headers.get('X-Has-More') === 'true';
+                    loadMoreState.setAttribute('data-has-more', hasMore ? 'true' : 'false');
+
                     if (hasMore) {
-                        loadMoreBtn.setAttribute('data-next-page', String(parseInt(nextPage, 10) + 1));
-                        loadMoreBtn.disabled = false;
-                        loadMoreBtn.textContent = 'نمایش پروژه‌های بیشتر';
+                        loadMoreState.setAttribute('data-next-page', String(parseInt(nextPage, 10) + 1));
+                        loadMoreText.textContent = 'برای بارگذاری بیشتر اسکرول کنید...';
                     } else {
-                        loadMoreBtn.remove();
+                        loadMoreState.style.display = 'none';
                     }
                 } catch (_) {
-                    loadMoreBtn.disabled = false;
-                    loadMoreBtn.textContent = 'تلاش مجدد برای بارگذاری';
+                    loadMoreText.textContent = 'خطا در بارگذاری. با اسکرول دوباره تلاش می‌شود...';
+                } finally {
+                    isLoading = false;
                 }
-            });
+            };
+
+            var shouldLoadMoreByViewport = function () {
+                if (loadMoreState.getAttribute('data-has-more') !== 'true') return false;
+                var rect = sentinel.getBoundingClientRect();
+                return rect.top <= (window.innerHeight + 260);
+            };
+
+            var onScrollOrResize = function () {
+                if (ticking) return;
+                ticking = true;
+                window.requestAnimationFrame(function () {
+                    if (shouldLoadMoreByViewport()) {
+                        loadNextPage();
+                    }
+                    ticking = false;
+                });
+            };
+
+            if (window.__projectsInfiniteObserver && typeof window.__projectsInfiniteObserver.disconnect === 'function') {
+                window.__projectsInfiniteObserver.disconnect();
+            }
+
+            if ('IntersectionObserver' in window) {
+                var observer = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (entry) {
+                        if (entry.isIntersecting) {
+                            loadNextPage();
+                        }
+                    });
+                }, {
+                    root: null,
+                    rootMargin: '200px 0px',
+                    threshold: 0
+                });
+
+                window.__projectsInfiniteObserver = observer;
+                observer.observe(sentinel);
+                if (loadMoreState.getAttribute('data-has-more') === 'true') {
+                    loadMoreText.textContent = 'برای بارگذاری بیشتر اسکرول کنید...';
+                }
+            }
+
+            // Robust fallback: works even if IntersectionObserver is delayed/missed.
+            window.addEventListener('scroll', onScrollOrResize, { passive: true });
+            window.addEventListener('resize', onScrollOrResize, { passive: true });
+            onScrollOrResize();
         }
     })();
 </script>

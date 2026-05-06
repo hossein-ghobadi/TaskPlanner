@@ -74,7 +74,7 @@ namespace Endpoint.Site.Controllers
         //}
 
 
-        public async Task<IActionResult> Index(int page = 1, int pageSize = 12)
+        public async Task<IActionResult> Index(int page = 1, int pageSize = 4)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var dashboard = await _projectQueryService.GetProjectsDashboardAsync(userId, page, pageSize);
@@ -93,16 +93,16 @@ namespace Endpoint.Site.Controllers
                 PageSize = dashboard.PageSize,
                 TotalProjectsCount = dashboard.TotalProjectsCount,
                 HasMoreProjects = dashboard.HasMoreProjects,
-                PendingInviteCount = dashboard.PendingProjectInvitations.Count + dashboard.PendingSystemInvitations.Count,
-                CollaboratorCount = dashboard.Collaborators.Count,
-                RecentNoteCount = dashboard.RecentNotes.Count
+                PendingInviteCount = dashboard.PendingInviteCount,
+                CollaboratorCount = dashboard.CollaboratorCount,
+                RecentNoteCount = dashboard.RecentNoteCount
             };
 
             return View(vm);
         }
 
         [HttpGet]
-        public async Task<IActionResult> IndexCards(int page = 1, int pageSize = 12)
+        public async Task<IActionResult> IndexCards(int page = 1, int pageSize = 4)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var cardsPage = await _projectQueryService.GetProjectCardsPageAsync(userId, page, pageSize);

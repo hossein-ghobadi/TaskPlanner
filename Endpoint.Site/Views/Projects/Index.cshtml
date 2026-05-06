@@ -24,7 +24,29 @@
         ["CurrentUserId"] = Model?.CurrentUserId ?? string.Empty,
         ["SprintLookup"] = Model?.ActiveSprintByProject ?? new Dictionary<int, int>(),
         ["Page"] = Model?.Page ?? 1,
-        ["PageSize"] = Model?.PageSize ?? 12,
+        ["PageSize"] = Model?.PageSize ?? 4,
         ["HasMoreProjects"] = Model?.HasMoreProjects ?? false
     })
 </div>
+
+<script>
+    (function () {
+        // Ensure refresh/load always starts from top on this page.
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+
+        var resetScrollTop = function () {
+            window.scrollTo(0, 0);
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', resetScrollTop, { once: true });
+        } else {
+            resetScrollTop();
+        }
+
+        // Also handle browser back-forward cache restores.
+        window.addEventListener('pageshow', resetScrollTop);
+    })();
+</script>

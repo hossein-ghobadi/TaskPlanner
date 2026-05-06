@@ -10,11 +10,9 @@ namespace TaskPlanner.Application.Services.ProjectService
         public int Page { get; set; }
         public int PageSize { get; set; }
         public bool HasMoreProjects => Page * PageSize < TotalProjectsCount;
-        public List<ProjectInvitationDto> PendingProjectInvitations { get; set; } = new();
-        public List<ProjectInvitationDto> PendingSystemInvitations { get; set; } = new();
-        public Dictionary<string, string> InviterLookup { get; set; } = new();
-        public List<CollaboratorDto> Collaborators { get; set; } = new();
-        public List<RecentPersonalNoteDto> RecentNotes { get; set; } = new();
+        public int PendingInviteCount { get; set; }
+        public int CollaboratorCount { get; set; }
+        public int RecentNoteCount { get; set; }
     }
 
     public class ProjectCardDto
