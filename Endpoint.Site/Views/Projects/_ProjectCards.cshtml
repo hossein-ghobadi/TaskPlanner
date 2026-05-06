@@ -1,0 +1,17 @@
+@model IEnumerable<Endpoint.Site.Models.ProjectCardVm>
+@using System.Collections.Generic
+
+@{
+    var currentUserId = ViewData["CurrentUserId"] as string;
+    var sprintLookup = ViewData["SprintLookup"] as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var projects = Model?.ToList() ?? new List<Endpoint.Site.Models.ProjectCardVm>();
+}
+
+@foreach (var project in projects)
+{
+    @await Html.PartialAsync("_ProjectCard", project, new ViewDataDictionary(ViewData)
+    {
+        ["CurrentUserId"] = currentUserId,
+        ["SprintLookup"] = sprintLookup
+    })
+}

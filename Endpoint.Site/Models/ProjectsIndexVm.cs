@@ -5,6 +5,10 @@ namespace Endpoint.Site.Models
         public string CurrentUserId { get; set; } = string.Empty;
         public List<ProjectCardVm> Projects { get; set; } = new();
         public Dictionary<int, int> ActiveSprintByProject { get; set; } = new();
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public int TotalProjectsCount { get; set; }
+        public bool HasMoreProjects { get; set; }
         public int PendingInviteCount { get; set; }
         public int CollaboratorCount { get; set; }
         public int RecentNoteCount { get; set; }

@@ -310,7 +310,7 @@ namespace TaskPlanner.Application.Services.ProjectService
             return selectableUsers;
         }
 
-        public async Task<ProjectDashboardDto> GetProjectsDashboardAsync(string userId)
+        public async Task<ProjectDashboardDto> GetProjectsDashboardAsync(string userId, int page = 1, int pageSize = 12)
         {
             var userPhone = await _userManager.Users
                 .AsNoTracking()
@@ -318,27 +318,7 @@ namespace TaskPlanner.Application.Services.ProjectService
                 .Select(u => u.Phone)
                 .FirstOrDefaultAsync();
 
-            var projects = await _context.Projects
-                .AsNoTracking()
-                .Where(p => p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId))
-                .Select(p => new ProjectCardDto
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    CreatorUserId = p.CreatorUserId,
-                    TaskCount = p.Tasks.Count(t =>
-                        t.ProjectIssueTypeId != null
-                            ? t.ProjectIssueType != null && t.ProjectIssueType.CanAddToSprint
-                            : (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug))
-                })
-                .ToListAsync();
-
-            var projectIds = projects.Select(p => p.Id).ToList();
-            var activeSprintByProject = await _context.Sprints
-                .AsNoTracking()
-                .Where(s => projectIds.Contains(s.ProjectId) && s.Status == SprintStatus.Active)
-                .Select(s => new { s.ProjectId, s.Id })
-                .ToListAsync();
+            var cardsPage = await GetProjectCardsPageAsync(userId, page, pageSize);
 
             var pendingRawInvitations = string.IsNullOrWhiteSpace(userPhone)
                 ? new List<ProjectInvitation>()
@@ -408,15 +388,65 @@ namespace TaskPlanner.Application.Services.ProjectService
 
             return new ProjectDashboardDto
             {
-                Projects = projects,
-                ActiveSprintByProject = activeSprintByProject
-                    .GroupBy(x => x.ProjectId)
-                    .ToDictionary(g => g.Key, g => g.First().Id),
+                Projects = cardsPage.Projects,
+                ActiveSprintByProject = cardsPage.ActiveSprintByProject,
+                TotalProjectsCount = cardsPage.TotalProjectsCount,
+                Page = cardsPage.Page,
+                PageSize = cardsPage.PageSize,
                 PendingProjectInvitations = pendingProjectInvitations,
                 PendingSystemInvitations = pendingSystemInvitations,
                 InviterLookup = inviterLookup,
                 Collaborators = collaborators,
                 RecentNotes = recentNotes
+            };
+        }
+
+        public async Task<ProjectCardsPageDto> GetProjectCardsPageAsync(string userId, int page = 1, int pageSize = 12)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 12;
+            if (pageSize > 48) pageSize = 48;
+
+            var baseQuery = _context.Projects
+                .AsNoTracking()
+                .Where(p => p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId));
+
+            var totalProjectsCount = await baseQuery.CountAsync();
+            var skip = (page - 1) * pageSize;
+
+            var projects = await baseQuery
+                .OrderByDescending(p => p.Id)
+                .Skip(skip)
+                .Take(pageSize)
+                .Select(p => new ProjectCardDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    CreatorUserId = p.CreatorUserId,
+                    TaskCount = p.Tasks.Count(t =>
+                        t.ProjectIssueTypeId != null
+                            ? t.ProjectIssueType != null && t.ProjectIssueType.CanAddToSprint
+                            : (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug))
+                })
+                .ToListAsync();
+
+            var projectIds = projects.Select(p => p.Id).ToList();
+            var activeSprintByProject = projectIds.Count == 0
+                ? new Dictionary<int, int>()
+                : await _context.Sprints
+                    .AsNoTracking()
+                    .Where(s => projectIds.Contains(s.ProjectId) && s.Status == SprintStatus.Active)
+                    .GroupBy(s => s.ProjectId)
+                    .Select(g => new { ProjectId = g.Key, SprintId = g.OrderByDescending(x => x.Id).Select(x => x.Id).FirstOrDefault() })
+                    .ToDictionaryAsync(x => x.ProjectId, x => x.SprintId);
+
+            return new ProjectCardsPageDto
+            {
+                Projects = projects,
+                ActiveSprintByProject = activeSprintByProject,
+                TotalProjectsCount = totalProjectsCount,
+                Page = page,
+                PageSize = pageSize
             };
         }
 

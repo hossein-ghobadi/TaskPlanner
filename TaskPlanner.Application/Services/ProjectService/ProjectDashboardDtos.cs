@@ -6,6 +6,10 @@ namespace TaskPlanner.Application.Services.ProjectService
     {
         public List<ProjectCardDto> Projects { get; set; } = new();
         public Dictionary<int, int> ActiveSprintByProject { get; set; } = new();
+        public int TotalProjectsCount { get; set; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public bool HasMoreProjects => Page * PageSize < TotalProjectsCount;
         public List<ProjectInvitationDto> PendingProjectInvitations { get; set; } = new();
         public List<ProjectInvitationDto> PendingSystemInvitations { get; set; } = new();
         public Dictionary<string, string> InviterLookup { get; set; } = new();
@@ -38,5 +42,15 @@ namespace TaskPlanner.Application.Services.ProjectService
         public bool IsPinned { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
+    }
+
+    public class ProjectCardsPageDto
+    {
+        public List<ProjectCardDto> Projects { get; set; } = new();
+        public Dictionary<int, int> ActiveSprintByProject { get; set; } = new();
+        public int TotalProjectsCount { get; set; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public bool HasMoreProjects => Page * PageSize < TotalProjectsCount;
     }
 }

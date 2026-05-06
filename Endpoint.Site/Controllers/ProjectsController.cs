@@ -74,10 +74,10 @@ namespace Endpoint.Site.Controllers
         //}
 
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int page = 1, int pageSize = 12)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var dashboard = await _projectQueryService.GetProjectsDashboardAsync(userId);
+            var dashboard = await _projectQueryService.GetProjectsDashboardAsync(userId, page, pageSize);
             var vm = new ProjectsIndexVm
             {
                 CurrentUserId = userId,
@@ -89,12 +89,38 @@ namespace Endpoint.Site.Controllers
                     TaskCount = p.TaskCount
                 }).ToList(),
                 ActiveSprintByProject = dashboard.ActiveSprintByProject,
+                Page = dashboard.Page,
+                PageSize = dashboard.PageSize,
+                TotalProjectsCount = dashboard.TotalProjectsCount,
+                HasMoreProjects = dashboard.HasMoreProjects,
                 PendingInviteCount = dashboard.PendingProjectInvitations.Count + dashboard.PendingSystemInvitations.Count,
                 CollaboratorCount = dashboard.Collaborators.Count,
                 RecentNoteCount = dashboard.RecentNotes.Count
             };
 
             return View(vm);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> IndexCards(int page = 1, int pageSize = 12)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var cardsPage = await _projectQueryService.GetProjectCardsPageAsync(userId, page, pageSize);
+
+            Response.Headers["X-Has-More"] = cardsPage.HasMoreProjects ? "true" : "false";
+
+            var vmCards = cardsPage.Projects.Select(p => new ProjectCardVm
+            {
+                Id = p.Id,
+                Name = p.Name,
+                CreatorUserId = p.CreatorUserId,
+                TaskCount = p.TaskCount
+            }).ToList();
+
+            ViewData["CurrentUserId"] = userId;
+            ViewData["SprintLookup"] = cardsPage.ActiveSprintByProject;
+
+            return PartialView("_ProjectCards", vmCards);
         }
         [HttpGet("{id}")]
         public async Task<IActionResult> Details(int id)

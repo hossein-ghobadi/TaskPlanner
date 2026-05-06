@@ -22,6 +22,9 @@
     @await Html.PartialAsync("_ProjectsGrid", projects, new ViewDataDictionary(ViewData)
     {
         ["CurrentUserId"] = Model?.CurrentUserId ?? string.Empty,
-        ["SprintLookup"] = Model?.ActiveSprintByProject ?? new Dictionary<int, int>()
+        ["SprintLookup"] = Model?.ActiveSprintByProject ?? new Dictionary<int, int>(),
+        ["Page"] = Model?.Page ?? 1,
+        ["PageSize"] = Model?.PageSize ?? 12,
+        ["HasMoreProjects"] = Model?.HasMoreProjects ?? false
     })
 </div>

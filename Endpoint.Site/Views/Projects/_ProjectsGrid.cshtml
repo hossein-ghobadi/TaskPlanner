@@ -12,17 +12,32 @@
         <h2 class="section-title"><i class="bi bi-briefcase me-2"></i>پروژه‌های من</h2>
     </div>
 
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3">
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3" id="projectsCardsContainer">
         <partial name="_ProjectAddCard" />
-        @foreach (var project in projects)
+        @await Html.PartialAsync("_ProjectCards", projects, new ViewDataDictionary(ViewData)
         {
-            @await Html.PartialAsync("_ProjectCard", project, new ViewDataDictionary(ViewData)
-            {
-                ["CurrentUserId"] = currentUserId,
-                ["SprintLookup"] = sprintLookup
-            })
-        }
+            ["CurrentUserId"] = currentUserId,
+            ["SprintLookup"] = sprintLookup
+        })
     </div>
+
+    @{
+        var page = (ViewData["Page"] as int?) ?? 1;
+        var pageSize = (ViewData["PageSize"] as int?) ?? 12;
+        var hasMoreProjects = (ViewData["HasMoreProjects"] as bool?) ?? false;
+    }
+    @if (hasMoreProjects)
+    {
+        <div class="text-center mt-4">
+            <button id="loadMoreProjectsBtn"
+                    type="button"
+                    class="btn btn-outline-primary"
+                    data-next-page="@(page + 1)"
+                    data-page-size="@pageSize">
+                نمایش پروژه‌های بیشتر
+            </button>
+        </div>
+    }
 
     @if (!projects.Any())
     {
@@ -54,5 +69,44 @@
                 window.location.href = detailsUrl;
             }
         });
+
+        var loadMoreBtn = document.getElementById('loadMoreProjectsBtn');
+        var cardsContainer = document.getElementById('projectsCardsContainer');
+
+        if (loadMoreBtn && cardsContainer) {
+            loadMoreBtn.addEventListener('click', async function () {
+                if (loadMoreBtn.disabled) return;
+
+                var nextPage = loadMoreBtn.getAttribute('data-next-page');
+                var pageSize = loadMoreBtn.getAttribute('data-page-size');
+                if (!nextPage || !pageSize) return;
+
+                loadMoreBtn.disabled = true;
+                loadMoreBtn.textContent = 'در حال بارگذاری...';
+
+                try {
+                    var url = '/Projects/IndexCards?page=' + encodeURIComponent(nextPage) + '&pageSize=' + encodeURIComponent(pageSize);
+                    var response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (!response.ok) {
+                        throw new Error('load-failed');
+                    }
+
+                    var html = await response.text();
+                    cardsContainer.insertAdjacentHTML('beforeend', html);
+
+                    var hasMore = response.headers.get('X-Has-More') === 'true';
+                    if (hasMore) {
+                        loadMoreBtn.setAttribute('data-next-page', String(parseInt(nextPage, 10) + 1));
+                        loadMoreBtn.disabled = false;
+                        loadMoreBtn.textContent = 'نمایش پروژه‌های بیشتر';
+                    } else {
+                        loadMoreBtn.remove();
+                    }
+                } catch (_) {
+                    loadMoreBtn.disabled = false;
+                    loadMoreBtn.textContent = 'تلاش مجدد برای بارگذاری';
+                }
+            });
+        }
     })();
 </script>
