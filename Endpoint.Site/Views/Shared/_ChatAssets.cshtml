@@ -1,0 +1,12 @@
+@*
+    Partial حاوی CSS و JS مربوط به ChatBox و SignalR کلاینت.
+    فقط در صفحاتی include کنید که چت/SignalR نیاز دارند (مثل Projects/Details).
+    استفاده در داخل @@section Scripts:
+        @@section Scripts {
+            @@await Html.PartialAsync("_ChatAssets")
+            <script> ... کد چت ... </script>
+        }
+*@
+<link rel="stylesheet" href="~/css/ChatBox.css" asp-append-version="true" />
+<script src="~/lib/microsoft/signalr/dist/browser/signalr.js" asp-append-version="true"></script>
+<script src="~/js/SignalRService.js" asp-append-version="true"></script>

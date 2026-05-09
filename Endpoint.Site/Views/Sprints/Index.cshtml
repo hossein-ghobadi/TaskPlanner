@@ -346,6 +346,7 @@ else
 </div>
 
 @section Scripts {
+    @await Html.PartialAsync("_DatePickerAssets")
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             if (@(openCreateModal ? "true" : "false")) {

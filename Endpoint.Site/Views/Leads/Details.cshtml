@@ -329,6 +329,7 @@
 </div>
 
 @section Scripts {
+    @await Html.PartialAsync("_DatePickerAssets")
     <script>
         (function () {
             if (!(window.$ && $.fn.persianDatepicker)) return;

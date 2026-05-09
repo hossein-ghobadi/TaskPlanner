@@ -1,4 +1,4 @@
-﻿@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @using Endpoint.Site.Helpers
 @{
     var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
@@ -19,25 +19,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - ProjectMannaging</title>
 
-    <!-- فونت Vazir -->
-    <!-- CDN: <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vazir-font@30.1.0/dist/font-face.css" /> -->
-    <link rel="stylesheet" href="~/lib/vazir-font/dist/font-face.css" />
+    @* فونت Vazir *@
+    <link rel="stylesheet" href="~/lib/vazir-font/dist/font-face.css" asp-append-version="true" />
 
-    <!-- Bootstrap RTL -->
-    <!-- CDN: <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" /> -->
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" />
-    <!-- CDN: <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"> -->
-    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.css">
+    @* Bootstrap RTL + Icons *@
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.css" asp-append-version="true" />
 
-    <!-- Persian Datepicker -->
-    <!-- CDN: <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css" /> -->
-    <link rel="stylesheet" href="~/lib/persian-datepicker/dist/css/persian-datepicker.min.css" />
+    @*
+        استایل‌های اصلی پروژه (bundle)
+        شامل: site.css + app-shell.css + project-sidebar.css
+        برای رِبیلد: pwsh ./build-css-bundle.ps1
+    *@
+    <link rel="stylesheet" href="~/css/app-bundle.css" asp-append-version="true" />
 
-    <!-- استایل‌های اصلی پروژه -->
-    <link rel="stylesheet" href="~/css/site.css" />
-    <link rel="stylesheet" href="~/css/app-shell.css" />
-    <link rel="stylesheet" href="~/css/project-sidebar.css" />
-    <link href="~/css/ChatBox.css" rel="stylesheet" />
+    @*
+        Persian Datepicker و ChatBox از layout حذف شده‌اند:
+        - Persian Datepicker → فقط در صفحاتی که فرم تاریخ دارند (از طریق Partial _DatePickerAssets)
+        - ChatBox/SignalR → فقط در صفحاتی که چت دارند (از طریق Partial _ChatAssets)
+    *@
     <style>
         body {
             background-color: #f8f9fa;
@@ -371,289 +371,24 @@
         </footer>
     }
 
-    <!-- Scripts -->
-    <!-- CDN: <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script> -->
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <!-- CDN: <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> -->
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- CDN: <script src="https://cdn.jsdelivr.net/npm/persian-date@1.1.0/dist/persian-date.min.js"></script> -->
-    <script src="~/lib/persian-date/dist/persian-date.min.js"></script>
-    <!-- CDN: <script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script> -->
-    <script src="~/lib/persian-datepicker/dist/js/persian-datepicker.min.js"></script>
+    @*
+        Scripts — همه با defer لود می‌شوند تا parsing صفحه را block نکنند.
+        ترتیب اجرا با defer تضمین شده است (به ترتیبی که نوشته شده‌اند اجرا می‌شوند).
+    *@
+    <script src="~/lib/jquery/dist/jquery.min.js" asp-append-version="true" defer></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js" asp-append-version="true" defer></script>
+    @*
+        persian-date و persian-datepicker از layout حذف شده‌اند.
+        صفحاتی که نیاز دارند، در داخل @@section Scripts خود این Partial را include می‌کنند:
+            @@await Html.PartialAsync("_DatePickerAssets")
+    *@
 
     @if (User?.Identity?.IsAuthenticated == true)
     {
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const notificationBell = document.getElementById('notificationBell');
-                if (!notificationBell) {
-                    return;
-                }
-
-                const badge = document.getElementById('notificationBadge');
-                const listContainer = document.getElementById('notificationList');
-                const emptyState = document.getElementById('notificationEmpty');
-                const markAllForm = document.getElementById('markAllNotificationsForm');
-                const refreshBtn = document.getElementById('refreshNotificationsBtn');
-                if (!listContainer || !emptyState) {
-                    return;
-                }
-                const requestToken = document.body.dataset.antiforgeryToken;
-                let isLoading = false;
-
-                async function loadCount() {
-                    try {
-                        const response = await fetch('/Notifications/UnreadCount');
-                        if (!response.ok) {
-                            throw new Error('response failed');
-                        }
-                        const data = await response.json();
-                        updateBadge(data.count ?? 0);
-                    } catch (error) {
-                        console.warn('خطا در دریافت تعداد نوتیفیکیشن‌ها', error);
-                    }
-                }
-
-                async function loadLatest(force = false) {
-                    if (isLoading && !force) {
-                        return;
-                    }
-                    isLoading = true;
-                    showLoadingState();
-                    try {
-                        const response = await fetch('/Notifications/Latest?take=10');
-                        if (!response.ok) {
-                            throw new Error('response failed');
-                        }
-                        const data = await response.json();
-                        renderNotifications(Array.isArray(data) ? data : []);
-                    } catch (error) {
-                        console.warn('خطا در دریافت لیست نوتیفیکیشن‌ها', error);
-                        showErrorState();
-                    } finally {
-                        isLoading = false;
-                    }
-                }
-
-                async function markAsRead(id, element) {
-                    try {
-                        const response = await fetch('/Notifications/MarkAsRead', {
-                            method: 'POST',
-                            headers: {
-                                'RequestVerificationToken': requestToken,
-                                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-                            },
-                            body: `id=${encodeURIComponent(id)}`
-                        });
-                        if (!response.ok) {
-                            throw new Error('response failed');
-                        }
-                        element?.classList.remove('notification-item-unread');
-                        await loadCount();
-                        await loadLatest(true);
-                    } catch (error) {
-                        console.warn('خطا در علامت‌گذاری نوتیفیکیشن', error);
-                    }
-                }
-
-                function renderNotifications(notifications) {
-                    listContainer.innerHTML = '';
-                    if (!notifications.length) {
-                        const emptyBlock = document.createElement('div');
-                        emptyBlock.className = 'notification-empty';
-                        emptyBlock.innerHTML = '<i class="bi bi-bell-slash"></i>نوتیفیکیشن جدیدی وجود ندارد.';
-                        listContainer.appendChild(emptyBlock);
-                        return;
-                    }
-
-                    notifications.forEach(notification => {
-                        const item = document.createElement('button');
-                        item.type = 'button';
-                        item.className = `notification-item w-100 text-start ${notification.isRead ? '' : 'notification-item-unread'}`;
-                        item.dataset.id = notification.id;
-                        item.innerHTML = `
-                            <div class="notification-item-title">${notification.title}</div>
-                            <div class="notification-item-message">${notification.message}</div>
-                            <div class="notification-item-time">
-                                <i class="bi bi-clock"></i>
-                                <span>${formatTehranPersianDateTime(notification.createdAt)}</span>
-                            </div>
-                        `;
-                        item.addEventListener('click', async () => {
-                            await markAsRead(notification.id, item);
-                            navigateByPayload(notification);
-                        });
-                        listContainer.appendChild(item);
-                    });
-                }
-
-                function navigateByPayload(notification) {
-                    if (!notification.payloadJson) {
-                        return;
-                    }
-                    try {
-                        const payload = JSON.parse(notification.payloadJson);
-                        if (payload?.taskId) {
-                            window.location.href = `/Tasks/Details/${payload.taskId}`;
-                            return;
-                        }
-                        if (payload?.projectId && notification.type === 'ProjectInvitation') {
-                            window.location.href = `/Projects/Details/${payload.projectId}`;
-                        }
-                    } catch (error) {
-                        console.warn('payload parse failed', error);
-                    }
-                }
-
-                function showLoadingState() {
-                    listContainer.innerHTML = '';
-                    const spinner = document.createElement('div');
-                    spinner.className = 'notification-empty';
-                    spinner.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><div class="mt-2">در حال بارگذاری...</div>';
-                    listContainer.appendChild(spinner);
-                }
-
-                function showErrorState() {
-                    listContainer.innerHTML = '';
-                    const errorBlock = document.createElement('div');
-                    errorBlock.className = 'notification-empty';
-                    errorBlock.innerHTML = '<i class="bi bi-exclamation-triangle"></i>خطا در دریافت اطلاعات.';
-                    listContainer.appendChild(errorBlock);
-                }
-
-                function updateBadge(count) {
-                    if (!badge) {
-                        return;
-                    }
-                    const numericCount = Number(count) || 0;
-                    if (numericCount > 0) {
-                        badge.textContent = numericCount > 9 ? '9+' : numericCount;
-                        badge.classList.remove('d-none');
-                    } else {
-                        badge.textContent = '0';
-                        badge.classList.add('d-none');
-                    }
-                }
-
-                function formatTehranPersianDateTime(dateString) {
-                    try {
-                        const date = new Date(dateString);
-                        if (Number.isNaN(date.getTime())) {
-                            return '';
-                        }
-                        return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
-                            timeZone: 'Asia/Tehran',
-                            year: 'numeric',
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: false
-                        }).format(date);
-                    } catch {
-                        return '';
-                    }
-                }
-
-                const notificationPanel = document.getElementById('notificationPanel');
-                const notificationBackdrop = document.getElementById('notificationBackdrop');
-
-                function openNotifications() {
-                    const isMobile = window.innerWidth < 992;
-                    notificationPanel?.classList.add('is-open');
-                    notificationBell?.setAttribute('aria-expanded', 'true');
-                    if (isMobile) {
-                        // در موبایل بک‌دراپ و قفل اسکرول غیرفعال است تا تداخل کلیک رخ ندهد.
-                        notificationBackdrop?.classList.remove('is-open');
-                    } else {
-                        notificationBackdrop?.classList.add('is-open');
-                        document.body.classList.add('notifications-open');
-                    }
-                    loadLatest(true);
-                }
-
-                function closeNotifications() {
-                    notificationPanel?.classList.remove('is-open');
-                    notificationBackdrop?.classList.remove('is-open');
-                    notificationBell?.setAttribute('aria-expanded', 'false');
-                    document.body.classList.remove('notifications-open');
-                }
-
-                notificationBell?.addEventListener('click', () => {
-                    const isOpen = notificationPanel?.classList.contains('is-open');
-                    if (isOpen) {
-                        closeNotifications();
-                    } else {
-                        openNotifications();
-                    }
-                });
-
-                notificationBackdrop?.addEventListener('click', closeNotifications);
-                refreshBtn?.addEventListener('click', () => loadLatest(true));
-
-                markAllForm?.addEventListener('submit', async (event) => {
-                    event.preventDefault();
-                    try {
-                        const response = await fetch('/Notifications/MarkAllAsRead', {
-                            method: 'POST',
-                            headers: {
-                                'RequestVerificationToken': requestToken
-                            }
-                        });
-                        if (!response.ok) {
-                            throw new Error('response failed');
-                        }
-                        await loadCount();
-                        await loadLatest(true);
-                    } catch (error) {
-                        console.warn('خطا در علامت‌گذاری همه نوتیفیکیشن‌ها', error);
-                    }
-                });
-
-                loadCount();
-                setInterval(loadCount, 60000);
-
-                // Mobile sidebar (hamburger)
-                const mobileToggle = document.getElementById('mobileSidebarToggle');
-                const mobileBackdrop = document.getElementById('mobileSidebarBackdrop');
-                const mobileClose = document.getElementById('mobileSidebarClose');
-                const appShell = document.querySelector('.app-shell');
-                const mobileNavLinks = document.querySelectorAll('.app-sidebar-nav a');
-
-                function closeMobileSidebar() {
-                    appShell?.classList.remove('sidebar-open');
-                    document.body.classList.remove('mobile-menu-open');
-                }
-
-                function resetInteractiveOverlays() {
-                    closeMobileSidebar();
-                    closeNotifications();
-                }
-
-                // وقتی صفحه با back/forward cache برمی‌گردد، گاهی overlayها باز می‌مانند.
-                // این ریست از گیر افتادن کلیک‌ها جلوگیری می‌کند.
-                resetInteractiveOverlays();
-                window.addEventListener('pageshow', resetInteractiveOverlays);
-
-                mobileToggle?.addEventListener('click', function () {
-                    appShell?.classList.add('sidebar-open');
-                    document.body.classList.add('mobile-menu-open');
-                });
-
-                mobileClose?.addEventListener('click', closeMobileSidebar);
-                mobileBackdrop?.addEventListener('click', closeMobileSidebar);
-                mobileNavLinks.forEach(link => link.addEventListener('click', closeMobileSidebar));
-
-                window.addEventListener('resize', () => {
-                    if (window.innerWidth >= 992) {
-                        closeMobileSidebar();
-                    }
-                });
-            });
-        </script>
+        @* اسکریپت اعلان‌ها به فایل خارجی منتقل شده تا cache طولانی‌مدت بشود *@
+        <script src="~/js/notifications.js" asp-append-version="true" defer></script>
     }
-    <script src="~/lib/microsoft/signalr/dist/browser/signalr.js"></script>
-    <script src="~/js/SignalRService.js"></script>
+
 
     @RenderSection("Scripts", required: false)
 </body>

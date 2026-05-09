@@ -1,4 +1,4 @@
-﻿@model Endpoint.Site.Models.TaskEditVm
+@model Endpoint.Site.Models.TaskEditVm
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @{
     var isModal = (Context.Request.Query.ContainsKey("fromModal") && Context.Request.Query["fromModal"] == "true")
@@ -1511,6 +1511,7 @@
 @if (!isModal)
 {
 @section Scripts {
+    @await Html.PartialAsync("_DatePickerAssets")
     <script>
         // اطمینان از مقداردهی درست ورودی‌ها و مقدارهای پنهان بعد از لود کامل DOM
         $(function () {

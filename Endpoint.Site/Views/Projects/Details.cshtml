@@ -931,6 +931,7 @@
 </div>
 
 @section Scripts {
+    @await Html.PartialAsync("_ChatAssets")
 <script>
 (() => {
     const projectId = @Model.Id;

@@ -3082,6 +3082,7 @@
 }
 
 @section Scripts {
+    @await Html.PartialAsync("_DatePickerAssets")
     @Html.AntiForgeryToken()
     <script>
         const __noActiveSprintBoard = @(noActiveSprintBoard.ToString().ToLowerInvariant());

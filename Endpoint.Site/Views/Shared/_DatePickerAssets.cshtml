@@ -1,0 +1,14 @@
+@*
+    Partial حاوی CSS و JS مربوط به Persian Datepicker.
+    فقط در صفحاتی include کنید که واقعاً به تقویم شمسی نیاز دارند.
+    استفاده در داخل @@section Scripts:
+        @@section Scripts {
+            @@await Html.PartialAsync("_DatePickerAssets")
+            <script>
+                $('.persian-date').pDatepicker({ ... });
+            </script>
+        }
+*@
+<link rel="stylesheet" href="~/lib/persian-datepicker/dist/css/persian-datepicker.min.css" asp-append-version="true" />
+<script src="~/lib/persian-date/dist/persian-date.min.js" asp-append-version="true"></script>
+<script src="~/lib/persian-datepicker/dist/js/persian-datepicker.min.js" asp-append-version="true"></script>

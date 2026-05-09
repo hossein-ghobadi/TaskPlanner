@@ -17,6 +17,9 @@ using TaskPlanner.Domain.Entities.Users;
 using Microsoft.Extensions.Options;
 using TaskPlanner.Application.Services;
 using Endpoint.Site.Hubs;
+using Microsoft.AspNetCore.ResponseCompression;
+using System.IO.Compression;
+using Microsoft.Net.Http.Headers;
 
 
 Env.Load();
@@ -68,6 +71,27 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddHttpClient();  // برای IHttpClientFactory
 builder.Services.AddSignalR();
 
+// ===== Response Compression (Brotli + Gzip) =====
+// تقریباً ۷۰٪ حجم HTML/CSS/JS را کم می‌کند و روی شبکه‌های کند فرقش محسوس است
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+    {
+        "application/javascript",
+        "application/json",
+        "image/svg+xml",
+        "font/woff",
+        "font/woff2",
+        "application/font-woff",
+        "application/font-woff2"
+    });
+});
+
+builder.Services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Optimal);
+builder.Services.Configure<GzipCompressionProviderOptions>(o => o.Level = CompressionLevel.Optimal);
 
 var app = builder.Build();
 
@@ -80,8 +104,23 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseCors("MyCors");
 
+// Compression باید قبل از UseStaticFiles باشد تا فایل‌های استاتیک هم فشرده شوند
+app.UseResponseCompression();
+
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+
+// ===== Static Files با Cache طولانی =====
+// چون از asp-append-version="true" استفاده می‌کنیم، URL با تغییر فایل عوض می‌شود
+// پس immutable و یک ساله امن است
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        const int durationInSeconds = 60 * 60 * 24 * 365; // یک سال
+        ctx.Context.Response.Headers[HeaderNames.CacheControl] =
+            $"public, max-age={durationInSeconds}, immutable";
+    }
+});
 
 app.UseRouting();
 app.UseAuthentication();
