@@ -397,7 +397,12 @@ namespace Endpoint.Site.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddLeadNote([FromForm] int leadId, [FromForm] string title, [FromForm] string? content, List<IFormFile>? attachments)
+        public async Task<IActionResult> AddLeadNote(
+            [FromForm] int leadId,
+            [FromForm] string title,
+            [FromForm] string? content,
+            [FromForm(Name = "attachments")] List<IFormFile>? attachments,
+            [FromForm(Name = "attachments[]")] List<IFormFile>? attachmentsArray)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
             try
@@ -405,6 +410,10 @@ namespace Endpoint.Site.Controllers
                 await using var tx = await _context.Database.BeginTransactionAsync();
                 var noteId = 0;
                 var uploadedPaths = new List<string>();
+                var filesToUpload = (attachments ?? new List<IFormFile>())
+                    .Concat(attachmentsArray ?? Enumerable.Empty<IFormFile>())
+                    .Where(f => f != null && f.Length > 0)
+                    .ToList();
                 try
                 {
                     noteId = await _leadService.AddNoteAsync(new CreateLeadNoteDto
@@ -414,11 +423,11 @@ namespace Endpoint.Site.Controllers
                         Content = content
                     }, userId);
 
-                    if (attachments != null && attachments.Any())
+                    if (filesToUpload.Any())
                     {
-                        foreach (var file in attachments.Where(f => f != null && f.Length > 0))
+                        foreach (var file in filesToUpload)
                         {
-                            var uploadResult = await _fileUploadService.UploadFileAsync(file, "project-notes");
+                            var uploadResult = await _fileUploadService.UploadFileAsync(file, "lead-notes");
                             if (!uploadResult.Success || string.IsNullOrWhiteSpace(uploadResult.FilePath))
                                 throw new InvalidOperationException($"آپلود فایل «{file.FileName}» ناموفق بود.");
 

@@ -170,7 +170,8 @@ namespace TaskPlanner.Application.Services.LeadService
                     {
                         Id = a.Id,
                         FileName = a.FileName,
-                        FileType = a.FileType
+                        FileType = a.FileType,
+                        FilePath = a.FilePath
                     }).ToList()
                 }).ToList()
             };

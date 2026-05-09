@@ -4,6 +4,7 @@
     Layout = "/Views/Shared/_Layout.cshtml";
     ViewData["UseFluidLayout"] = true;
 }
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
 
 <div class="create-note-container">
     <!-- Header -->
@@ -44,6 +45,7 @@
             <!-- Content Section -->
             <div class="form-group">
                 <textarea asp-for="Content" class="form-textarea" rows="6" placeholder="متن یادداشت خود را بنویسید..."></textarea>
+                <small class="form-text text-muted d-block mt-2">برای چک‌لیست از دکمه checklist استفاده کنید (نمایش: <code>☐</code> / <code>☑</code>).</small>
                 <span asp-validation-for="Content" class="text-danger"></span>
             </div>
 
@@ -228,6 +230,34 @@
 
     .form-textarea::placeholder {
         color: #adb5bd;
+    }
+
+    .EasyMDEContainer {
+        direction: ltr;
+    }
+
+    .EasyMDEContainer .CodeMirror {
+        min-height: 220px;
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        font-size: 1rem;
+        direction: ltr;
+        text-align: right;
+        unicode-bidi: plaintext;
+    }
+
+    .EasyMDEContainer .CodeMirror pre,
+    .EasyMDEContainer .CodeMirror-line {
+        direction: ltr;
+        text-align: right;
+        unicode-bidi: plaintext;
+    }
+
+    .EasyMDEContainer .editor-toolbar {
+        border: 1px solid #e9ecef;
+        border-bottom: none;
+        border-radius: 10px 10px 0 0;
+        text-align: right;
     }
 
     /* Attachments */
@@ -524,12 +554,73 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
     <script>
+        let noteEditor;
         let mediaRecorder;
         let audioChunks = [];
         let recordingStartTime;
         let timerInterval;
         let selectedFiles = []; // ذخیره فایل‌های انتخاب شده
+
+        function normalizeTaskListMarkdown(markdownText) {
+            return (markdownText || '')
+                .split('\n')
+                .map(function (line) {
+                    if (/^\s*-\[( |x|X)\]\s*/.test(line)) return line.replace(/^(\s*)-\[( |x|X)\]\s*/, '$1- [$2] ');
+                    if (/^\s*-\s*\[( |x|X)\]\s*/.test(line)) return line.replace(/^(\s*)-\s*\[( |x|X)\]\s*/, '$1- [$2] ');
+                    if (/^\s*\[( |x|X)\]\s+/.test(line)) return line.replace(/^(\s*)\[( |x|X)\]\s+/, '$1- [$2] ');
+                    return line;
+                })
+                .join('\n');
+        }
+
+        function markdownToEditorChecklist(text) {
+            return normalizeTaskListMarkdown(text)
+                .split('\n')
+                .map(function (line) {
+                    return line.replace(/^(\s*)-\s*\[( |x|X)\]\s*(.*)$/, function (_, indent, marker, content) {
+                        const symbol = marker.toLowerCase() === 'x' ? '☑' : '☐';
+                        return `${indent}${symbol} ${content}`;
+                    });
+                })
+                .join('\n');
+        }
+
+        function editorChecklistToMarkdown(text) {
+            return normalizeTaskListMarkdown(
+                (text || '')
+                    .split('\n')
+                    .map(function (line) {
+                        if (/^\s*☐\s*/.test(line)) return line.replace(/^(\s*)☐\s*(.*)$/, '$1- [ ] $2');
+                        if (/^\s*☑\s*/.test(line)) return line.replace(/^(\s*)☑\s*(.*)$/, '$1- [x] $2');
+                        return line;
+                    })
+                    .join('\n')
+            );
+        }
+
+        function insertChecklistItem(editor) {
+            const cm = editor.codemirror;
+            const cursor = cm.getCursor();
+            cm.replaceSelection('☐ ');
+            cm.setCursor({ line: cursor.line, ch: cursor.ch + 2 });
+            cm.focus();
+        }
+
+        function bindChecklistAutoContinue(editor) {
+            const cm = editor.codemirror;
+            cm.on('keydown', function (_, event) {
+                if (event.key !== 'Enter') return;
+                const cursor = cm.getCursor();
+                const lineText = cm.getLine(cursor.line) || '';
+                const checklistMatch = lineText.match(/^(\s*)(☐|☑)\s+(.*)$/);
+                if (!checklistMatch) return;
+                event.preventDefault();
+                const indent = checklistMatch[1] || '';
+                cm.replaceSelection(`\n${indent}☐ `);
+            });
+        }
 
         // مدیریت انتخاب فایل‌ها
         function handleFileSelect(event) {
@@ -767,6 +858,31 @@
 
         // تنظیم مقدار اولیه select از Model
         document.addEventListener('DOMContentLoaded', function() {
+            const contentElement = document.getElementById('Content');
+            if (contentElement) {
+                noteEditor = new EasyMDE({
+                    element: contentElement,
+                    spellChecker: false,
+                    status: false,
+                    direction: 'ltr',
+                    toolbar: [
+                        'bold', 'italic', 'heading', '|',
+                        'quote', 'unordered-list', 'ordered-list',
+                        {
+                            name: 'checklist',
+                            action: function customChecklist(editor) { insertChecklistItem(editor); },
+                            className: 'fa fa-check-square-o',
+                            title: 'چک‌لیست'
+                        },
+                        '|', 'guide'
+                    ]
+                });
+
+                const editorContent = markdownToEditorChecklist(noteEditor.value());
+                if (editorContent !== noteEditor.value()) noteEditor.value(editorContent);
+                bindChecklistAutoContinue(noteEditor);
+            }
+
             const folderSelect = document.getElementById('folderSelect');
             const initialFolderId = @(Model.FolderId.HasValue ? Model.FolderId.Value.ToString() : "null");
             
@@ -778,6 +894,11 @@
 
         // اطمینان از اینکه select مقدار صحیح را می‌فرستد
         document.querySelector('.create-form').addEventListener('submit', function(e) {
+            if (noteEditor) {
+                const markdownContent = editorChecklistToMarkdown(noteEditor.value());
+                noteEditor.value(markdownContent);
+            }
+
             const folderSelect = document.getElementById('folderSelect');
             if (folderSelect) {
                 // اگر مقدار خالی است، مطمئن شو که value="" است

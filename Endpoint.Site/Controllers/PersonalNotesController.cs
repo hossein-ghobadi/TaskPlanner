@@ -548,6 +548,31 @@ namespace Endpoint.Site.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateContent([FromBody] PersonalNoteContentUpdateVm vm)
+        {
+            if (vm == null || vm.NoteId <= 0)
+            {
+                return BadRequest(new { success = false, message = "اطلاعات نامعتبر است." });
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var note = await _context.PersonalNotes
+                .FirstOrDefaultAsync(n => n.Id == vm.NoteId && n.UserId == userId);
+
+            if (note == null)
+            {
+                return NotFound(new { success = false, message = "یادداشت یافت نشد." });
+            }
+
+            note.Content = vm.Content;
+            note.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true });
+        }
+
         // 📌 جابجایی یادداشت به پوشه دیگر
         [HttpGet]
         public async Task<IActionResult> MoveToFolder(int id)

@@ -492,6 +492,44 @@ namespace Endpoint.Site.Controllers
             return RedirectToAction(nameof(Index), new { projectId = note.ProjectId, folderId = note.FolderId });
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateContent([FromBody] ProjectNoteContentUpdateVm vm)
+        {
+            if (vm == null || vm.NoteId <= 0)
+            {
+                return BadRequest(new { success = false, message = "اطلاعات نامعتبر است." });
+            }
+
+            var note = await _context.ProjectNotes
+                .FirstOrDefaultAsync(n => n.Id == vm.NoteId);
+            if (note == null)
+            {
+                return NotFound(new { success = false, message = "یادداشت یافت نشد." });
+            }
+
+            if (!note.ProjectId.HasValue)
+            {
+                return BadRequest(new { success = false, message = "یادداشت به پروژه متصل نیست." });
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == note.ProjectId.Value &&
+                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+            if (!hasAccess)
+            {
+                return Unauthorized(new { success = false, message = "دسترسی ندارید." });
+            }
+
+            note.Content = vm.Content;
+            note.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true });
+        }
+
         // Helper: محاسبه تمام IDهای پوشه‌های موجود در درخت یک پوشه
         private HashSet<int> GetFolderTreeIds(int folderId, List<ProjectNoteFolder> allFolders)
         {

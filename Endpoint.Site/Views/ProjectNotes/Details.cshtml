@@ -1,7 +1,9 @@
 @model ProjectNote
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     var noteColor = "#3b82f6";
+    var requestToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
 }
 
 <div class="note-detail-container">
@@ -82,9 +84,8 @@
             <h1 class="post-title">@Model.Title</h1>
             @if (!string.IsNullOrEmpty(Model.Content))
             {
-                <div class="post-text">
-                    @Html.Raw(Model.Content.Replace("\n", "<br/>"))
-                </div>
+                <textarea id="note-content-@Model.Id" class="markdown-source d-none">@Model.Content</textarea>
+                <div class="post-text markdown-render" data-note-id="@Model.Id" data-markdown-id="note-content-@Model.Id"></div>
             }
         </div>
 
@@ -340,9 +341,32 @@
     .post-text {
         color: #4a5568;
         line-height: 1.8;
-        white-space: pre-wrap;
         word-wrap: break-word;
         font-size: 1.1rem;
+    }
+
+    .post-text ul {
+        padding-right: 1.25rem;
+        margin-bottom: 0;
+    }
+
+    .post-text p {
+        margin-bottom: 0.5rem;
+    }
+
+    .post-text li.task-list-item {
+        list-style: none;
+        margin-bottom: 0.3rem;
+    }
+
+    .post-text li.task-list-item input[type="checkbox"] {
+        margin-left: 0.5rem;
+        cursor: pointer;
+    }
+
+    .post-text li.task-list-item.is-checked {
+        opacity: 0.75;
+        text-decoration: line-through;
     }
 
     /* Attachments */
@@ -665,3 +689,79 @@
         }
     }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script>
+    const requestVerificationToken = '@requestToken';
+
+    function normalizeTaskListMarkdown(markdownText) {
+        return (markdownText || '')
+            .split('\n')
+            .map(function (line) {
+                if (/^\s*-\[( |x|X)\]\s*/.test(line)) return line.replace(/^(\s*)-\[( |x|X)\]\s*/, '$1- [$2] ');
+                if (/^\s*-\s*\[( |x|X)\]\s*/.test(line)) return line.replace(/^(\s*)-\s*\[( |x|X)\]\s*/, '$1- [$2] ');
+                if (/^\s*\[( |x|X)\]\s+/.test(line)) return line.replace(/^(\s*)\[( |x|X)\]\s+/, '$1- [$2] ');
+                return line;
+            })
+            .join('\n');
+    }
+
+    function updateChecklistMarker(markdownText, checkboxIndex, isChecked) {
+        let currentIndex = 0;
+        return (markdownText || '').replace(/^(\s*-\s*)\[( |x|X)\]/gm, function (_, prefix, marker) {
+            const updated = currentIndex === checkboxIndex ? `${prefix}[${isChecked ? 'x' : ' '}]` : `${prefix}[${marker}]`;
+            currentIndex += 1;
+            return updated;
+        });
+    }
+
+    async function persistChecklistState(noteId, content) {
+        const response = await fetch('/ProjectNotes/UpdateContent', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': requestVerificationToken
+            },
+            body: JSON.stringify({ noteId, content })
+        });
+        if (!response.ok) throw new Error('Save failed');
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const targets = document.querySelectorAll('.markdown-render[data-markdown-id]');
+        targets.forEach(function (target) {
+            const sourceId = target.dataset.markdownId;
+            const source = document.getElementById(sourceId);
+            if (!source) return;
+            const noteId = Number(target.dataset.noteId);
+
+            const markdownText = normalizeTaskListMarkdown(source.value || '');
+            target.innerHTML = DOMPurify.sanitize(marked.parse(markdownText, { breaks: true, gfm: true }));
+            source.value = markdownText;
+
+            target.querySelectorAll('input[type="checkbox"]').forEach(function (checkbox) {
+                checkbox.removeAttribute('disabled');
+                const listItem = checkbox.closest('li.task-list-item');
+                const toggleCheckedState = function () {
+                    if (!listItem) return;
+                    listItem.classList.toggle('is-checked', checkbox.checked);
+                };
+                toggleCheckedState();
+                checkbox.addEventListener('change', async function () {
+                    toggleCheckedState();
+                    const checkboxes = Array.from(target.querySelectorAll('input[type="checkbox"]'));
+                    const checkboxIndex = checkboxes.indexOf(checkbox);
+                    if (checkboxIndex < 0 || !noteId) return;
+                    const updatedMarkdown = updateChecklistMarker(source.value || '', checkboxIndex, checkbox.checked);
+                    source.value = updatedMarkdown;
+                    try {
+                        await persistChecklistState(noteId, updatedMarkdown);
+                    } catch {
+                        checkbox.checked = !checkbox.checked;
+                        toggleCheckedState();
+                    }
+                });
+            });
+        });
+    });
+</script>

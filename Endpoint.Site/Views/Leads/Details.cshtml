@@ -101,8 +101,9 @@
                         <input name="content" class="form-control form-control-sm" />
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small mb-1">پیوست فایل</label>
+                        <label class="form-label small mb-1">پیوست فایل ها</label>
                         <input name="attachments" type="file" class="form-control form-control-sm" multiple />
+                        @*<div class="form-text small">می‌توانید چند فایل را هم‌زمان انتخاب کنید.</div>*@
                     </div>
                     <div class="col-md-1">
                         <button type="submit" class="btn btn-primary btn-sm w-100">افزودن</button>
@@ -126,10 +127,15 @@
                                 @if (n.Attachments.Any())
                                 {
                                     <div class="small mt-1">
-                                        <span class="text-muted">پیوست‌ها:</span>
+                                        <span class="text-muted">پیوست‌ها (@n.Attachments.Count):</span>
                                         @foreach (var a in n.Attachments)
                                         {
-                                            <span class="badge bg-light text-dark border me-1">@a.FileName</span>
+                                            <a href="@a.FilePath"
+                                               target="_blank"
+                                               rel="noopener noreferrer"
+                                               class="badge bg-light text-dark border me-1 text-decoration-none">
+                                                @a.FileName
+                                            </a>
                                         }
                                     </div>
                                 }

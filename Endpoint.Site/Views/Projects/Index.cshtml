@@ -13,7 +13,7 @@
 
     @await Html.PartialAsync("_ProjectsStats", viewData: new ViewDataDictionary(ViewData)
     {
-        ["ProjectCount"] = projects.Count,
+        ["ProjectCount"] = Model?.TotalProjectsCount ?? projects.Count,
         ["PendingInviteCount"] = Model?.PendingInviteCount ?? 0,
         ["CollaboratorCount"] = Model?.CollaboratorCount ?? 0,
         ["RecentNoteCount"] = Model?.RecentNoteCount ?? 0
