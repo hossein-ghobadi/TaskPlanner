@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using TaskPlanner.Domain.Entities.Users;
 using Endpoint.Site.Models;
 using System.Security.Claims;
+using TaskPlanner.Persistence.Contexts;
 
 namespace Endpoint.Site.Controllers
 {
@@ -14,15 +15,18 @@ namespace Endpoint.Site.Controllers
     {
         private readonly UserManager<User> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly MVPTestDatabaseContext _dbContext;
         private readonly ILogger<AdminUsersController> _logger;
 
         public AdminUsersController(
             UserManager<User> userManager,
             RoleManager<IdentityRole> roleManager,
+            MVPTestDatabaseContext dbContext,
             ILogger<AdminUsersController> logger)
         {
             _userManager = userManager;
             _roleManager = roleManager;
+            _dbContext = dbContext;
             _logger = logger;
         }
 
@@ -175,15 +179,87 @@ namespace Endpoint.Site.Controllers
                 return Json(new { success = false, message = "نمی‌توان کاربر ادمین را حذف کرد" });
             }
 
-            var result = await _userManager.DeleteAsync(user);
-            if (result.Succeeded)
+            try
             {
-                _logger.LogInformation("Admin {AdminId} deleted user {UserId}", currentUserId, user.Id);
-                return Json(new { success = true, message = "کاربر با موفقیت حذف شد" });
-            }
+                // پاکسازی وابستگی‌های اختیاری که با حذف کاربر conflict ایجاد می‌کنند
+                var assignedTasks = await _dbContext.TaskItems
+                    .Where(t => t.AssignedUserId == user.Id)
+                    .ToListAsync();
+                if (assignedTasks.Count > 0)
+                {
+                    foreach (var task in assignedTasks)
+                    {
+                        task.AssignedUserId = null;
+                    }
+                }
 
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            return Json(new { success = false, message = $"خطا در حذف کاربر: {errors}" });
+                // در بعضی دیتابیس‌های قدیمی ستون shadow با نام UserId1 وجود دارد.
+                // خطای این بخش نباید حذف کاربر را متوقف کند.
+                try
+                {
+                    await _dbContext.Database.ExecuteSqlInterpolatedAsync($@"
+                        IF OBJECT_ID('Notifications', 'U') IS NOT NULL AND COL_LENGTH('Notifications', 'UserId1') IS NOT NULL
+                        BEGIN
+                            UPDATE [Notifications]
+                            SET [UserId1] = NULL
+                            WHERE [UserId1] = {user.Id}
+                        END
+                    ");
+                }
+                catch (Exception cleanupEx)
+                {
+                    _logger.LogWarning(cleanupEx, "Optional cleanup for Notifications.UserId1 failed for user {UserId}", user.Id);
+                }
+
+                if (assignedTasks.Count > 0)
+                {
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                var result = await _userManager.DeleteAsync(user);
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("Admin {AdminId} deleted user {UserId}", currentUserId, user.Id);
+                    return Json(new { success = true, message = "کاربر با موفقیت حذف شد" });
+                }
+
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                return Json(new { success = false, message = $"خطا در حذف کاربر: {errors}" });
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogWarning(ex, "Delete user {UserId} failed due to related data", user.Id);
+
+                if (user.IsActive)
+                {
+                    user.IsActive = false;
+                    var deactivateResult = await _userManager.UpdateAsync(user);
+                    if (deactivateResult.Succeeded)
+                    {
+                        return Json(new
+                        {
+                            success = true,
+                            message = "کاربر به دلیل داشتن اطلاعات وابسته حذف نشد، اما غیرفعال شد"
+                        });
+                    }
+                }
+
+                return Json(new
+                {
+                    success = false,
+                    message = "به دلیل وجود اطلاعات وابسته، حذف کاربر امکان‌پذیر نیست"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error while deleting user {UserId}", user.Id);
+                var rootMessage = ex.GetBaseException().Message;
+                return Json(new
+                {
+                    success = false,
+                    message = $"خطای غیرمنتظره در حذف کاربر رخ داد: {rootMessage}"
+                });
+            }
         }
 
         // POST: فعال/غیرفعال کردن کاربر

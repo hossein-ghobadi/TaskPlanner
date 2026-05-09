@@ -145,6 +145,12 @@ namespace TaskPlanner.Persistence.Contexts
                 .Property(t => t.IssueType)
                 .HasDefaultValue(IssueType.Task);
 
+            modelBuilder.Entity<TaskItem>()
+                .HasOne(t => t.AssignedUser)
+                .WithMany()
+                .HasForeignKey(t => t.AssignedUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // Index برای IssueKeyPrefix در Project
             modelBuilder.Entity<Project>()
                 .HasIndex(p => p.IssueKeyPrefix);
@@ -439,7 +445,7 @@ namespace TaskPlanner.Persistence.Contexts
 
             modelBuilder.Entity<Notification>()
                 .HasOne(n => n.User)
-                .WithMany()
+                .WithMany(u => u.Notifications)
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 

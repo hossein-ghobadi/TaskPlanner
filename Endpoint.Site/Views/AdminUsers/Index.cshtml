@@ -254,6 +254,16 @@
         document.addEventListener('DOMContentLoaded', function () {
             const antiforgeryToken = document.body.dataset.antiforgeryToken;
 
+            async function parseJsonResponse(response) {
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    return response.json();
+                }
+
+                const bodyText = await response.text();
+                throw new Error(bodyText || 'پاسخ نامعتبر از سرور دریافت شد');
+            }
+
             // حذف کاربر
             document.querySelectorAll('.delete-user-btn').forEach(btn => {
                 btn.addEventListener('click', function () {
@@ -272,7 +282,7 @@
                         },
                         body: `id=${encodeURIComponent(userId)}`
                     })
-                    .then(response => response.json())
+                    .then(parseJsonResponse)
                     .then(data => {
                         if (data.success) {
                             alert(data.message);
@@ -283,7 +293,7 @@
                     })
                     .catch(error => {
                         console.error('Error:', error);
-                        alert('خطا در حذف کاربر');
+                        alert('خطا در حذف کاربر: ' + (error.message || 'خطای ناشناخته'));
                     });
                 });
             });

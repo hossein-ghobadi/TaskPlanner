@@ -967,6 +967,26 @@
             });
         }
 
+        function bindChecklistToggleByClick(editor) {
+            const cm = editor.codemirror;
+            cm.getWrapperElement().addEventListener('mousedown', function (event) {
+                if (event.button !== 0) return;
+
+                const pos = cm.coordsChar({ left: event.clientX, top: event.clientY }, 'window');
+                const lineText = cm.getLine(pos.line) || '';
+                const match = lineText.match(/^(\s*)(☐|☑)\s+/);
+                if (!match) return;
+
+                const symbolStart = (match[1] || '').length;
+                const isOnSymbol = pos.ch >= symbolStart && pos.ch <= symbolStart + 1;
+                if (!isOnSymbol) return;
+
+                event.preventDefault();
+                const newSymbol = match[2] === '☐' ? '☑' : '☐';
+                cm.replaceRange(newSymbol, { line: pos.line, ch: symbolStart }, { line: pos.line, ch: symbolStart + 1 });
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const contentElement = document.getElementById('Content');
             if (!contentElement) return;
@@ -1001,6 +1021,7 @@
             }
 
             bindChecklistAutoContinue(noteEditor);
+            bindChecklistToggleByClick(noteEditor);
         });
 
         document.querySelector('.create-form').addEventListener('submit', function () {
