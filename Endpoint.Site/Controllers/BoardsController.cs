@@ -24,18 +24,81 @@ namespace Endpoint.Site.Controllers
         }
 
         // GET: لیست تخته‌های کاربر
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int page = 1, int pageSize = 4)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 4;
+            if (pageSize > 48) pageSize = 48;
 
             // تخته‌هایی که کاربر ایجاد کرده یا عضو آن است
-            var boards = await _context.Boards
+            var baseQuery = _context.Boards
+                .AsNoTracking()
                 .Where(b => b.CreatorUserId == userId || 
-                           b.Members.Any(m => m.UserId == userId))
+                           b.Members.Any(m => m.UserId == userId));
+
+            var totalBoardsCount = await baseQuery.CountAsync();
+            var skip = (page - 1) * pageSize;
+            var boards = await baseQuery
                 .OrderByDescending(b => b.UpdatedAt)
+                .Skip(skip)
+                .Take(pageSize)
+                .Select(b => new BoardCardVm
+                {
+                    Id = b.Id,
+                    Name = b.Name,
+                    Description = b.Description,
+                    CreatorUserId = b.CreatorUserId,
+                    UpdatedAt = b.UpdatedAt,
+                    TaskCount = b.Tasks.Count()
+                })
                 .ToListAsync();
 
-            return View(boards);
+            var vm = new BoardsIndexVm
+            {
+                CurrentUserId = userId,
+                Boards = boards,
+                Page = page,
+                PageSize = pageSize,
+                TotalBoardsCount = totalBoardsCount,
+                HasMoreBoards = page * pageSize < totalBoardsCount
+            };
+
+            return View(vm);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> IndexCards(int page = 1, int pageSize = 4)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 4;
+            if (pageSize > 48) pageSize = 48;
+
+            var baseQuery = _context.Boards
+                .AsNoTracking()
+                .Where(b => b.CreatorUserId == userId || b.Members.Any(m => m.UserId == userId));
+
+            var totalBoardsCount = await baseQuery.CountAsync();
+            var skip = (page - 1) * pageSize;
+            var boards = await baseQuery
+                .OrderByDescending(b => b.UpdatedAt)
+                .Skip(skip)
+                .Take(pageSize)
+                .Select(b => new BoardCardVm
+                {
+                    Id = b.Id,
+                    Name = b.Name,
+                    Description = b.Description,
+                    CreatorUserId = b.CreatorUserId,
+                    UpdatedAt = b.UpdatedAt,
+                    TaskCount = b.Tasks.Count()
+                })
+                .ToListAsync();
+
+            Response.Headers["X-Has-More"] = (page * pageSize < totalBoardsCount) ? "true" : "false";
+            ViewData["CurrentUserId"] = userId;
+            return PartialView("_BoardCards", boards);
         }
 
         // GET: جزئیات تخته

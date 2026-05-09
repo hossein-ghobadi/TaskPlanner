@@ -1,0 +1,54 @@
+@model IEnumerable<Endpoint.Site.Models.BoardCardVm>
+@using DNTPersianUtils.Core
+
+@{
+    var currentUserId = ViewData["CurrentUserId"] as string;
+    var boards = Model?.ToList() ?? new List<Endpoint.Site.Models.BoardCardVm>();
+}
+
+@foreach (var board in boards)
+{
+    <div class="col">
+        <div class="project-card">
+            <a asp-action="Details" asp-route-id="@board.Id" class="text-decoration-none text-dark">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="card-title fw-bold mb-0">@board.Name</h5>
+                        <span class="badge bg-primary">
+                            @board.TaskCount.ToString().ToPersianNumbers() کار
+                        </span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(board.Description))
+                    {
+                        <p class="card-text text-muted description-text">
+                            @board.Description
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="card-text text-muted">بدون توضیحات</p>
+                    }
+                </div>
+            </a>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        <i class="bi bi-clock"></i>
+                        @board.UpdatedAt.ToShortPersianDateString().ToPersianNumbers()
+                    </small>
+                    @if (board.CreatorUserId == currentUserId)
+                    {
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openEditBoardModal(@board.Id)" title="ویرایش">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); openDeleteBoardModal(@board.Id, '@board.Name', @board.TaskCount)" title="حذف" data-task-count="@board.TaskCount">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}

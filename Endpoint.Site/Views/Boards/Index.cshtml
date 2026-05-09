@@ -1,14 +1,12 @@
-@model IEnumerable<TaskPlanner.Domain.Entities.Boards.Board>
-@using TaskPlanner.Domain.Entities.Boards
+@model Endpoint.Site.Models.BoardsIndexVm
 @using System.Security.Claims
 @using DNTPersianUtils.Core
-@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     ViewData["Title"] = "تخته‌های من";
     ViewData["UseFluidLayout"] = true;
     Layout = "/Views/Shared/_Layout.cshtml";
-    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-    var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+    var currentUserId = Model?.CurrentUserId ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var boards = Model?.Boards ?? new List<Endpoint.Site.Models.BoardCardVm>();
 }
 
 <style>
@@ -121,10 +119,10 @@
     <h2 class="boards-title"><i class="bi bi-kanban me-2"></i>تخته‌های من</h2>
 </div>
 
-<div class="row boards-grid">
+<div class="row boards-grid" id="boardsCardsContainer">
     <!-- کارت افزودن تخته جدید -->
     <div class="col">
-        <button type="button" class="project-card project-card-add w-100 text-start border-0" data-bs-toggle="modal" data-bs-target="#createBoardModal">
+        <button id="openCreateBoardBtn" type="button" class="project-card project-card-add w-100 text-start border-0" data-bs-toggle="modal" data-bs-target="#createBoardModal" onclick="openCreateBoardModal(event)">
             <div class="card-body d-flex flex-column align-items-center justify-content-center" style="min-height: 172px;">
                 <div class="add-project-icon mb-3">
                     <i class="bi bi-plus-circle"></i>
@@ -135,57 +133,12 @@
         </button>
     </div>
 
-    @if (Model != null && Model.Any())
+    @if (boards.Any())
     {
-        @foreach (var board in Model)
+        @await Html.PartialAsync("_BoardCards", boards, new ViewDataDictionary(ViewData)
         {
-            <div class="col">
-                <div class="project-card">
-                    <a asp-action="Details" asp-route-id="@board.Id" class="text-decoration-none text-dark">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <h5 class="card-title fw-bold mb-0">@board.Name</h5>
-                                <span class="badge bg-primary">
-                                    @{
-                                        var taskCount = board.Tasks?.Count ?? 0;
-                                    }
-                                    @taskCount.ToString().ToPersianNumbers() کار
-                                </span>
-                            </div>
-                            @if (!string.IsNullOrWhiteSpace(board.Description))
-                            {
-                                <p class="card-text text-muted description-text">
-                                    @board.Description
-                                </p>
-                            }
-                            else
-                            {
-                                <p class="card-text text-muted">بدون توضیحات</p>
-                            }
-                        </div>
-                    </a>
-                    <div class="card-footer">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-muted">
-                                <i class="bi bi-clock"></i>
-                                @board.UpdatedAt.ToShortPersianDateString().ToPersianNumbers()
-                            </small>
-                            @if (board.CreatorUserId == currentUserId)
-                            {
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation(); openEditBoardModal(@board.Id)" title="ویرایش">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); openDeleteBoardModal(@board.Id, '@board.Name', @(board.Tasks?.Count ?? 0))" title="حذف" data-task-count="@(board.Tasks?.Count ?? 0)">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
+            ["CurrentUserId"] = currentUserId
+        })
     }
     else
     {
@@ -197,6 +150,16 @@
         </div>
     }
 </div>
+
+<div id="boardsLoadMoreState"
+     class="text-center mt-4 text-muted"
+     data-next-page="@((Model?.Page ?? 1) + 1)"
+     data-page-size="@(Model?.PageSize ?? 4)"
+     data-has-more="@((Model?.HasMoreBoards ?? false) ? "true" : "false")"
+     style="display:@((Model?.HasMoreBoards ?? false) ? "block" : "none")">
+    <span id="boardsLoadMoreText">برای بارگذاری بیشتر اسکرول کنید...</span>
+</div>
+<div id="boardsLoadMoreSentinel" style="height:1px;" aria-hidden="true"></div>
 
 <!-- Modal برای ایجاد تخته -->
 <div class="modal fade" id="createBoardModal" tabindex="-1" aria-labelledby="createBoardModalLabel" aria-hidden="true">
@@ -211,7 +174,7 @@
             </div>
             <form asp-action="Create" asp-controller="Boards" method="post">
                 <div class="modal-body">
-                    <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
+                    @Html.AntiForgeryToken()
                     <div class="mb-3">
                         <label class="form-label">نام تخته <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" name="Name" id="createBoardName" required placeholder="نام تخته" />
@@ -279,7 +242,7 @@
             </div>
             <div class="modal-body">
                 <form id="editBoardFormModal">
-                    <input type="hidden" name="__RequestVerificationToken" value="@antiforgeryToken" />
+                    @Html.AntiForgeryToken()
                     <input type="hidden" id="editBoardId" name="Id" />
                     
                     <div class="mb-3">
@@ -307,6 +270,97 @@
 </div>
 
 <script>
+    (function () {
+        var loadMoreState = document.getElementById('boardsLoadMoreState');
+        var loadMoreText = document.getElementById('boardsLoadMoreText');
+        var sentinel = document.getElementById('boardsLoadMoreSentinel');
+        var cardsContainer = document.getElementById('boardsCardsContainer');
+        if (!loadMoreState || !loadMoreText || !sentinel || !cardsContainer) return;
+
+        var isLoading = false;
+        var ticking = false;
+
+        var loadNextPage = async function () {
+            if (isLoading) return;
+            if (loadMoreState.getAttribute('data-has-more') !== 'true') return;
+
+            var nextPage = loadMoreState.getAttribute('data-next-page');
+            var pageSize = loadMoreState.getAttribute('data-page-size');
+            if (!nextPage || !pageSize) return;
+
+            isLoading = true;
+            loadMoreText.textContent = 'در حال بارگذاری...';
+
+            try {
+                var url = '/Boards/IndexCards?page=' + encodeURIComponent(nextPage) + '&pageSize=' + encodeURIComponent(pageSize);
+                var response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!response.ok) throw new Error('load-failed');
+
+                var html = await response.text();
+                cardsContainer.insertAdjacentHTML('beforeend', html);
+
+                var hasMore = response.headers.get('X-Has-More') === 'true';
+                loadMoreState.setAttribute('data-has-more', hasMore ? 'true' : 'false');
+                if (hasMore) {
+                    loadMoreState.setAttribute('data-next-page', String(parseInt(nextPage, 10) + 1));
+                    loadMoreText.textContent = 'برای بارگذاری بیشتر اسکرول کنید...';
+                } else {
+                    loadMoreState.style.display = 'none';
+                }
+            } catch (_) {
+                loadMoreText.textContent = 'خطا در بارگذاری. با اسکرول دوباره تلاش می‌شود...';
+            } finally {
+                isLoading = false;
+            }
+        };
+
+        var shouldLoadMoreByViewport = function () {
+            if (loadMoreState.getAttribute('data-has-more') !== 'true') return false;
+            var rect = sentinel.getBoundingClientRect();
+            return rect.top <= (window.innerHeight + 260);
+        };
+
+        var onScrollOrResize = function () {
+            if (ticking) return;
+            ticking = true;
+            window.requestAnimationFrame(function () {
+                if (shouldLoadMoreByViewport()) loadNextPage();
+                ticking = false;
+            });
+        };
+
+        if (window.__boardsInfiniteObserver && typeof window.__boardsInfiniteObserver.disconnect === 'function') {
+            window.__boardsInfiniteObserver.disconnect();
+        }
+
+        if ('IntersectionObserver' in window) {
+            var observer = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (entry.isIntersecting) loadNextPage();
+                });
+            }, { root: null, rootMargin: '200px 0px', threshold: 0 });
+            window.__boardsInfiniteObserver = observer;
+            observer.observe(sentinel);
+        }
+
+        window.addEventListener('scroll', onScrollOrResize, { passive: true });
+        window.addEventListener('resize', onScrollOrResize, { passive: true });
+        onScrollOrResize();
+    })();
+
+    function openCreateBoardModal(event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        var modalElement = document.getElementById('createBoardModal');
+        if (!modalElement || typeof bootstrap === 'undefined') return;
+
+        var modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+        modal.show();
+    }
+
     document.getElementById('createBoardModal')?.addEventListener('shown.bs.modal', function () {
         document.getElementById('createBoardName')?.focus();
     });
@@ -315,6 +369,11 @@
     function toPersianNumbers(str) {
         const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
         return String(str).replace(/\d/g, (digit) => persianDigits[parseInt(digit)]);
+    }
+
+    function getCsrfToken() {
+        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        return tokenInput ? tokenInput.value : '';
     }
 
     // باز کردن Modal ویرایش تخته
@@ -369,16 +428,19 @@
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>در حال ذخیره...';
 
         try {
+            const csrfToken = getCsrfToken();
             const formData = new FormData();
             formData.append('Id', boardId);
             formData.append('Name', name);
             formData.append('Description', description);
-            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+            if (csrfToken) {
+                formData.append('__RequestVerificationToken', csrfToken);
+            }
 
             const response = await fetch('@Url.Action("Edit", "Boards")?id=' + boardId, {
                 method: 'POST',
                 headers: {
-                    'RequestVerificationToken': '@antiforgeryToken',
+                    'RequestVerificationToken': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: formData
@@ -441,14 +503,17 @@
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>در حال حذف...';
 
         try {
+            const csrfToken = getCsrfToken();
             const formData = new FormData();
             formData.append('id', boardId);
-            formData.append('__RequestVerificationToken', '@antiforgeryToken');
+            if (csrfToken) {
+                formData.append('__RequestVerificationToken', csrfToken);
+            }
 
             const response = await fetch('@Url.Action("Delete", "Boards")?id=' + boardId, {
                 method: 'POST',
                 headers: {
-                    'RequestVerificationToken': '@antiforgeryToken',
+                    'RequestVerificationToken': csrfToken,
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: formData
