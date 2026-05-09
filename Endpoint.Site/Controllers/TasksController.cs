@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using DNTPersianUtils.Core;
 using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -664,12 +664,17 @@ namespace Endpoint.Site.Controllers
                 return Forbid();
 
             // 🔒 بررسی دسترسی: فقط مسئول کار و سازنده پروژه می‌توانند کارت را انتقال دهند
-            var isAssignee = !string.IsNullOrEmpty(task.AssignedUserId) && 
-                            string.Equals(task.AssignedUserId, userId, StringComparison.OrdinalIgnoreCase);
-            var isProjectCreator = task.Project != null && 
-                                  !string.IsNullOrEmpty(task.Project.CreatorUserId) &&
-                                  string.Equals(task.Project.CreatorUserId, userId, StringComparison.OrdinalIgnoreCase);
-            
+            var normalizedUserId = userId?.Trim();
+            var normalizedAssignedUserId = task.AssignedUserId?.Trim();
+            var normalizedProjectCreatorId = task.Project?.CreatorUserId?.Trim();
+
+            var isAssignee = !string.IsNullOrWhiteSpace(normalizedAssignedUserId) &&
+                             !string.IsNullOrWhiteSpace(normalizedUserId) &&
+                             string.Equals(normalizedAssignedUserId, normalizedUserId, StringComparison.OrdinalIgnoreCase);
+            var isProjectCreator = !string.IsNullOrWhiteSpace(normalizedProjectCreatorId) &&
+                                   !string.IsNullOrWhiteSpace(normalizedUserId) &&
+                                   string.Equals(normalizedProjectCreatorId, normalizedUserId, StringComparison.OrdinalIgnoreCase);
+
             if (!isAssignee && !isProjectCreator)
             {
                 return BadRequest("فقط مسئول کار و سازنده پروژه می‌توانند کارت را بین ستون‌ها انتقال دهند.");

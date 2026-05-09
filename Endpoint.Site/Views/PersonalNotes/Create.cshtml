@@ -115,7 +115,10 @@
 
         <!-- Actions -->
         <div class="form-actions">
-            <a class="btn-cancel" asp-action="Index">
+            <a class="btn-cancel"
+               asp-controller="PersonalNotes"
+               asp-action="Index"
+               asp-route-folderId="@Model.FolderId">
                 <i class="bi bi-x-circle"></i>
                 <span>انصراف</span>
             </a>

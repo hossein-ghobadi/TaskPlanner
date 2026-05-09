@@ -2311,7 +2311,7 @@
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="id" value="@Model.SprintId" />
                             <input type="hidden" name="status" value="@((int)SprintStatus.Completed)" />
-                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="completeSprint()">
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="window.submitSprintCompletion()">
                                 <i class="bi bi-check-circle"></i>
                                 خاتمه اسپرینت
                             </button>
@@ -2407,7 +2407,7 @@
                 </div>
                 </div>
 
-                <div class="column-tasks"  ondragover="onDragOverColumn(event)" ondragleave="onDragLeave(event)">
+                <div class="column-tasks" id="tasks-backlog" data-status-id="" ondrop="onDropIssue(event, null)" ondragover="onDragOverColumn(event)" ondragleave="onDragLeave(event)">
 
                     @if (backLog.Any())
                     {
@@ -3969,56 +3969,58 @@
             modal.show();
         }
 
-        async function submitStatus() {
-            if (!canManageStatuses) {
-                showNotification('اسپرینت تکمیل‌شده قابل ویرایش نیست', 'error');
-                return;
-            }
-
-            const nameInput = document.getElementById('statusName');
-            const colorInput = document.getElementById('statusColor');
-            const descInput = document.getElementById('statusDescription');
-            if (!nameInput) {
-                return;
-            }
-
-            const name = nameInput.value.trim();
-            if (!name) {
-                showNotification('نام وضعیت الزامی است', 'error');
-                nameInput.focus();
-                return;
-            }
-
-            const payload = {
-                sprintId: sprintId,
-                name: name,
-                color: colorInput?.value,
-                description: descInput?.value?.trim() || null
-            };
-
-            const submitBtn = document.getElementById('addStatusSubmitBtn');
-            const originalText = submitBtn?.innerHTML;
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> در حال ثبت...';
-            }
-
-            try {
-                const data = await postJson('/WorkflowStatus/CreateInline', payload);
-                showNotification(data.message || 'وضعیت جدید ایجاد شد', 'success');
-                const modalElement = document.getElementById('addStatusModal');
-                if (modalElement) {
-                    bootstrap.Modal.getInstance(modalElement)?.hide();
+        function submitStatus() {
+            return (async () => {
+                if (!canManageStatuses) {
+                    showNotification('اسپرینت تکمیل‌شده قابل ویرایش نیست', 'error');
+                    return;
                 }
-                setTimeout(() => location.reload(), 1000);
-            } catch (error) {
-                showNotification(error.message || 'خطا در ایجاد وضعیت', 'error');
-            } finally {
+
+                const nameInput = document.getElementById('statusName');
+                const colorInput = document.getElementById('statusColor');
+                const descInput = document.getElementById('statusDescription');
+                if (!nameInput) {
+                    return;
+                }
+
+                const name = nameInput.value.trim();
+                if (!name) {
+                    showNotification('نام وضعیت الزامی است', 'error');
+                    nameInput.focus();
+                    return;
+                }
+
+                const payload = {
+                    sprintId: sprintId,
+                    name: name,
+                    color: colorInput?.value,
+                    description: descInput?.value?.trim() || null
+                };
+
+                const submitBtn = document.getElementById('addStatusSubmitBtn');
+                const originalText = submitBtn?.innerHTML;
                 if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalText || '<i class="bi bi-plus-circle"></i> ایجاد وضعیت';
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> در حال ثبت...';
                 }
-            }
+
+                try {
+                    const data = await postJson('/WorkflowStatus/CreateInline', payload);
+                    showNotification(data.message || 'وضعیت جدید ایجاد شد', 'success');
+                    const modalElement = document.getElementById('addStatusModal');
+                    if (modalElement) {
+                        bootstrap.Modal.getInstance(modalElement)?.hide();
+                    }
+                    setTimeout(() => location.reload(), 1000);
+                } catch (error) {
+                    showNotification(error.message || 'خطا در ایجاد وضعیت', 'error');
+                } finally {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText || '<i class="bi bi-plus-circle"></i> ایجاد وضعیت';
+                    }
+                }
+            })();
         }
 
         async function deleteStatus(statusId, statusName = '') {
@@ -4044,6 +4046,9 @@
                 showNotification(error.message || 'خطا در حذف وضعیت', 'error');
             }
         }
+        window.openAddStatusModal = openAddStatusModal;
+        window.submitStatus = submitStatus;
+        window.deleteStatus = deleteStatus;
 
         function onDragIssue(e, issueId) {
             isDragging = true;
@@ -4054,6 +4059,31 @@
             e.dataTransfer.setData('text/plain', issueId);
             draggedCard.style.height = `${draggedCard.offsetHeight}px`;
         }
+
+        // اگر drag از روی لینک/دکمه داخل کارت شروع شود، مرورگر ممکن است خود element را drag کند
+        // و onDragIssue اجرا نشود؛ در نتیجه issueId خالی می‌شود و جابه‌جایی ظاهراً گیر می‌کند.
+        document.addEventListener('dragstart', function (e) {
+            if (e.target.closest('.task-card a, .task-card button')) {
+                e.preventDefault();
+            }
+        }, true);
+
+        function cleanupStaleModalBackdrops() {
+            const hasOpenModal = !!document.querySelector('.modal.show');
+            if (hasOpenModal) return;
+
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('padding-right');
+            document.body.style.removeProperty('overflow');
+        }
+
+        document.addEventListener('hidden.bs.modal', function () {
+            setTimeout(cleanupStaleModalBackdrops, 0);
+        });
+        document.addEventListener('DOMContentLoaded', function () {
+            cleanupStaleModalBackdrops();
+        });
 
         function handleCardClick(e, issueId) {
             // اگر drag در حال انجام است یا از دکمه/لینک کلیک شده، از redirect جلوگیری کن
@@ -4201,10 +4231,11 @@
                 const currentColumnBody = touchCard.closest('.column-tasks');
                 
                 if (targetColumnBody && targetColumnBody !== currentColumnBody) {
-                    const targetStatusId = parseInt(targetColumnBody.dataset.statusId);
+                    const rawTargetStatusId = targetColumnBody.dataset.statusId;
+                    const targetStatusId = rawTargetStatusId ? parseInt(rawTargetStatusId, 10) : null;
                     const issueId = parseInt(touchCard.dataset.issueId);
                     
-                    if (targetStatusId && issueId) {
+                    if (issueId && (targetStatusId === null || !Number.isNaN(targetStatusId))) {
                         // انتقال task
                         handleTouchDrop(issueId, targetStatusId, touchCard, targetColumnBody);
                     } else {
@@ -4257,11 +4288,17 @@
 
         // تابع helper برای handle کردن drop در touch
         async function handleTouchDrop(issueId, toStatusId, card, dropZone) {
-            if (!issueId || !toStatusId) return;
+            if (!issueId) return;
             
             card.style.opacity = '0.5';
             
             try {
+                const isBacklogDrop = toStatusId === null || toStatusId === undefined || toStatusId === '';
+                if (isBacklogDrop) {
+                    await window.moveIssueToBacklog(issueId, card);
+                    return;
+                }
+
                 const res = await fetch('/Tasks/MoveIssue', {
                     method: 'POST',
                     headers: { 
@@ -4327,6 +4364,44 @@
                 card.style.opacity = '1';
             }
         }
+
+        async function moveIssueToBacklog(issueId, card) {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            const body = new URLSearchParams({
+                sprintId: String(sprintId),
+                taskId: String(issueId)
+            });
+
+            const res = await fetch('/Sprints/RemoveTaskFromSprint', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...(token ? { 'RequestVerificationToken': token } : {})
+                },
+                body: body.toString()
+            });
+
+            let result = null;
+            try {
+                result = await res.json();
+            } catch (_) {
+                result = null;
+            }
+
+            if (!res.ok || !result?.success) {
+                throw new Error(result?.message || 'خطا در انتقال کار به بک‌لاگ');
+            }
+
+            if (card) {
+                card.remove();
+                updateIssueCounts();
+            }
+
+            showNotification('کار با موفقیت به بک‌لاگ منتقل شد', 'success');
+            setTimeout(() => location.reload(), 500);
+        }
+        window.moveIssueToBacklog = moveIssueToBacklog;
 
         function getDropZoneElement(element) {
             if (!element) return null;
@@ -4402,6 +4477,12 @@
             }
 
             try {
+                const isBacklogDrop = toStatusId === null || toStatusId === undefined || toStatusId === '';
+                if (isBacklogDrop) {
+                    await window.moveIssueToBacklog(issueId, draggedCard);
+                    return;
+                }
+
                 const res = await fetch('/Tasks/MoveIssue', {
                     method: 'POST',
                     headers: { 
@@ -4480,6 +4561,12 @@
                 draggedCard = null;
             }
         }
+        // Register critical inline DnD handlers immediately after declaration
+        // so later unrelated script errors do not break drag/drop availability.
+        window.onDragOverColumn = onDragOverColumn;
+        window.onDragEnter = onDragEnter;
+        window.onDragLeave = onDragLeave;
+        window.onDropIssue = onDropIssue;
 
         async function completeTask(taskId) {
             if (!taskId) return;
@@ -5527,6 +5614,23 @@
                     document.getElementById('completeSprintForm').submit();
                 }
             }
+            window.submitSprintCompletion = function () {
+                const form = document.getElementById('completeSprintForm');
+                if (!form) {
+                    showNotification('فرم خاتمه اسپرینت یافت نشد', 'error');
+                    return;
+                }
+
+                const confirmMsg = `آیا مطمئن هستید که می‌خواهید این اسپرینت را خاتمه دهید؟\n\n` +
+                    `این عمل باعث می‌شود:\n` +
+                    `✓ اسپرینت به حالت "خاتمه یافته" تغییر کند\n` +
+                    `✓ تمام کارهای Done به صورت خودکار تکمیل شوند\n` +
+                    `✓ به صفحه جزئیات پروژه هدایت شوید`;
+
+                if (confirm(confirmMsg)) {
+                    form.submit();
+                }
+            };
             </text>
         }
 
@@ -6249,12 +6353,23 @@
             }
         }
     }
-            // رویدادهای پایه
-            document.getElementById('sendBtn').addEventListener('click', sendMessage);
-            document.getElementById('fileInput').addEventListener('change', handleFileInputChange);
-            document.getElementById('messageInput').addEventListener('paste', () => {
-              // اختیاری: پاست کردن فایل‌ها
-            });
+            // رویدادهای پایه (با null-check تا اسکریپت در صفحات/حالت‌های بدون چت متوقف نشود)
+            const sendBtnEl = document.getElementById('sendBtn');
+            if (sendBtnEl) {
+                sendBtnEl.addEventListener('click', sendMessage);
+            }
+
+            const fileInputEl = document.getElementById('fileInput');
+            if (fileInputEl) {
+                fileInputEl.addEventListener('change', handleFileInputChange);
+            }
+
+            const messageInputEl = document.getElementById('messageInput');
+            if (messageInputEl) {
+                messageInputEl.addEventListener('paste', () => {
+                    // اختیاری: پاست کردن فایل‌ها
+                });
+            }
 
             // مقداردهی‌های اولیه و دوره‌ای
             document.addEventListener('DOMContentLoaded', () => {
@@ -6265,9 +6380,11 @@
             // HTML attributes like ondrop/ondragover resolve functions from window.
             window.onDropIssue = onDropIssue;
             window.onDragOverColumn = onDragOverColumn;
+            window.onDragEnter = onDragEnter;
             window.onDragLeave = onDragLeave;
             window.onDragIssue = onDragIssue;
             window.onColumnDragStart = onColumnDragStart;
+            window.onColumnDragEnd = onColumnDragEnd;
             window.handleCardClick = handleCardClick;
             window.submitEditTask = submitEditTask;
             window.openEditTaskModal = openEditTaskModal;

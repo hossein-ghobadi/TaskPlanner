@@ -24,7 +24,11 @@
 
     <!-- Back Button -->
     <div class="back-header">
-        <a href="/ProjectNotes/Index?projectId=@Model.ProjectId" class="back-btn">
+        <a asp-controller="ProjectNotes"
+           asp-action="Index"
+           asp-route-projectId="@Model.ProjectId"
+           asp-route-folderId="@Model.FolderId"
+           class="back-btn">
             <i class="bi bi-arrow-right"></i>
             <span>بازگشت به لیست</span>
         </a>
@@ -167,14 +171,7 @@
                 </span>
             </div>
             <div class="post-actions-detail">
-                <a href="/ProjectNotes/Edit?id=@Model.Id" class="action-btn action-primary">
-                    <i class="bi bi-pencil"></i>
-                    <span>ویرایش</span>
-                </a>
-                <a href="/ProjectNotes/Delete?id=@Model.Id" class="action-btn action-danger">
-                    <i class="bi bi-trash"></i>
-                    <span>حذف</span>
-                </a>
+                
             </div>
         </div>
     </article>

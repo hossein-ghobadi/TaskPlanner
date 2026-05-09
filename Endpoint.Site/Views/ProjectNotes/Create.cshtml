@@ -92,7 +92,11 @@
 
         <!-- Actions -->
         <div class="form-actions">
-            <a class="btn-cancel" href="/ProjectNotes/Index?projectId=@Model.ProjectId">
+            <a class="btn-cancel"
+               asp-controller="ProjectNotes"
+               asp-action="Index"
+               asp-route-projectId="@Model.ProjectId"
+               asp-route-folderId="@Model.FolderId">
                 <i class="bi bi-x-circle"></i>
                 <span>انصراف</span>
             </a>
