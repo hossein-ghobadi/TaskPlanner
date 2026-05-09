@@ -2630,15 +2630,9 @@
                                         <div class="task-card-header">
                                             <div class="task-actions">
                                                 <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
-                                                @if (Model.Status == SprintStatus.Active && issue.CanHaveChildren)
-                                                {
-                                                    <button class="btn btn-sm btn-outline-primary"
-                                                            onclick="event.stopPropagation(); event.preventDefault(); openAddSubtaskModal(@issue.Id, '@Html.Raw(issue.Title.Replace("'", "\\'"))');"
-                                                            title="افزودن زیرتسک">
-                                                        <i class="bi bi-plus-circle"></i>
-                                                    </button>
-                                                }
-                                                @if (Model.Status == SprintStatus.Active)
+                                                
+                                                
+                                                @if (Model.Status == SprintStatus.Active&& status.Id != finalStatus.Id )
                                                 {
                                                     <div class="dropdown">
                                                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
@@ -2659,12 +2653,13 @@
                                                                         <i class="bi bi-check-lg text-success me-2"></i>خاتمه کار
                                                                     </a>
                                                                 </li>
-                                                            }
-                                                            <li>
+                                                                <li>
                                                                 <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(@issue.Id);">
                                                                     <i class="bi bi-x-circle text-warning me-2"></i>خارج کردن از اسپرینت
                                                                 </a>
                                                             </li>
+                                                            }
+                                                            
                                                             <li><hr class="dropdown-divider"></li>
                                                             <li>
                                                                 <a class="dropdown-item text-danger" href="#" onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@issue.Id, '@issue.Title');">
@@ -2704,10 +2699,11 @@
                                                 <button type="button" class="btn btn-sm btn-outline-success" onclick="completeTask(@issue.Id)" title="تکمیل کار">
                                                     <i class="bi bi-check-circle"></i>
                                                 </button>
-                                            }
-                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteTask(@issue.Id, '@issue.Title')" title="حذف کار">
+                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteTask(@issue.Id, '@issue.Title')" title="حذف کار">
                                                 <i class="bi bi-trash"></i>
                                             </button>
+                                            }
+                                            
                                         </div>
 
                                         @if (issue.ChildIssues.Count>0 )
