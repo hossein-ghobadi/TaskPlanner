@@ -2,12 +2,13 @@
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     var noteColor = !string.IsNullOrEmpty(Model.Color) ? Model.Color : "#3b82f6";
+    var listUrl = Url.Action("Index", "PersonalNotes", new { folderId = Model.FolderId })!;
 }
 
 <div class="delete-note-container">
     <!-- Header -->
     <div class="delete-header">
-        <a href="/PersonalNotes/Index" class="back-btn">
+        <a href="@listUrl" class="back-btn">
             <i class="bi bi-arrow-right"></i>
         </a>
         <h1 class="delete-title">حذف یادداشت</h1>
@@ -114,9 +115,10 @@
 
     <!-- Delete Form -->
     <form asp-action="Delete" method="post" class="delete-form">
+        @Html.AntiForgeryToken()
         <input type="hidden" name="id" value="@Model.Id" />
         <div class="form-actions">
-            <a href="/PersonalNotes/Index" class="btn-cancel">
+            <a href="@listUrl" class="btn-cancel">
                 <i class="bi bi-x-circle"></i>
                 <span>انصراف</span>
             </a>

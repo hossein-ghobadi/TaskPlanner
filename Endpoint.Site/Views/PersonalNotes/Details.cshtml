@@ -75,6 +75,11 @@
                         </li>
                         <li>
                             <form asp-action="TogglePin" asp-route-id="@Model.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                @if (Model.FolderId.HasValue)
+                                {
+                                    <input type="hidden" name="folderId" value="@Model.FolderId.Value" />
+                                }
                                 <button type="submit" class="dropdown-item">
                                     <i class="bi bi-pin-angle"></i>
                                     @(Model.IsPinned ? "حذف پین" : "پین کردن")

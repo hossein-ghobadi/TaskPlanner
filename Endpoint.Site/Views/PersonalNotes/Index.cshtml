@@ -94,6 +94,10 @@
                     <div class="pin-action-left" onclick="event.stopPropagation();">
                         <form asp-action="TogglePin" asp-route-id="@note.Id" method="post" class="pin-toggle-form">
                             @Html.AntiForgeryToken()
+                            @if (ViewBag.FolderId != null)
+                            {
+                                <input type="hidden" name="folderId" value="@ViewBag.FolderId" />
+                            }
                             <button type="submit" class="pin-btn @(note.IsPinned ? "pinned" : "")" title="@(note.IsPinned ? "حذف پین" : "پین کردن")">
                                 <i class="bi bi-pin-angle@(note.IsPinned ? "-fill" : "")"></i>
                             </button>

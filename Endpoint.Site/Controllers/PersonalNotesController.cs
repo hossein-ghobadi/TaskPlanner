@@ -514,6 +514,8 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            var returnFolderId = note.FolderId;
+
             // حذف فایل‌های پیوست
             foreach (var attachment in note.Attachments)
             {
@@ -524,13 +526,13 @@ namespace Endpoint.Site.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "یادداشت شخصی با موفقیت حذف شد.";
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { folderId = returnFolderId });
         }
 
         // 📌 تغییر وضعیت پین یادداشت
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> TogglePin(int id)
+        public async Task<IActionResult> TogglePin(int id, int? folderId = null)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -545,7 +547,7 @@ namespace Endpoint.Site.Controllers
             note.IsPinned = !note.IsPinned;
             note.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { folderId });
         }
 
         [HttpPost]

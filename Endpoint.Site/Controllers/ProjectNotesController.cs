@@ -593,6 +593,7 @@ namespace Endpoint.Site.Controllers
         {
             var note = await _context.ProjectNotes
                 .Include(n => n.Project)
+                .Include(n => n.Attachments)
                 .FirstOrDefaultAsync(n => n.Id == id);
 
             if (note == null)
@@ -626,6 +627,7 @@ namespace Endpoint.Site.Controllers
                 return NotFound();
 
             var projectId = note.ProjectId;
+            var returnFolderId = note.FolderId;
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -650,7 +652,7 @@ namespace Endpoint.Site.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "یادداشت با موفقیت حذف شد.";
-            return RedirectToAction(nameof(Index), new { projectId = projectId!.Value });
+            return RedirectToAction(nameof(Index), new { projectId = projectId!.Value, folderId = returnFolderId });
         }
         
         // 🗑️ حذف یک فایل پیوست (Ajax)

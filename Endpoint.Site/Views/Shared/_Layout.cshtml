@@ -372,10 +372,11 @@
     }
 
     @*
-        Scripts — همه با defer لود می‌شوند تا parsing صفحه را block نکنند.
-        ترتیب اجرا با defer تضمین شده است (به ترتیبی که نوشته شده‌اند اجرا می‌شوند).
+        jQuery بدون defer است تا اسکریپت‌های inline در @@RenderSection("Scripts") بعد از لود jQuery اجرا شوند.
+        (با defer، ترتیب واقعی می‌شود: ابتدا کل @@section Scripts، سپس اسکریپت‌های defer → $ تعریف نشده و خطا می‌دهد.)
+        Bootstrap با defer می‌ماند؛ بعد از jQuery blocking و @@section Scripts، با سایر deferها به ترتیب اجرا می‌شود.
     *@
-    <script src="~/lib/jquery/dist/jquery.min.js" asp-append-version="true" defer></script>
+    <script src="~/lib/jquery/dist/jquery.min.js" asp-append-version="true"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js" asp-append-version="true" defer></script>
     @*
         persian-date و persian-datepicker از layout حذف شده‌اند.
