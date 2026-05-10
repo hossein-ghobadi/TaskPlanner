@@ -23,6 +23,8 @@ namespace TaskPlanner.Application.Services.DashboardService
         public List<DashboardChartSliceDto> ProjectTaskDistributionSlices { get; set; } = new();
         public List<DashboardChartSliceDto> LeadPipelineSlices { get; set; } = new();
         public List<DashboardDueDayDto> DueTasksNext7Days { get; set; } = new();
+        public List<DashboardDueTaskItemDto> DueTasksToday { get; set; } = new();
+        public List<DashboardDueTaskItemDto> DueTasksTomorrow { get; set; } = new();
     }
 
     public class DashboardMeetingDto
@@ -50,5 +52,14 @@ namespace TaskPlanner.Application.Services.DashboardService
     {
         public string Label { get; set; } = string.Empty;
         public int Count { get; set; }
+    }
+
+    public class DashboardDueTaskItemDto
+    {
+        public int TaskId { get; set; }
+        public int ProjectId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string ProjectName { get; set; } = string.Empty;
+        public DateTime DueDateUtc { get; set; }
     }
 }

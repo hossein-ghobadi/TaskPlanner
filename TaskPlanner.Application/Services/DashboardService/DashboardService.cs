@@ -69,6 +69,23 @@ namespace TaskPlanner.Application.Services.DashboardService
                 .Select(x => new ProjectTaskSnapshot(x.IsCompleted, x.DueDate, x.Priority))
                 .ToList();
 
+            var dueTaskRows = projectIds.Count == 0
+                ? new List<DueTaskSnapshot>()
+                : (await _context.TaskItems.AsNoTracking()
+                    .Where(t => projectIds.Contains(t.ProjectId))
+                    .Where(t => !t.IsCompleted && t.DueDate.HasValue)
+                    .Select(t => new
+                    {
+                        t.Id,
+                        t.ProjectId,
+                        t.Title,
+                        ProjectName = t.Project.Name,
+                        DueDate = t.DueDate!.Value
+                    })
+                    .ToListAsync(cancellationToken))
+                .Select(x => new DueTaskSnapshot(x.Id, x.ProjectId, x.Title, x.ProjectName, x.DueDate))
+                .ToList();
+
             var tasksByProject = projectIds.Count == 0
                 ? new List<(string ProjectName, int Count)>()
                 : (await _context.TaskItems.AsNoTracking()
@@ -173,6 +190,38 @@ namespace TaskPlanner.Application.Services.DashboardService
                 });
             }
 
+            var localNow = TimeZoneInfo.ConvertTimeFromUtc(now, TimeZoneInfo.Local);
+            var localToday = localNow.Date;
+            var localTomorrow = localToday.AddDays(1);
+
+            var dueToday = dueTaskRows
+                .Where(t => ToLocalDate(t.DueDateUtc) == localToday)
+                .OrderBy(t => t.DueDateUtc)
+                .Take(8)
+                .Select(t => new DashboardDueTaskItemDto
+                {
+                    TaskId = t.TaskId,
+                    ProjectId = t.ProjectId,
+                    Title = t.Title,
+                    ProjectName = t.ProjectName,
+                    DueDateUtc = t.DueDateUtc
+                })
+                .ToList();
+
+            var dueTomorrow = dueTaskRows
+                .Where(t => ToLocalDate(t.DueDateUtc) == localTomorrow)
+                .OrderBy(t => t.DueDateUtc)
+                .Take(8)
+                .Select(t => new DashboardDueTaskItemDto
+                {
+                    TaskId = t.TaskId,
+                    ProjectId = t.ProjectId,
+                    Title = t.Title,
+                    ProjectName = t.ProjectName,
+                    DueDateUtc = t.DueDateUtc
+                })
+                .ToList();
+
             return new UserDashboardDto
             {
                 TotalProjectsCount = dash.TotalProjectsCount,
@@ -191,7 +240,9 @@ namespace TaskPlanner.Application.Services.DashboardService
                 TaskPrioritySlices = prioritySlices,
                 ProjectTaskDistributionSlices = BuildProjectDistributionSlices(tasksByProject),
                 LeadPipelineSlices = MapLeadPipelineRows(leadPipeline),
-                DueTasksNext7Days = dueDays
+                DueTasksNext7Days = dueDays,
+                DueTasksToday = dueToday,
+                DueTasksTomorrow = dueTomorrow
             };
         }
 
@@ -310,6 +361,15 @@ namespace TaskPlanner.Application.Services.DashboardService
             }
         }
 
+        private static DateTime ToLocalDate(DateTime dateTime)
+        {
+            var local = dateTime.Kind == DateTimeKind.Utc
+                ? TimeZoneInfo.ConvertTimeFromUtc(dateTime, TimeZoneInfo.Local)
+                : dateTime.ToLocalTime();
+            return local.Date;
+        }
+
         private sealed record ProjectTaskSnapshot(bool IsCompleted, DateTime? DueDate, TaskPriority Priority);
+        private sealed record DueTaskSnapshot(int TaskId, int ProjectId, string Title, string ProjectName, DateTime DueDateUtc);
     }
 }
