@@ -28,6 +28,7 @@ namespace Endpoint.Site.Controllers
             var charts = new
             {
                 priorities = model.TaskPrioritySlices,
+                perProject = model.ProjectTaskDistributionSlices,
                 leads = model.LeadPipelineSlices,
                 dues = model.DueTasksNext7Days
             };

@@ -140,8 +140,8 @@
     }
 </style>
 
-<div class="row justify-content-center">
-    <div class="col-lg-8">
+<div class="w-100">
+    <div class="card shadow-sm border-0 w-100">
         <!-- هدر حذف -->
         <div class="delete-header">
             <div class="delete-icon">
@@ -153,115 +153,117 @@
             </p>
         </div>
 
-        <!-- هشدار -->
-        <div class="warning-card">
-            <div class="d-flex align-items-start">
-                <div class="flex-shrink-0">
-                    <i class="bi bi-exclamation-triangle-fill fs-1 text-warning"></i>
-                </div>
-                <div class="flex-grow-1 me-3">
-                    <h4 class="fw-bold mb-2 text-warning">
-                        هشدار جدی!
-                    </h4>
-                    <p class="mb-2 fw-semibold">
-                        آیا از حذف پروژه <strong class="text-danger fs-5">@Model.Name</strong> مطمئن هستید؟
-                    </p>
-                    <p class="mb-0 small">
-                        با حذف این پروژه، تمام اطلاعات مرتبط شامل کارها، اسپرینت‌ها، یادداشت‌ها و اعضا به طور دائمی حذف خواهند شد و امکان بازیابی وجود ندارد.
-                    </p>
+        <div class="card-body p-4">
+            <!-- هشدار -->
+            <div class="warning-card">
+                <div class="d-flex align-items-start">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-exclamation-triangle-fill fs-1 text-warning"></i>
+                    </div>
+                    <div class="flex-grow-1 me-3">
+                        <h4 class="fw-bold mb-2 text-warning">
+                            هشدار جدی!
+                        </h4>
+                        <p class="mb-2 fw-semibold">
+                            آیا از حذف پروژه <strong class="text-danger fs-5">@Model.Name</strong> مطمئن هستید؟
+                        </p>
+                        <p class="mb-0 small">
+                            با حذف این پروژه، تمام اطلاعات مرتبط شامل کارها، اسپرینت‌ها، یادداشت‌ها و اعضا به طور دائمی حذف خواهند شد و امکان بازیابی وجود ندارد.
+                        </p>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- اطلاعات پروژه -->
-        <div class="info-card">
-            <h5 class="fw-bold mb-3 d-flex align-items-center">
-                <i class="bi bi-info-circle-fill me-2 text-primary"></i>
-                اطلاعات پروژه
-            </h5>
-            
-            <div class="stat-item">
-                <div class="stat-icon stat-icon-primary">
-                    <i class="bi bi-briefcase"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-label">نام پروژه</div>
-                    <div class="stat-value">@Model.Name</div>
-                </div>
-            </div>
-            
-            @if (!string.IsNullOrWhiteSpace(Model.Description))
-            {
+            <!-- اطلاعات پروژه -->
+            <div class="info-card">
+                <h5 class="fw-bold mb-3 d-flex align-items-center">
+                    <i class="bi bi-info-circle-fill me-2 text-primary"></i>
+                    اطلاعات پروژه
+                </h5>
+                
                 <div class="stat-item">
                     <div class="stat-icon stat-icon-primary">
-                        <i class="bi bi-file-text"></i>
+                        <i class="bi bi-briefcase"></i>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-label">توضیحات</div>
-                        <div class="stat-value" style="font-size: 1rem; font-weight: 500;">@Model.Description</div>
+                        <div class="stat-label">نام پروژه</div>
+                        <div class="stat-value">@Model.Name</div>
                     </div>
                 </div>
-            }
-            
-            <div class="stat-item">
-                <div class="stat-icon stat-icon-warning">
-                    <i class="bi bi-list-task"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-label">تعداد کارها</div>
-                    <div class="stat-value">
-                        <span class="badge bg-warning text-dark fs-6">@taskCount کار</span>
+                
+                @if (!string.IsNullOrWhiteSpace(Model.Description))
+                {
+                    <div class="stat-item">
+                        <div class="stat-icon stat-icon-primary">
+                            <i class="bi bi-file-text"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">توضیحات</div>
+                            <div class="stat-value" style="font-size: 1rem; font-weight: 500;">@Model.Description</div>
+                        </div>
                     </div>
-                </div>
-            </div>
-            
-            @if (sprintCount > 0)
-            {
+                }
+                
                 <div class="stat-item">
                     <div class="stat-icon stat-icon-warning">
-                        <i class="bi bi-kanban"></i>
+                        <i class="bi bi-list-task"></i>
                     </div>
                     <div class="stat-content">
-                        <div class="stat-label">تعداد اسپرینت‌ها</div>
+                        <div class="stat-label">تعداد کارها</div>
                         <div class="stat-value">
-                            <span class="badge bg-warning text-dark fs-6">@sprintCount اسپرینت</span>
+                            <span class="badge bg-warning text-dark fs-6">@taskCount کار</span>
                         </div>
                     </div>
                 </div>
-            }
-            
-            @if (memberCount > 0)
-            {
-                <div class="stat-item">
-                    <div class="stat-icon stat-icon-danger">
-                        <i class="bi bi-people"></i>
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-label">تعداد اعضا</div>
-                        <div class="stat-value">
-                            <span class="badge bg-danger fs-6">@memberCount عضو</span>
+                
+                @if (sprintCount > 0)
+                {
+                    <div class="stat-item">
+                        <div class="stat-icon stat-icon-warning">
+                            <i class="bi bi-kanban"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">تعداد اسپرینت‌ها</div>
+                            <div class="stat-value">
+                                <span class="badge bg-warning text-dark fs-6">@sprintCount اسپرینت</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            }
-        </div>
-
-        <!-- دکمه‌های اقدام -->
-        <form asp-action="DeleteConfirmed" asp-route-id="@Model.Id" method="post">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4">
-                    <div class="d-flex gap-3">
-                        <button type="submit" class="btn btn-danger flex-fill btn-lg" style="font-weight: 600;">
-                            <i class="bi bi-trash-fill me-2"></i>
-                            بله، حذف شود
-                        </button>
-                        <a href="/Projects/Index" class="btn btn-secondary btn-lg" style="font-weight: 600;">
-                            <i class="bi bi-x-circle me-2"></i>
-                            انصراف
-                        </a>
+                }
+                
+                @if (memberCount > 0)
+                {
+                    <div class="stat-item">
+                        <div class="stat-icon stat-icon-danger">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">تعداد اعضا</div>
+                            <div class="stat-value">
+                                <span class="badge bg-danger fs-6">@memberCount عضو</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                }
             </div>
-        </form>
+
+            <!-- دکمه‌های اقدام -->
+            <form asp-action="DeleteConfirmed" asp-route-id="@Model.Id" method="post">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex gap-3">
+                            <button type="submit" class="btn btn-danger flex-fill btn-lg" style="font-weight: 600;">
+                                <i class="bi bi-trash-fill me-2"></i>
+                                بله، حذف شود
+                            </button>
+                            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary btn-lg" style="font-weight: 600;">
+                                <i class="bi bi-x-circle me-2"></i>
+                                انصراف
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 </div>

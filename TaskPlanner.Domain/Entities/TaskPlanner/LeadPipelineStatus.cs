@@ -10,6 +10,8 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         /// <summary>قطعیت / آماده تبدیل به پروژه</summary>
         Qualified = 2,
         Converted = 3,
-        Lost = 4
+        Lost = 4,
+        /// <summary>اعلام قیمت به مشتری</summary>
+        QuoteAnnounced = 5
     }
 }

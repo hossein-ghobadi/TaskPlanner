@@ -523,6 +523,7 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            ViewBag.ProjectId = id;
             return View(project);
         }
 

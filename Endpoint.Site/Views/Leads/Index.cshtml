@@ -12,6 +12,7 @@
     {
         LeadPipelineStatus.New,
         LeadPipelineStatus.Contacted,
+        LeadPipelineStatus.QuoteAnnounced,
         LeadPipelineStatus.Qualified,
         LeadPipelineStatus.Converted,
         LeadPipelineStatus.Lost
@@ -22,6 +23,7 @@
     {
         LeadPipelineStatus.New => "جدید",
         LeadPipelineStatus.Contacted => "در تماس",
+        LeadPipelineStatus.QuoteAnnounced => "اعلام قیمت",
         LeadPipelineStatus.Qualified => "قطعیت",
         LeadPipelineStatus.Converted => "تبدیل‌شده",
         LeadPipelineStatus.Lost => "از دست رفته",
@@ -32,6 +34,7 @@
     {
         LeadPipelineStatus.New => "bg-secondary",
         LeadPipelineStatus.Contacted => "bg-info text-dark",
+        LeadPipelineStatus.QuoteAnnounced => "bg-warning text-dark",
         LeadPipelineStatus.Qualified => "bg-success",
         LeadPipelineStatus.Converted => "bg-primary",
         LeadPipelineStatus.Lost => "bg-dark",
@@ -42,6 +45,7 @@
     {
         LeadPipelineStatus.New => "leads-kanban-col--new",
         LeadPipelineStatus.Contacted => "leads-kanban-col--contacted",
+        LeadPipelineStatus.QuoteAnnounced => "leads-kanban-col--quote",
         LeadPipelineStatus.Qualified => "leads-kanban-col--qualified",
         LeadPipelineStatus.Converted => "leads-kanban-col--converted",
         LeadPipelineStatus.Lost => "leads-kanban-col--lost",
@@ -85,6 +89,7 @@
 
     .leads-kanban-col--new .leads-kanban-col-header { background: #f3f4f6; color: #374151; }
     .leads-kanban-col--contacted .leads-kanban-col-header { background: #e0f2fe; color: #0c4a6e; }
+    .leads-kanban-col--quote .leads-kanban-col-header { background: #fef3c7; color: #92400e; }
     .leads-kanban-col--qualified .leads-kanban-col-header { background: #d1fae5; color: #065f46; }
     .leads-kanban-col--converted .leads-kanban-col-header { background: #e0e7ff; color: #312e81; }
     .leads-kanban-col--lost .leads-kanban-col-header { background: #e5e7eb; color: #111827; }
@@ -336,17 +341,25 @@
                 if (saved === 'board') applyViewMode('board');
             } catch (_) { }
 
-            if (!modalEl || !bodyEl || typeof bootstrap === 'undefined') return;
+            if (!modalEl || !bodyEl) return;
 
             const bsModal = () => {
-                let inst = bootstrap.Modal.getInstance(modalEl);
-                if (!inst) inst = new bootstrap.Modal(modalEl);
+                if (!window.bootstrap || !window.bootstrap.Modal) {
+                    throw new Error('bootstrap_modal_unavailable');
+                }
+                let inst = window.bootstrap.Modal.getInstance(modalEl);
+                if (!inst) inst = new window.bootstrap.Modal(modalEl);
                 return inst;
             };
 
             async function loadLeadEditForm(leadId) {
                 bodyEl.innerHTML = '<p class="text-muted small mb-0 p-2">در حال بارگذاری...</p>';
-                bsModal().show();
+                try {
+                    bsModal().show();
+                } catch {
+                    alert('نمایش مودال در حال حاضر در دسترس نیست. لطفاً صفحه را یک‌بار رفرش کنید.');
+                    return;
+                }
                 try {
                     const res = await fetch('/Leads/EditModal/' + encodeURIComponent(leadId), {
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
