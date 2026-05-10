@@ -20,6 +20,7 @@ using TaskPlanner.Application.Services.TaskPlanner;
 using TaskPlanner.Application.Services.ProjectService;
 using TaskPlanner.Application.Services.NotificationService;
 using TaskPlanner.Application.Services.LeadService;
+using TaskPlanner.Application.Services.DashboardService;
 
 
 namespace TaskPlanner.Infrastructure.DependencyInjections
@@ -47,6 +48,8 @@ namespace TaskPlanner.Infrastructure.DependencyInjections
             services.AddScoped<IProjectCommandService, ProjectCommandService>();
 
             services.AddScoped<ILeadService, LeadService>();
+
+            services.AddScoped<IDashboardService, DashboardService>();
 
             // سرویس نوتیفیکیشن
             services.AddScoped<INotificationService, NotificationService>();

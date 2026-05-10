@@ -9,7 +9,7 @@ namespace Endpoint.Site.Controllers
         [Route("/")]
         public IActionResult Index()
         {
-            return RedirectToAction("Index", "Projects");
+            return RedirectToAction("Index", "Dashboard");
         }
     }
 }

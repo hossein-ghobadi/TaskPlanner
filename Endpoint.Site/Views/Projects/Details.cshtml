@@ -328,72 +328,95 @@
         display: grid;
         grid-template-columns: 320px 1fr;
         gap: 1rem;
+        align-items: stretch;
     }
 
     .team-chat-groups {
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
+        border: 1px solid #dfe6ee;
+        border-radius: 14px;
         overflow: hidden;
         background: #fff;
+        box-shadow: 0 3px 14px rgba(15, 23, 42, 0.08);
     }
 
     .team-chat-group-item {
-        padding: 0.85rem;
-        border-bottom: 1px solid #f3f4f6;
+        padding: 0.9rem 0.85rem;
+        border-bottom: 1px solid #eef2f7;
         cursor: pointer;
+        transition: background-color 0.2s ease;
     }
 
     .team-chat-group-item:hover {
-        background: #f9fafb;
+        background: #f7fafd;
     }
 
     .team-chat-group-item.active {
-        background: #eff6ff;
-        border-right: 3px solid #3b82f6;
+        background: #eaf4ff;
+        border-right: 4px solid #3390ec;
     }
 
     .team-chat-room {
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
+        border: 1px solid #dfe6ee;
+        border-radius: 14px;
         background: #fff;
-        min-height: 420px;
+        min-height: 460px;
         display: flex;
         flex-direction: column;
+        box-shadow: 0 3px 14px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+    }
+
+    #projectChatCurrentHeader {
+        background: #f6f9fc;
+        border-bottom: 1px solid #dfe6ee !important;
+        font-weight: 600;
     }
 
     .team-chat-messages {
         flex: 1;
-        max-height: 430px;
+        max-height: 500px;
         overflow-y: auto;
         padding: 1rem;
-        background: #f9fafb;
+        background-color: #e7ebf0;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.6) 1px, transparent 1px);
+        background-size: 12px 12px;
     }
 
     .team-chat-message {
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.85rem;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
     }
 
     .team-chat-message.mine {
-        text-align: left;
+        align-items: flex-end;
+    }
+
+    .team-chat-message .small.text-muted {
+        font-size: 0.72rem;
+        margin-bottom: 0.2rem !important;
+        padding: 0 0.35rem;
     }
 
     .team-chat-bubble {
         display: inline-block;
-        max-width: 75%;
-        padding: 0.6rem 0.8rem;
-        border-radius: 10px;
+        max-width: min(78%, 650px);
+        padding: 0.6rem 0.8rem 0.45rem;
+        border-radius: 14px;
         background: #fff;
-        border: 1px solid #e5e7eb;
+        border: 1px solid #d7dee8;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.07);
     }
 
     .team-chat-message.mine .team-chat-bubble {
-        background: #dbeafe;
-        border-color: #bfdbfe;
+        background: #d5f3c7;
+        border-color: #bee8ad;
     }
 
     .chat-reply-preview {
-        border-right: 3px solid #60a5fa;
-        background: #eff6ff;
+        border-right: 3px solid #3390ec;
+        background: rgba(51, 144, 236, 0.12);
         border-radius: 8px;
         padding: 0.45rem 0.6rem;
         margin-bottom: 0.45rem;
@@ -401,8 +424,8 @@
     }
 
     .chat-reply-pill {
-        border-right: 3px solid #93c5fd;
-        background: #f8fafc;
+        border-right: 3px solid #3390ec;
+        background: #eef6ff;
         border-radius: 8px;
         padding: 0.4rem 0.55rem;
         margin-bottom: 0.5rem;
@@ -417,7 +440,7 @@
         border: 1px solid #e5e7eb;
         border-radius: 20px;
         padding: 0.25rem 0.6rem;
-        background: #f9fafb;
+        background: #fff;
         display: inline-flex;
         align-items: center;
         gap: 0.35rem;
@@ -429,6 +452,34 @@
         max-height: 150px;
         border-radius: 10px;
         border: 1px solid #e5e7eb;
+    }
+
+    #section-project-chat .card-body-modern {
+        padding: 1rem;
+    }
+
+    .team-chat-room .border-top {
+        background: #f6f9fc;
+        border-top: 1px solid #dfe6ee !important;
+    }
+
+    #projectChatMessageInput.form-control {
+        border-radius: 999px;
+        border: 1px solid #cfd8e4;
+        padding: 0.6rem 0.95rem;
+    }
+
+    #projectChatSendBtn.btn {
+        border-radius: 999px;
+        width: 42px;
+        padding: 0;
+        background: #3390ec;
+        border-color: #3390ec;
+    }
+
+    #projectChatSendBtn.btn:hover {
+        background: #2682df;
+        border-color: #2682df;
     }
 
     .chat-audio-wrap {
