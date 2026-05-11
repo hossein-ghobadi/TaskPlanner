@@ -728,13 +728,6 @@ namespace Endpoint.Site.Controllers
                 WorkflowTransition? usedTransition = null;
                 if (fromStatusId.HasValue)
                 {
-                    // جلوگیری از بازگشت از Done به وضعیت‌های قبلی
-                    var fromStatus = await _context.WorkflowStatuses.FirstOrDefaultAsync(ws => ws.Id == fromStatusId.Value);
-                    if (fromStatus != null && fromStatus.Type == WorkflowType.Done && fromStatus.IsFinal && toStatus.Type != WorkflowType.Done)
-                    {
-                        return BadRequest("انتقال از وضعیت انجام شده به وضعیت‌های قبلی مجاز نیست.");
-                    }
-
                     // اگر تسک در یک اسپرینت است، از وضعیت‌های sprint استفاده می‌کنیم و نیازی به بررسی transition نیست
                     // چون در Board همه انتقال‌ها مجاز هستند (drag & drop آزاد)
                     if (!task.SprintId.HasValue)

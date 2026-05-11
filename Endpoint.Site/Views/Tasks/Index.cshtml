@@ -33,12 +33,12 @@
     var lastUpdatedText = lastUpdated.HasValue ? lastUpdated.Value.ToShortPersianDateTimeString() : "نامشخص";
 
     var userLookup = ViewBag.UserLookup as Dictionary<string, string> ?? new Dictionary<string, string>();
-    var issueTypeOptions = activeRootTasks
+    var issueTypeOptions = rootTasks
         .Select(t => t.IssueType)
         .Distinct()
         .OrderBy(t => t)
         .ToList();
-    var assigneeOptions = activeRootTasks
+    var assigneeOptions = rootTasks
         .Where(t => !string.IsNullOrEmpty(t.AssignedUserId))
         .Select(t => t.AssignedUserId!)
         .Distinct()
@@ -331,6 +331,14 @@
                 <option value="none">بدون موعد</option>
             </select>
         </div>
+        <div class="filter-group">
+            <label for="statusFilter">وضعیت</label>
+            <select id="statusFilter" class="form-select">
+                <option value="active">فعال</option>
+                <option value="completed">خاتمه‌یافته</option>
+                <option value="all">همه</option>
+            </select>
+        </div>
         <div class="filter-group" style="flex: 0 0 auto;">
             <label>&nbsp;</label>
             <button type="button" id="resetFilters" class="btn btn-minimal d-block">
@@ -361,10 +369,10 @@
     }
     else
     {
-        if (activeRootTasks.Any())
+        if (rootTasks.Any())
         {
             <div id="taskTree" class="d-flex flex-column gap-2">
-                @foreach (var parent in activeRootTasks)
+                @foreach (var parent in rootTasks)
                 {
                     var titleKey = $"{parent.Title} {(parent.IssueKey ?? string.Empty)} {parent.Project?.Name ?? string.Empty}";
                     var assigneeKey = (parent.AssignedUserId ?? "none").ToLowerInvariant();
@@ -374,6 +382,7 @@
                          data-issuetype="@((int)parent.IssueType)"
                          data-assignee="@assigneeKey"
                          data-due="@nodeDueState"
+                         data-completed="@(parent.IsCompleted ? "true" : "false")"
                          data-trackable="@(isTrackableNode ? "true" : "false")">
                         @Html.Partial("_TaskBranch", parent)
                     </div>
@@ -491,7 +500,8 @@
             search: '',
             issueType: 'all',
             assignee: 'all',
-            due: 'all'
+            due: 'all',
+            status: 'active'
         };
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -546,9 +556,10 @@
             const issueTypeFilter = document.getElementById('issueTypeFilter');
             const assigneeFilter = document.getElementById('assigneeFilter');
             const dueFilter = document.getElementById('dueFilter');
+            const statusFilter = document.getElementById('statusFilter');
             const resetButton = document.getElementById('resetFilters');
 
-            if (searchInput && issueTypeFilter && assigneeFilter && dueFilter) {
+            if (searchInput && issueTypeFilter && assigneeFilter && dueFilter && statusFilter) {
                 const applyFilters = () => {
                     const nodes = document.querySelectorAll('.task-node');
                     const noMatchMessage = document.getElementById('noMatchMessage');
@@ -564,8 +575,12 @@
                             node.dataset.assignee === filterState.assignee;
                         const dueMatches = filterState.due === 'all' ||
                             node.dataset.due === filterState.due;
+                        const statusMatches = filterState.status === 'all' ||
+                            (filterState.status === 'completed'
+                                ? node.dataset.completed === 'true'
+                                : node.dataset.completed !== 'true');
 
-                        const shouldShow = titleMatches && issueTypeMatches && assigneeMatches && dueMatches;
+                        const shouldShow = titleMatches && issueTypeMatches && assigneeMatches && dueMatches && statusMatches;
                         node.classList.toggle('d-none', !shouldShow);
                         if (shouldShow && node.dataset.trackable !== 'false') visibleCount++;
                     });
@@ -591,16 +606,22 @@
                     filterState.due = event.target.value;
                     applyFilters();
                 });
+                statusFilter.addEventListener('change', (event) => {
+                    filterState.status = event.target.value;
+                    applyFilters();
+                });
                 if (resetButton) {
                     resetButton.addEventListener('click', () => {
                         searchInput.value = '';
                         issueTypeFilter.value = 'all';
                         assigneeFilter.value = 'all';
                         dueFilter.value = 'all';
+                        statusFilter.value = 'active';
                         filterState.search = '';
                         filterState.issueType = 'all';
                         filterState.assignee = 'all';
                         filterState.due = 'all';
+                        filterState.status = 'active';
                         applyFilters();
                     });
                 }

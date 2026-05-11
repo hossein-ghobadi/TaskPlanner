@@ -2620,6 +2620,7 @@
                                          data-issue-id="@issue.Id"
                                          data-status-id="@status.Id"
                                          data-status-name="@status.Name"
+                                         data-is-completed="@issue.IsCompleted.ToString().ToLower()"
                                          data-title="@issue.Title"
                                          data-assignee="@((issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص"))"
                                          data-assignee-id="@(issue.AssignedUserId ?? "unassigned")"
@@ -2632,7 +2633,7 @@
                                                 <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
                                                 
                                                 
-                                                @if (Model.Status == SprintStatus.Active&& status.Id != finalStatus.Id )
+                                                @if (Model.Status == SprintStatus.Active && status.Id != finalStatus.Id && !issue.IsCompleted)
                                                 {
                                                     <div class="dropdown">
                                                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
@@ -2653,11 +2654,14 @@
                                                                         <i class="bi bi-check-lg text-success me-2"></i>خاتمه کار
                                                                     </a>
                                                                 </li>
-                                                                <li>
-                                                                <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(@issue.Id);">
-                                                                    <i class="bi bi-x-circle text-warning me-2"></i>خارج کردن از اسپرینت
-                                                                </a>
-                                                            </li>
+                                                                @if (!issue.IsCompleted)
+                                                                {
+                                                                    <li>
+                                                                        <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(@issue.Id);">
+                                                                            <i class="bi bi-x-circle text-warning me-2"></i>خارج کردن از اسپرینت
+                                                                        </a>
+                                                                    </li>
+                                                                }
                                                             }
                                                             
                                                             <li><hr class="dropdown-divider"></li>
@@ -2694,7 +2698,7 @@
                                         
                                         <!-- دکمه‌های عملیات -->
                                         <div class="d-flex gap-2 mt-2" onclick="event.stopPropagation();">
-                                            @if (finalStatus != null && status.Id != finalStatus.Id)
+                                            @if (finalStatus != null && status.Id != finalStatus.Id && !issue.IsCompleted)
                                             {
                                                 <button type="button" class="btn btn-sm btn-outline-success" onclick="completeTask(@issue.Id)" title="تکمیل کار">
                                                     <i class="bi bi-check-circle"></i>
@@ -3660,6 +3664,7 @@
             card.dataset.key = task.issueKey || '';
             card.dataset.due = '';
             card.dataset.dueSoon = 'false';
+            card.dataset.isCompleted = String(!!task.isCompleted);
             card.addEventListener('dragstart', (e) => onDragIssue(e, task.id));
             card.addEventListener('click', (e) => handleCardClick(e, task.id));
 
@@ -3670,14 +3675,21 @@
             const deleteTitleArgument = (task.title || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
             const canComplete = canManageStatuses && finalStatusId && task.statusId !== finalStatusId;
+            const canRemoveFromSprint = canManageStatuses && !task.isCompleted;
             const completeMenuItem = canComplete ? `
                 <li>
                     <a class="dropdown-item complete-task-btn" href="#" onclick="event.stopPropagation(); event.preventDefault(); completeTask(${task.id});">
                         <i class="bi bi-check-lg text-success me-2"></i>خاتمه کار
                     </a>
                 </li>` : '';
+            const removeFromSprintMenuItem = canRemoveFromSprint ? `
+                <li>
+                    <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(${task.id});">
+                        <i class="bi bi-x-circle text-warning me-2"></i>خارج کردن از اسپرینت
+                    </a>
+                </li>` : '';
 
-            const actionButtons = canManageStatuses ? `
+            const actionButtons = canManageStatuses && !task.isCompleted ? `
                 <div class="dropdown">
                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
                             type="button"
@@ -3695,11 +3707,7 @@
                             </a>
                         </li>
                         ${completeMenuItem}
-                        <li>
-                            <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); removeTaskFromSprint(${task.id});">
-                                <i class="bi bi-x-circle text-warning me-2"></i>خارج کردن از اسپرینت
-                            </a>
-                        </li>
+                        ${removeFromSprintMenuItem}
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <a class="dropdown-item text-danger" href="#" onclick="event.stopPropagation(); event.preventDefault(); deleteTask(${task.id}, '${deleteTitleArgument}');">
@@ -3785,6 +3793,33 @@
 
             updateIssueCounts();
             return true;
+        }
+
+        function updateCardCompletedState(card, isCompleted) {
+            if (!card) return;
+            const completed = !!isCompleted;
+            card.dataset.isCompleted = String(completed);
+
+            if (!completed) return;
+
+            // برای کارت‌های خاتمه‌یافته، هیچ عملیات مدیریتی نمایش داده نشود.
+            card.querySelectorAll('a[onclick*="completeTask"], button[onclick*="completeTask"]').forEach(el => {
+                const wrapper = el.closest('li') || el.closest('button');
+                if (wrapper) wrapper.remove();
+            });
+            card.querySelectorAll('a[onclick*="deleteTask"], button[onclick*="deleteTask"]').forEach(el => {
+                const wrapper = el.closest('li') || el.closest('button');
+                if (wrapper) wrapper.remove();
+            });
+            card.querySelectorAll('a[onclick*="removeTaskFromSprint"], button[onclick*="removeTaskFromSprint"]').forEach(el => {
+                const wrapper = el.closest('li') || el.closest('button');
+                if (wrapper) wrapper.remove();
+            });
+
+            const dropdown = card.querySelector('.task-actions .dropdown');
+            if (dropdown) {
+                dropdown.remove();
+            }
         }
 
         async function postJson(url, payload) {
@@ -4329,6 +4364,7 @@
                 }
 
                 const result = await res.json();
+                updateCardCompletedState(card, result?.isCompleted);
                 
                 card.classList.remove('dragging');
                 card.style.opacity = '1';
@@ -4516,6 +4552,7 @@
 
                 const result = await res.json();
                 console.log('Success:', result);
+                updateCardCompletedState(draggedCard, result?.isCompleted);
 
                 if (draggedCard) {
                     draggedCard.classList.remove('dragging');

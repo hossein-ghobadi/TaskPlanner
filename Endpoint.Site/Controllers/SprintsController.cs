@@ -966,6 +966,20 @@ namespace Endpoint.Site.Controllers
                 return Json(new { success = false, message = "تسک در اسپرینت یافت نشد." });
             }
 
+            // اگر کارت یک‌بار خاتمه یافته باشد (IsCompleted=true)، حتی بعد از تغییر وضعیت
+            // نباید از اسپرینت خارج شود.
+            var task = await _context.TaskItems
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == taskId);
+            if (task == null)
+            {
+                return Json(new { success = false, message = "تسک یافت نشد." });
+            }
+            if (task.IsCompleted)
+            {
+                return Json(new { success = false, message = "کاری که خاتمه یافته باشد قابل خارج کردن از اسپرینت نیست." });
+            }
+
             try
             {
                 // Delete using SQL to avoid Entity Framework tracking issues
