@@ -3,6 +3,42 @@ using TaskPlanner.Domain.Entities.TaskPlanner;
 
 namespace Endpoint.Site.Models
 {
+    public enum TaskEffortLevel
+    {
+        Simple = 1,
+        Medium = 2,
+        Hard = 3
+    }
+
+    public static class TaskEffortLevelMapper
+    {
+        public static int? ToStoryPoints(TaskEffortLevel? level)
+        {
+            return level switch
+            {
+                TaskEffortLevel.Simple => 1,
+                TaskEffortLevel.Medium => 5,
+                TaskEffortLevel.Hard => 13,
+                _ => null
+            };
+        }
+
+        public static TaskEffortLevel? FromStoryPoints(int? storyPoints)
+        {
+            if (!storyPoints.HasValue)
+            {
+                return null;
+            }
+
+            return storyPoints.Value switch
+            {
+                <= 3 => TaskEffortLevel.Simple,
+                <= 8 => TaskEffortLevel.Medium,
+                _ => TaskEffortLevel.Hard
+            };
+        }
+    }
+
     public class TaskCreateVm
     {
         [Required(ErrorMessage = "عنوان الزامی است")]
@@ -44,5 +80,10 @@ namespace Endpoint.Site.Models
         /// Story Points (فقط برای Story و Task)
         /// </summary>
         public int? StoryPoints { get; set; }
+
+        /// <summary>
+        /// سطح سختی/زحمت تسک (ساده، متوسط، پرزحمت)
+        /// </summary>
+        public TaskEffortLevel? EffortLevel { get; set; }
     }
 }

@@ -2948,6 +2948,11 @@
                                     <label for="editTaskDescription" class="form-label">توضیحات</label>
                                     <textarea class="form-control" id="editTaskDescription" rows="4" placeholder="توضیحات کار را وارد کنید"></textarea>
                                 </div>
+                                <div class="mb-3">
+                                    <label for="editTaskEffortLevelDisplay" class="form-label">سطح کار</label>
+                                    <div class="form-control bg-light" id="editTaskEffortLevelDisplay">تعیین نشده</div>
+                                    <small class="text-muted">برای تغییر، از ستون اطلاعات استفاده کنید.</small>
+                                </div>
 
                                 <div class="chat-container mt-3">
                                     <div class="chat-header">
@@ -3039,6 +3044,14 @@
                                     <label for="editTaskAssignedUser" class="form-label">مسئول کار</label>
                                     <select class="form-select mb-2" id="editTaskAssignedUser">
                                         <option value="">-- انتخاب کاربر --</option>
+                                    </select>
+
+                                    <label for="editTaskEffortLevel" class="form-label">سطح کار</label>
+                                    <select class="form-select mb-2" id="editTaskEffortLevel">
+                                        <option value="">-- انتخاب سطح --</option>
+                                        <option value="1">ساده</option>
+                                        <option value="2">متوسط</option>
+                                        <option value="3">پرزحمت</option>
                                     </select>
 
                                     <div class="checklist-card-board checklist-board-floating" id="boardChecklistPanel" style="display:none;" aria-label="چک لیست کارک‌ها">
@@ -4777,6 +4790,22 @@
                 });
             }
         }
+
+        function mapStoryPointsToEffortLevel(storyPoints) {
+            const points = Number(storyPoints);
+            if (!Number.isFinite(points)) return null;
+            if (points <= 3) return 1;
+            if (points <= 8) return 2;
+            return 3;
+        }
+
+        function effortLevelToLabel(level) {
+            const levelInt = Number(level);
+            if (levelInt === 1) return 'ساده';
+            if (levelInt === 2) return 'متوسط';
+            if (levelInt === 3) return 'پرزحمت';
+            return 'تعیین نشده';
+        }
         
         async function openEditTaskModal(taskId) {
             if (!taskId) {
@@ -4846,6 +4875,21 @@
                 dueDateHiddenEl.setAttribute('value', dueDateValue);
                 document.getElementById('editTaskCategory').value = taskData.categoryId || '';
                 document.getElementById('editTaskAssignedUser').value = taskData.assignedUserId || '';
+                const effortLevelSelect = document.getElementById('editTaskEffortLevel');
+                const effortLevelDisplay = document.getElementById('editTaskEffortLevelDisplay');
+                const resolvedEffortLevel = mapStoryPointsToEffortLevel(taskData.storyPoints);
+                if (effortLevelSelect) {
+                    effortLevelSelect.value = resolvedEffortLevel ? String(resolvedEffortLevel) : '';
+                    effortLevelSelect.disabled = false;
+                    effortLevelSelect.onchange = function () {
+                        if (effortLevelDisplay) {
+                            effortLevelDisplay.textContent = effortLevelToLabel(this.value);
+                        }
+                    };
+                }
+                if (effortLevelDisplay) {
+                    effortLevelDisplay.textContent = effortLevelToLabel(resolvedEffortLevel);
+                }
                 console.log("مقدار altField (#editTaskStartDate):", document.getElementById('editTaskStartDate').value);
                 console.log("مقدار altField (#editTaskStartDate):",  taskData.startDateSh);
                 clearReplyContext();
@@ -4886,6 +4930,10 @@
                     }
                     assignedUserSelect.disabled = true;
                     assignedUserSelect.setAttribute('title', 'مسئول کارک به صورت خودکار از کار والد گرفته می‌شود');
+                    if (effortLevelSelect) {
+                        effortLevelSelect.disabled = true;
+                        effortLevelSelect.setAttribute('title', 'سطح کارک از آیتم والد مدیریت می‌شود');
+                    }
                     
                     // اضافه کردن پیام توضیحی
                     let helpText = assignedUserContainer.querySelector('.subtask-assignee-help');
@@ -4913,6 +4961,10 @@
                     }
                     assignedUserSelect.disabled = false;
                     assignedUserSelect.removeAttribute('title');
+                    if (effortLevelSelect) {
+                        effortLevelSelect.disabled = false;
+                        effortLevelSelect.removeAttribute('title');
+                    }
                     
                     // حذف پیام توضیحی اگر وجود داشت
                     const helpText = assignedUserContainer?.querySelector('.subtask-assignee-help');
@@ -5038,6 +5090,9 @@
                 DueDateSh: document.getElementById('editTaskDueDate').value || '',
                 CategoryId: document.getElementById('editTaskCategory').value ? parseInt(document.getElementById('editTaskCategory').value) : null,
                 AssignedUserId: assignedUserId,
+                EffortLevel: document.getElementById('editTaskEffortLevel').value
+                    ? parseInt(document.getElementById('editTaskEffortLevel').value)
+                    : null,
                 // این فیلد در مودال نمایش داده نمی‌شود، مقدار قبلی را حفظ می‌کنیم
                 StoryPoints: originalTaskData?.storyPoints ?? null
             };

@@ -343,15 +343,19 @@
                     <span asp-validation-for="AssignedUserId" class="text-danger small"></span>
                 </div>
 
-                <div id="storyPointsDiv">
-                    <label asp-for="StoryPoints" class="form-label">
+                <div id="effortLevelDiv">
+                    <label asp-for="EffortLevel" class="form-label">
                         <i class="bi bi-star"></i>
-                        امتیاز کار
+                        سطح کار
                     </label>
-                    <input asp-for="StoryPoints" type="number" min="0" max="100" class="form-control" 
-                           placeholder="مثلاً: 5" />
-                    <small class="text-muted small">اعداد Fibonacci: 1, 2, 3, 5, 8, 13...</small>
-                    <span asp-validation-for="StoryPoints" class="text-danger small"></span>
+                    <select asp-for="EffortLevel" class="form-select">
+                        <option value="">-- انتخاب سطح --</option>
+                        <option value="@((int)TaskEffortLevel.Simple)">ساده</option>
+                        <option value="@((int)TaskEffortLevel.Medium)">متوسط</option>
+                        <option value="@((int)TaskEffortLevel.Hard)">پرزحمت</option>
+                    </select>
+                    <small class="text-muted small">این مقدار برای سازگاری با داده‌های قبلی به امتیاز داخلی تبدیل می‌شود.</small>
+                    <span asp-validation-for="EffortLevel" class="text-danger small"></span>
                 </div>
             </div>
         </div>

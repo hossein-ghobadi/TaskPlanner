@@ -227,12 +227,34 @@ namespace Endpoint.Site.Controllers
             int parentId = data.GetProperty("parentId").GetInt32();
             int categoryId = data.TryGetProperty("categoryId", out var catProp) ? catProp.GetInt32() : 0;
 
-            // StoryPoints اختیاری
+            // StoryPoints اختیاری (legacy)
             int? storyPoints = null;
             if (data.TryGetProperty("storyPoints", out var spProp) && spProp.ValueKind == JsonValueKind.Number)
             {
                 storyPoints = spProp.GetInt32();
             }
+            // سطح زحمت (جدید)
+            TaskEffortLevel? effortLevel = null;
+            if (data.TryGetProperty("effortLevel", out var effortProp))
+            {
+                if (effortProp.ValueKind == JsonValueKind.Number)
+                {
+                    var effortInt = effortProp.GetInt32();
+                    if (Enum.IsDefined(typeof(TaskEffortLevel), effortInt))
+                    {
+                        effortLevel = (TaskEffortLevel)effortInt;
+                    }
+                }
+                else if (effortProp.ValueKind == JsonValueKind.String)
+                {
+                    var effortText = effortProp.GetString();
+                    if (Enum.TryParse<TaskEffortLevel>(effortText, true, out var parsedLevel))
+                    {
+                        effortLevel = parsedLevel;
+                    }
+                }
+            }
+            var resolvedStoryPoints = TaskEffortLevelMapper.ToStoryPoints(effortLevel) ?? storyPoints;
 
             // 🔍 Validation: عنوان الزامی
             if (string.IsNullOrWhiteSpace(title))
@@ -402,7 +424,7 @@ namespace Endpoint.Site.Controllers
                         CategoryId = selectedCategory?.Id ?? parent.CategoryId,
                         ParentTaskId = parent.Id,
                         AssignedUserId = parent.AssignedUserId, // وراثت مسئول از parent
-                        StoryPoints = storyPoints, // فقط برای Story-level types
+                        StoryPoints = resolvedStoryPoints, // نگاشت سطح جدید به StoryPoints برای سازگاری
                         IsCompleted = false,
                         CreatedByUserId = userId,
                         CreatedAt = DateTime.UtcNow,
@@ -957,7 +979,8 @@ namespace Endpoint.Site.Controllers
             var model = new TaskCreateVm
             {
                 ProjectId = projectId.Value,
-                IssueType = IssueType.Task
+                IssueType = IssueType.Task,
+                EffortLevel = TaskEffortLevel.Medium
             };
 
             var defaultProjectIssueType = projectIssueTypes
@@ -1011,6 +1034,7 @@ namespace Endpoint.Site.Controllers
             }
 
             vm.IssueType = IssueType.Task;
+            vm.StoryPoints = TaskEffortLevelMapper.ToStoryPoints(vm.EffortLevel) ?? vm.StoryPoints;
 
             ProjectIssueType? selectedProjectIssueType = null;
             if (vm.ProjectIssueTypeId.HasValue)
@@ -1805,7 +1829,9 @@ namespace Endpoint.Site.Controllers
                 DueDateSh = task.DueDate.HasValue ? task.DueDate.Value.ToShortPersianDateString() : null,
                 AssignedUserId = task.AssignedUserId,
                 IssueType = task.IssueType,
-                ProjectIssueTypeId = task.ProjectIssueTypeId
+                ProjectIssueTypeId = task.ProjectIssueTypeId,
+                StoryPoints = task.StoryPoints,
+                EffortLevel = TaskEffortLevelMapper.FromStoryPoints(task.StoryPoints)
             };
 
             ViewBag.Categories = await _context.TaskCategories
@@ -1896,7 +1922,10 @@ namespace Endpoint.Site.Controllers
                     DueDateSh = Request.Form["DueDateSh"].FirstOrDefault(),
                     CategoryId = int.TryParse(Request.Form["CategoryId"].FirstOrDefault(), out var catId) ? catId : (int?)null,
                     AssignedUserId = Request.Form["AssignedUserId"].FirstOrDefault(),
-                    StoryPoints = int.TryParse(Request.Form["StoryPoints"].FirstOrDefault(), out var sp) ? sp : (int?)null
+                    StoryPoints = int.TryParse(Request.Form["StoryPoints"].FirstOrDefault(), out var sp) ? sp : (int?)null,
+                    EffortLevel = Enum.TryParse<TaskEffortLevel>(Request.Form["EffortLevel"].FirstOrDefault(), true, out var effortLevel)
+                        ? effortLevel
+                        : (TaskEffortLevel?)null
                 };
             }
             
@@ -1912,6 +1941,8 @@ namespace Endpoint.Site.Controllers
         // متد کمکی برای ذخیره ویرایش کار
         private async Task<IActionResult> SaveTaskEditAsync(TaskEditVm vm, bool isJsonRequest)
         {
+            vm.StoryPoints = TaskEffortLevelMapper.ToStoryPoints(vm.EffortLevel) ?? vm.StoryPoints;
+
             if (!ModelState.IsValid)
             {
                 if (isJsonRequest)
@@ -2317,6 +2348,8 @@ namespace Endpoint.Site.Controllers
                     }
                 }
             }
+
+            task.StoryPoints = vm.StoryPoints;
 
             _context.Update(task);
             await _context.SaveChangesAsync();

@@ -627,19 +627,19 @@
             // Reset form
             document.getElementById('subTaskTitle').value = '';
             document.getElementById('subTaskCategory').value = '';
-            document.getElementById('storyPoints').value = '';
+            document.getElementById('effortLevel').value = '';
             
-            const storyPointsField = document.getElementById('storyPointsField');
+            const effortLevelField = document.getElementById('effortLevelField');
             const modalTitle = document.getElementById('subTaskModalLabel');
 
             // اگر Parent = Epic، فرزند همیشه Task است
             if (parentIssueType === 'Epic') {
                 modalTitle.textContent = 'افزودن کار';
-                storyPointsField.style.display = 'block';
+                effortLevelField.style.display = 'block';
             }
             // اگر Parent = Task، فرزند همیشه Subtask است
             else {
-                storyPointsField.style.display = 'none';
+                effortLevelField.style.display = 'none';
                 modalTitle.textContent = '➕ افزودن کارک';
             }
             
@@ -657,7 +657,7 @@
 
             const title = document.getElementById('subTaskTitle').value.trim();
             const categoryId = document.getElementById('subTaskCategory').value || '0';
-            const storyPoints = document.getElementById('storyPoints').value;
+            const effortLevel = document.getElementById('effortLevel').value;
             const submitButton = document.querySelector('#subTaskModal .btn-primary');
             const originalButtonContent = submitButton ? submitButton.innerHTML : '';
             
@@ -672,10 +672,10 @@
                 categoryId: parseInt(categoryId)
             };
             
-            // برای Parent = Epic مقدار StoryPoints می‌تواند ارسال شود
-            if (storyPointsField.style.display !== 'none') {
-                if (storyPoints) {
-                    payload.storyPoints = parseInt(storyPoints);
+            // برای Parent = Epic مقدار سطح زحمت می‌تواند ارسال شود
+            if (effortLevelField.style.display !== 'none') {
+                if (effortLevel) {
+                    payload.effortLevel = parseInt(effortLevel);
                 }
             }
 
@@ -781,11 +781,16 @@
                     <input type="text" class="form-control" id="subTaskTitle" placeholder="مثلاً بررسی فاکتور خرید">
                 </div>
 
-                <!-- فیلد Story Points (فقط برای Story/Task نمایش داده میشه) -->
-                <div class="mb-3" id="storyPointsField" style="display:none;">
-                    <label for="storyPoints" class="form-label">امتیاز کار (اختیاری)</label>
-                    <input type="number" class="form-control" id="storyPoints" placeholder="1, 2, 3, 5, 8, 13..." min="0">
-                    <small class="text-muted">برآورد تلاش مورد نیاز (فیبوناچی)</small>
+                <!-- فیلد سطح زحمت (فقط برای Parent=Epic نمایش داده می‌شود) -->
+                <div class="mb-3" id="effortLevelField" style="display:none;">
+                    <label for="effortLevel" class="form-label">سطح کار (اختیاری)</label>
+                    <select class="form-select" id="effortLevel">
+                        <option value="">-- انتخاب سطح --</option>
+                        <option value="1">ساده</option>
+                        <option value="2">متوسط</option>
+                        <option value="3">پرزحمت</option>
+                    </select>
+                    <small class="text-muted">برای سازگاری، به امتیاز داخلی تبدیل می‌شود.</small>
                 </div>
 
                 <div class="mb-3">
