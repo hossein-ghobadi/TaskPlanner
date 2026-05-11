@@ -111,9 +111,23 @@ namespace TaskPlanner.Application.Services.LeadService
         public string? Notes { get; set; }
     }
 
+    public class UpdateLeadSessionDto
+    {
+        public int SessionId { get; set; }
+        public DateTime ScheduledAt { get; set; }
+        public string? Notes { get; set; }
+    }
+
     public class CreateLeadNoteDto
     {
         public int LeadId { get; set; }
+        public string Title { get; set; } = null!;
+        public string? Content { get; set; }
+    }
+
+    public class UpdateLeadNoteDto
+    {
+        public int NoteId { get; set; }
         public string Title { get; set; } = null!;
         public string? Content { get; set; }
     }

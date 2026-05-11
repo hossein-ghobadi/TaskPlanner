@@ -18,8 +18,10 @@ namespace TaskPlanner.Application.Services.LeadService
         Task CancelLeadInvitationAsync(int invitationId, string inviterUserId, CancellationToken cancellationToken = default);
         Task RespondToLeadInvitationAsync(int invitationId, string currentUserId, string currentUserPhone, bool accept, CancellationToken cancellationToken = default);
         Task AddSessionAsync(CreateLeadSessionDto dto, string requesterUserId, CancellationToken cancellationToken = default);
+        Task UpdateSessionAsync(UpdateLeadSessionDto dto, string requesterUserId, CancellationToken cancellationToken = default);
         Task RemoveSessionAsync(int sessionId, string requesterUserId, CancellationToken cancellationToken = default);
         Task<int> AddNoteAsync(CreateLeadNoteDto dto, string requesterUserId, CancellationToken cancellationToken = default);
+        Task UpdateNoteAsync(UpdateLeadNoteDto dto, string requesterUserId, CancellationToken cancellationToken = default);
         Task RemoveNoteAsync(int noteId, string requesterUserId, CancellationToken cancellationToken = default);
     }
 }

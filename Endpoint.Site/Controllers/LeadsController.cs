@@ -379,6 +379,30 @@ namespace Endpoint.Site.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateSession([FromForm] int leadId, [FromForm] int sessionId, [FromForm] string meetingAtPersian, [FromForm] string? notes)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            try
+            {
+                var localMeetingTime = ParsePersianDateTime(meetingAtPersian);
+                await _leadService.UpdateSessionAsync(new UpdateLeadSessionDto
+                {
+                    SessionId = sessionId,
+                    ScheduledAt = localMeetingTime,
+                    Notes = notes
+                }, userId);
+                TempData["Success"] = "جلسه لید ویرایش شد.";
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = ex.Message;
+            }
+
+            return RedirectToAction(nameof(Details), new { id = leadId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteSession([FromForm] int leadId, [FromForm] int sessionId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -475,6 +499,79 @@ namespace Endpoint.Site.Controllers
 
                     throw;
                 }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = ex.Message;
+            }
+
+            return RedirectToAction(nameof(Details), new { id = leadId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateLeadNote(
+            [FromForm] int leadId,
+            [FromForm] int noteId,
+            [FromForm] string title,
+            [FromForm] string? content,
+            [FromForm(Name = "attachments")] List<IFormFile>? attachments,
+            [FromForm(Name = "attachments[]")] List<IFormFile>? attachmentsArray)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            try
+            {
+                await using var tx = await _context.Database.BeginTransactionAsync();
+                var uploadedPaths = new List<string>();
+                var filesToUpload = (attachments ?? new List<IFormFile>())
+                    .Concat(attachmentsArray ?? Enumerable.Empty<IFormFile>())
+                    .Where(f => f != null && f.Length > 0)
+                    .ToList();
+                try
+                {
+                    await _leadService.UpdateNoteAsync(new UpdateLeadNoteDto
+                    {
+                        NoteId = noteId,
+                        Title = title,
+                        Content = content
+                    }, userId);
+
+                    if (filesToUpload.Any())
+                    {
+                        foreach (var file in filesToUpload)
+                        {
+                            var uploadResult = await _fileUploadService.UploadFileAsync(file, "lead-notes");
+                            if (!uploadResult.Success || string.IsNullOrWhiteSpace(uploadResult.FilePath))
+                                throw new InvalidOperationException($"آپلود فایل «{file.FileName}» ناموفق بود.");
+
+                            uploadedPaths.Add(uploadResult.FilePath);
+                            _context.ProjectNoteAttachments.Add(new ProjectNoteAttachment
+                            {
+                                ProjectNoteId = noteId,
+                                FileName = file.FileName,
+                                FilePath = uploadResult.FilePath,
+                                FileType = _fileUploadService.GetFileType(file.FileName),
+                                FileSize = file.Length,
+                                MimeType = file.ContentType,
+                                UploadedAt = DateTime.UtcNow
+                            });
+                        }
+                        await _context.SaveChangesAsync();
+                    }
+
+                    await tx.CommitAsync();
+                }
+                catch
+                {
+                    await tx.RollbackAsync();
+                    foreach (var path in uploadedPaths)
+                    {
+                        _fileUploadService.DeleteFile(path);
+                    }
+                    throw;
+                }
+
+                TempData["Success"] = "یادداشت لید ویرایش شد.";
             }
             catch (Exception ex)
             {

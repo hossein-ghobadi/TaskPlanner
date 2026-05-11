@@ -484,6 +484,21 @@ namespace TaskPlanner.Application.Services.LeadService
             await _context.SaveChangesAsync(cancellationToken);
         }
 
+        public async Task UpdateSessionAsync(UpdateLeadSessionDto dto, string requesterUserId, CancellationToken cancellationToken = default)
+        {
+            var session = await _context.Set<LeadSession>()
+                .Include(s => s.Lead)
+                .FirstOrDefaultAsync(s => s.Id == dto.SessionId, cancellationToken);
+            if (session == null || session.Lead.OwnerUserId != requesterUserId)
+                throw new InvalidOperationException("فقط مالک لید می‌تواند جلسه را ویرایش کند.");
+
+            var scheduledUtc = NormalizeMeetingAtToUtc(dto.ScheduledAt) ?? throw new InvalidOperationException("زمان جلسه نامعتبر است.");
+            session.ScheduledAt = scheduledUtc;
+            session.Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim();
+            session.Lead.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
         public async Task RemoveSessionAsync(int sessionId, string requesterUserId, CancellationToken cancellationToken = default)
         {
             var session = await _context.Set<LeadSession>()
@@ -520,6 +535,23 @@ namespace TaskPlanner.Application.Services.LeadService
             lead.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
             return note.Id;
+        }
+
+        public async Task UpdateNoteAsync(UpdateLeadNoteDto dto, string requesterUserId, CancellationToken cancellationToken = default)
+        {
+            var note = await _context.ProjectNotes
+                .Include(n => n.Lead)
+                .FirstOrDefaultAsync(n => n.Id == dto.NoteId, cancellationToken);
+            if (note == null || note.Lead == null || note.Lead.OwnerUserId != requesterUserId)
+                throw new InvalidOperationException("فقط مالک لید می‌تواند یادداشت را ویرایش کند.");
+
+            if (string.IsNullOrWhiteSpace(dto.Title))
+                throw new InvalidOperationException("عنوان یادداشت الزامی است.");
+
+            note.Title = dto.Title.Trim();
+            note.Content = string.IsNullOrWhiteSpace(dto.Content) ? null : dto.Content.Trim();
+            note.Lead.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         public async Task RemoveNoteAsync(int noteId, string requesterUserId, CancellationToken cancellationToken = default)
