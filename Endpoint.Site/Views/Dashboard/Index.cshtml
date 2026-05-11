@@ -210,8 +210,14 @@
         </div>
         <div class="col-lg-3">
             <div class="dash-panel h-100">
-                <h2 class="dash-panel__title">توزیع تسک در پروژه‌ها</h2>
-                @if (Model.ProjectTaskDistributionSlices.Count == 0)
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                    <h2 class="dash-panel__title mb-0">توزیع تسک در پروژه‌ها</h2>
+                    <div class="btn-group btn-group-sm dash-segmented-control" role="group" aria-label="حالت نمایش نمودار تسک پروژه">
+                        <button type="button" class="btn btn-outline-primary active" data-project-chart-mode="mine">کارهای خودم</button>
+                        <button type="button" class="btn btn-outline-primary" data-project-chart-mode="all">کل پروژه</button>
+                    </div>
+                </div>
+                @if (Model.ProjectTaskDistributionSlices.Count == 0 && Model.ProjectTaskDistributionAllSlices.Count == 0)
                 {
                     <p class="text-muted small mb-0 py-4 text-center">تسک تخصیص‌یافته‌ای برای نمایش وجود ندارد.</p>
                 }
@@ -301,19 +307,59 @@
             });
         }
 
-        var pp = payload.perProject || [];
-        if (pp.length && document.getElementById('chartTasksByProject')) {
-            new Chart(document.getElementById('chartTasksByProject'), {
+        var ppMine = payload.perProject || [];
+        var ppAll = payload.perProjectAll || [];
+        var projectChartCanvas = document.getElementById('chartTasksByProject');
+        var projectChartButtons = Array.prototype.slice.call(document.querySelectorAll('[data-project-chart-mode]'));
+        var projectChartByMode = {
+            mine: ppMine,
+            all: ppAll
+        };
+
+        function normalizeProjectChartMode(mode) {
+            return mode === 'all' ? 'all' : 'mine';
+        }
+
+        function getProjectChartDataset(mode) {
+            var normalizedMode = normalizeProjectChartMode(mode);
+            return projectChartByMode[normalizedMode] || [];
+        }
+
+        function setProjectChartButtons(mode) {
+            var normalizedMode = normalizeProjectChartMode(mode);
+            projectChartButtons.forEach(function (btn) {
+                var isActive = btn.getAttribute('data-project-chart-mode') === normalizedMode;
+                btn.classList.toggle('active', isActive);
+            });
+        }
+
+        if (projectChartCanvas && (ppMine.length || ppAll.length)) {
+            var initialMode = ppMine.length ? 'mine' : 'all';
+            var initialDataset = getProjectChartDataset(initialMode);
+            var projectChart = new Chart(projectChartCanvas, {
                 type: 'doughnut',
                 data: {
-                    labels: pp.map(function (x) { return x.label; }),
+                    labels: initialDataset.map(function (x) { return x.label; }),
                     datasets: [{
-                        data: pp.map(function (x) { return x.count; }),
-                        backgroundColor: pp.map(function (x) { return x.color; }),
+                        data: initialDataset.map(function (x) { return x.count; }),
+                        backgroundColor: initialDataset.map(function (x) { return x.color; }),
                         borderWidth: 0
                     }]
                 },
                 options: baseOptions()
+            });
+            setProjectChartButtons(initialMode);
+
+            projectChartButtons.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var targetMode = normalizeProjectChartMode(btn.getAttribute('data-project-chart-mode'));
+                    var nextDataset = getProjectChartDataset(targetMode);
+                    projectChart.data.labels = nextDataset.map(function (x) { return x.label; });
+                    projectChart.data.datasets[0].data = nextDataset.map(function (x) { return x.count; });
+                    projectChart.data.datasets[0].backgroundColor = nextDataset.map(function (x) { return x.color; });
+                    projectChart.update();
+                    setProjectChartButtons(targetMode);
+                });
             });
         }
 

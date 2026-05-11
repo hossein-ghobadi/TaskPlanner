@@ -100,6 +100,20 @@ namespace TaskPlanner.Application.Services.DashboardService
                 .Select(x => (x.ProjectName, x.Count))
                 .ToList();
 
+            var allTasksByProject = projectIds.Count == 0
+                ? new List<(string ProjectName, int Count)>()
+                : (await _context.TaskItems.AsNoTracking()
+                    .Where(t => projectIds.Contains(t.ProjectId))
+                    .Where(t =>
+                        (t.ProjectIssueTypeId != null && t.ProjectIssueType != null && t.ProjectIssueType.CanAddToSprint)
+                        || (t.ProjectIssueTypeId == null
+                            && (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug)))
+                    .GroupBy(t => t.Project.Name)
+                    .Select(g => new { ProjectName = g.Key, Count = g.Count() })
+                    .ToListAsync(cancellationToken))
+                .Select(x => (x.ProjectName, x.Count))
+                .ToList();
+
             var myBoardTasks = boardIds.Count == 0
                 ? new List<bool>()
                 : await _context.BoardTasks.AsNoTracking()
@@ -239,6 +253,7 @@ namespace TaskPlanner.Application.Services.DashboardService
                 UpcomingMeetings = meetings,
                 TaskPrioritySlices = prioritySlices,
                 ProjectTaskDistributionSlices = BuildProjectDistributionSlices(tasksByProject),
+                ProjectTaskDistributionAllSlices = BuildProjectDistributionSlices(allTasksByProject),
                 LeadPipelineSlices = MapLeadPipelineRows(leadPipeline),
                 DueTasksNext7Days = dueDays,
                 DueTasksToday = dueToday,

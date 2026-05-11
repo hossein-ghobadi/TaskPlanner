@@ -32,25 +32,16 @@
 
     string StatusBadgeClass(LeadPipelineStatus s) => s switch
     {
-        LeadPipelineStatus.New => "bg-secondary",
-        LeadPipelineStatus.Contacted => "bg-info text-dark",
-        LeadPipelineStatus.QuoteAnnounced => "bg-warning text-dark",
-        LeadPipelineStatus.Qualified => "bg-success",
-        LeadPipelineStatus.Converted => "bg-primary",
-        LeadPipelineStatus.Lost => "bg-dark",
-        _ => "bg-secondary"
+        LeadPipelineStatus.New => "lead-status-pill lead-status-pill--new",
+        LeadPipelineStatus.Contacted => "lead-status-pill lead-status-pill--contacted",
+        LeadPipelineStatus.QuoteAnnounced => "lead-status-pill lead-status-pill--quote",
+        LeadPipelineStatus.Qualified => "lead-status-pill lead-status-pill--qualified",
+        LeadPipelineStatus.Converted => "lead-status-pill lead-status-pill--converted",
+        LeadPipelineStatus.Lost => "lead-status-pill lead-status-pill--lost",
+        _ => "lead-status-pill"
     };
 
-    string KanbanColClass(LeadPipelineStatus s) => s switch
-    {
-        LeadPipelineStatus.New => "leads-kanban-col--new",
-        LeadPipelineStatus.Contacted => "leads-kanban-col--contacted",
-        LeadPipelineStatus.QuoteAnnounced => "leads-kanban-col--quote",
-        LeadPipelineStatus.Qualified => "leads-kanban-col--qualified",
-        LeadPipelineStatus.Converted => "leads-kanban-col--converted",
-        LeadPipelineStatus.Lost => "leads-kanban-col--lost",
-        _ => ""
-    };
+    string KanbanColClass(LeadPipelineStatus s) => "leads-kanban-col--neutral";
 }
 
 <style>
@@ -87,12 +78,14 @@
         gap: 0.35rem;
     }
 
-    .leads-kanban-col--new .leads-kanban-col-header { background: #f3f4f6; color: #374151; }
-    .leads-kanban-col--contacted .leads-kanban-col-header { background: #e0f2fe; color: #0c4a6e; }
-    .leads-kanban-col--quote .leads-kanban-col-header { background: #fef3c7; color: #92400e; }
-    .leads-kanban-col--qualified .leads-kanban-col-header { background: #d1fae5; color: #065f46; }
-    .leads-kanban-col--converted .leads-kanban-col-header { background: #e0e7ff; color: #312e81; }
-    .leads-kanban-col--lost .leads-kanban-col-header { background: #e5e7eb; color: #111827; }
+    .leads-kanban-col--neutral .leads-kanban-col-header { background: #f3f4f6; color: #374151; }
+    .lead-status-pill { border: 1px solid transparent; }
+    .lead-status-pill--new { background: #f8fafc; color: #334155; border-color: #cbd5e1; }
+    .lead-status-pill--contacted { background: #e0f2fe; color: #075985; border-color: #7dd3fc; }
+    .lead-status-pill--quote { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+    .lead-status-pill--qualified { background: #dcfce7; color: #166534; border-color: #86efac; }
+    .lead-status-pill--converted { background: #dbeafe; color: #1d4ed8; border-color: #60a5fa; }
+    .lead-status-pill--lost { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
 
     .leads-kanban-col-body {
         flex: 1;
@@ -198,14 +191,14 @@
                                 <td class="text-muted small">@l.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()</td>
                                 <td class="text-end">
                                     <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
-                                        <a class="btn btn-sm btn-outline-primary" href="/Leads/Details/@l.Id">جزئیات</a>
+                                            <a class="btn btn-sm btn-outline-secondary" href="/Leads/Details/@l.Id">جزئیات</a>
                                         @if (!l.IsOwner)
                                         {
                                             <span class="badge bg-light text-dark border">همکار</span>
                                         }
                                         @if (l.IsOwner && l.Status != LeadPipelineStatus.Converted)
                                         {
-                                            <button type="button" class="btn btn-sm btn-outline-warning js-open-lead-edit" data-lead-id="@l.Id" title="ویرایش">ویرایش</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary js-open-lead-edit" data-lead-id="@l.Id" title="ویرایش">ویرایش</button>
                                         }
                                         @if (l.ConvertedProjectId is int pid)
                                         {
@@ -262,14 +255,14 @@
                                             }
                                         </div>
                                         <div class="d-flex flex-wrap gap-1 justify-content-end">
-                                            <a class="btn btn-sm btn-outline-primary py-0 px-2" href="/Leads/Details/@l.Id">جزئیات</a>
+                                            <a class="btn btn-sm btn-outline-secondary py-0 px-2" href="/Leads/Details/@l.Id">جزئیات</a>
                                             @if (!l.IsOwner)
                                             {
                                                 <span class="badge bg-light text-dark border py-1">همکار</span>
                                             }
                                             @if (l.IsOwner && l.Status != LeadPipelineStatus.Converted)
                                             {
-                                                <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2 js-open-lead-edit" data-lead-id="@l.Id">ویرایش</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 js-open-lead-edit" data-lead-id="@l.Id">ویرایش</button>
                                             }
                                             @if (l.ConvertedProjectId is int pid)
                                             {

@@ -21,6 +21,7 @@ namespace TaskPlanner.Application.Services.DashboardService
         public List<DashboardMeetingDto> UpcomingMeetings { get; set; } = new();
         public List<DashboardChartSliceDto> TaskPrioritySlices { get; set; } = new();
         public List<DashboardChartSliceDto> ProjectTaskDistributionSlices { get; set; } = new();
+        public List<DashboardChartSliceDto> ProjectTaskDistributionAllSlices { get; set; } = new();
         public List<DashboardChartSliceDto> LeadPipelineSlices { get; set; } = new();
         public List<DashboardDueDayDto> DueTasksNext7Days { get; set; } = new();
         public List<DashboardDueTaskItemDto> DueTasksToday { get; set; } = new();

@@ -97,6 +97,10 @@ a:hover .dash-stat-card {
     height: 240px;
 }
 
+.dash-segmented-control .btn {
+    white-space: nowrap;
+}
+
 @media (max-width: 575.98px) {
     .dash-stat-card__value {
         font-size: 1.35rem;
