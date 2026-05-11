@@ -102,28 +102,52 @@
         const icon = toggleBtn?.querySelector("i");
         const sidebarCol = root.closest(".project-sidebar-col");
         const detailsShell = root.closest(".project-details-shell");
+        const mobileMedia = window.matchMedia("(max-width: 992px)");
 
         if (!toggleBtn) {
             return;
         }
 
+        const isMobile = () => mobileMedia.matches;
+
+        const updateIcon = (collapsed) => {
+            if (!icon) {
+                return;
+            }
+
+            if (isMobile()) {
+                icon.className = collapsed ? "bi bi-chevron-down" : "bi bi-chevron-up";
+                return;
+            }
+
+            icon.className = collapsed ? "bi bi-chevron-double-left" : "bi bi-chevron-double-right";
+        };
+
         const setCollapsed = (collapsed) => {
             root.classList.toggle("is-collapsed", collapsed);
-            if (sidebarCol) {
+            if (sidebarCol && !isMobile()) {
                 sidebarCol.classList.toggle("is-collapsed", collapsed);
             }
-            if (detailsShell) {
+            if (detailsShell && !isMobile()) {
                 detailsShell.classList.toggle("project-sidebar-collapsed", collapsed);
+            }
+            if (sidebarCol && isMobile()) {
+                sidebarCol.classList.remove("is-collapsed");
+            }
+            if (detailsShell && isMobile()) {
+                detailsShell.classList.remove("project-sidebar-collapsed");
             }
             toggleBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
             toggleBtn.setAttribute("aria-label", collapsed ? "باز کردن سایدبار پروژه" : "جمع کردن سایدبار پروژه");
-            if (icon) {
-                icon.className = collapsed ? "bi bi-chevron-double-left" : "bi bi-chevron-double-right";
-            }
+            updateIcon(collapsed);
         };
 
         toggleBtn.addEventListener("click", () => {
             setCollapsed(!root.classList.contains("is-collapsed"));
+        });
+
+        mobileMedia.addEventListener("change", () => {
+            setCollapsed(root.classList.contains("is-collapsed"));
         });
     })();
 </script>

@@ -202,12 +202,17 @@
 
     .project-sidebar-inner.is-collapsed .project-sidebar-title,
     .project-sidebar-inner.is-collapsed .project-sidebar-nav {
+        display: none;
+    }
+
+    .project-sidebar-inner.is-collapsed .project-sidebar-title {
         display: block;
     }
 
     .project-sidebar-inner.is-collapsed .project-sidebar-header {
-        padding: 0;
-        min-height: auto;
+        padding: 0.4rem 0.6rem;
+        min-height: 0;
+        border-bottom: 0;
     }
 
     .project-details-shell.project-sidebar-collapsed .project-sidebar-col,
