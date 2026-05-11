@@ -8,6 +8,7 @@
 
 .project-sidebar-col {
     position: relative;
+    transition: all 0.2s ease;
 }
 
 .project-sidebar-inner {
@@ -20,17 +21,117 @@
     overflow: hidden;
 }
 
+.project-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    border-bottom: 1px solid #e5e7eb;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
 .project-sidebar-title {
     padding: 0.85rem 1rem;
     font-weight: 700;
     font-size: 0.9rem;
     color: #1f2937;
-    border-bottom: 1px solid #e5e7eb;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.project-sidebar-toggle {
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0;
+    width: 28px;
+    height: 86px;
+    border-radius: 999px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #374151;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.project-sidebar-toggle:hover {
+    background: #f3f4f6;
+    color: #1f2937;
+}
+
+.project-sidebar-toggle:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 1px;
 }
 
 .project-sidebar-nav {
     padding: 0.5rem;
+}
+
+.project-sidebar-col.is-collapsed {
+    flex: 0 0 56px;
+    max-width: 56px;
+}
+
+.project-sidebar-inner.is-collapsed {
+    overflow: visible;
+}
+
+.project-sidebar-inner.is-collapsed .project-sidebar-title,
+.project-sidebar-inner.is-collapsed .project-sidebar-nav {
+    display: none;
+}
+
+.project-sidebar-inner.is-collapsed .project-sidebar-header {
+    border-bottom: 0;
+    background: transparent;
+    padding: 0;
+    min-height: 78px;
+}
+
+.project-sidebar-inner.is-collapsed .project-sidebar-toggle {
+    left: -12px;
+}
+
+.project-details-shell.project-sidebar-collapsed .project-sidebar-col {
+    flex: 0 0 0 !important;
+    max-width: 0 !important;
+    width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible;
+}
+
+.project-details-shell.project-sidebar-collapsed .project-sidebar-inner {
+    width: 0;
+    margin: 0;
+    position: fixed;
+    top: 50%;
+    right: min(292px, 30vw);
+    transform: translateY(-50%);
+    z-index: 1040;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    overflow: visible;
+}
+
+.project-details-shell.project-sidebar-collapsed .project-details-main {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+}
+
+.project-details-shell.project-sidebar-collapsed .project-sidebar-inner.is-collapsed .project-sidebar-toggle {
+    border-color: #cbd5e1;
+}
+
+.project-details-shell.project-sidebar-collapsed .project-sidebar-inner.is-collapsed .project-sidebar-header {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
 }
 
 .project-nav-link {
@@ -83,5 +184,43 @@
 @media (max-width: 992px) {
     .project-sidebar-inner {
         position: static;
+    }
+
+    .project-sidebar-toggle {
+        position: static;
+        transform: none;
+        margin-inline-end: 0.6rem;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+    }
+
+    .project-sidebar-col.is-collapsed {
+        flex: 1 1 auto;
+        max-width: 100%;
+    }
+
+    .project-sidebar-inner.is-collapsed .project-sidebar-title,
+    .project-sidebar-inner.is-collapsed .project-sidebar-nav {
+        display: block;
+    }
+
+    .project-sidebar-inner.is-collapsed .project-sidebar-header {
+        padding: 0;
+        min-height: auto;
+    }
+
+    .project-details-shell.project-sidebar-collapsed .project-sidebar-col,
+    .project-details-shell.project-sidebar-collapsed .project-details-main {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    .project-details-shell.project-sidebar-collapsed .project-sidebar-inner {
+        width: auto;
+        position: static;
+        top: auto;
+        transform: none;
     }
 }

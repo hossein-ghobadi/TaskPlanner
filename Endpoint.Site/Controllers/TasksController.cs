@@ -1679,11 +1679,23 @@ namespace Endpoint.Site.Controllers
                     project = await _context.Projects.FindAsync(parent.ProjectId);
                     if (project == null) return BadRequest("پروژه یافت نشد.");
 
-                    var generatedIssueKey = project.GenerateNextIssueKey();
-                    if (await _context.TaskItems.AnyAsync(t => t.IssueKey == generatedIssueKey))
+                    // تولید IssueKey منحصر به فرد - در یک حلقه ادامه می‌دهیم تا کلیدی پیدا کنیم که در DB موجود نباشد
+                    // (چون unique index روی IssueKey به‌صورت سراسری است و ممکن است چند پروژه از یک prefix استفاده کنند
+                    //  یا LastIssueNumber پروژه با تسک‌های موجود همگام نباشد)
+                    string generatedIssueKey;
+                    int keyAttempts = 0;
+                    while (true)
                     {
-                        project.LastIssueNumber++;
                         generatedIssueKey = project.GenerateNextIssueKey();
+                        var keyExists = await _context.TaskItems
+                            .AsNoTracking()
+                            .AnyAsync(t => t.IssueKey == generatedIssueKey);
+                        if (!keyExists) break;
+                        keyAttempts++;
+                        if (keyAttempts > 1000)
+                        {
+                            return BadRequest("خطا در تولید شناسه یکتا برای کارک. لطفاً دوباره تلاش کنید.");
+                        }
                     }
 
                     subtask = new TaskItem
@@ -1719,6 +1731,13 @@ namespace Endpoint.Site.Controllers
                     {
                         _context.Entry(subtask).State = EntityState.Detached;
                         subtask = null;
+                    }
+                    // پروژه را هم detach می‌کنیم تا در iteration بعدی، نسخه به‌روز از DB گرفته شود
+                    // و اگر تسک موازی دیگری LastIssueNumber را افزایش داده، آن مقدار را ببینیم
+                    var projectEntry = _context.Entry(project);
+                    if (projectEntry.State != EntityState.Detached)
+                    {
+                        projectEntry.State = EntityState.Detached;
                     }
                     await Task.Delay(40 * (attempt + 1));
                 }
