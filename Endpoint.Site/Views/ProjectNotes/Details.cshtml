@@ -102,7 +102,11 @@
                     @if (att.FileType == "Image")
                     {
                         <div class="attachment-item attachment-image-full">
-                            <img src="@att.FilePath" alt="@att.FileName" class="attachment-img-full" />
+                            <img src="@att.FilePath"
+                                 alt="@att.FileName"
+                                 class="attachment-img-full attachment-preview-trigger"
+                                 data-preview-src="@att.FilePath"
+                                 data-preview-alt="@att.FileName" />
                             <div class="attachment-info-overlay">
                                 <span class="attachment-name-full">@att.FileName</span>
                                 <a href="@att.FilePath" download="@att.FileName" class="attachment-download-btn">
@@ -175,6 +179,16 @@
             </div>
         </div>
     </article>
+</div>
+
+<div id="attachmentPreviewModal" class="attachment-preview-modal" aria-hidden="true">
+    <div class="attachment-preview-backdrop" data-preview-close="true"></div>
+    <div class="attachment-preview-content" role="dialog" aria-modal="true" aria-label="پیش نمایش عکس">
+        <button type="button" class="attachment-preview-close" id="attachmentPreviewCloseBtn" aria-label="بستن">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        <img id="attachmentPreviewImage" class="attachment-preview-image" src="" alt="" />
+    </div>
 </div>
 
 <style>
@@ -370,7 +384,8 @@
     .post-attachments {
         margin: 2rem 0;
         display: flex;
-        flex-direction: column;
+        flex-wrap: wrap;
+        align-items: flex-start;
         gap: 1.5rem;
     }
 
@@ -386,19 +401,32 @@
 
     .attachment-image-full {
         position: relative;
-        width: 100%;
-        max-height: 500px;
+        width: 320px;
+        max-width: 100%;
+        max-height: 320px;
+        margin: 0;
         overflow: hidden;
         background: #f8f9fa;
         border-radius: 12px;
     }
 
-    .attachment-img-full {
+    .attachment-audio-full,
+    .attachment-document-full,
+    .attachment-file-full {
         width: 100%;
-        height: auto;
+    }
+
+    .attachment-img-full {
+        width: auto;
+        max-width: 100%;
+        height: 100%;
         object-fit: contain;
-        max-height: 500px;
+        max-height: 320px;
         display: block;
+    }
+
+    .attachment-preview-trigger {
+        cursor: zoom-in;
     }
 
     .attachment-info-overlay {
@@ -442,6 +470,67 @@
         background: rgba(255, 255, 255, 0.3);
         color: white;
         transform: scale(1.1);
+    }
+
+    .attachment-preview-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 1080;
+        display: none;
+    }
+
+    .attachment-preview-modal.is-open {
+        display: block;
+    }
+
+    .attachment-preview-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(2px);
+    }
+
+    .attachment-preview-content {
+        position: relative;
+        z-index: 1;
+        width: min(94vw, 1200px);
+        height: min(92vh, 900px);
+        margin: 4vh auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+    }
+
+    .attachment-preview-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        border-radius: 12px;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+        background: #fff;
+    }
+
+    .attachment-preview-close {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        width: 42px;
+        height: 42px;
+        border: none;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .attachment-preview-close:hover {
+        background: rgba(0, 0, 0, 0.75);
+        transform: scale(1.04);
     }
 
     .attachment-audio-full {
@@ -646,6 +735,16 @@
             padding: 1.5rem;
         }
 
+        .post-attachments {
+            flex-direction: column;
+            flex-wrap: nowrap;
+        }
+
+        .attachment-image-full {
+            width: 100%;
+            max-width: 100%;
+        }
+
         .post-header {
             flex-wrap: wrap;
         }
@@ -684,10 +783,17 @@
             width: 100%;
             justify-content: center;
         }
+
+        .attachment-preview-content {
+            width: 96vw;
+            height: 88vh;
+            margin: 6vh auto;
+            padding: 0.75rem;
+        }
     }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script src="~/lib/marked/marked.min.js"></script>
+<script src="~/lib/dompurify/dist/purify.min.js"></script>
 <script>
     const requestVerificationToken = '@requestToken';
 
@@ -725,6 +831,53 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        const previewModal = document.getElementById('attachmentPreviewModal');
+        const previewImage = document.getElementById('attachmentPreviewImage');
+        const previewCloseBtn = document.getElementById('attachmentPreviewCloseBtn');
+        const previewTriggers = document.querySelectorAll('.attachment-preview-trigger');
+        let previousBodyOverflow = '';
+
+        const closePreviewModal = function () {
+            if (!previewModal || !previewImage) return;
+            previewModal.classList.remove('is-open');
+            previewModal.setAttribute('aria-hidden', 'true');
+            previewImage.src = '';
+            previewImage.alt = '';
+            document.body.style.overflow = previousBodyOverflow;
+        };
+
+        if (previewModal && previewImage && previewTriggers.length > 0) {
+            previewTriggers.forEach(function (trigger) {
+                trigger.addEventListener('click', function () {
+                    const src = trigger.dataset.previewSrc;
+                    if (!src) return;
+
+                    previewImage.src = src;
+                    previewImage.alt = trigger.dataset.previewAlt || '';
+                    previewModal.classList.add('is-open');
+                    previewModal.setAttribute('aria-hidden', 'false');
+                    previousBodyOverflow = document.body.style.overflow;
+                    document.body.style.overflow = 'hidden';
+                });
+            });
+
+            previewModal.addEventListener('click', function (event) {
+                if (event.target instanceof HTMLElement && event.target.dataset.previewClose === 'true') {
+                    closePreviewModal();
+                }
+            });
+
+            if (previewCloseBtn) {
+                previewCloseBtn.addEventListener('click', closePreviewModal);
+            }
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && previewModal.classList.contains('is-open')) {
+                    closePreviewModal();
+                }
+            });
+        }
+
         const targets = document.querySelectorAll('.markdown-render[data-markdown-id]');
         targets.forEach(function (target) {
             const sourceId = target.dataset.markdownId;

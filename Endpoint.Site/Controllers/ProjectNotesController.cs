@@ -258,12 +258,18 @@ namespace Endpoint.Site.Controllers
             _context.ProjectNotes.Add(note);
             await _context.SaveChangesAsync();
 
-            // آپلود فایل‌های پیوست
-            if (vm.Attachments != null && vm.Attachments.Any())
+            // آپلود فایل‌های پیوست (fallback به Request.Form.Files برای پایداری بیشتر model binding)
+            var createFilesToUpload = (vm.Attachments ?? new List<IFormFile>())
+                .Concat(Request.Form?.Files?.Where(f => f.Length > 0) ?? Enumerable.Empty<IFormFile>())
+                .GroupBy(f => new { f.FileName, f.Length, f.ContentType })
+                .Select(g => g.First())
+                .ToList();
+
+            if (createFilesToUpload.Any())
             {
                 var uploadErrors = new List<string>();
                 
-                foreach (var file in vm.Attachments)
+                foreach (var file in createFilesToUpload)
                 {
                     var uploadResult = await _fileUploadService.UploadFileAsync(file, "project-notes");
                     
@@ -297,6 +303,7 @@ namespace Endpoint.Site.Controllers
                     TempData["Error"] = $"خطا در آپلود فایل‌ها:\n{string.Join("\n", uploadErrors)}";
                     var project = await _context.Projects.FindAsync(vm.ProjectId);
                     ViewBag.ProjectName = project?.Name;
+                    ViewBag.Folders = await GetFoldersSelectListAsync(vm.ProjectId, userId, vm.FolderId);
                     return View(vm);
                 }
                 
@@ -444,12 +451,18 @@ namespace Endpoint.Site.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // آپلود فایل‌های جدید
-            if (vm.NewAttachments != null && vm.NewAttachments.Any())
+            // آپلود فایل‌های جدید (fallback به Request.Form.Files برای پایداری بیشتر model binding)
+            var editFilesToUpload = (vm.NewAttachments ?? new List<IFormFile>())
+                .Concat(Request.Form?.Files?.Where(f => f.Length > 0) ?? Enumerable.Empty<IFormFile>())
+                .GroupBy(f => new { f.FileName, f.Length, f.ContentType })
+                .Select(g => g.First())
+                .ToList();
+
+            if (editFilesToUpload.Any())
             {
                 var uploadErrors = new List<string>();
                 
-                foreach (var file in vm.NewAttachments)
+                foreach (var file in editFilesToUpload)
                 {
                     var uploadResult = await _fileUploadService.UploadFileAsync(file, "project-notes");
                     

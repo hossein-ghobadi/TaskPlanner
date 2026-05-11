@@ -7,7 +7,7 @@
     var token = Antiforgery.GetAndStoreTokens(Context).RequestToken;
     var existingAttachments = ViewBag.ExistingAttachments as ICollection<ProjectNoteAttachment>;
 }
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+<link rel="stylesheet" href="~/lib/easymde/dist/easymde.min.css">
 
 <div class="create-note-container">
     <!-- Header -->
@@ -655,7 +655,7 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+    <script src="~/lib/easymde/dist/easymde.min.js"></script>
     <script>
         let noteEditor;
         const deletedIds = [];

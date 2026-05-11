@@ -4,7 +4,7 @@
     Layout = "/Views/Shared/_Layout.cshtml";
     var initialFolderId = Model.FolderId;
 }
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+<link rel="stylesheet" href="~/lib/easymde/dist/easymde.min.css">
 
 <div class="create-note-container">
     <!-- Header -->
@@ -654,7 +654,7 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+    <script src="~/lib/easymde/dist/easymde.min.js"></script>
     <script>
         let noteEditor;
         let mediaRecorder;
@@ -995,37 +995,39 @@
         document.addEventListener('DOMContentLoaded', function() {
             const contentElement = document.getElementById('Content');
             if (contentElement) {
-                noteEditor = new EasyMDE({
-                    element: contentElement,
-                    spellChecker: false,
-                    status: false,
-                    direction: 'ltr',
-                    toolbar: [
-                        'bold',
-                        'italic',
-                        'heading',
-                        '|',
-                        'quote',
-                        'unordered-list',
-                        'ordered-list',
-                        {
-                            name: 'checklist',
-                            action: function customChecklist(editor) { insertChecklistItem(editor); },
-                            className: 'fa fa-check-square-o',
-                            title: 'چک‌لیست'
-                        },
-                        '|',
-                        'guide'
-                    ]
-                });
+                if (window.EasyMDE) {
+                    noteEditor = new EasyMDE({
+                        element: contentElement,
+                        spellChecker: false,
+                        status: false,
+                        direction: 'ltr',
+                        toolbar: [
+                            'bold',
+                            'italic',
+                            'heading',
+                            '|',
+                            'quote',
+                            'unordered-list',
+                            'ordered-list',
+                            {
+                                name: 'checklist',
+                                action: function customChecklist(editor) { insertChecklistItem(editor); },
+                                className: 'fa fa-check-square-o',
+                                title: 'چک‌لیست'
+                            },
+                            '|',
+                            'guide'
+                        ]
+                    });
 
-                const editorContent = markdownToEditorChecklist(noteEditor.value());
-                if (editorContent !== noteEditor.value()) {
-                    noteEditor.value(editorContent);
+                    const editorContent = markdownToEditorChecklist(noteEditor.value());
+                    if (editorContent !== noteEditor.value()) {
+                        noteEditor.value(editorContent);
+                    }
+
+                    bindChecklistAutoContinue(noteEditor);
+                    bindChecklistToggleByClick(noteEditor);
                 }
-
-                bindChecklistAutoContinue(noteEditor);
-                bindChecklistToggleByClick(noteEditor);
             }
 
             const folderSelect = document.getElementById('folderSelect');

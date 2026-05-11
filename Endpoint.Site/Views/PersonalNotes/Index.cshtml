@@ -274,13 +274,16 @@ else
                     modal.classList.remove('active');
                 }
 
-                // بستن مودال با کلیک روی پس‌زمینه
-                document.getElementById('imagePreviewModal').addEventListener('click', function(e) {
-                    if (e.target === this)
-                    {
-                        closeImageModal();
-                    }
-                });
+                // بستن مودال با کلیک روی پس‌زمینه (فقط وقتی مودال وجود دارد)
+                const imagePreviewModal = document.getElementById('imagePreviewModal');
+                if (imagePreviewModal) {
+                    imagePreviewModal.addEventListener('click', function(e) {
+                        if (e.target === this)
+                        {
+                            closeImageModal();
+                        }
+                    });
+                }
 
             // بستن با کلید Escape
             document.addEventListener('keydown', function(e)
@@ -1311,8 +1314,8 @@ else
         }
     }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script src="~/lib/marked/marked.min.js"></script>
+<script src="~/lib/dompurify/dist/purify.min.js"></script>
 <script>
     const requestVerificationToken = '@requestToken';
 
@@ -1366,6 +1369,17 @@ else
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        if (!window.marked || !window.DOMPurify) {
+            document.querySelectorAll('.markdown-render[data-markdown-id]').forEach(function (target) {
+                const sourceId = target.dataset.markdownId;
+                const source = document.getElementById(sourceId);
+                if (!source) return;
+                target.textContent = source.value || '';
+                target.style.whiteSpace = 'pre-wrap';
+            });
+            return;
+        }
+
         const targets = document.querySelectorAll('.markdown-render[data-markdown-id]');
         targets.forEach(function (target) {
             const sourceId = target.dataset.markdownId;
