@@ -36,12 +36,23 @@
                 @if (Model.CreatorUserId == currentUserId)
                 {
                     <div class="d-flex gap-2">
-                        <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@Model.Id" title="ویرایش">
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary js-edit-project-btn"
+                                data-project-id="@Model.Id"
+                                data-bs-toggle="modal"
+                                data-bs-target="#editProjectModal"
+                                title="ویرایش">
                             <i class="bi bi-pencil"></i>
-                        </a>
-                        <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@Model.Id" title="حذف">
+                        </button>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-danger js-delete-project-btn"
+                                data-project-id="@Model.Id"
+                                data-project-name="@Model.Name"
+                                data-bs-toggle="modal"
+                                data-bs-target="#deleteProjectModal"
+                                title="حذف">
                             <i class="bi bi-trash"></i>
-                        </a>
+                        </button>
                     </div>
                 }
             </div>

@@ -78,6 +78,12 @@ namespace Endpoint.Site.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var dashboard = await _projectQueryService.GetProjectsDashboardAsync(userId, page, pageSize);
+            var availableUsers = await _projectQueryService.GetAvailableUsersForCreateAsync(userId);
+            var pendingInvites = await _projectQueryService.GetPendingInvitationsAsync(userId);
+
+            ViewBag.Users = availableUsers.Select(u => new { Id = u.Id, DisplayName = u.DisplayName }).ToList();
+            ViewBag.PendingInvitations = pendingInvites ?? new List<string>();
+
             var vm = new ProjectsIndexVm
             {
                 CurrentUserId = userId,
@@ -99,6 +105,54 @@ namespace Endpoint.Site.Controllers
             };
 
             return View(vm);
+        }
+
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> ProjectModalData(int id)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
+            {
+                return Unauthorized();
+            }
+
+            var project = await _projectQueryService.GetProjectWithDetailsAsync(id);
+            if (project == null)
+            {
+                return NotFound();
+            }
+
+            var projectEntity = await _context.Projects
+                .Include(p => p.Tasks)
+                .Include(p => p.Sprints)
+                .Include(p => p.Members)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (projectEntity == null || projectEntity.CreatorUserId != currentUser.Id)
+            {
+                return Forbid();
+            }
+
+            var availableUsers = await _projectQueryService.GetAvailableUsersForEditAsync(currentUser.Id, id);
+
+            return Json(new
+            {
+                id = project.Id,
+                name = project.Name,
+                description = project.Description,
+                selectedUserIds = project.Members.Select(m => m.UserId).ToList(),
+                users = availableUsers.Select(u => new
+                {
+                    id = u.Id,
+                    displayName = u.DisplayName
+                }).ToList(),
+                stats = new
+                {
+                    taskCount = projectEntity.Tasks?.Count(t => t.CanAddToSprint) ?? 0,
+                    sprintCount = projectEntity.Sprints?.Count ?? 0,
+                    memberCount = projectEntity.Members?.Count ?? 0
+                }
+            });
         }
 
         [HttpGet]

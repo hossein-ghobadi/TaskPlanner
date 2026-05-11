@@ -4,6 +4,7 @@
     ViewData["UseFluidLayout"] = true;
     Layout = "/Views/Shared/_Layout.cshtml";
     var projects = Model?.Projects ?? new List<Endpoint.Site.Models.ProjectCardVm>();
+    var users = ViewBag.Users as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
 }
 
 <link rel="stylesheet" href="~/css/projects-index.css" />
@@ -29,6 +30,122 @@
     })
 </div>
 
+<div class="modal fade" id="createProjectModal" tabindex="-1" aria-labelledby="createProjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="createProjectModalLabel">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        ایجاد پروژه جدید
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">نام پروژه <span class="text-danger">*</span></label>
+                        <input type="text" name="Name" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">توضیحات</label>
+                        <textarea name="Description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">اعضای پروژه</label>
+                        <input type="text" id="createUserSearch" class="form-control form-control-sm mb-2" placeholder="جستجوی کاربر..." />
+                        <div class="border rounded p-2" style="max-height: 260px; overflow-y: auto;">
+                            @if (users.Any())
+                            {
+                                @foreach (var user in users)
+                                {
+                                    <div class="form-check js-create-user-item" data-user-name="@(user.DisplayName?.ToString().ToLower() ?? "")">
+                                        <input class="form-check-input" type="checkbox" name="SelectedUserIds" value="@user.Id" id="create_user_@user.Id">
+                                        <label class="form-check-label" for="create_user_@user.Id">@user.DisplayName</label>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-muted small">کاربری برای انتخاب وجود ندارد.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-success">ایجاد پروژه</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editProjectModal" tabindex="-1" aria-labelledby="editProjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <form id="editProjectForm" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="editProjectModalLabel">
+                        <i class="bi bi-pencil me-1"></i>
+                        ویرایش پروژه
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editProjectId" name="Id" />
+                    <div class="mb-3">
+                        <label class="form-label">نام پروژه <span class="text-danger">*</span></label>
+                        <input type="text" id="editProjectName" name="Name" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">توضیحات</label>
+                        <textarea id="editProjectDescription" name="Description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">اعضای پروژه</label>
+                        <input type="text" id="editUserSearch" class="form-control form-control-sm mb-2" placeholder="جستجوی کاربر..." />
+                        <div id="editUsersContainer" class="border rounded p-2" style="max-height: 260px; overflow-y: auto;">
+                            <div class="text-muted small">در حال بارگذاری...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-warning">ذخیره تغییرات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteProjectModal" tabindex="-1" aria-labelledby="deleteProjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="deleteProjectForm" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold text-danger" id="deleteProjectModalLabel">
+                        <i class="bi bi-trash me-1"></i>
+                        حذف پروژه
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">آیا از حذف پروژه زیر مطمئن هستید؟</p>
+                    <p class="fw-bold mb-3" id="deleteProjectName"></p>
+                    <div class="small text-muted" id="deleteProjectStats"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger">بله، حذف شود</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
     (function () {
         // Ensure refresh/load always starts from top on this page.
@@ -48,5 +165,97 @@
 
         // Also handle browser back-forward cache restores.
         window.addEventListener('pageshow', resetScrollTop);
+
+        var createSearch = document.getElementById('createUserSearch');
+        if (createSearch) {
+            createSearch.addEventListener('input', function () {
+                var term = (createSearch.value || '').toLowerCase().trim();
+                document.querySelectorAll('.js-create-user-item').forEach(function (item) {
+                    var name = item.getAttribute('data-user-name') || '';
+                    item.style.display = name.includes(term) ? '' : 'none';
+                });
+            });
+        }
+
+        var buildUsersCheckboxes = function (users, selectedIds) {
+            if (!users || users.length === 0) {
+                return '<div class="text-muted small">کاربری برای انتخاب وجود ندارد.</div>';
+            }
+
+            var selectedSet = new Set(selectedIds || []);
+            return users.map(function (user) {
+                var checked = selectedSet.has(user.id) ? 'checked' : '';
+                var id = 'edit_user_' + user.id;
+                var safeName = (user.displayName || '');
+                return '' +
+                    '<div class="form-check js-edit-user-item" data-user-name="' + safeName.toLowerCase() + '">' +
+                    '<input class="form-check-input" type="checkbox" name="SelectedUserIds" value="' + user.id + '" id="' + id + '" ' + checked + '>' +
+                    '<label class="form-check-label" for="' + id + '">' + safeName + '</label>' +
+                    '</div>';
+            }).join('');
+        };
+
+        document.addEventListener('click', async function (event) {
+            var editButton = event.target.closest('.js-edit-project-btn');
+            if (editButton) {
+                var projectId = editButton.getAttribute('data-project-id');
+                if (!projectId) return;
+
+                var usersContainer = document.getElementById('editUsersContainer');
+                usersContainer.innerHTML = '<div class="text-muted small">در حال بارگذاری...</div>';
+
+                try {
+                    var response = await fetch('/Projects/ProjectModalData/' + encodeURIComponent(projectId), {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (!response.ok) throw new Error('load-failed');
+                    var data = await response.json();
+
+                    document.getElementById('editProjectId').value = data.id;
+                    document.getElementById('editProjectName').value = data.name || '';
+                    document.getElementById('editProjectDescription').value = data.description || '';
+                    document.getElementById('editProjectForm').setAttribute('action', '/Projects/Edit/' + data.id);
+                    usersContainer.innerHTML = buildUsersCheckboxes(data.users, data.selectedUserIds);
+                } catch (_) {
+                    usersContainer.innerHTML = '<div class="text-danger small">خطا در دریافت اطلاعات پروژه.</div>';
+                }
+                return;
+            }
+
+            var deleteButton = event.target.closest('.js-delete-project-btn');
+            if (deleteButton) {
+                var deleteProjectId = deleteButton.getAttribute('data-project-id');
+                var deleteProjectName = deleteButton.getAttribute('data-project-name') || '';
+                if (!deleteProjectId) return;
+
+                document.getElementById('deleteProjectName').textContent = deleteProjectName;
+                document.getElementById('deleteProjectStats').textContent = 'در حال بارگذاری اطلاعات...';
+                document.getElementById('deleteProjectForm').setAttribute('action', '/Projects/DeleteConfirmed/' + deleteProjectId);
+
+                try {
+                    var deleteResponse = await fetch('/Projects/ProjectModalData/' + encodeURIComponent(deleteProjectId), {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (!deleteResponse.ok) throw new Error('load-failed');
+                    var deleteData = await deleteResponse.json();
+                    var stats = deleteData.stats || {};
+                    document.getElementById('deleteProjectStats').textContent =
+                        'کارها: ' + (stats.taskCount || 0) + ' | اسپرینت‌ها: ' + (stats.sprintCount || 0) + ' | اعضا: ' + (stats.memberCount || 0);
+                } catch (_) {
+                    document.getElementById('deleteProjectStats').textContent = '';
+                }
+            }
+        });
+
+        var editSearch = document.getElementById('editUserSearch');
+        if (editSearch) {
+            editSearch.addEventListener('input', function () {
+                var term = (editSearch.value || '').toLowerCase().trim();
+                document.querySelectorAll('.js-edit-user-item').forEach(function (item) {
+                    var name = item.getAttribute('data-user-name') || '';
+                    item.style.display = name.includes(term) ? '' : 'none';
+                });
+            });
+        }
     })();
 </script>
