@@ -164,6 +164,7 @@ body.mobile-menu-open .app-mobile-backdrop {
 }
 
 .app-sidebar {
+    position: relative;
     width: min(292px, 30vw);
     flex-shrink: 0;
     background: #ffffff;
@@ -311,6 +312,19 @@ body.mobile-menu-open .app-mobile-backdrop {
     flex-shrink: 0;
 }
 
+/* فرم خروج: فقط توکن؛ دکمه‌ها با form= به id فرم وصل‌اند */
+.app-sidebar-logout-form-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 .app-sidebar-logout {
     width: 100%;
     display: inline-flex;
@@ -376,13 +390,35 @@ body.mobile-menu-open .app-mobile-backdrop {
         padding-left: 3.2rem;
     }
 
+    .app-mobile-logout-dock {
+        display: none;
+        box-sizing: border-box;
+    }
+
+    .app-shell.sidebar-open .app-mobile-logout-dock {
+        display: block;
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        width: min(84vw, 320px);
+        z-index: 1052;
+        padding: 0.65rem 1rem;
+        padding-bottom: max(0.65rem, env(safe-area-inset-bottom, 0px));
+        background: #fafafa;
+        border-top: 1px solid #e9ecef;
+        box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.12);
+    }
+
     .app-sidebar {
         width: min(84vw, 320px);
         border-inline-end: 1px solid #dee2e6;
         border-bottom: none;
         box-shadow: -8px 0 24px rgba(0, 0, 0, 0.18);
+        /* dvh جایگزین vh برای جلوگیری از بریده شدن پایین منو زیر نوار مرورگر */
         height: 100vh;
         max-height: 100vh;
+        height: 100dvh;
+        max-height: 100dvh;
         position: fixed;
         top: 0;
         left: auto;

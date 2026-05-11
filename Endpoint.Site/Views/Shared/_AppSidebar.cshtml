@@ -11,6 +11,9 @@
 }
 
 <aside class="app-sidebar">
+    <form id="app-sidebar-logout-form" method="post" action="/account/logout" class="app-sidebar-logout-form-hidden m-0">
+        <input name="__RequestVerificationToken" type="hidden" value="@ViewBag.AntiforgeryToken" />
+    </form>
     <div class="app-sidebar-mobile-header d-lg-none">
         <span>منوی برنامه</span>
         <button type="button" class="btn btn-sm btn-light" id="mobileSidebarClose" aria-label="بستن منو">
@@ -45,13 +48,16 @@
         <a class="@NavClass("Invitations", "MyInvitations")" href="/Invitations/MyInvitations"><i class="bi bi-envelope"></i><span>دعوت‌ها</span></a>
     </nav>
 
-    <div class="app-sidebar-footer">
-        <form method="post" action="/account/logout" class="m-0">
-            <input name="__RequestVerificationToken" type="hidden" value="@ViewBag.AntiforgeryToken" />
-            <button class="app-sidebar-logout" type="submit">
-                <i class="bi bi-box-arrow-right"></i>
-                خروج از حساب
-            </button>
-        </form>
+    <div class="app-sidebar-footer d-none d-lg-block">
+        <button type="submit" form="app-sidebar-logout-form" class="app-sidebar-logout">
+            <i class="bi bi-box-arrow-right"></i>
+            خروج از حساب
+        </button>
     </div>
 </aside>
+<div class="app-mobile-logout-dock d-lg-none" role="region" aria-label="خروج از حساب">
+    <button type="submit" form="app-sidebar-logout-form" class="app-sidebar-logout w-100">
+        <i class="bi bi-box-arrow-right"></i>
+        خروج از حساب
+    </button>
+</div>
