@@ -8,6 +8,7 @@
     var existingAttachments = ViewBag.ExistingAttachments as ICollection<ProjectNoteAttachment>;
 }
 <link rel="stylesheet" href="~/lib/easymde/dist/easymde.min.css">
+<link rel="stylesheet" href="~/lib/font-awesome/css/font-awesome.min.css">
 
 <div class="create-note-container">
     <!-- Header -->
@@ -337,6 +338,24 @@
         border-radius: 10px 10px 0 0;
         text-align: right;
     }
+
+    /* Fallback icons when Font Awesome webfont is unavailable (common on some mobile browsers) */
+    .EasyMDEContainer .editor-toolbar i.fa::before {
+        font-family: inherit !important;
+        font-style: normal;
+        font-weight: 700;
+        display: inline-block;
+        line-height: 1;
+    }
+
+    .EasyMDEContainer .editor-toolbar .fa-bold::before { content: "B"; }
+    .EasyMDEContainer .editor-toolbar .fa-italic::before { content: "I"; font-style: italic; }
+    .EasyMDEContainer .editor-toolbar .fa-header::before { content: "H"; }
+    .EasyMDEContainer .editor-toolbar .fa-quote-left::before { content: "\201C"; }
+    .EasyMDEContainer .editor-toolbar .fa-list-ul::before { content: "\2022"; }
+    .EasyMDEContainer .editor-toolbar .fa-list-ol::before { content: "1."; font-size: 0.8em; }
+    .EasyMDEContainer .editor-toolbar .fa-check-square-o::before { content: "\2611"; }
+    .EasyMDEContainer .editor-toolbar .fa-question-circle::before { content: "?"; }
 
     /* Existing Attachments */
     .existing-attachments-section {
