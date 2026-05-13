@@ -1,0 +1,83 @@
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<link rel="stylesheet" href="~/css/mindmaps.css" asp-append-version="true" />
+
+<div class="mindmap-page">
+    <header class="mindmap-header">
+        <div>
+            <h1 class="h4 mb-1">طراح مایندمپ</h1>
+            <p class="text-muted mb-0">از دستگیرهٔ سبز وصل کن؛ با «+» روی نود زیرشاخه بساز. اسکرول روی بوم برای زوم؛ کلیک وسط یا راست و بکش برای جابجایی؛ با نگه داشتن Space و کشیدن هم بوم را جابه‌جا کن.</p>
+        </div>
+        <div class="mindmap-actions">
+            <button class="btn btn-primary" type="button" id="addNodeBtn">
+                <i class="bi bi-plus-lg me-1"></i>
+                افزودن نود
+            </button>
+            <button class="btn btn-outline-success" type="button" id="exportBtn">
+                <i class="bi bi-download me-1"></i>
+                خروجی JSON
+            </button>
+            <input type="file" id="importJsonInput" class="d-none" accept="application/json,.json" />
+            <button class="btn btn-outline-secondary" type="button" id="importJsonBtn" title="بازگردانی نقشه از فایل JSON ذخیره‌شده">
+                <i class="bi bi-upload me-1"></i>
+                بارگذاری JSON
+            </button>
+            <button class="btn btn-outline-primary" type="button" id="exportWordBtn" data-export-url="@Url.Action("ExportWord", "MindMaps")">
+                <i class="bi bi-file-earmark-word me-1"></i>
+                خروجی Word
+            </button>
+            <button class="btn btn-outline-dark" type="button" id="clearBtn">
+                <i class="bi bi-x-circle me-1"></i>
+                پاکسازی
+            </button>
+        </div>
+    </header>
+
+    <div class="mindmap-workspace">
+        <section class="mindmap-panel card">
+            <div class="card-body">
+                <h2 class="h6 mb-3">تنظیمات نود</h2>
+                <div class="mb-2 small text-muted" id="selectionHint">یک نود انتخاب کن.</div>
+                <div class="mb-3">
+                    <label class="form-label small">متن</label>
+                    <input id="nodeTextInput" class="form-control form-control-sm" type="text" placeholder="متن نود" disabled />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">رنگ پس‌زمینه</label>
+                    <input id="nodeColorInput" class="form-control form-control-color w-100" type="color" value="#2563eb" disabled />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small">رنگ متن</label>
+                    <input id="nodeTextColorInput" class="form-control form-control-color w-100" type="color" value="#ffffff" disabled />
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                        <label class="form-label small mb-0" for="nodeFontSizeInput">اندازه نود</label>
+                        <span class="small text-muted" id="nodeFontSizeValue" aria-live="polite">16</span>
+                    </div>
+                    <input id="nodeFontSizeInput" class="form-range" type="range" min="10" max="32" step="1" value="16" disabled />
+                </div>
+            </div>
+        </section>
+
+        <section class="mindmap-canvas-wrap card">
+            <div id="mindmapStage" class="mindmap-stage card-body p-0 position-relative">
+                <div id="mindmapViewport" class="mindmap-viewport">
+                    <svg id="mindmapLines"></svg>
+                    <div id="mindmapCanvas" class="mindmap-canvas" aria-label="بوم طراحی مایندمپ"></div>
+                </div>
+                <div class="mindmap-zoom-toolbar btn-group shadow-sm" role="group" aria-label="زوم بوم">
+                    <button type="button" class="btn btn-sm btn-light border" id="mindmapZoomOut" title="کوچک‌نمایی">−</button>
+                    <button type="button" class="btn btn-sm btn-light border" id="mindmapZoomReset" title="۱۰۰٪ و مرکز">۱۰۰٪</button>
+                    <button type="button" class="btn btn-sm btn-light border" id="mindmapZoomIn" title="بزرگ‌نمایی">+</button>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/mindmaps.js" asp-append-version="true"></script>
+}
