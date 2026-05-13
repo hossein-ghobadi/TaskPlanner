@@ -668,6 +668,7 @@ namespace Endpoint.Site.Controllers
 
             var task = await _context.TaskItems
                 .Include(t => t.Project)
+                .Include(t => t.ProjectIssueType)
                 .Include(t => t.Status)
                 .FirstOrDefaultAsync(t => t.Id == taskId);
 
@@ -708,21 +709,62 @@ namespace Endpoint.Site.Controllers
             WorkflowStatus? toStatus = null;
             if (toStatusId.HasValue)
             {
-                // اگر تسک در یک اسپرینت است، باید از وضعیت‌های همان اسپرینت استفاده کند
-                if (task.SprintId.HasValue)
-                {
-                    toStatus = await _context.WorkflowStatuses
-                        .FirstOrDefaultAsync(ws => ws.Id == toStatusId.Value && ws.SprintId == task.SprintId.Value);
-                }
-                else
-                {
-                    // اگر تسک در اسپرینت نیست، از وضعیت‌های پروژه استفاده می‌کند (سازگاری با داده‌های قدیمی)
-                    toStatus = await _context.WorkflowStatuses
-                        .FirstOrDefaultAsync(ws => ws.Id == toStatusId.Value && ws.ProjectId == task.ProjectId && ws.SprintId == null);
-                }
-                
+                toStatus = await _context.WorkflowStatuses
+                    .FirstOrDefaultAsync(ws => ws.Id == toStatusId.Value && ws.ProjectId == task.ProjectId);
+
                 if (toStatus == null)
                     return BadRequest("وضعیت مقصد معتبر نیست.");
+
+                if (toStatus.SprintId.HasValue)
+                {
+                    if (task.SprintId.HasValue && task.SprintId.Value != toStatus.SprintId.Value)
+                        return BadRequest("وضعیت مقصد معتبر نیست.");
+
+                    if (!task.SprintId.HasValue)
+                    {
+                        var targetSprintId = toStatus.SprintId.Value;
+                        var sprint = await _context.Sprints
+                            .FirstOrDefaultAsync(s => s.Id == targetSprintId && s.ProjectId == task.ProjectId);
+
+                        if (sprint == null)
+                            return BadRequest("وضعیت مقصد معتبر نیست.");
+
+                        if (sprint.Status != SprintStatus.Active)
+                            return BadRequest("فقط اسپرینت فعال می‌تواند تسک داشته باشد.");
+
+                        if (!task.CanAddToSprint)
+                            return BadRequest("این نوع Issue قابل اضافه شدن به اسپرینت نیست. فقط Story-level types قابل اضافه شدن هستند.");
+
+                        var issueBaseType = task.ProjectIssueType?.BaseType ?? task.IssueType;
+                        if (issueBaseType != IssueType.Task)
+                            return BadRequest("به تخته اسپرینت فقط کارهای نوع «کار» اضافه می‌شود؛ ویژگی، باگ و نوع‌های دیگر در این برد نیستند.");
+
+                        if (task.IsCompleted)
+                            return BadRequest("تسک‌های انجام شده قابل اضافه شدن به اسپرینت نیستند.");
+
+                        var alreadyInSprint = await _context.SprintTasks
+                            .AnyAsync(st => st.SprintId == targetSprintId && st.TaskId == taskId);
+
+                        if (!alreadyInSprint)
+                        {
+                            _context.SprintTasks.Add(new SprintTask
+                            {
+                                SprintId = targetSprintId,
+                                TaskId = taskId,
+                                AddedAt = DateTime.UtcNow,
+                                AddedByUserId = userId!,
+                                Status = SprintTaskStatus.Pending,
+                                SprintPriority = (int)TaskPriority.Medium
+                            });
+                        }
+
+                        task.SprintId = targetSprintId;
+                    }
+                }
+                else if (task.SprintId.HasValue)
+                {
+                    return BadRequest("وضعیت مقصد معتبر نیست.");
+                }
 
                 // اعتبارسنجی Transition فقط وقتی fromStatus داریم و toStatus داریم
                 WorkflowTransition? usedTransition = null;
@@ -749,6 +791,7 @@ namespace Endpoint.Site.Controllers
 
             // بروزرسانی وضعیت Issue
             task.StatusId = toStatus?.Id;
+            task.WorkflowStatusId = toStatus?.Id;
             task.UpdatedAt = DateTime.UtcNow;
             if (toStatus != null && toStatus.IsFinal)
             {

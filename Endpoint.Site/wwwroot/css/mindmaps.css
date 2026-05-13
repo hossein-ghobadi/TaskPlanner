@@ -236,8 +236,8 @@
 .mindmap-node__label {
     min-width: 0;
     line-height: 1.35;
-    cursor: text;
-    user-select: text;
+    cursor: inherit;
+    user-select: none;
 }
 
 .mindmap-node__label--leaf {

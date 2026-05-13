@@ -17,7 +17,7 @@ namespace Endpoint.Site.Controllers
         }
 
         /// <summary>
-        /// خروجی Word با گروه‌بندی نودها بر اساس عمق (لایه) در جنگل مایندمپ.
+        /// خروجی Word به‌صورت فهرست چندسطحی بر اساس سلسله‌مراتب نودها.
         /// </summary>
         [HttpPost]
         [IgnoreAntiforgeryToken]

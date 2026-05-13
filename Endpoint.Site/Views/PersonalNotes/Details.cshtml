@@ -2,6 +2,7 @@
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["UseFluidLayout"] = true;
     var noteColor = !string.IsNullOrEmpty(Model.Color) ? Model.Color : "#3b82f6";
     var requestToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
 }
@@ -214,9 +215,10 @@
 
 <style>
     .note-detail-container {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 2rem 1rem;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 1rem 0.25rem;
     }
 
     /* Back Header */

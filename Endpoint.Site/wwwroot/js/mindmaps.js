@@ -789,6 +789,10 @@
     }
 
     function handleNodeLabelClick(nodeId, event) {
+        if (suppressNextCanvasClick) {
+            suppressNextCanvasClick = false;
+            return;
+        }
         if (event.ctrlKey || event.metaKey || event.shiftKey) {
             return;
         }
@@ -1310,13 +1314,6 @@
             return;
         }
         if (
-            event.target.closest(".mindmap-node__label") ||
-            event.target.closest(".mindmap-node__label-row") ||
-            event.target.closest(".mindmap-node__actions")
-        ) {
-            return;
-        }
-        if (
             event.target.closest(".mindmap-node__connector") ||
             event.target.closest(".mindmap-node__chip") ||
             event.target.closest(".mindmap-node__delete") ||
@@ -1352,6 +1349,7 @@
             initial,
             moved: false
         };
+        event.preventDefault();
     }
 
     function onDrag(event) {

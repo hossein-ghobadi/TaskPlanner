@@ -414,6 +414,11 @@
         border-color: #bee8ad;
     }
 
+    .team-chat-message-text {
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
     .chat-reply-preview {
         border-right: 3px solid #3390ec;
         background: rgba(51, 144, 236, 0.12);
@@ -463,10 +468,19 @@
         border-top: 1px solid #dfe6ee !important;
     }
 
+    .team-chat-room .input-group {
+        align-items: flex-end;
+    }
+
     #projectChatMessageInput.form-control {
-        border-radius: 999px;
+        border-radius: 14px;
         border: 1px solid #cfd8e4;
         padding: 0.6rem 0.95rem;
+        resize: none;
+        min-height: 42px;
+        max-height: 140px;
+        overflow-y: auto;
+        line-height: 1.45;
     }
 
     #projectChatSendBtn.btn {
@@ -635,7 +649,7 @@
                 <div class="p-3 border-top">
                     <div id="projectChatReplyPreview" class="chat-reply-pill d-none"></div>
                     <div class="input-group">
-                        <input type="text" id="projectChatMessageInput" class="form-control" placeholder="پیام تیمی..." />
+                        <textarea id="projectChatMessageInput" class="form-control" rows="1" placeholder="پیام تیمی... "></textarea>
                         <button class="btn btn-primary" type="button" id="projectChatSendBtn" disabled>
                             <i class="bi bi-send"></i>
                         </button>
@@ -1003,6 +1017,11 @@
     const createGroupBtnEl = document.getElementById('createProjectChatGroupBtn');
     const addMembersBtnEl = document.getElementById('addProjectChatMembersBtn');
 
+    function resizeProjectChatMessageInput() {
+        messageInputEl.style.height = 'auto';
+        messageInputEl.style.height = `${Math.min(messageInputEl.scrollHeight, 140)}px`;
+    }
+
     let connection = null;
     let activeGroupId = null;
     let activeGroupMeta = null;
@@ -1164,7 +1183,7 @@
                 <div class="small text-muted mb-1">${escapeHtml(message.userName)} - ${dateText}</div>
                 <div class="team-chat-bubble">
                     ${replyHtml}
-                    ${message.message ? `<div>${escapeHtml(message.message)}</div>` : ''}
+                    ${message.message ? `<div class="team-chat-message-text">${escapeHtml(message.message)}</div>` : ''}
                     ${attachmentsHtml}
                     <div>${replyActionBtn}${deleteMessageBtn}</div>
                 </div>
@@ -1436,6 +1455,7 @@
             }
 
             messageInputEl.value = '';
+            resizeProjectChatMessageInput();
             selectedFiles = [];
             renderSelectedFiles();
             clearReplyTarget();
@@ -1614,6 +1634,7 @@
     });
 
     sendBtnEl.addEventListener('click', sendMessage);
+    messageInputEl.addEventListener('input', resizeProjectChatMessageInput);
     messageInputEl.addEventListener('keydown', async (event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();

@@ -4,6 +4,7 @@
 @model PersonalNoteEditVm
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["UseFluidLayout"] = true;
     var token = Antiforgery.GetAndStoreTokens(Context).RequestToken;
     var existingAttachments = ViewBag.ExistingAttachments as ICollection<PersonalNoteAttachment>;
 }
@@ -242,9 +243,10 @@
 <style>
     /* Import all styles from Create.cshtml - same styling */
     .create-note-container {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 2rem 1rem;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 1rem 0.25rem;
     }
 
     .create-header {

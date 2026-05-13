@@ -8,6 +8,8 @@ namespace Endpoint.Site.Services;
 public static class MindMapWordExporter
 {
     private const string PersianFont = "B Lotus";
+    private const int ListNumberingId = 1;
+    private const int MaxListLevel = 9;
 
     public static byte[] BuildDocxBytes(MindMapExportPayload payload)
     {
@@ -21,21 +23,16 @@ public static class MindMapWordExporter
             throw new InvalidOperationException("هیچ نودی برای خروجی وجود ندارد.");
         }
 
-        var incoming = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var link in payload.Links ?? Enumerable.Empty<MindMapLinkPayload>())
+        var nodeOrder = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var i = 0; i < payload.Nodes.Count; i++)
         {
-            if (string.IsNullOrWhiteSpace(link.To) || !nodeById.ContainsKey(link.To))
+            var id = payload.Nodes[i].Id;
+            if (string.IsNullOrWhiteSpace(id) || nodeOrder.ContainsKey(id))
             {
                 continue;
             }
 
-            incoming[link.To] = incoming.GetValueOrDefault(link.To, 0) + 1;
-        }
-
-        var depth = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var id in nodeById.Keys)
-        {
-            depth[id] = incoming.GetValueOrDefault(id, 0) == 0 ? 0 : -1;
+            nodeOrder[id] = i;
         }
 
         var links = (payload.Links ?? Enumerable.Empty<MindMapLinkPayload>())
@@ -43,35 +40,32 @@ public static class MindMapWordExporter
             .Where(l => nodeById.ContainsKey(l.From!) && nodeById.ContainsKey(l.To!))
             .ToList();
 
-        var changed = true;
-        while (changed)
+        var parentByChild = new Dictionary<string, string>(StringComparer.Ordinal);
+        var childrenByParent = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var link in links)
         {
-            changed = false;
-            foreach (var link in links)
+            if (!parentByChild.ContainsKey(link.To!))
             {
-                if (!depth.TryGetValue(link.From!, out var df) || df < 0)
-                {
-                    continue;
-                }
+                parentByChild[link.To!] = link.From!;
+            }
 
-                var nd = df + 1;
-                if (depth[link.To!] < nd)
-                {
-                    depth[link.To!] = nd;
-                    changed = true;
-                }
+            if (!childrenByParent.TryGetValue(link.From!, out var children))
+            {
+                children = new List<string>();
+                childrenByParent[link.From!] = children;
+            }
+
+            if (!children.Contains(link.To!, StringComparer.Ordinal))
+            {
+                children.Add(link.To!);
             }
         }
 
-        var maxKnown = depth.Values.Where(d => d >= 0).DefaultIfEmpty(0).Max();
-        foreach (var id in nodeById.Keys.Where(id => depth[id] < 0))
-        {
-            depth[id] = maxKnown + 1;
-        }
-
-        var byDepth = nodeById.Values
-            .GroupBy(n => depth[n.Id])
-            .OrderBy(g => g.Key)
+        var depth = ComputeDepths(nodeById.Keys, links, parentByChild);
+        var roots = nodeById.Keys
+            .Where(id => !parentByChild.ContainsKey(id))
+            .OrderBy(id => nodeOrder.GetValueOrDefault(id, int.MaxValue))
+            .ThenBy(id => nodeById[id].Text, StringComparer.Ordinal)
             .ToList();
 
         var tempPath = Path.Combine(Path.GetTempPath(), "mindmap-export-" + Guid.NewGuid().ToString("N") + ".docx");
@@ -81,20 +75,36 @@ public static class MindMapWordExporter
             {
                 var mainPart = doc.AddMainDocumentPart();
                 EnsurePersianStylesAndSettings(mainPart);
+                EnsureMultilevelNumbering(mainPart);
 
                 mainPart.Document = new Document();
                 var body = mainPart.Document.AppendChild(new Body());
 
-                body.AppendChild(TitleParagraph("خروجی مایندمپ (لایه‌به‌لایه)"));
+                body.AppendChild(TitleParagraph("خروجی مایندمپ"));
 
-                foreach (var grp in byDepth)
+                var visited = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var rootId in roots)
                 {
-                    body.AppendChild(LayerHeadingParagraph($"لایه {grp.Key}"));
-                    foreach (var node in grp.OrderBy(n => n.Text, StringComparer.Ordinal))
-                    {
-                        body.AppendChild(NodeTitleParagraph(node.Text ?? ""));
-                    }
+                    AppendNodeSubtree(body, rootId, 0, nodeById, childrenByParent, depth, nodeOrder, visited);
                 }
+
+                foreach (var node in nodeById.Values
+                             .Where(n => !visited.Contains(n.Id))
+                             .OrderBy(n => nodeOrder.GetValueOrDefault(n.Id, int.MaxValue))
+                             .ThenBy(n => n.Text, StringComparer.Ordinal))
+                {
+                    AppendNodeSubtree(body, node.Id, depth.GetValueOrDefault(node.Id, 0), nodeById, childrenByParent, depth, nodeOrder, visited);
+                }
+
+                body.AppendChild(new SectionProperties(
+                    new BiDi(),
+                    new PageMargin
+                    {
+                        Top = 1440,
+                        Right = 1440,
+                        Bottom = 1440,
+                        Left = 1440
+                    }));
 
                 mainPart.Document.Save();
             }
@@ -107,6 +117,73 @@ public static class MindMapWordExporter
             {
                 File.Delete(tempPath);
             }
+        }
+    }
+
+    private static Dictionary<string, int> ComputeDepths(
+        IEnumerable<string> nodeIds,
+        IReadOnlyList<MindMapLinkPayload> links,
+        IReadOnlyDictionary<string, string> parentByChild)
+    {
+        var depth = nodeIds.ToDictionary(id => id, id => parentByChild.ContainsKey(id) ? -1 : 0, StringComparer.Ordinal);
+
+        var changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var link in links)
+            {
+                if (!depth.TryGetValue(link.From!, out var parentDepth) || parentDepth < 0)
+                {
+                    continue;
+                }
+
+                var nextDepth = parentDepth + 1;
+                if (depth[link.To!] < nextDepth)
+                {
+                    depth[link.To!] = nextDepth;
+                    changed = true;
+                }
+            }
+        }
+
+        var maxKnown = depth.Values.Where(d => d >= 0).DefaultIfEmpty(0).Max();
+        foreach (var id in depth.Keys.Where(id => depth[id] < 0))
+        {
+            depth[id] = maxKnown + 1;
+        }
+
+        return depth;
+    }
+
+    private static void AppendNodeSubtree(
+        Body body,
+        string nodeId,
+        int listLevel,
+        IReadOnlyDictionary<string, MindMapNodePayload> nodeById,
+        IReadOnlyDictionary<string, List<string>> childrenByParent,
+        IReadOnlyDictionary<string, int> depth,
+        IReadOnlyDictionary<string, int> nodeOrder,
+        ISet<string> visited)
+    {
+        if (!nodeById.TryGetValue(nodeId, out var node) || !visited.Add(nodeId))
+        {
+            return;
+        }
+
+        var nodeDepth = depth.GetValueOrDefault(nodeId, listLevel);
+        body.AppendChild(MultiLevelListParagraph(node.Text ?? "", listLevel, nodeDepth));
+
+        if (!childrenByParent.TryGetValue(nodeId, out var children))
+        {
+            return;
+        }
+
+        foreach (var childId in children
+                     .OrderBy(id => nodeOrder.GetValueOrDefault(id, int.MaxValue))
+                     .ThenBy(id => nodeById.TryGetValue(id, out var child) ? child.Text : null, StringComparer.Ordinal))
+        {
+            AppendNodeSubtree(body, childId, listLevel + 1, nodeById, childrenByParent, depth, nodeOrder, visited);
         }
     }
 
@@ -131,7 +208,27 @@ public static class MindMapWordExporter
                 new ParagraphPropertiesDefault(
                     new ParagraphProperties(
                         new BiDi(),
-                        new Justification { Val = JustificationValues.Right }))));
+                        new Justification { Val = JustificationValues.Start }))),
+            new Style(
+                new StyleName { Val = "Normal" },
+                new PrimaryStyle(),
+                new StyleParagraphProperties(
+                    new BiDi(),
+                    new Justification { Val = JustificationValues.Start }),
+                new StyleRunProperties(
+                    new RunFonts
+                    {
+                        Ascii = PersianFont,
+                        HighAnsi = PersianFont,
+                        ComplexScript = PersianFont
+                    },
+                    new Languages { Val = "fa-IR", EastAsia = "fa-IR", Bidi = "fa-IR" },
+                    new RightToLeftText()))
+            {
+                Type = StyleValues.Paragraph,
+                StyleId = "Normal",
+                Default = true
+            });
 
         var settingsPart = mainPart.AddNewPart<DocumentSettingsPart>();
         settingsPart.Settings = new Settings(
@@ -141,6 +238,65 @@ public static class MindMapWordExporter
                 EastAsia = "fa-IR",
                 Bidi = "fa-IR"
             });
+    }
+
+    private static void EnsureMultilevelNumbering(MainDocumentPart mainPart)
+    {
+        var numberingPart = mainPart.AddNewPart<NumberingDefinitionsPart>();
+        var abstractNum = new AbstractNum { AbstractNumberId = 1 };
+        abstractNum.AppendChild(new MultiLevelType { Val = MultiLevelValues.Multilevel });
+
+        var bullets = new[] { "\u2022", "\u25E6", "\u25AA", "\u2013", "\u2022", "\u25E6", "\u25AA", "\u2013", "\u2022" };
+        for (var level = 0; level < MaxListLevel; level++)
+        {
+            var listLevel = new Level
+            {
+                LevelIndex = level,
+                StartNumberingValue = new StartNumberingValue { Val = 1 },
+                NumberingFormat = new NumberingFormat { Val = NumberFormatValues.Bullet },
+                LevelText = new LevelText { Val = bullets[level] },
+                LevelJustification = new LevelJustification { Val = LevelJustificationValues.Left }
+            };
+
+            var indentTwips = 360 * (level + 1);
+            listLevel.AppendChild(new ParagraphProperties(
+                new BiDi(),
+                new Justification { Val = JustificationValues.Start },
+                new Indentation
+                {
+                    Start = indentTwips.ToString(),
+                    Hanging = "360"
+                }));
+
+            listLevel.AppendChild(new RunProperties(
+                new RunFonts
+                {
+                    Ascii = PersianFont,
+                    HighAnsi = PersianFont,
+                    ComplexScript = PersianFont
+                },
+                new Languages { Val = "fa-IR", EastAsia = "fa-IR", Bidi = "fa-IR" },
+                new RightToLeftText()));
+
+            abstractNum.AppendChild(listLevel);
+        }
+
+        numberingPart.Numbering = new Numbering(
+            abstractNum,
+            new NumberingInstance(new AbstractNumId { Val = 1 }) { NumberID = ListNumberingId });
+    }
+
+    private static int FontHalfPointsForDepth(int depth)
+    {
+        return depth switch
+        {
+            0 => 48,
+            1 => 40,
+            2 => 36,
+            3 => 32,
+            4 => 28,
+            _ => 24
+        };
     }
 
     private static RunProperties RunProps(int halfPoints, bool bold)
@@ -165,15 +321,12 @@ public static class MindMapWordExporter
         return rp;
     }
 
-    private static ParagraphProperties BaseParaProps(int? indentRightTwips = null, string? spacingBefore = null, string? spacingAfter = null)
+    private static ParagraphProperties BaseParaProps(string? spacingBefore = null, string? spacingAfter = null)
     {
         var p = new ParagraphProperties(
             new BiDi(),
-            new Justification { Val = JustificationValues.Right });
-        if (indentRightTwips.HasValue)
-        {
-            p.AppendChild(new Indentation { Right = indentRightTwips.Value.ToString() });
-        }
+            new Justification { Val = JustificationValues.Start },
+            new ParagraphStyleId { Val = "Normal" });
 
         if (spacingBefore != null || spacingAfter != null)
         {
@@ -190,29 +343,29 @@ public static class MindMapWordExporter
     private static Paragraph TitleParagraph(string text)
     {
         return new Paragraph(
-            BaseParaProps(null, "0", "360"),
+            BaseParaProps("0", "360"),
             new Run(RunProps(36, true), SafeText(text)));
     }
 
-    private static Paragraph LayerHeadingParagraph(string text)
+    private static Paragraph MultiLevelListParagraph(string text, int listLevel, int depth)
     {
-        return new Paragraph(
-            BaseParaProps(null, "280", "160"),
-            new Run(RunProps(30, true), SafeText(text)));
-    }
+        var level = Math.Clamp(listLevel, 0, MaxListLevel - 1);
+        var pProps = new ParagraphProperties(
+            new ParagraphStyleId { Val = "Normal" },
+            new BiDi(),
+            new NumberingProperties(
+                new NumberingLevelReference { Val = level },
+                new NumberingId { Val = ListNumberingId }),
+            new Justification { Val = JustificationValues.Start },
+            new SpacingBetweenLines
+            {
+                Before = "40",
+                After = "40"
+            });
 
-    private static Paragraph NodeTitleParagraph(string text)
-    {
         return new Paragraph(
-            BaseParaProps(360, "80", "80"),
-            new Run(RunProps(26, false), SafeText(string.IsNullOrWhiteSpace(text) ? "—" : text)));
-    }
-
-    private static Paragraph BulletParagraph(string text)
-    {
-        return new Paragraph(
-            BaseParaProps(720, "40", "40"),
-            new Run(RunProps(22, false), SafeText("• " + text)));
+            pProps,
+            new Run(RunProps(FontHalfPointsForDepth(depth), depth == 0), SafeText(string.IsNullOrWhiteSpace(text) ? "—" : text)));
     }
 
     private static Text SafeText(string value)
