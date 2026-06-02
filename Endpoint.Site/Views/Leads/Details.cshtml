@@ -129,9 +129,19 @@
                                 }
                                 <div class="small text-secondary mt-1">@n.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()</div>
                             </div>
-                            @if (Model.IsOwner)
-                            {
-                                <div class="d-flex gap-1">
+                            <div class="d-flex gap-1">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#leadNoteDetailsModal"
+                                        data-note-details-open="true"
+                                        data-note-id="@n.Id"
+                                        data-note-title="@n.Title"
+                                        data-note-created-at="@n.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()">
+                                    جزئیات
+                                </button>
+                                @if (Model.IsOwner)
+                                {
                                     <button type="button"
                                             class="btn btn-sm btn-outline-secondary"
                                             data-bs-toggle="modal"
@@ -139,7 +149,8 @@
                                             data-note-edit-open="true"
                                             data-note-id="@n.Id"
                                             data-note-title="@n.Title"
-                                            data-note-content="@n.Content">
+                                            data-note-content="@n.Content"
+                                            data-note-attachments-source="lead-note-edit-attachments-@n.Id">
                                         ویرایش
                                     </button>
                                     <form asp-controller="Leads" asp-action="DeleteLeadNote" method="post" class="m-0" onsubmit="return confirm('این یادداشت حذف شود؟');">
@@ -148,8 +159,56 @@
                                         <input type="hidden" name="noteId" value="@n.Id" />
                                         <button type="submit" class="btn btn-sm btn-outline-danger">حذف</button>
                                     </form>
-                                </div>
-                            }
+                                }
+                            </div>
+                            <div id="lead-note-edit-attachments-@n.Id" class="d-none">
+                                @if (n.Attachments.Any())
+                                {
+                                    <div class="small text-muted mb-2">برای حذف، تیک بزنید:</div>
+                                    <div class="vstack gap-2">
+                                        @foreach (var a in n.Attachments)
+                                        {
+                                            <label class="form-check d-flex align-items-center gap-2 mb-0">
+                                                <input class="form-check-input m-0" type="checkbox" name="removedAttachmentIds" value="@a.Id" />
+                                                <span class="small">
+                                                    <a href="@a.FilePath" target="_blank" rel="noopener noreferrer">@a.FileName</a>
+                                                </span>
+                                            </label>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p class="text-muted small mb-0">پیوستی برای این یادداشت ثبت نشده است.</p>
+                                }
+                            </div>
+                            <div id="lead-note-details-content-@n.Id" class="d-none">
+                                @if (!string.IsNullOrWhiteSpace(n.Content))
+                                {
+                                    <div class="small mb-3" style="white-space: pre-wrap;">@n.Content</div>
+                                }
+                                else
+                                {
+                                    <p class="text-muted small mb-3">متنی برای این یادداشت ثبت نشده است.</p>
+                                }
+                                @if (n.Attachments.Any())
+                                {
+                                    <div class="small">
+                                        <div class="text-muted mb-1">پیوست‌ها</div>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var a in n.Attachments)
+                                            {
+                                                <a href="@a.FilePath"
+                                                   target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   class="badge bg-light text-dark border text-decoration-none">
+                                                    @a.FileName
+                                                </a>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
                         </li>
                     }
                 </ul>
@@ -395,6 +454,25 @@
     }
 </div>
 
+<div class="modal fade" id="leadNoteDetailsModal" tabindex="-1" aria-labelledby="leadNoteDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="leadNoteDetailsModalLabel">جزئیات یادداشت</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+            </div>
+            <div class="modal-body">
+                <h6 class="mb-1" id="leadNoteDetailsTitle">—</h6>
+                <div class="small text-muted mb-3" id="leadNoteDetailsCreatedAt"></div>
+                <div id="leadNoteDetailsBody"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">بستن</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @if (Model.IsOwner)
 {
     <div class="modal fade lead-note-modal" id="leadNoteModal" tabindex="-1" aria-labelledby="leadNoteModalLabel" aria-hidden="true">
@@ -449,6 +527,12 @@
                         <div class="mb-3">
                             <label class="form-label">متن یادداشت</label>
                             <textarea id="leadNoteEditContent" name="content" class="form-control" rows="8" dir="rtl"></textarea>
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label">پیوست‌های فعلی</label>
+                            <div id="leadNoteEditExistingAttachments" class="border rounded p-2 mb-3 bg-light-subtle">
+                                <p class="text-muted small mb-0">برای این یادداشت پیوستی ثبت نشده است.</p>
+                            </div>
                         </div>
                         <div class="mb-0">
                             <label class="form-label">افزودن فایل جدید</label>
@@ -510,6 +594,30 @@
     @await Html.PartialAsync("_DatePickerAssets")
     <script src="~/lib/easymde/dist/easymde.min.js"></script>
     <script>
+        (function () {
+            const noteDetailsModal = document.getElementById('leadNoteDetailsModal');
+            if (noteDetailsModal) {
+                const titleElement = document.getElementById('leadNoteDetailsTitle');
+                const createdAtElement = document.getElementById('leadNoteDetailsCreatedAt');
+                const bodyElement = document.getElementById('leadNoteDetailsBody');
+
+                document.querySelectorAll('[data-note-details-open]').forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        const noteId = button.getAttribute('data-note-id');
+                        const title = button.getAttribute('data-note-title') || '—';
+                        const createdAt = button.getAttribute('data-note-created-at') || '';
+                        const source = noteId ? document.getElementById('lead-note-details-content-' + noteId) : null;
+
+                        if (titleElement) titleElement.textContent = title;
+                        if (createdAtElement) createdAtElement.textContent = createdAt;
+                        if (bodyElement) {
+                            bodyElement.innerHTML = source ? source.innerHTML : '<p class="text-muted small mb-0">جزئیات این یادداشت در دسترس نیست.</p>';
+                        }
+                    });
+                });
+            }
+        })();
+
         (function () {
             const toLatinDigits = function (value) {
                 return value
@@ -624,7 +732,8 @@
             const noteIdInput = document.getElementById('leadNoteEditNoteId');
             const titleInput = document.getElementById('leadNoteEditTitle');
             const contentInput = document.getElementById('leadNoteEditContent');
-            if (!(noteIdInput && titleInput && contentInput)) return;
+            const existingAttachmentsContainer = document.getElementById('leadNoteEditExistingAttachments');
+            if (!(noteIdInput && titleInput && contentInput && existingAttachmentsContainer)) return;
             let leadNoteEditEditor;
 
             const getEditorValue = function () {
@@ -637,6 +746,8 @@
                     const noteId = button.getAttribute('data-note-id') || '';
                     const title = button.getAttribute('data-note-title') || '';
                     const content = button.getAttribute('data-note-content') || '';
+                    const attachmentsSourceId = button.getAttribute('data-note-attachments-source') || '';
+                    const attachmentsSource = attachmentsSourceId ? document.getElementById(attachmentsSourceId) : null;
                     noteIdInput.value = noteId;
                     titleInput.value = title;
                     if (leadNoteEditEditor) {
@@ -644,6 +755,9 @@
                     } else {
                         contentInput.value = content;
                     }
+                    existingAttachmentsContainer.innerHTML = attachmentsSource
+                        ? attachmentsSource.innerHTML
+                        : '<p class="text-muted small mb-0">برای این یادداشت پیوستی ثبت نشده است.</p>';
                 });
             });
 

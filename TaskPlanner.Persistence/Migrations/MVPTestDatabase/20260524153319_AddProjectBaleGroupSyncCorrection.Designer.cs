@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskPlanner.Persistence.Contexts;
 
@@ -11,9 +12,11 @@ using TaskPlanner.Persistence.Contexts;
 namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 {
     [DbContext(typeof(MVPTestDatabaseContext))]
-    partial class MVPTestDatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260524153319_AddProjectBaleGroupSyncCorrection")]
+    partial class AddProjectBaleGroupSyncCorrection
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1039,38 +1042,12 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<bool>("ExternalIsChannelSender")
-                        .HasColumnType("bit");
-
                     b.Property<long?>("ExternalMessageId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("ExternalProvider")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
-
-                    b.Property<long?>("ExternalSenderBaleId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("ExternalSenderFirstName")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ExternalSenderLastName")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ExternalSenderPhone")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("ExternalSenderPhotoPath")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("ExternalSenderUsername")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");

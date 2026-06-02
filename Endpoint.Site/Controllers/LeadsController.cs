@@ -516,16 +516,23 @@ namespace Endpoint.Site.Controllers
             [FromForm] string title,
             [FromForm] string? content,
             [FromForm(Name = "attachments")] List<IFormFile>? attachments,
-            [FromForm(Name = "attachments[]")] List<IFormFile>? attachmentsArray)
+            [FromForm(Name = "attachments[]")] List<IFormFile>? attachmentsArray,
+            [FromForm(Name = "removedAttachmentIds")] List<int>? removedAttachmentIds,
+            [FromForm(Name = "removedAttachmentIds[]")] List<int>? removedAttachmentIdsArray)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
             try
             {
                 await using var tx = await _context.Database.BeginTransactionAsync();
                 var uploadedPaths = new List<string>();
+                var removedFilePaths = new List<string>();
                 var filesToUpload = (attachments ?? new List<IFormFile>())
                     .Concat(attachmentsArray ?? Enumerable.Empty<IFormFile>())
                     .Where(f => f != null && f.Length > 0)
+                    .ToList();
+                var attachmentIdsToRemove = (removedAttachmentIds ?? new List<int>())
+                    .Concat(removedAttachmentIdsArray ?? Enumerable.Empty<int>())
+                    .Distinct()
                     .ToList();
                 try
                 {
@@ -535,6 +542,22 @@ namespace Endpoint.Site.Controllers
                         Title = title,
                         Content = content
                     }, userId);
+
+                    if (attachmentIdsToRemove.Any())
+                    {
+                        var attachmentsToDelete = await _context.ProjectNoteAttachments
+                            .Where(a => a.ProjectNoteId == noteId && attachmentIdsToRemove.Contains(a.Id))
+                            .ToListAsync();
+
+                        if (attachmentsToDelete.Any())
+                        {
+                            removedFilePaths.AddRange(attachmentsToDelete
+                                .Select(a => a.FilePath)
+                                .Where(p => !string.IsNullOrWhiteSpace(p)));
+                            _context.ProjectNoteAttachments.RemoveRange(attachmentsToDelete);
+                            await _context.SaveChangesAsync();
+                        }
+                    }
 
                     if (filesToUpload.Any())
                     {
@@ -569,6 +592,11 @@ namespace Endpoint.Site.Controllers
                         _fileUploadService.DeleteFile(path);
                     }
                     throw;
+                }
+
+                foreach (var path in removedFilePaths)
+                {
+                    _fileUploadService.DeleteFile(path);
                 }
 
                 TempData["Success"] = "یادداشت لید ویرایش شد.";

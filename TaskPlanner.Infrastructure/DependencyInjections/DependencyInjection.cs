@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 
@@ -21,6 +21,7 @@ using TaskPlanner.Application.Services.ProjectService;
 using TaskPlanner.Application.Services.NotificationService;
 using TaskPlanner.Application.Services.LeadService;
 using TaskPlanner.Application.Services.DashboardService;
+using TaskPlanner.Application.Services.Bale;
 
 
 namespace TaskPlanner.Infrastructure.DependencyInjections
@@ -53,6 +54,8 @@ namespace TaskPlanner.Infrastructure.DependencyInjections
 
             // سرویس نوتیفیکیشن
             services.AddScoped<INotificationService, NotificationService>();
+
+            services.AddBaleServices(configuration);
 
             return services;
         }

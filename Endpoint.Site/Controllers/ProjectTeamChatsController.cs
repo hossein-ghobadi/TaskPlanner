@@ -59,7 +59,11 @@ namespace Endpoint.Site.Controllers
                     g.CreatedByUserId,
                     g.CreatedAt,
                     MembersCount = g.Members.Count,
-                    IsMember = g.Members.Any(m => m.UserId == userId)
+                    IsMember = g.Members.Any(m => m.UserId == userId),
+                    BaleLink = _context.ProjectBaleGroupLinks
+                        .Where(l => l.ProjectChatGroupId == g.Id && l.IsEnabled)
+                        .Select(l => new { l.BaleChatId })
+                        .FirstOrDefault()
                 })
                 .ToListAsync();
 
@@ -86,7 +90,10 @@ namespace Endpoint.Site.Controllers
                     CreatedByName = creatorLookup.TryGetValue(g.CreatedByUserId, out var creatorName) ? creatorName : "کاربر",
                     MembersCount = g.MembersCount,
                     CreatedAt = g.CreatedAt,
-                    CanManageMembers = g.CreatedByUserId == userId || projectCreatorId == userId
+                    CanManageMembers = g.CreatedByUserId == userId || projectCreatorId == userId,
+                    IsBaleSynced = g.BaleLink != null,
+                    IsReadOnly = g.BaleLink != null,
+                    BaleChatId = g.BaleLink?.BaleChatId
                 })
                 .ToList();
 
@@ -136,6 +143,15 @@ namespace Endpoint.Site.Controllers
                                     : "(بدون متن)"))),
                     CreatedAt = m.CreatedAt,
                     IsCurrentUser = m.UserId == userId,
+                    IsExternal = m.ExternalProvider != null,
+                    ExternalProvider = m.ExternalProvider,
+                    ExternalSenderBaleId = m.ExternalSenderBaleId,
+                    ExternalSenderUsername = m.ExternalSenderUsername,
+                    ExternalSenderFirstName = m.ExternalSenderFirstName,
+                    ExternalSenderLastName = m.ExternalSenderLastName,
+                    ExternalSenderPhone = m.ExternalSenderPhone,
+                    ExternalIsChannelSender = m.ExternalIsChannelSender,
+                    ExternalSenderPhotoPath = m.ExternalSenderPhotoPath,
                     Attachments = m.Attachments
                         .Select(a => new ProjectChatMessageAttachmentVm
                         {
@@ -301,6 +317,14 @@ namespace Endpoint.Site.Controllers
             if (!isMember)
             {
                 return Forbid();
+            }
+
+            var isBaleGroup = await _context.ProjectBaleGroupLinks
+                .AnyAsync(l => l.ProjectChatGroupId == vm.GroupId && l.IsEnabled);
+
+            if (isBaleGroup)
+            {
+                return BadRequest("این گروه فقط برای نمایش پیام‌های بله است. پیام را مستقیماً در گروه بله ارسال کنید.");
             }
 
             ProjectChatMessage? repliedMessage = null;
@@ -546,6 +570,11 @@ namespace Endpoint.Site.Controllers
             if (message == null || message.IsDeleted)
             {
                 return NotFound();
+            }
+
+            if (message.ExternalProvider != null)
+            {
+                return BadRequest("پیام‌های دریافتی از بله قابل حذف از این بخش نیستند.");
             }
 
             var group = message.ProjectChatGroup;

@@ -46,6 +46,9 @@ namespace Endpoint.Site.Models
         public int MembersCount { get; set; }
         public DateTime CreatedAt { get; set; }
         public bool CanManageMembers { get; set; }
+        public bool IsBaleSynced { get; set; }
+        public bool IsReadOnly { get; set; }
+        public long? BaleChatId { get; set; }
     }
 
     public class ProjectChatMessageVm
@@ -60,6 +63,15 @@ namespace Endpoint.Site.Models
         public string? ReplyPreviewMessage { get; set; }
         public DateTime CreatedAt { get; set; }
         public bool IsCurrentUser { get; set; }
+        public bool IsExternal { get; set; }
+        public string? ExternalProvider { get; set; }
+        public long? ExternalSenderBaleId { get; set; }
+        public string? ExternalSenderUsername { get; set; }
+        public string? ExternalSenderFirstName { get; set; }
+        public string? ExternalSenderLastName { get; set; }
+        public string? ExternalSenderPhone { get; set; }
+        public bool ExternalIsChannelSender { get; set; }
+        public string? ExternalSenderPhotoPath { get; set; }
         public List<ProjectChatMessageAttachmentVm> Attachments { get; set; } = new();
     }
 

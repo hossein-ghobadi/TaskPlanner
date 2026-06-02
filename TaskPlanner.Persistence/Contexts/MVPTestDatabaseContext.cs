@@ -42,6 +42,8 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<ProjectChatGroupMember> ProjectChatGroupMembers { get; set; }
         public DbSet<ProjectChatMessage> ProjectChatMessages { get; set; }
         public DbSet<ProjectChatMessageAttachment> ProjectChatMessageAttachments { get; set; }
+        public DbSet<ProjectBaleGroupLink> ProjectBaleGroupLinks { get; set; }
+        public DbSet<BaleBotSyncState> BaleBotSyncStates { get; set; }
         public DbSet<Sprint> Sprints { get; set; }
         public DbSet<SprintTask> SprintTasks { get; set; }
         public DbSet<WorkflowStatus> WorkflowStatuses { get; set; }
@@ -305,6 +307,70 @@ namespace TaskPlanner.Persistence.Contexts
 
             modelBuilder.Entity<ProjectChatMessage>()
                 .HasIndex(m => m.ReplyToMessageId);
+
+            modelBuilder.Entity<ProjectChatMessage>()
+                .Property(m => m.ExternalProvider)
+                .HasMaxLength(20);
+
+            modelBuilder.Entity<ProjectChatMessage>()
+                .Property(m => m.ExternalSenderUsername)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<ProjectChatMessage>()
+                .Property(m => m.ExternalSenderFirstName)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<ProjectChatMessage>()
+                .Property(m => m.ExternalSenderLastName)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<ProjectChatMessage>()
+                .Property(m => m.ExternalSenderPhone)
+                .HasMaxLength(20);
+
+            modelBuilder.Entity<ProjectChatMessage>()
+                .Property(m => m.ExternalSenderPhotoPath)
+                .HasMaxLength(500);
+
+            modelBuilder.Entity<ProjectChatMessage>()
+                .HasIndex(m => new { m.ProjectChatGroupId, m.ExternalProvider, m.ExternalMessageId })
+                .IsUnique()
+                .HasFilter("[ExternalMessageId] IS NOT NULL");
+
+            modelBuilder.Entity<ProjectBaleGroupLink>()
+                .HasOne(l => l.Project)
+                .WithMany()
+                .HasForeignKey(l => l.ProjectId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<ProjectBaleGroupLink>()
+                .HasOne(l => l.ProjectChatGroup)
+                .WithMany()
+                .HasForeignKey(l => l.ProjectChatGroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProjectBaleGroupLink>()
+                .Property(l => l.BaleChatTitle)
+                .HasMaxLength(200);
+
+            modelBuilder.Entity<ProjectBaleGroupLink>()
+                .Property(l => l.BotToken)
+                .HasMaxLength(120);
+
+            modelBuilder.Entity<ProjectBaleGroupLink>()
+                .Property(l => l.BaleChatUsername)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<ProjectBaleGroupLink>()
+                .Property(l => l.CreatedByUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<ProjectBaleGroupLink>()
+                .HasIndex(l => l.BaleChatId);
+
+            modelBuilder.Entity<ProjectBaleGroupLink>()
+                .HasIndex(l => new { l.ProjectId, l.BaleChatId })
+                .IsUnique();
 
             modelBuilder.Entity<ProjectChatMessageAttachment>()
                 .HasOne(a => a.ProjectChatMessage)

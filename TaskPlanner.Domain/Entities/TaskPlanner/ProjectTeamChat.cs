@@ -71,6 +71,33 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public bool IsDeleted { get; set; } = false;
 
+        /// <summary>منبع خارجی پیام، مثلاً Bale.</summary>
+        [StringLength(20)]
+        public string? ExternalProvider { get; set; }
+
+        /// <summary>شناسه پیام در پلتفرم خارجی (برای جلوگیری از تکرار).</summary>
+        public long? ExternalMessageId { get; set; }
+
+        /// <summary>شناسه کاربر بله (در صورت ارسال توسط کاربر).</summary>
+        public long? ExternalSenderBaleId { get; set; }
+
+        [StringLength(100)]
+        public string? ExternalSenderUsername { get; set; }
+
+        [StringLength(100)]
+        public string? ExternalSenderFirstName { get; set; }
+
+        [StringLength(100)]
+        public string? ExternalSenderLastName { get; set; }
+
+        [StringLength(20)]
+        public string? ExternalSenderPhone { get; set; }
+
+        public bool ExternalIsChannelSender { get; set; }
+
+        [StringLength(500)]
+        public string? ExternalSenderPhotoPath { get; set; }
+
         public ICollection<ProjectChatMessageAttachment> Attachments { get; set; } = new List<ProjectChatMessageAttachment>();
     }
 

@@ -17,6 +17,7 @@ using TaskPlanner.Domain.Entities.Users;
 using Microsoft.Extensions.Options;
 using TaskPlanner.Application.Services;
 using Endpoint.Site.Hubs;
+using Endpoint.Site.Services.Bale;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.IO.Compression;
 using Microsoft.Net.Http.Headers;
@@ -69,6 +70,9 @@ builder.Services.AddHttpClient("PriceApi", c =>
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 builder.Services.AddHttpClient();  // برای IHttpClientFactory
+
+builder.Services.AddScoped<TaskPlanner.Application.Services.Bale.IBaleChatNotifier, BaleSignalRChatNotifier>();
+
 builder.Services.AddSignalR();
 
 // ===== Response Compression (Brotli + Gzip) =====

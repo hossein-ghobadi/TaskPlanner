@@ -1,4 +1,4 @@
-﻿@using DNTPersianUtils.Core
+@using DNTPersianUtils.Core
 @using System.Security.Claims
 @model Endpoint.Site.Models.ProjectDetailsVm
 @{
@@ -414,6 +414,42 @@
         border-color: #bee8ad;
     }
 
+    .team-chat-message.external .team-chat-message-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .bale-sender-avatar {
+        width: 32px;
+        height: 32px;
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+
+    .bale-sender-avatar-fallback {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #e9ecef;
+        color: #6c757d;
+        flex-shrink: 0;
+        font-size: 1rem;
+    }
+
+    .bale-sender-meta {
+        font-size: 0.78rem;
+        line-height: 1.45;
+    }
+
+    .bale-sender-meta strong {
+        color: #212529;
+        font-weight: 600;
+    }
+
     .team-chat-message-text {
         white-space: pre-wrap;
         word-break: break-word;
@@ -622,11 +658,19 @@
 
 <!-- چت تیمی پروژه (مجزا از چت تسک‌ها) -->
 <div class="card-modern mb-4" id="section-project-chat">
-    <div class="card-header-modern d-flex justify-content-between align-items-center">
+    <div class="card-header-modern d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div><i class="bi bi-chat-dots-fill me-2"></i>گروه‌های چت تیمی پروژه</div>
-        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createTeamChatGroupModal">
-            <i class="bi bi-plus-circle me-1"></i>ایجاد گروه
-        </button>
+        <div class="d-flex gap-2">
+            @if (isCreator)
+            {
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#baleGroupLinkModal" id="openBaleLinkModalBtn">
+                    <i class="bi bi-link-45deg me-1"></i>اتصال گروه بله
+                </button>
+            }
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createTeamChatGroupModal">
+                <i class="bi bi-plus-circle me-1"></i>ایجاد گروه
+            </button>
+        </div>
     </div>
     <div class="card-body-modern">
         <div class="team-chat-layout">
@@ -922,6 +966,72 @@
     </a>
 </div>
 
+<!-- مودال اتصال گروه بله -->
+@if (isCreator)
+{
+<div class="modal fade" id="baleGroupLinkModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">اتصال گروه بله به پروژه</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="baleBotStatusAlert" class="alert alert-info small">
+                    در حال بررسی وضعیت بازو...
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">توکن بازوی بله</label>
+                    <input type="password" id="baleLinkBotToken" class="form-control" dir="ltr" autocomplete="off" placeholder="123456789:ABCdef..." />
+                    <small id="baleLinkBotTokenHint" class="text-muted d-block mt-1"></small>
+                    <small class="text-muted d-block">هر پروژه می‌تواند بازوی جداگانه داشته باشد. در ویرایش، اگر خالی بماند توکن قبلی حفظ می‌شود.</small>
+                </div>
+                <div class="mb-3">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="testBaleBotTokenBtn">
+                        <i class="bi bi-plug me-1"></i>بررسی توکن
+                    </button>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">نام نمایشی در TaskPlanner</label>
+                    <input type="text" id="baleLinkDisplayName" class="form-control" maxlength="150" placeholder="مثلاً گروه عملیات پروژه" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">شناسه گروه / کانال بله</label>
+                    <input type="text" id="baleLinkChatId" class="form-control" dir="ltr" placeholder="@@shidatis_agency یا -1001234567890" />
+                    <small class="text-muted d-block mt-1">
+                        برای کانال می‌توانید شناسه کانال را با @@ وارد کنید (مثل @@shidatis_agency) یا شناسه عددی. بازو را ادمین کانال کنید، سپس «یافتن گروه‌ها» را بزنید.
+                    </small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">عنوان گروه در بله (اختیاری)</label>
+                    <input type="text" id="baleLinkChatTitle" class="form-control" maxlength="200" placeholder="نام گروه در بله" />
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="baleLinkEnabled" checked />
+                    <label class="form-check-label" for="baleLinkEnabled">همگام‌سازی فعال باشد</label>
+                </div>
+                <div id="baleDiscoveredGroupsWrap" class="d-none">
+                    <label class="form-label">گروه‌های اخیر شناسایی‌شده</label>
+                    <div id="baleDiscoveredGroupsList" class="list-group"></div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="discoverBaleGroupsBtn">
+                        <i class="bi bi-search me-1"></i>یافتن گروه‌ها
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm d-none" id="removeBaleLinkBtn">قطع اتصال</button>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="button" class="btn btn-primary" id="saveBaleLinkBtn">ذخیره اتصال</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+}
+
 <!-- مودال ساخت گروه -->
 <div class="modal fade" id="createTeamChatGroupModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -1075,6 +1185,20 @@
             }
         });
 
+        connection.on('projectGroupMessageUpdated', (payload) => {
+            if (!payload || payload.groupId !== activeGroupId) {
+                return;
+            }
+            const el = document.getElementById(`project-chat-message-${payload.id}`);
+            if (!el) {
+                return;
+            }
+            const textEl = el.querySelector('.team-chat-message-text');
+            if (textEl) {
+                textEl.textContent = payload.message || '';
+            }
+        });
+
         await connection.start();
     }
 
@@ -1113,8 +1237,8 @@
             <div class="team-chat-group-item ${activeGroupId === g.id ? 'active' : ''}" data-group-id="${g.id}">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="fw-bold">${escapeHtml(g.name)}</div>
-                        <small class="text-muted">${g.membersCount} عضو</small>
+                        <div class="fw-bold">${escapeHtml(g.name)}${g.isBaleSynced ? ' <span class="badge bg-info text-dark ms-1">بله</span>' : ''}</div>
+                        <small class="text-muted">${g.membersCount} عضو${g.isReadOnly ? ' · فقط خواندنی' : ''}</small>
                     </div>
                     <div class="d-flex gap-1">
                         ${g.canManageMembers ? `<button class="btn btn-sm btn-outline-secondary manage-members-btn" data-group-id="${g.id}" title="مدیریت اعضا"><i class="bi bi-gear"></i></button>` : ''}
@@ -1137,8 +1261,14 @@
         activeGroupId = groupId;
         activeGroupMeta = group;
         renderGroups();
-        headerEl.innerHTML = `<strong>${escapeHtml(group.name)}</strong> <span class="text-muted small ms-2">(${group.membersCount} عضو)</span>`;
-        sendBtnEl.disabled = false;
+        const readOnlyHint = group.isReadOnly ? ' <span class="badge bg-info text-dark">همگام با بله</span>' : '';
+        headerEl.innerHTML = `<strong>${escapeHtml(group.name)}</strong>${readOnlyHint} <span class="text-muted small ms-2">(${group.membersCount} عضو)</span>`;
+        const isReadOnly = !!group.isReadOnly;
+        sendBtnEl.disabled = isReadOnly;
+        messageInputEl.disabled = isReadOnly;
+        messageInputEl.placeholder = isReadOnly ? 'پیام‌ها از گروه بله نمایش داده می‌شوند...' : 'پیام تیمی... ';
+        fileInputEl.disabled = isReadOnly;
+        recordBtnEl.disabled = isReadOnly;
         messagesEl.innerHTML = '<div class="text-center text-muted py-4">در حال بارگذاری پیام‌ها...</div>';
         clearReplyTarget();
 
@@ -1171,16 +1301,39 @@
         }
 
         const mine = message.userId === currentUserId || message.isCurrentUser;
+        const isExternal = message.isExternal || (message.userId && (message.userId.startsWith('bale:') || message.userId.startsWith('bale-chat:')));
         const dateText = new Date(message.createdAt).toLocaleString('fa-IR');
-        const attachmentsHtml = renderMessageAttachments(message.attachments || [], mine);
+        const attachmentsHtml = renderMessageAttachments(message.attachments || [], mine && !isExternal);
         const replyHtml = renderReplyPreview(message);
-        const replyActionBtn = `<button type="button" class="btn btn-sm btn-link p-0 mt-1 reply-chat-message-btn" data-message-id="${message.id}" data-message-user="${escapeHtml(message.userName)}" data-message-text="${escapeHtml(message.message || '')}" title="پاسخ"><i class="bi bi-reply"></i> پاسخ</button>`;
-        const deleteMessageBtn = mine
+        const replyActionBtn = isExternal ? '' : `<button type="button" class="btn btn-sm btn-link p-0 mt-1 reply-chat-message-btn" data-message-id="${message.id}" data-message-user="${escapeHtml(message.userName)}" data-message-text="${escapeHtml(message.message || '')}" title="پاسخ"><i class="bi bi-reply"></i> پاسخ</button>`;
+        const deleteMessageBtn = mine && !isExternal
             ? `<button type="button" class="btn btn-sm btn-link text-danger p-0 mt-1 ms-2 delete-chat-message-btn" data-message-id="${message.id}" title="حذف پیام"><i class="bi bi-trash"></i> حذف</button>`
             : '';
+        const sourceBadge = isExternal ? '<span class="badge bg-light text-dark border ms-1">بله</span>' : '';
+        const senderMetaHtml = renderBaleSenderMeta(message, isExternal);
+        let headerTitle = message.userName;
+        if (isExternal) {
+            const personName = buildBaleDisplayName(message);
+            if (message.externalSenderBaleId && personName && personName !== 'کاربر بله') {
+                headerTitle = personName;
+            } else if (personName && personName !== 'کاربر بله' && personName !== 'ادمین کانال') {
+                headerTitle = personName;
+            } else {
+                headerTitle = 'پیام از کانال بله';
+            }
+        }
+        const senderHeaderHtml = isExternal
+            ? `<div class="team-chat-message-header">
+                    ${renderBaleSenderAvatar(message)}
+                    <div>
+                        <div class="small text-muted mb-0">${escapeHtml(headerTitle)}${sourceBadge} - ${dateText}</div>
+                        ${senderMetaHtml}
+                    </div>
+               </div>`
+            : `<div class="small text-muted mb-1">${escapeHtml(message.userName)}${sourceBadge} - ${dateText}</div>`;
         const html = `
-            <div id="project-chat-message-${message.id}" class="team-chat-message ${mine ? 'mine' : ''}">
-                <div class="small text-muted mb-1">${escapeHtml(message.userName)} - ${dateText}</div>
+            <div id="project-chat-message-${message.id}" class="team-chat-message ${mine ? 'mine' : ''} ${isExternal ? 'external' : ''}">
+                ${senderHeaderHtml}
                 <div class="team-chat-bubble">
                     ${replyHtml}
                     ${message.message ? `<div class="team-chat-message-text">${escapeHtml(message.message)}</div>` : ''}
@@ -1190,6 +1343,46 @@
             </div>`;
         messagesEl.insertAdjacentHTML('beforeend', html);
         messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function renderBaleSenderAvatar(message) {
+        if (message.externalSenderPhotoPath) {
+            return `<img src="${message.externalSenderPhotoPath}" alt="" class="bale-sender-avatar rounded-circle" />`;
+        }
+        return `<span class="bale-sender-avatar-fallback rounded-circle"><i class="bi bi-person"></i></span>`;
+    }
+
+    function buildBaleDisplayName(message) {
+        const first = (message.externalSenderFirstName || '').trim();
+        const last = (message.externalSenderLastName || '').trim();
+        const full = `${first} ${last}`.trim();
+        if (full) {
+            return full;
+        }
+        return (message.userName || '').trim();
+    }
+
+    function renderBaleSenderMeta(message, isExternal) {
+        if (!isExternal) {
+            return '';
+        }
+        const rows = [];
+        const displayName = buildBaleDisplayName(message);
+        const hasHumanSender = message.externalSenderBaleId
+            && displayName
+            && displayName !== 'کاربر بله'
+            && displayName !== 'ادمین کانال';
+
+        
+        if (message.externalSenderPhone) {
+            rows.push(`<div><span class="text-muted">تلفن فرستنده:</span> <strong dir="ltr">${escapeHtml(message.externalSenderPhone)}</strong></div>`);
+        } else {
+        }
+
+        if (!rows.length) {
+            return '';
+        }
+        return `<div class="bale-sender-meta text-muted mt-1">${rows.join('')}</div>`;
     }
 
     function renderReplyPreview(message) {
@@ -1732,6 +1925,244 @@
     });
     createGroupBtnEl.addEventListener('click', createGroup);
     addMembersBtnEl.addEventListener('click', addMembersToGroup);
+
+    @if (isCreator)
+    {
+    <text>
+    const baleLinkModalEl = document.getElementById('baleGroupLinkModal');
+    const baleBotStatusAlertEl = document.getElementById('baleBotStatusAlert');
+    const baleLinkBotTokenEl = document.getElementById('baleLinkBotToken');
+    const baleLinkBotTokenHintEl = document.getElementById('baleLinkBotTokenHint');
+    const testBaleBotTokenBtnEl = document.getElementById('testBaleBotTokenBtn');
+    const baleLinkDisplayNameEl = document.getElementById('baleLinkDisplayName');
+    const baleLinkChatIdEl = document.getElementById('baleLinkChatId');
+    const baleLinkChatTitleEl = document.getElementById('baleLinkChatTitle');
+    const baleLinkEnabledEl = document.getElementById('baleLinkEnabled');
+    const removeBaleLinkBtnEl = document.getElementById('removeBaleLinkBtn');
+    const discoverBaleGroupsBtnEl = document.getElementById('discoverBaleGroupsBtn');
+    const saveBaleLinkBtnEl = document.getElementById('saveBaleLinkBtn');
+    const baleDiscoveredGroupsWrapEl = document.getElementById('baleDiscoveredGroupsWrap');
+    const baleDiscoveredGroupsListEl = document.getElementById('baleDiscoveredGroupsList');
+
+    async function loadBaleLinkForm() {
+        const response = await fetch(`/ProjectBaleChats/GetLink?projectId=${projectId}`);
+        if (!response.ok) {
+            return;
+        }
+        const data = await response.json();
+        baleLinkBotTokenEl.value = '';
+        if (data.link) {
+            baleLinkDisplayNameEl.value = data.link.displayName || '';
+            baleLinkChatIdEl.value = data.link.baleChatIdentifier || String(data.link.baleChatId || '');
+            baleLinkChatTitleEl.value = data.link.baleChatTitle || '';
+            baleLinkEnabledEl.checked = data.link.isEnabled !== false;
+            baleLinkBotTokenHintEl.textContent = data.link.hasBotToken && data.link.botTokenHint
+                ? ('توکن ذخیره‌شده: ' + data.link.botTokenHint)
+                : '';
+            removeBaleLinkBtnEl.classList.remove('d-none');
+        } else {
+            baleLinkDisplayNameEl.value = '';
+            baleLinkChatIdEl.value = '';
+            baleLinkChatTitleEl.value = '';
+            baleLinkEnabledEl.checked = true;
+            baleLinkBotTokenHintEl.textContent = '';
+            removeBaleLinkBtnEl.classList.add('d-none');
+        }
+    }
+
+    function baleTokenQuery() {
+        const t = baleLinkBotTokenEl.value.trim();
+        return t ? ('&botToken=' + encodeURIComponent(t)) : '';
+    }
+
+    async function refreshBaleBotStatus() {
+        const botToken = baleLinkBotTokenEl.value.trim();
+        if (!botToken && !baleLinkBotTokenHintEl.textContent) {
+            baleBotStatusAlertEl.className = 'alert alert-warning small';
+            baleBotStatusAlertEl.textContent = 'توکن بازو را وارد کنید و «بررسی توکن» را بزنید.';
+            return;
+        }
+
+        try {
+            const response = await fetch('/ProjectBaleChats/TestBotToken', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify({
+                    projectId,
+                    botToken: botToken || null
+                })
+            });
+
+            let data;
+            const raw = await response.text();
+            try {
+                data = JSON.parse(raw);
+            } catch {
+                baleBotStatusAlertEl.className = 'alert alert-danger small';
+                baleBotStatusAlertEl.textContent = 'پاسخ نامعتبر از سرور. اپ را ری‌استارت کنید.';
+                return;
+            }
+
+            if (data.error) {
+                baleBotStatusAlertEl.className = 'alert alert-danger small';
+                baleBotStatusAlertEl.textContent = data.error;
+                return;
+            }
+
+            if (!data.configured) {
+                baleBotStatusAlertEl.className = 'alert alert-warning small';
+                baleBotStatusAlertEl.textContent = 'توکن بازو را وارد کنید.';
+                return;
+            }
+
+            if (data.invalid) {
+                baleBotStatusAlertEl.className = 'alert alert-danger small';
+                baleBotStatusAlertEl.textContent = data.error || 'توکن نامعتبر است یا بازو در دسترس نیست.';
+                return;
+            }
+
+            const username = data.username ? '\u0040' + data.username : 'بازو';
+            baleBotStatusAlertEl.className = 'alert alert-success small';
+            baleBotStatusAlertEl.textContent = 'اتصال به ' + username + ' برقرار است. بازو را به گروه بله اضافه کنید.';
+        } catch {
+            baleBotStatusAlertEl.className = 'alert alert-danger small';
+            baleBotStatusAlertEl.textContent = 'خطا در ارتباط با سرور. اتصال اینترنت را بررسی کنید.';
+        }
+    }
+
+    async function discoverBaleGroups() {
+        const token = baleLinkBotTokenEl.value.trim();
+        if (!token && !baleLinkBotTokenHintEl.textContent) {
+            showAlert('ابتدا توکن بازو را وارد کنید.', 'error');
+            return;
+        }
+        discoverBaleGroupsBtnEl.disabled = true;
+        const response = await fetch('/ProjectBaleChats/DiscoverRecentGroups?projectId=' + projectId + baleTokenQuery());
+        discoverBaleGroupsBtnEl.disabled = false;
+        if (!response.ok) {
+            const err = await response.text();
+            showAlert(err || 'خطا در یافتن گروه‌ها', 'error');
+            return;
+        }
+        const groups = await response.json();
+        if (!groups.length) {
+            showAlert('گروهی یافت نشد. ابتدا بازو را به گروه اضافه و یک پیام بفرستید.', 'error');
+            return;
+        }
+        baleDiscoveredGroupsWrapEl.classList.remove('d-none');
+        baleDiscoveredGroupsListEl.innerHTML = groups.map(g => {
+            const at = '\u0040';
+            const identifier = g.username ? (at + g.username) : String(g.chatId);
+            const title = g.title || (g.username ? (at + g.username) : 'بدون عنوان');
+            return `
+            <button type="button" class="list-group-item list-group-item-action text-start bale-pick-chat-btn"
+                data-chat-identifier="${escapeHtml(identifier)}" data-chat-title="${escapeHtml(g.title || '')}">
+                <div class="fw-bold">${escapeHtml(title)}</div>
+                <small class="text-muted" dir="ltr">${escapeHtml(identifier)} · ${escapeHtml(g.type || '')}</small>
+            </button>`;
+        }).join('');
+    }
+
+    async function saveBaleLink() {
+        const baleChatIdentifier = baleLinkChatIdEl.value.trim();
+        if (!baleChatIdentifier) {
+            showAlert('شناسه گروه یا نام کاربری کانال را وارد کنید.', 'error');
+            return;
+        }
+        const displayName = baleLinkDisplayNameEl.value.trim();
+        if (displayName.length < 2) {
+            showAlert('نام نمایشی را وارد کنید.', 'error');
+            return;
+        }
+        const botToken = baleLinkBotTokenEl.value.trim();
+        if (!botToken && !baleLinkBotTokenHintEl.textContent) {
+            showAlert('توکن بازوی بله را وارد کنید.', 'error');
+            return;
+        }
+        const payload = {
+            projectId,
+            displayName,
+            baleChatIdentifier,
+            baleChatTitle: baleLinkChatTitleEl.value.trim() || null,
+            botToken: botToken || null,
+            isEnabled: baleLinkEnabledEl.checked
+        };
+        const response = await fetch('/ProjectBaleChats/SaveLink', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': token
+            },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+            const err = await response.text();
+            showAlert(err || 'خطا در ذخیره اتصال', 'error');
+            return;
+        }
+        const result = await response.json();
+        showAlert('اتصال گروه بله ذخیره شد.');
+        bootstrap.Modal.getInstance(baleLinkModalEl)?.hide();
+        await loadGroups();
+        if (result.groupId) {
+            await selectGroup(result.groupId);
+        }
+    }
+
+    async function removeBaleLink() {
+        if (!confirm('اتصال گروه بله قطع شود؟ گروه چت مرتبط آرشیو می‌شود.')) {
+            return;
+        }
+        const body = new URLSearchParams();
+        body.append('projectId', String(projectId));
+        const response = await fetch('/ProjectBaleChats/DeleteLink', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'RequestVerificationToken': token
+            },
+            body: body.toString()
+        });
+        if (!response.ok) {
+            const err = await response.text();
+            showAlert(err || 'خطا در قطع اتصال', 'error');
+            return;
+        }
+        showAlert('اتصال بله قطع شد.');
+        bootstrap.Modal.getInstance(baleLinkModalEl)?.hide();
+        activeGroupId = null;
+        await loadGroups();
+    }
+
+    baleLinkModalEl?.addEventListener('show.bs.modal', async () => {
+        baleBotStatusAlertEl.className = 'alert alert-info small';
+        baleBotStatusAlertEl.textContent = 'توکن بازو را وارد کنید.';
+        await loadBaleLinkForm();
+        await refreshBaleBotStatus();
+    });
+    testBaleBotTokenBtnEl?.addEventListener('click', refreshBaleBotStatus);
+    discoverBaleGroupsBtnEl?.addEventListener('click', discoverBaleGroups);
+    saveBaleLinkBtnEl?.addEventListener('click', saveBaleLink);
+    removeBaleLinkBtnEl?.addEventListener('click', removeBaleLink);
+    baleDiscoveredGroupsListEl?.addEventListener('click', (event) => {
+        const btn = event.target.closest('.bale-pick-chat-btn');
+        if (!btn) {
+            return;
+        }
+        baleLinkChatIdEl.value = btn.dataset.chatIdentifier || btn.dataset.chatId || '';
+        if (btn.dataset.chatTitle) {
+            baleLinkChatTitleEl.value = btn.dataset.chatTitle;
+            if (!baleLinkDisplayNameEl.value.trim()) {
+                baleLinkDisplayNameEl.value = btn.dataset.chatTitle;
+            }
+        }
+    });
+    </text>
+    }
 
     document.addEventListener('DOMContentLoaded', async () => {
         await loadGroups();
