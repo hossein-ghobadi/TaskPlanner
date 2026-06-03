@@ -121,8 +121,14 @@
                                 @foreach (var m in Model.UpcomingMeetings)
                                 {
                                     var kindLabel = m.Kind == DashboardMeetingKind.ScheduledSession ? "جلسه ثبت‌شده" : "زمان روی لید";
+                                    var meetingLocal = m.AtUtc.ToLocalTime();
+                                    var daysUntilMeeting = (meetingLocal.Date - DateTime.Today).Days;
+                                    var daysUntilLabel = $"{daysUntilMeeting.ToString().ToPersianNumbers()} روز باقی‌مانده";
                                     <tr>
-                                        <td class="text-nowrap small">@m.AtUtc.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()</td>
+                                        <td class="text-nowrap small">
+                                            <div>@meetingLocal.ToShortPersianDateTimeString().ToPersianNumbers()</div>
+                                            <div class="text-muted">@daysUntilLabel</div>
+                                        </td>
                                         <td>
                                             <a href="@Url.Action("Details", "Leads", new { id = m.LeadId })" class="fw-medium text-decoration-none">@m.LeadTitle</a>
                                         </td>
