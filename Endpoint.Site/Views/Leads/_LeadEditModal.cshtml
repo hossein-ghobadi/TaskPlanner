@@ -34,6 +34,14 @@
             <input asp-for="Source" class="form-control form-control-sm" />
         </div>
         <div class="col-md-6">
+            <label asp-for="ProjectAmount" class="form-label small"></label>
+            <div class="toman-amount-field">
+                <partial name="_TomanAmountField" model="Model.ProjectAmount" view-data='new ViewDataDictionary(ViewData) { { "inputClass", "form-control-sm" }, { "showHint", false } }' />
+                <input asp-for="ProjectAmount" type="hidden" class="js-toman-amount-hidden" />
+            </div>
+            <span asp-validation-for="ProjectAmount" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
             <label asp-for="Status" class="form-label small">مرحله فروش</label>
             <select asp-for="Status" class="form-select form-select-sm">
                 <option value="0">جدید</option>

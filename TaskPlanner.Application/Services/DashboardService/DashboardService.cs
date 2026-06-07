@@ -179,7 +179,20 @@ namespace TaskPlanner.Application.Services.DashboardService
             var doneProject = myProjectTasks.Count(t => t.IsCompleted);
             var overdueProject = myProjectTasks.Count(t => !t.IsCompleted && t.DueDate.HasValue && t.DueDate.Value < now);
 
-            var prioritySlices = BuildPrioritySlices(myProjectTasks.Where(t => !t.IsCompleted));
+            List<DashboardChartSliceDto> leadSalesSlices;
+            if (leadIds.Count == 0)
+            {
+                leadSalesSlices = new List<DashboardChartSliceDto>();
+            }
+            else
+            {
+                var leadAmountRows = await _context.Leads.AsNoTracking()
+                    .Where(l => leadIds.Contains(l.Id))
+                    .Select(l => new { l.Status, l.ProjectAmount })
+                    .ToListAsync(cancellationToken);
+                leadSalesSlices = BuildLeadSalesSlices(
+                    leadAmountRows.Select(r => (r.Status, r.ProjectAmount)).ToList());
+            }
 
             var startDay = now.Date;
             var dueWeek = new int[7];
@@ -251,7 +264,7 @@ namespace TaskPlanner.Application.Services.DashboardService
                 ActiveSprintCount = activeSprintCount,
                 AccessibleLeadsCount = leadIds.Count,
                 UpcomingMeetings = meetings,
-                TaskPrioritySlices = prioritySlices,
+                LeadSalesSlices = leadSalesSlices,
                 ProjectTaskDistributionSlices = BuildProjectDistributionSlices(tasksByProject),
                 ProjectTaskDistributionAllSlices = BuildProjectDistributionSlices(allTasksByProject),
                 LeadPipelineSlices = MapLeadPipelineRows(leadPipeline),
@@ -261,35 +274,55 @@ namespace TaskPlanner.Application.Services.DashboardService
             };
         }
 
-        private static List<DashboardChartSliceDto> BuildPrioritySlices(IEnumerable<ProjectTaskSnapshot> openTasks)
+        private static readonly LeadPipelineStatus[] NonSaleLeadStatuses =
         {
-            var palette = new Dictionary<TaskPriority, string>
-            {
-                [TaskPriority.Low] = "#94a3b8",
-                [TaskPriority.Medium] = "#3b82f6",
-                [TaskPriority.High] = "#f59e0b",
-                [TaskPriority.Critical] = "#dc2626"
-            };
+            LeadPipelineStatus.New,
+            LeadPipelineStatus.Contacted,
+            LeadPipelineStatus.QuoteAnnounced,
+            LeadPipelineStatus.Lost
+        };
 
-            var labels = new Dictionary<TaskPriority, string>
-            {
-                [TaskPriority.Low] = "کم",
-                [TaskPriority.Medium] = "متوسط",
-                [TaskPriority.High] = "بالا",
-                [TaskPriority.Critical] = "بحرانی"
-            };
+        private static List<DashboardChartSliceDto> BuildLeadSalesSlices(
+            List<(LeadPipelineStatus Status, decimal? ProjectAmount)> rows)
+        {
+            static decimal SumAmount(IEnumerable<decimal?> amounts) =>
+                amounts.Where(a => a.HasValue).Sum(a => a!.Value);
 
-            return openTasks
-                .GroupBy(t => t.Priority)
-                .OrderBy(g => g.Key)
-                .Select(g => new DashboardChartSliceDto
+            static bool IsNonSale(LeadPipelineStatus status) =>
+                NonSaleLeadStatuses.Contains(status);
+
+            var soldRows = rows.Where(r => r.Status == LeadPipelineStatus.Converted).ToList();
+            var nonSaleRows = rows.Where(r => IsNonSale(r.Status)).ToList();
+
+            var soldAmount = SumAmount(soldRows.Select(r => r.ProjectAmount));
+            var nonSaleAmount = SumAmount(nonSaleRows.Select(r => r.ProjectAmount));
+            var soldCount = soldRows.Count;
+            var nonSaleCount = nonSaleRows.Count;
+
+            var slices = new List<DashboardChartSliceDto>();
+            if (soldAmount > 0 || soldCount > 0)
+            {
+                slices.Add(new DashboardChartSliceDto
                 {
-                    Label = labels[g.Key],
-                    Count = g.Count(),
-                    Color = palette[g.Key]
-                })
-                .Where(s => s.Count > 0)
-                .ToList();
+                    Label = "فروش (تبدیل‌شده)",
+                    Amount = soldAmount,
+                    Count = soldCount,
+                    Color = "#22c55e"
+                });
+            }
+
+            if (nonSaleAmount > 0 || nonSaleCount > 0)
+            {
+                slices.Add(new DashboardChartSliceDto
+                {
+                    Label = "عدم فروش",
+                    Amount = nonSaleAmount,
+                    Count = nonSaleCount,
+                    Color = "#94a3b8"
+                });
+            }
+
+            return slices;
         }
 
         private static List<DashboardChartSliceDto> MapLeadPipelineRows(List<(LeadPipelineStatus Status, int Count)> rows)

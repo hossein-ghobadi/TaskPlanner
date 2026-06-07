@@ -59,6 +59,7 @@ namespace TaskPlanner.Application.Services.LeadService
                     Status = l.Status,
                     CreatedAt = l.CreatedAt,
                     MeetingAt = l.MeetingAt,
+                    ProjectAmount = l.ProjectAmount,
                     NextSessionAt =
                         _context.Set<LeadSession>()
                             .Where(s => s.LeadId == l.Id && s.ScheduledAt >= DateTime.UtcNow)
@@ -139,6 +140,7 @@ namespace TaskPlanner.Application.Services.LeadService
                 CreatedAt = lead.CreatedAt,
                 UpdatedAt = lead.UpdatedAt,
                 MeetingAt = lead.MeetingAt,
+                ProjectAmount = lead.ProjectAmount,
                 ConvertedProjectId = lead.ConvertedProjectId,
                 ConvertedAt = lead.ConvertedAt,
                 OwnerUserId = lead.OwnerUserId,
@@ -194,7 +196,8 @@ namespace TaskPlanner.Application.Services.LeadService
                 OwnerUserId = ownerUserId,
                 CreatedAt = now,
                 UpdatedAt = now,
-                MeetingAt = NormalizeMeetingAtToUtc(dto.MeetingAt)
+                MeetingAt = NormalizeMeetingAtToUtc(dto.MeetingAt),
+                ProjectAmount = NormalizeProjectAmount(dto.ProjectAmount)
             };
 
             _context.Set<Lead>().Add(lead);
@@ -226,6 +229,7 @@ namespace TaskPlanner.Application.Services.LeadService
             lead.Source = string.IsNullOrWhiteSpace(dto.Source) ? null : dto.Source.Trim();
             lead.Status = newStatus;
             lead.MeetingAt = NormalizeMeetingAtToUtc(dto.MeetingAt);
+            lead.ProjectAmount = NormalizeProjectAmount(dto.ProjectAmount);
             lead.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync(cancellationToken);
@@ -612,5 +616,8 @@ namespace TaskPlanner.Application.Services.LeadService
                 _ => DateTime.SpecifyKind(v, DateTimeKind.Local).ToUniversalTime()
             };
         }
+
+        private static decimal? NormalizeProjectAmount(decimal? value) =>
+            value is > 0 ? value : null;
     }
 }

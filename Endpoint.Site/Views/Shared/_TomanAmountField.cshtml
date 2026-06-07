@@ -1,0 +1,19 @@
+@model decimal?
+@{
+    var inputClass = ViewData["inputClass"] as string ?? "";
+    var showHint = ViewData["showHint"] as bool? ?? true;
+    var placeholder = ViewData["placeholder"] as string ?? "مثلاً 12,000,000";
+    var displayValue = Model.HasValue
+        ? Model.Value.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)
+        : "";
+}
+<input type="text"
+       class="form-control js-toman-amount-display @inputClass"
+       inputmode="numeric"
+       autocomplete="off"
+       placeholder="@placeholder"
+       value="@displayValue" />
+@if (showHint)
+{
+    <div class="form-text small text-muted">مبلغ به تومان — هر سه رقم با ویرگول جدا می‌شود.</div>
+}

@@ -72,6 +72,8 @@
                 <dd class="col-sm-9">@(Model.Email ?? "—")</dd>
                 <dt class="col-sm-3">منبع</dt>
                 <dd class="col-sm-9">@(Model.Source ?? "—")</dd>
+                <dt class="col-sm-3">مبلغ پروژه</dt>
+                <dd class="col-sm-9">@(Model.ProjectAmount.HasValue ? Model.ProjectAmount.Value.ToString("N0").ToPersianNumbers() + " تومان" : "—")</dd>
                 <dt class="col-sm-3">نزدیک‌ترین جلسه</dt>
                 <dd class="col-sm-9">@(nextSession != null ? nextSession.ScheduledAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers() : "—")</dd>
                 <dt class="col-sm-3">ایجاد</dt>

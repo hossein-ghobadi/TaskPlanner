@@ -304,6 +304,7 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/toman-amount.js" asp-append-version="true"></script>
     <script>
         (function () {
             const storageKey = 'leadsIndexViewMode';
@@ -359,6 +360,9 @@
                     });
                     const html = await res.text();
                     bodyEl.innerHTML = html;
+                    if (window.TomanAmount) {
+                        window.TomanAmount.init(bodyEl);
+                    }
                     if (window.jQuery && window.jQuery.validator && window.jQuery.validator.unobtrusive) {
                         window.jQuery.validator.unobtrusive.parse(bodyEl);
                     }
@@ -378,6 +382,10 @@
                 const form = e.target && e.target.id === 'leadEditModalForm' ? e.target : null;
                 if (!form) return;
                 e.preventDefault();
+
+                if (window.TomanAmount) {
+                    window.TomanAmount.prepareForm(form);
+                }
 
                 const fd = new FormData(form);
                 fd.set('returnTo', 'list');
@@ -404,6 +412,9 @@
                         bodyEl.innerHTML = errText || '<div class="alert alert-danger mb-0">خطا</div>';
                     } else {
                         bodyEl.innerHTML = await res.text();
+                    }
+                    if (window.TomanAmount) {
+                        window.TomanAmount.init(bodyEl);
                     }
                     if (window.jQuery && window.jQuery.validator && window.jQuery.validator.unobtrusive) {
                         window.jQuery.validator.unobtrusive.parse(bodyEl);

@@ -39,6 +39,9 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         /// <summary>زمان برنامه‌ریزی‌شدهٔ جلسه با لید (UTC).</summary>
         public DateTime? MeetingAt { get; set; }
 
+        /// <summary>مبلغ پیش‌بینی‌شدهٔ پروژه (تومان).</summary>
+        public decimal? ProjectAmount { get; set; }
+
         public int? ConvertedProjectId { get; set; }
         public Project? ConvertedProject { get; set; }
         public DateTime? ConvertedAt { get; set; }

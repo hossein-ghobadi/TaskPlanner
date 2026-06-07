@@ -65,7 +65,8 @@ namespace Endpoint.Site.Controllers
                     Email = vm.Email,
                     Notes = vm.Notes,
                     Source = vm.Source,
-                    Status = vm.Status
+                    Status = vm.Status,
+                    ProjectAmount = vm.ProjectAmount
                 }, userId);
 
                 TempData["Success"] = "لید با موفقیت ثبت شد.";
@@ -131,7 +132,8 @@ namespace Endpoint.Site.Controllers
                 Email = lead.Email,
                 Notes = lead.Notes,
                 Source = lead.Source,
-                Status = lead.Status
+                Status = lead.Status,
+                ProjectAmount = lead.ProjectAmount
             };
             return View(vm);
         }
@@ -160,7 +162,8 @@ namespace Endpoint.Site.Controllers
                 Email = lead.Email,
                 Notes = lead.Notes,
                 Source = lead.Source,
-                Status = lead.Status
+                Status = lead.Status,
+                ProjectAmount = lead.ProjectAmount
             };
             return PartialView("_LeadEditModal", vm);
         }
@@ -195,7 +198,8 @@ namespace Endpoint.Site.Controllers
                     Email = vm.Email,
                     Notes = vm.Notes,
                     Source = vm.Source,
-                    Status = vm.Status
+                    Status = vm.Status,
+                    ProjectAmount = vm.ProjectAmount
                 }, userId);
 
                 if (isAjaxList)

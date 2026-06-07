@@ -3164,9 +3164,94 @@
             assignee: 'all',
             dueSoon: false
         };
-        
-        // ذخیره کارت‌های حذف شده برای بازگردانی
-        const removedCards = new Map(); // key: card element, value: { parent, nextSibling }
+        const BOARD_STATE_KEY = `boardState_sprint_${sprintId}`;
+
+        function getBoardScrollEl() {
+            return document.getElementById('board') || document.querySelector('.kanban-board');
+        }
+
+        function loadBoardState() {
+            try {
+                return JSON.parse(sessionStorage.getItem(BOARD_STATE_KEY) || 'null');
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function saveBoardState() {
+            const board = getBoardScrollEl();
+            const state = loadBoardState() || {};
+            state.scrollLeft = board ? board.scrollLeft : 0;
+            state.scrollY = window.scrollY || 0;
+            state.filters = { ...boardFilters };
+            sessionStorage.setItem(BOARD_STATE_KEY, JSON.stringify(state));
+        }
+
+        function persistBoardFilters() {
+            const state = loadBoardState() || {};
+            state.filters = { ...boardFilters };
+            sessionStorage.setItem(BOARD_STATE_KEY, JSON.stringify(state));
+        }
+
+        function restoreBoardFiltersFromState(state) {
+            if (!state?.filters) return;
+            const f = state.filters;
+            boardFilters.text = f.text || '';
+            boardFilters.status = f.status || 'all';
+            boardFilters.assignee = f.assignee || 'all';
+            boardFilters.dueSoon = !!f.dueSoon;
+
+            const searchInput = document.getElementById('boardSearchInput');
+            const statusSelect = document.getElementById('statusFilterSelect');
+            const assigneeSelect = document.getElementById('assigneeFilterSelect');
+            const dueToggle = document.getElementById('dueSoonToggle');
+            if (searchInput) searchInput.value = boardFilters.text;
+            if (statusSelect) statusSelect.value = boardFilters.status;
+            if (assigneeSelect) assigneeSelect.value = boardFilters.assignee;
+            if (dueToggle) dueToggle.classList.toggle('active', boardFilters.dueSoon);
+
+            const badge = document.getElementById('selectedAssigneeBadge');
+            const badgeName = document.getElementById('selectedAssigneeName');
+            if (badge && badgeName && assigneeSelect) {
+                if (boardFilters.assignee === 'all') {
+                    badge.classList.add('d-none');
+                } else {
+                    const opt = assigneeSelect.options[assigneeSelect.selectedIndex];
+                    badgeName.textContent = boardFilters.assignee === 'unassigned' ? 'تخصیص نیافته' : (opt?.text || '');
+                    badge.classList.remove('d-none');
+                }
+            }
+        }
+
+        function restoreBoardScrollFromState(state) {
+            if (!state) return;
+            const board = getBoardScrollEl();
+            if (board && typeof state.scrollLeft === 'number') {
+                board.scrollLeft = state.scrollLeft;
+            }
+            if (typeof state.scrollY === 'number') {
+                window.scrollTo(0, state.scrollY);
+            }
+        }
+
+        function highlightTaskCard(taskId) {
+            const taskCard = document.querySelector(`.task-card[data-issue-id="${taskId}"]`);
+            if (!taskCard) return;
+            taskCard.style.transition = 'all 0.3s ease';
+            taskCard.style.boxShadow = '0 0 20px rgba(37, 99, 235, 0.6)';
+            taskCard.style.transform = 'scale(1.02)';
+            setTimeout(function() {
+                taskCard.style.boxShadow = '';
+                taskCard.style.transform = '';
+            }, 2000);
+        }
+
+        function reloadBoard() {
+            saveBoardState();
+            window.location.reload();
+        }
+
+        window.addEventListener('beforeunload', saveBoardState);
 
         function showNotification(message, type = 'success') {
             const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
@@ -3212,17 +3297,6 @@
             const assignee = boardFilters.assignee;
             const dueSoon = boardFilters.dueSoon;
 
-            // ابتدا همه کارت‌های حذف شده را برگردان تا بتوانیم فیلتر جدید را اعمال کنیم
-            removedCards.forEach((info, card) => {
-                if (info.nextSibling && info.nextSibling.parentNode) {
-                    info.parent.insertBefore(card, info.nextSibling);
-                } else if (info.parent) {
-                    info.parent.appendChild(card);
-                }
-            });
-            removedCards.clear();
-
-            // فیلتر کارت‌های اصلی
             document.querySelectorAll('.task-card').forEach(card => {
                 if (!card.dataset.initializedDue) {
                     card.dataset.initializedDue = 'true';
@@ -3244,32 +3318,10 @@
                 const matchesDue = !dueSoon || card.dataset.dueSoon === 'true';
 
                 const visible = matchesText && matchesStatus && matchesAssignee && matchesDue;
-                
-                if (visible) {
-                    // اگر کارت حذف شده بود، دوباره اضافه کن
-                    if (removedCards.has(card)) {
-                        const info = removedCards.get(card);
-                        if (info.nextSibling) {
-                            info.parent.insertBefore(card, info.nextSibling);
-                        } else {
-                            info.parent.appendChild(card);
-                        }
-                        removedCards.delete(card);
-                    }
-                    card.classList.remove('filtered-out');
-                    card.style.display = '';
-                } else {
-                    // کارت را از DOM حذف کن و اطلاعات آن را ذخیره کن
-                    if (!removedCards.has(card) && card.parentNode) {
-                        const parent = card.parentNode;
-                        const nextSibling = card.nextSibling;
-                        removedCards.set(card, { parent, nextSibling });
-                        parent.removeChild(card);
-                    }
-                }
+                card.classList.toggle('filtered-out', !visible);
+                card.style.display = visible ? '' : 'none';
             });
 
-            // فیلتر کارت‌های "سبد کارها"
             document.querySelectorAll('.available-task-item').forEach(item => {
                 const assigneeId = item.dataset.assigneeId || 'unassigned';
                 const matchesAssignee = assignee === 'all' || 
@@ -3278,6 +3330,10 @@
                 
                 item.style.display = matchesAssignee ? '' : 'none';
             });
+
+            updateIssueCounts();
+            refreshEmptyColumnStyles();
+            persistBoardFilters();
         }
 
         function scrollToStatusColumn(statusId) {
@@ -3613,13 +3669,22 @@
                         }
                         resetQuickTaskTypeChips();
                         const targetStatusId = response.statusId || quickTaskTargetStatusId;
-                        sessionStorage.setItem('scrollToStatusAfterReload', String(targetStatusId));
+                        appendQuickTaskCard({
+                            id: response.taskId,
+                            statusId: targetStatusId,
+                            statusName: response.statusName || quickTaskTargetStatusName,
+                            title: t,
+                            issueKey: response.issueKey,
+                            isCompleted: false
+                        });
+                        applyBoardFilters();
+                        refreshEmptyColumnStyles();
                         if (response.taskId) {
-                            sessionStorage.setItem('highlightTaskAfterReload', String(response.taskId));
+                            highlightTaskCard(response.taskId);
                         }
-                        setTimeout(function() {
-                            window.location.reload();
-                        }, 800);
+                        if ($btn && $btn.length) {
+                            $btn.prop('disabled', false).html(originalText);
+                        }
                     } else {
                         showNotification('خطا: ' + response.message, 'error');
                         if ($btn && $btn.length) {
@@ -3661,6 +3726,7 @@
             card.dataset.statusName = task.statusName || '';
             card.dataset.title = task.title || '';
             card.dataset.assignee = 'نامشخص';
+            card.dataset.assigneeId = 'unassigned';
             card.dataset.key = task.issueKey || '';
             card.dataset.due = '';
             card.dataset.dueSoon = 'false';
@@ -4055,7 +4121,7 @@
                     if (modalElement) {
                         bootstrap.Modal.getInstance(modalElement)?.hide();
                     }
-                    setTimeout(() => location.reload(), 1000);
+                    setTimeout(() => reloadBoard(), 1000);
                 } catch (error) {
                     showNotification(error.message || 'خطا در ایجاد وضعیت', 'error');
                 } finally {
@@ -4085,7 +4151,7 @@
             try {
                 const data = await postJson('/WorkflowStatus/DeleteInline', { statusId });
                 showNotification(data.message || 'وضعیت حذف شد', 'success');
-                setTimeout(() => location.reload(), 800);
+                setTimeout(() => reloadBoard(), 800);
             } catch (error) {
                 showNotification(error.message || 'خطا در حذف وضعیت', 'error');
             }
@@ -4444,7 +4510,9 @@
             }
 
             showNotification('کار با موفقیت به بک‌لاگ منتقل شد', 'success');
-            setTimeout(() => location.reload(), 500);
+            if (typeof loadAvailableTasks === 'function') {
+                loadAvailableTasks();
+            }
         }
         window.moveIssueToBacklog = moveIssueToBacklog;
 
@@ -4593,7 +4661,7 @@
                     
                     updateIssueCounts();
                 } else {
-                    location.reload();
+                    reloadBoard();
                 }
 
             } catch (err) {
@@ -4646,7 +4714,7 @@
 
                 const moved = moveCardToColumn(card, finalStatusId, finalStatusName);
                 if (!moved) {
-                    setTimeout(() => location.reload(), 500);
+                    setTimeout(() => reloadBoard(), 500);
                 } else {
                     showNotification('کار با موفقیت خاتمه یافت.', 'success');
                 }
@@ -4666,15 +4734,48 @@
                 
 
 
+        function countVisibleTaskCards(columnBody) {
+            if (!columnBody) return 0;
+            return columnBody.querySelectorAll('.task-card:not(.filtered-out)').length;
+        }
+
         function updateIssueCounts() {
             document.querySelectorAll('.kanban-column').forEach(column => {
                 const body = column.querySelector('.column-tasks');
-                const count = body ? body.querySelectorAll('.task-card').length : 0;
+                const count = countVisibleTaskCards(body);
                 const badge = column.querySelector('.column-header .badge');
                 if (badge) {
                     badge.textContent = count;
                 }
             });
+        }
+
+        function updateTaskCardFromEdit(formData) {
+            const card = document.querySelector(`.task-card[data-issue-id="${formData.Id}"]`);
+            if (!card) return false;
+
+            card.dataset.title = formData.Title || '';
+            const titleLink = card.querySelector('.task-title a');
+            if (titleLink) {
+                titleLink.textContent = formData.Title || '';
+            }
+
+            const assigneeSelect = document.getElementById('editTaskAssignedUser');
+            const assigneeId = formData.AssignedUserId || 'unassigned';
+            card.dataset.assigneeId = assigneeId;
+            let assigneeName = 'نامشخص';
+            if (assigneeSelect && assigneeId && assigneeId !== 'unassigned') {
+                const opt = assigneeSelect.querySelector(`option[value="${CSS.escape(assigneeId)}"]`);
+                assigneeName = opt ? opt.textContent.trim() : assigneeName;
+            }
+            card.dataset.assignee = assigneeName;
+            const metaDiv = card.querySelector('.task-meta div');
+            if (metaDiv) {
+                metaDiv.textContent = `👤 ${assigneeName}`;
+            }
+
+            applyBoardFilters();
+            return true;
         }
 
         // باز کردن modal ویرایش تسک
@@ -5163,7 +5264,12 @@
                     if (response.ok && result.success) {
                         showNotification('کار با موفقیت ویرایش شد', 'success');
                         bootstrap.Modal.getInstance(document.getElementById('editTaskModal'))?.hide();
-                        setTimeout(() => location.reload(), 1000);
+                        if (!updateTaskCardFromEdit(formData)) {
+                            setTimeout(() => reloadBoard(), 1000);
+                        } else {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalText;
+                        }
                     } else {
                         showNotification('خطا: ' + (result.message || 'خطا در ویرایش کار'), 'error');
                         submitBtn.disabled = false;
@@ -5177,7 +5283,7 @@
                     if (response.redirected || response.status === 302 || response.status === 301) {
                         // احتمالاً redirect به login شده
                         showNotification('لطفاً دوباره وارد شوید', 'error');
-                        setTimeout(() => location.reload(), 2000);
+                        setTimeout(() => reloadBoard(), 2000);
                     } else {
                         showNotification('خطا در ذخیره تغییرات. لطفاً صفحه را رفرش کنید.', 'error');
                         submitBtn.disabled = false;
@@ -5274,40 +5380,33 @@
         });
 
         document.addEventListener('DOMContentLoaded', function() {
+            const savedState = loadBoardState();
             registerBoardFilterEvents();
+            if (savedState) {
+                restoreBoardFiltersFromState(savedState);
+            }
             applyBoardFilters();
             refreshEmptyColumnStyles();
 
-            // اسکرول به ستون و highlight کارت جدید بعد از reload
             const scrollToStatusId = sessionStorage.getItem('scrollToStatusAfterReload');
             const highlightTaskId = sessionStorage.getItem('highlightTaskAfterReload');
-            
+
             if (scrollToStatusId) {
                 setTimeout(function() {
                     const column = document.querySelector(`.kanban-column[data-status-id="${scrollToStatusId}"]`);
                     if (column) {
                         column.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                        
-                        // highlight کارت جدید
                         if (highlightTaskId) {
-                            const taskCard = document.querySelector(`.task-card[data-issue-id="${highlightTaskId}"]`);
-                            if (taskCard) {
-                                taskCard.style.transition = 'all 0.3s ease';
-                                taskCard.style.boxShadow = '0 0 20px rgba(37, 99, 235, 0.6)';
-                                taskCard.style.transform = 'scale(1.02)';
-                                
-                                setTimeout(function() {
-                                    taskCard.style.boxShadow = '';
-                                    taskCard.style.transform = '';
-                                }, 2000);
-                            }
+                            highlightTaskCard(highlightTaskId);
                         }
                     }
-                    
-                    // پاک کردن sessionStorage
                     sessionStorage.removeItem('scrollToStatusAfterReload');
                     sessionStorage.removeItem('highlightTaskAfterReload');
                 }, 300);
+            } else if (savedState) {
+                requestAnimationFrame(function() {
+                    restoreBoardScrollFromState(savedState);
+                });
             }
 
             const boardElement = document.querySelector('.kanban-board');
@@ -5424,7 +5523,7 @@
                             selectedTaskId = null;
                             $('.available-task-item').removeClass('selected');
                             loadAvailableTasks();
-                            setTimeout(() => location.reload(), 1000);
+                            setTimeout(() => reloadBoard(), 1000);
                         } else {
                             showNotification('خطا: ' + response.message, 'error');
                             taskItem.css('opacity', '1').css('pointer-events', 'auto');
@@ -5594,8 +5693,7 @@
                             showNotification(response.message || 'کارک با موفقیت ایجاد شد', 'success');
                             // بستن Modal
                             bootstrap.Modal.getInstance(document.getElementById('addSubtaskModal')).hide();
-                            // بارگذاری مجدد صفحه برای نمایش زیرتسک جدید
-                            setTimeout(() => location.reload(), 1000);
+                            setTimeout(() => reloadBoard(), 1000);
                         } else {
                             showNotification('خطا: ' + (response.message || 'خطا در ایجاد کارک'), 'error');
                             submitBtn.prop('disabled', false).html(originalText);
@@ -5670,11 +5768,9 @@
                                 }
                             }, 300);
                         } else if (subtaskItem && subtaskItem.closest(`[data-issue-id]`)) {
-                            // اگر زیرتسک حذف شد، صفحه را refresh کن
-                            setTimeout(() => location.reload(), 1000);
+                            setTimeout(() => reloadBoard(), 1000);
                         } else {
-                            // اگر کارت پیدا نشد، صفحه را refresh کن
-                            setTimeout(() => location.reload(), 1000);
+                            setTimeout(() => reloadBoard(), 1000);
                         }
                     },
                     error: function(xhr) {

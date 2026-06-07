@@ -19,7 +19,7 @@ namespace TaskPlanner.Application.Services.DashboardService
         public int AccessibleLeadsCount { get; set; }
 
         public List<DashboardMeetingDto> UpcomingMeetings { get; set; } = new();
-        public List<DashboardChartSliceDto> TaskPrioritySlices { get; set; } = new();
+        public List<DashboardChartSliceDto> LeadSalesSlices { get; set; } = new();
         public List<DashboardChartSliceDto> ProjectTaskDistributionSlices { get; set; } = new();
         public List<DashboardChartSliceDto> ProjectTaskDistributionAllSlices { get; set; } = new();
         public List<DashboardChartSliceDto> LeadPipelineSlices { get; set; } = new();
@@ -46,6 +46,7 @@ namespace TaskPlanner.Application.Services.DashboardService
     {
         public string Label { get; set; } = string.Empty;
         public int Count { get; set; }
+        public decimal Amount { get; set; }
         public string Color { get; set; } = "#6366f1";
     }
 

@@ -31,5 +31,9 @@ namespace Endpoint.Site.Models
         public string? Source { get; set; }
 
         public LeadPipelineStatus Status { get; set; } = LeadPipelineStatus.New;
+
+        [Display(Name = "مبلغ پروژه (تومان)")]
+        [Range(0, double.MaxValue, ErrorMessage = "مبلغ نمی‌تواند منفی باشد")]
+        public decimal? ProjectAmount { get; set; }
     }
 }

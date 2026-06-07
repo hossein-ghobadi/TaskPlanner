@@ -11,6 +11,7 @@ namespace TaskPlanner.Application.Services.LeadService
         public DateTime CreatedAt { get; set; }
         public DateTime? MeetingAt { get; set; }
         public DateTime? NextSessionAt { get; set; }
+        public decimal? ProjectAmount { get; set; }
         public int? ConvertedProjectId { get; set; }
         /// <summary>اگر false باشد، کاربر فقط به‌عنوان همکار به لید دسترسی دارد.</summary>
         public bool IsOwner { get; set; }
@@ -67,6 +68,7 @@ namespace TaskPlanner.Application.Services.LeadService
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public DateTime? MeetingAt { get; set; }
+        public decimal? ProjectAmount { get; set; }
         public int? ConvertedProjectId { get; set; }
         public DateTime? ConvertedAt { get; set; }
         public string OwnerUserId { get; set; } = null!;
@@ -88,6 +90,7 @@ namespace TaskPlanner.Application.Services.LeadService
         public string? Source { get; set; }
         public LeadPipelineStatus Status { get; set; } = LeadPipelineStatus.New;
         public DateTime? MeetingAt { get; set; }
+        public decimal? ProjectAmount { get; set; }
     }
 
     public class UpdateLeadDto
@@ -102,6 +105,7 @@ namespace TaskPlanner.Application.Services.LeadService
         public string? Source { get; set; }
         public LeadPipelineStatus Status { get; set; }
         public DateTime? MeetingAt { get; set; }
+        public decimal? ProjectAmount { get; set; }
     }
 
     public class CreateLeadSessionDto

@@ -44,6 +44,14 @@
                 <input asp-for="Source" class="form-control" placeholder="مثلاً سایت، نمایشگاه، معرفی" />
             </div>
             <div class="col-md-6">
+                <label asp-for="ProjectAmount" class="form-label"></label>
+                <div class="toman-amount-field">
+                    <partial name="_TomanAmountField" model="Model.ProjectAmount" view-data='new ViewDataDictionary(ViewData) { { "placeholder", "مثلاً 12,000,000" } }' />
+                    <input asp-for="ProjectAmount" type="hidden" class="js-toman-amount-hidden" />
+                </div>
+                <span asp-validation-for="ProjectAmount" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
                 <label asp-for="Status" class="form-label">مرحله فروش</label>
                 <select asp-for="Status" class="form-select">
                     <option value="0">جدید</option>
@@ -64,4 +72,5 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/toman-amount.js" asp-append-version="true"></script>
 }

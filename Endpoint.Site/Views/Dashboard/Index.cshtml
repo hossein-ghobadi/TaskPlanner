@@ -201,16 +201,26 @@
     <div class="row g-4 mb-4">
         <div class="col-lg-3">
             <div class="dash-panel h-100">
-                <h2 class="dash-panel__title">اولویت کارهای باز</h2>
-                @if (Model.TaskPrioritySlices.Count == 0)
+                <h2 class="dash-panel__title">فروش و عدم فروش لیدها</h2>
+                <p class="text-muted small mb-2">فروش: تبدیل‌شده · عدم فروش: جدید، در تماس، اعلام قیمت، از دست‌رفته</p>
+                @if (Model.LeadSalesSlices.Count == 0)
                 {
-                    <p class="text-muted small mb-0 py-4 text-center">کار بازی با اولویت ثبت نشده یا همه کارها تمام شده‌اند.</p>
+                    <p class="text-muted small mb-0 py-4 text-center">لیدی در مراحل فروش یا عدم فروش (جدید، در تماس، اعلام قیمت، از دست‌رفته، تبدیل‌شده) با مبلغ ثبت‌شده نیست.</p>
                 }
                 else
                 {
                     <div class="dash-chart-wrap">
-                        <canvas id="chartPriorities" height="220" aria-label="نمودار اولویت"></canvas>
+                        <canvas id="chartLeadSales" height="220" aria-label="نمودار فروش لید"></canvas>
                     </div>
+                    <ul class="list-unstyled small text-muted mb-0 mt-2 dash-lead-sales-summary">
+                        @foreach (var s in Model.LeadSalesSlices)
+                        {
+                            <li class="d-flex justify-content-between gap-2">
+                                <span>@s.Label</span>
+                                <span class="text-nowrap">@s.Amount.ToString("N0").ToPersianNumbers() تومان (@s.Count.ToString().ToPersianNumbers() لید)</span>
+                            </li>
+                        }
+                    </ul>
                 }
             </div>
         </div>
@@ -297,19 +307,36 @@
             };
         }
 
-        var p = payload.priorities || [];
-        if (p.length && document.getElementById('chartPriorities')) {
-            new Chart(document.getElementById('chartPriorities'), {
+        var ls = payload.leadSales || [];
+        if (ls.length && document.getElementById('chartLeadSales')) {
+            new Chart(document.getElementById('chartLeadSales'), {
                 type: 'doughnut',
                 data: {
-                    labels: p.map(function (x) { return x.label; }),
+                    labels: ls.map(function (x) { return x.label; }),
                     datasets: [{
-                        data: p.map(function (x) { return x.count; }),
-                        backgroundColor: p.map(function (x) { return x.color; }),
+                        data: ls.map(function (x) { return x.amount; }),
+                        backgroundColor: ls.map(function (x) { return x.color; }),
                         borderWidth: 0
                     }]
                 },
-                options: baseOptions()
+                options: Object.assign({}, baseOptions(), {
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            rtl: fa,
+                            labels: { font: { family: 'Vazir, Tahoma, sans-serif' } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) {
+                                    var slice = ls[ctx.dataIndex];
+                                    var amount = (slice && slice.amount != null) ? slice.amount : ctx.parsed;
+                                    return ctx.label + ': ' + Number(amount).toLocaleString('fa-IR') + ' تومان';
+                                }
+                            }
+                        }
+                    }
+                })
             });
         }
 
