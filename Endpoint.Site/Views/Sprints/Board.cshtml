@@ -87,6 +87,11 @@
     // نوع پیش‌فرض: Task یا اولین گزینه موجود
     var defaultIssueType = availableIssueTypes.FirstOrDefault(pit => pit.BaseType == IssueType.Task && !pit.IsCustom) 
                            ?? availableIssueTypes.FirstOrDefault();
+    var projectMembersForBoard = (ViewBag.ProjectMembers as List<ProjectMemberVm> ?? new List<ProjectMemberVm>())
+        .Select(m => new { id = m.UserId, name = m.FullName ?? m.UserName })
+        .ToList();
+    var boardTodayPersian = DateTime.Today.ToShortPersianDateString();
+    var sprintIsActive = Model.Status == SprintStatus.Active;
 }
 
 <style>
@@ -795,6 +800,19 @@
     background: #0d6efd;
     color: #fff;
     box-shadow: 0 2px 6px rgba(13, 110, 253, 0.4);
+    }
+    .column-add-task-bar {
+    padding: 0.35rem 0.5rem 0.25rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    background: rgba(255, 255, 255, 0.55);
+    }
+    .column-add-task-btn {
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-style: dashed;
+    }
+    .column-add-task-btn:hover {
+    border-style: solid;
     }
     .delete-status-btn {
     background: rgba(255, 255, 255, 0.95) !important;
@@ -2594,6 +2612,19 @@
                                 }
                             </div>
                         </div>
+                        @if (sprintIsActive)
+                        {
+                            <div class="column-add-task-bar">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary w-100 column-add-task-btn"
+                                        data-status-id="@status.Id"
+                                        data-status-name="@status.Name"
+                                        title="افزودن کار در @status.Name">
+                                    <i class="bi bi-plus-lg"></i>
+                                    افزودن کار
+                                </button>
+                            </div>
+                        }
                         <div class="column-tasks" id="tasks-@status.Id" data-status-id="@status.Id" ondrop="onDropIssue(event, @status.Id)" ondragover="onDragOverColumn(event)" ondragleave="onDragLeave(event)">
                             @{
                                 var cards = Model.SprintIssues
@@ -2935,10 +2966,13 @@
             </div>
             <div class="modal-body">
                 <div id="editTaskForm">
+                    <input type="hidden" id="editTaskMode" value="edit" />
                     <input type="hidden" id="editTaskId" />
                     <input type="hidden" id="editTaskProjectId" />
                     <input type="hidden" id="editTaskProjectIssueTypeId" />
                     <input type="hidden" id="editTaskIssueTypeHidden" />
+                    <input type="hidden" id="editTaskTargetStatusId" />
+                    <input type="hidden" id="editTaskTargetStatusName" />
 
                     <div class="row g-3">
                         <div class="col-lg-8">
@@ -3085,7 +3119,7 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle me-2"></i>انصراف
                 </button>
-                <button type="button" class="btn btn-primary" onclick="submitEditTask()">
+                <button type="button" class="btn btn-primary" id="editTaskSubmitBtn" onclick="submitEditTask()">
                     <i class="bi bi-check-circle me-2"></i>ذخیره تغییرات
                 </button>
             </div>
@@ -3156,6 +3190,11 @@
         const defaultStatusName = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(defaultStatusName));
         const finalStatusId = @(finalStatus?.Id ?? 0);
         const finalStatusName = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(finalStatusName));
+        const sprintIsActive = @(sprintIsActive.ToString().ToLower());
+        const boardProjectMembers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(projectMembersForBoard));
+        const boardDefaultIssueTypeId = @(defaultIssueType?.Id ?? 0);
+        const boardDefaultIssueTypeBase = @((int)(defaultIssueType?.BaseType ?? IssueType.Task));
+        const boardTodayPersian = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(boardTodayPersian));
         let quickTaskTargetStatusId = defaultStatusId;
         let quickTaskTargetStatusName = defaultStatusName;
         const boardFilters = {
@@ -3244,6 +3283,141 @@
                 taskCard.style.boxShadow = '';
                 taskCard.style.transform = '';
             }, 2000);
+        }
+
+        function setTaskModalMode(mode) {
+            const isCreate = mode === 'create';
+            document.getElementById('editTaskMode').value = mode;
+            const titleEl = document.getElementById('editTaskModalLabel');
+            const submitBtn = document.getElementById('editTaskSubmitBtn');
+            const chatSection = document.querySelector('#editTaskModal .chat-container');
+            const checklistPanel = document.getElementById('boardChecklistPanel');
+            if (titleEl) {
+                titleEl.innerHTML = isCreate
+                    ? '<i class="bi bi-plus-circle me-2"></i>افزودن کار جدید'
+                    : '<i class="bi bi-list-check me-2"></i>جزئیات و ویرایش کار';
+            }
+            if (submitBtn) {
+                submitBtn.innerHTML = isCreate
+                    ? '<i class="bi bi-plus-circle me-2"></i>افزودن کار'
+                    : '<i class="bi bi-check-circle me-2"></i>ذخیره تغییرات';
+            }
+            if (chatSection) {
+                chatSection.style.display = isCreate ? 'none' : '';
+            }
+            if (checklistPanel && isCreate) {
+                checklistPanel.style.display = 'none';
+                boardSubtaskParentId = null;
+            }
+        }
+
+        function populateAssignedUserSelect(users, selectedId) {
+            const assignedUserSelect = document.getElementById('editTaskAssignedUser');
+            if (!assignedUserSelect) return;
+            assignedUserSelect.innerHTML = '<option value="">-- انتخاب کاربر --</option>';
+            (users || []).forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = user.name;
+                if (selectedId && user.id === selectedId) {
+                    option.selected = true;
+                }
+                assignedUserSelect.appendChild(option);
+            });
+            assignedUserSelect.disabled = false;
+        }
+
+        function initTaskModalDatePickers(startDateValue, dueDateValue) {
+            if (!window.$ || !$.fn.persianDatepicker) return;
+            const $startInput = $('#editTaskStartDateDisplay');
+            const $dueInput = $('#editTaskDueDateDisplay');
+            const existingStartPicker = $startInput.data('datepicker');
+            const existingDuePicker = $dueInput.data('datepicker');
+            if (existingStartPicker && typeof existingStartPicker.destroy === 'function') {
+                existingStartPicker.destroy();
+            }
+            if (existingDuePicker && typeof existingDuePicker.destroy === 'function') {
+                existingDuePicker.destroy();
+            }
+            $startInput.val(startDateValue || '').attr('value', startDateValue || '');
+            $dueInput.val(dueDateValue || '').attr('value', dueDateValue || '');
+            $startInput.persianDatepicker({
+                format: 'YYYY/MM/DD',
+                autoClose: true,
+                initialValueType: 'persian',
+                initialValue: !!startDateValue,
+                altField: '#editTaskStartDate',
+                altFormat: 'YYYY/MM/DD',
+                timePicker: { enabled: false },
+                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+            });
+            $dueInput.persianDatepicker({
+                format: 'YYYY/MM/DD',
+                autoClose: true,
+                initialValueType: 'persian',
+                initialValue: !!dueDateValue,
+                altField: '#editTaskDueDate',
+                altFormat: 'YYYY/MM/DD',
+                timePicker: { enabled: false },
+                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+            });
+            document.getElementById('editTaskStartDate').value = $startInput.val() || '';
+            document.getElementById('editTaskDueDate').value = $dueInput.val() || '';
+        }
+
+        function resetCreateTaskForm(statusId, statusName) {
+            document.getElementById('editTaskId').value = '';
+            document.getElementById('editTaskProjectId').value = String(projectId);
+            document.getElementById('editTaskProjectIssueTypeId').value = boardDefaultIssueTypeId ? String(boardDefaultIssueTypeId) : '';
+            document.getElementById('editTaskIssueTypeHidden').value = String(boardDefaultIssueTypeBase || 3);
+            document.getElementById('editTaskTargetStatusId').value = statusId ? String(statusId) : '';
+            document.getElementById('editTaskTargetStatusName').value = statusName || '';
+            document.getElementById('editTaskTitle').value = '';
+            document.getElementById('editTaskDescription').value = '';
+            document.getElementById('editTaskCategory').value = '';
+            document.getElementById('editTaskAssignedUser').value = '';
+            const effortLevelSelect = document.getElementById('editTaskEffortLevel');
+            const effortLevelDisplay = document.getElementById('editTaskEffortLevelDisplay');
+            if (effortLevelSelect) {
+                effortLevelSelect.value = '';
+                effortLevelSelect.disabled = false;
+                effortLevelSelect.onchange = function () {
+                    if (effortLevelDisplay) {
+                        effortLevelDisplay.textContent = effortLevelToLabel(this.value);
+                    }
+                };
+            }
+            if (effortLevelDisplay) {
+                effortLevelDisplay.textContent = 'تعیین نشده';
+            }
+            populateAssignedUserSelect(boardProjectMembers, '');
+            initTaskModalDatePickers(boardTodayPersian, '');
+            originalTaskData = null;
+            clearReplyContext();
+        }
+
+        function openAddTaskModal(statusId, statusName) {
+            if (!sprintIsActive) {
+                showNotification('فقط در اسپرینت فعال می‌توان کار جدید اضافه کرد', 'error');
+                return;
+            }
+            if (!statusId) {
+                showNotification('ستون مقصد نامعتبر است', 'error');
+                return;
+            }
+            const modalElement = document.getElementById('editTaskModal');
+            if (!modalElement) {
+                showNotification('خطا در باز کردن فرم افزودن کار', 'error');
+                return;
+            }
+            setTaskModalMode('create');
+            resetCreateTaskForm(statusId, statusName);
+            const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+            modal.show();
+            setTimeout(function() {
+                const titleInput = document.getElementById('editTaskTitle');
+                titleInput?.focus();
+            }, 250);
         }
 
         function reloadBoard() {
@@ -3725,8 +3899,8 @@
             card.dataset.statusId = task.statusId;
             card.dataset.statusName = task.statusName || '';
             card.dataset.title = task.title || '';
-            card.dataset.assignee = 'نامشخص';
-            card.dataset.assigneeId = 'unassigned';
+            card.dataset.assignee = task.assigneeName || 'نامشخص';
+            card.dataset.assigneeId = task.assigneeId || 'unassigned';
             card.dataset.key = task.issueKey || '';
             card.dataset.due = '';
             card.dataset.dueSoon = 'false';
@@ -3794,12 +3968,14 @@
                     <a href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(${task.id}); return false;">${safeTitle}</a>
                 </div>
                 <div class="task-meta">
-                    <div>👤 نامشخص</div>
+                    <div>👤 ${escapeHtml(task.assigneeName || 'نامشخص')}</div>
                 </div>
             `;
 
             columnBody.prepend(card);
+            applyBoardFilters();
             updateIssueCounts();
+            refreshEmptyColumnStyles();
         }
 
         function escapeHtml(value) {
@@ -4957,6 +5133,10 @@
                 return;
             }
 
+            setTaskModalMode('edit');
+            document.getElementById('editTaskTargetStatusId').value = '';
+            document.getElementById('editTaskTargetStatusName').value = '';
+
             // باز کردن modal
             const modal = new bootstrap.Modal(modalElement);
             modal.show();
@@ -5185,8 +5365,111 @@
 
 
 
+        async function submitCreateTask() {
+            const title = document.getElementById('editTaskTitle').value.trim();
+            if (!title) {
+                showNotification('عنوان کار الزامی است', 'error');
+                document.getElementById('editTaskTitle')?.focus();
+                return;
+            }
+
+            const statusId = parseInt(document.getElementById('editTaskTargetStatusId').value, 10);
+            const statusName = document.getElementById('editTaskTargetStatusName').value || '';
+            if (!statusId) {
+                showNotification('ستون مقصد نامعتبر است', 'error');
+                return;
+            }
+
+            const issueType = parseInt(document.getElementById('editTaskIssueTypeHidden').value || '3', 10);
+            const projectIssueTypeId = document.getElementById('editTaskProjectIssueTypeId').value || null;
+            const assignedUserSelect = document.getElementById('editTaskAssignedUser');
+            const assignedUserId = assignedUserSelect?.value || null;
+            const assignedUserName = assignedUserId
+                ? (assignedUserSelect.options[assignedUserSelect.selectedIndex]?.text || 'نامشخص')
+                : 'نامشخص';
+
+            const payload = {
+                sprintId: sprintId,
+                title: title,
+                description: document.getElementById('editTaskDescription').value || '',
+                issueType: issueType,
+                statusId: statusId,
+                categoryId: document.getElementById('editTaskCategory').value ? parseInt(document.getElementById('editTaskCategory').value, 10) : null,
+                assignedUserId: assignedUserId,
+                startDateSh: document.getElementById('editTaskStartDate').value || '',
+                dueDateSh: document.getElementById('editTaskDueDate').value || '',
+                effortLevel: document.getElementById('editTaskEffortLevel').value
+                    ? parseInt(document.getElementById('editTaskEffortLevel').value, 10)
+                    : null
+            };
+            if (projectIssueTypeId) {
+                payload.projectIssueTypeId = parseInt(projectIssueTypeId, 10);
+            }
+
+            const submitBtn = document.getElementById('editTaskSubmitBtn');
+            const originalText = submitBtn?.innerHTML || '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>در حال افزودن...';
+            }
+
+            try {
+                const response = await fetch('/Sprints/CreateQuickTask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'خطا در افزودن کار');
+                }
+
+                appendQuickTaskCard({
+                    id: result.taskId,
+                    statusId: result.statusId || statusId,
+                    statusName: result.statusName || statusName,
+                    title: title,
+                    issueKey: result.issueKey,
+                    isCompleted: false,
+                    assigneeId: assignedUserId || 'unassigned',
+                    assigneeName: assignedUserName
+                });
+                highlightTaskCard(result.taskId);
+                showNotification(result.message || 'کار با موفقیت اضافه شد', 'success');
+
+                document.getElementById('editTaskTitle').value = '';
+                document.getElementById('editTaskDescription').value = '';
+                document.getElementById('editTaskCategory').value = '';
+                if (assignedUserSelect) assignedUserSelect.value = '';
+                const effortLevelSelect = document.getElementById('editTaskEffortLevel');
+                if (effortLevelSelect) effortLevelSelect.value = '';
+                const effortLevelDisplay = document.getElementById('editTaskEffortLevelDisplay');
+                if (effortLevelDisplay) effortLevelDisplay.textContent = 'تعیین نشده';
+                initTaskModalDatePickers(boardTodayPersian, '');
+                setTimeout(function() {
+                    document.getElementById('editTaskTitle')?.focus();
+                }, 100);
+            } catch (error) {
+                showNotification(error.message || 'خطا در افزودن کار', 'error');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            }
+        }
+
         // ارسال فرم ویرایش کار
         async function submitEditTask() {
+            const mode = document.getElementById('editTaskMode')?.value || 'edit';
+            if (mode === 'create') {
+                await submitCreateTask();
+                return;
+            }
+
             const taskId = document.getElementById('editTaskId').value;
             if (!taskId) {
                 showNotification('شناسه کار نامعتبر است', 'error');
@@ -5236,7 +5519,7 @@
             };
             
             // نمایش loading
-            const submitBtn = document.querySelector('button[onclick="submitEditTask()"]');
+            const submitBtn = document.getElementById('editTaskSubmitBtn');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>در حال ذخیره...';
@@ -5377,6 +5660,16 @@
                 const subBtn = wrap.querySelector('.board-inline-add-submit');
                 runCreateQuickTask((el.value || '').trim(), subBtn, wrap);
             }
+        });
+
+        document.addEventListener('click', function(e) {
+            const addBtn = e.target.closest('.column-add-task-btn');
+            if (!addBtn) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const statusId = parseInt(addBtn.dataset.statusId, 10);
+            const statusName = addBtn.dataset.statusName || '';
+            openAddTaskModal(statusId, statusName);
         });
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -6572,6 +6865,7 @@
             window.handleCardClick = handleCardClick;
             window.submitEditTask = submitEditTask;
             window.openEditTaskModal = openEditTaskModal;
+            window.openAddTaskModal = openAddTaskModal;
             window.completeTask = completeTask;
             window.deleteTask = deleteTask;
             window.toggleSubtask = toggleSubtask;

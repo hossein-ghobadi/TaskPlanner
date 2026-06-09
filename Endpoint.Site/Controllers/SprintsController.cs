@@ -1118,6 +1118,31 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
+            var startDate = DateTime.Today;
+            if (data.TryGetProperty("startDateSh", out var startDateProp) && !string.IsNullOrWhiteSpace(startDateProp.GetString()))
+            {
+                var parsedStart = startDateProp.GetString()!.ToGregorianDateTime();
+                if (parsedStart.HasValue)
+                    startDate = parsedStart.Value;
+            }
+
+            DateTime? dueDate = null;
+            if (data.TryGetProperty("dueDateSh", out var dueDateProp) && !string.IsNullOrWhiteSpace(dueDateProp.GetString()))
+            {
+                dueDate = dueDateProp.GetString()!.ToGregorianDateTime();
+            }
+
+            int? storyPoints = null;
+            if (data.TryGetProperty("effortLevel", out var effortProp) && effortProp.ValueKind == JsonValueKind.Number)
+            {
+                var effortLevel = (TaskEffortLevel)effortProp.GetInt32();
+                storyPoints = TaskEffortLevelMapper.ToStoryPoints(effortLevel);
+            }
+            else if (data.TryGetProperty("storyPoints", out var spProp) && spProp.ValueKind == JsonValueKind.Number)
+            {
+                storyPoints = spProp.GetInt32();
+            }
+
             // تسک را ابتدا بدون IssueKey ذخیره می‌کنیم تا Id تولید شود، بعد IssueKey = Prefix-Id (همیشه یکتا)
             var newTask = new TaskItem
             {
@@ -1126,12 +1151,12 @@ namespace Endpoint.Site.Controllers
                 IssueType = issueType,
                 ProjectIssueTypeId = projectIssueTypeId,
                 IssueKey = null,
-                StartDate = DateTime.Today,
-                DueDate = null,
+                StartDate = startDate,
+                DueDate = dueDate,
                 ProjectId = sprint.ProjectId,
                 CategoryId = categoryId,
                 AssignedUserId = data.TryGetProperty("assignedUserId", out var assignedProp) && !string.IsNullOrWhiteSpace(assignedProp.GetString()) ? assignedProp.GetString() : null,
-                StoryPoints = data.TryGetProperty("storyPoints", out var spProp) && spProp.ValueKind == JsonValueKind.Number ? spProp.GetInt32() : null,
+                StoryPoints = storyPoints,
                 StatusId = targetStatusId,
                 WorkflowStatusId = targetStatusId,
                 IsCompleted = isFinalStatus,
