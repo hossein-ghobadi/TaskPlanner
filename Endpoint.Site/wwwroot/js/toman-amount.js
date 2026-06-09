@@ -5,13 +5,25 @@
         return String(value || '').replace(/\D/g, '');
     }
 
+    function parseAmountDigits(value) {
+        var s = String(value || '').trim();
+        if (!s) return '';
+        if (/^\d+$/.test(s)) return s;
+        var normalized = s.replace(/,/g, '');
+        var num = parseFloat(normalized);
+        if (Number.isFinite(num) && num >= 0) {
+            return String(Math.round(num));
+        }
+        return digitsOnly(s);
+    }
+
     function formatGrouped(digits) {
         if (!digits) return '';
         return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
 
     function syncDisplayToHidden(displayInput, hiddenInput) {
-        var digits = digitsOnly(displayInput.value);
+        var digits = parseAmountDigits(displayInput.value);
         hiddenInput.value = digits ? digits : '';
         displayInput.value = formatGrouped(digits);
     }
@@ -22,9 +34,9 @@
         var hiddenInput = root.querySelector('.js-toman-amount-hidden');
         if (!hiddenInput) return;
 
-        if (hiddenInput.value) {
-            displayInput.value = formatGrouped(digitsOnly(hiddenInput.value));
-        }
+        var digits = parseAmountDigits(hiddenInput.value) || parseAmountDigits(displayInput.value);
+        hiddenInput.value = digits;
+        displayInput.value = formatGrouped(digits);
 
         displayInput.addEventListener('input', function () {
             syncDisplayToHidden(displayInput, hiddenInput);

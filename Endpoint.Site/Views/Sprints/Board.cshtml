@@ -3791,7 +3791,7 @@
                     </div>
                 </div>
                 <div class="task-title">
-                    <a href="/Tasks/Details/${task.id}" onclick="event.stopPropagation();">${safeTitle}</a>
+                    <a href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(${task.id}); return false;">${safeTitle}</a>
                 </div>
                 <div class="task-meta">
                     <div>👤 نامشخص</div>
