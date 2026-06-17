@@ -1143,56 +1143,75 @@ namespace Endpoint.Site.Controllers
                 storyPoints = spProp.GetInt32();
             }
 
-            // تسک را ابتدا بدون IssueKey ذخیره می‌کنیم تا Id تولید شود، بعد IssueKey = Prefix-Id (همیشه یکتا)
-            var newTask = new TaskItem
+            try
             {
-                Title = title,
-                Description = data.TryGetProperty("description", out var descProp) ? descProp.GetString() : null,
-                IssueType = issueType,
-                ProjectIssueTypeId = projectIssueTypeId,
-                IssueKey = null,
-                ProjectId = sprint.ProjectId,
-                CategoryId = categoryId,
-                AssignedUserId = data.TryGetProperty("assignedUserId", out var assignedProp) && !string.IsNullOrWhiteSpace(assignedProp.GetString()) ? assignedProp.GetString() : null,
-                StoryPoints = storyPoints,
-                StatusId = targetStatusId,
-                WorkflowStatusId = targetStatusId,
-                IsCompleted = isFinalStatus,
-                SprintId = sprintId,
-                CreatedByUserId = userId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            TaskScheduleHelper.ApplySchedule(newTask, startDate, durationDays);
+                // تسک را ابتدا بدون IssueKey ذخیره می‌کنیم تا Id تولید شود، بعد IssueKey = Prefix-Id (همیشه یکتا)
+                var newTask = new TaskItem
+                {
+                    Title = title,
+                    Description = data.TryGetProperty("description", out var descProp) ? descProp.GetString() : null,
+                    IssueType = issueType,
+                    ProjectIssueTypeId = projectIssueTypeId,
+                    IssueKey = null,
+                    ProjectId = sprint.ProjectId,
+                    CategoryId = categoryId,
+                    AssignedUserId = data.TryGetProperty("assignedUserId", out var assignedProp) && !string.IsNullOrWhiteSpace(assignedProp.GetString()) ? assignedProp.GetString() : null,
+                    StoryPoints = storyPoints,
+                    StatusId = targetStatusId,
+                    WorkflowStatusId = targetStatusId,
+                    IsCompleted = isFinalStatus,
+                    SprintId = sprintId,
+                    CreatedByUserId = userId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                TaskScheduleHelper.ApplySchedule(newTask, startDate, durationDays);
 
-            _context.TaskItems.Add(newTask);
-            await _context.SaveChangesAsync();
+                _context.TaskItems.Add(newTask);
+                await _context.SaveChangesAsync();
 
-            newTask.IssueKey = $"{projectInfo.IssueKeyPrefix}-{newTask.Id}";
-            await _context.SaveChangesAsync();
+                newTask.IssueKey = $"{projectInfo.IssueKeyPrefix}-{newTask.Id}";
+                await _context.SaveChangesAsync();
 
-            var sprintTask = new SprintTask
+                var sprintTask = new SprintTask
+                {
+                    SprintId = sprintId,
+                    TaskId = newTask.Id,
+                    AddedAt = DateTime.UtcNow,
+                    AddedByUserId = userId,
+                    Status = isFinalStatus ? SprintTaskStatus.Completed : SprintTaskStatus.Pending,
+                    SprintPriority = (int)TaskPriority.Medium
+                };
+
+                _context.SprintTasks.Add(sprintTask);
+                await _context.SaveChangesAsync();
+
+                return Json(new
+                {
+                    success = true,
+                    message = "تسک با موفقیت ایجاد و به اسپرینت اضافه شد.",
+                    taskId = newTask.Id,
+                    issueKey = newTask.IssueKey,
+                    statusId = targetStatusId,
+                    statusName = targetStatusName
+                });
+            }
+            catch (DbUpdateException ex) when (!startDate.HasValue)
             {
-                SprintId = sprintId,
-                TaskId = newTask.Id,
-                AddedAt = DateTime.UtcNow,
-                AddedByUserId = userId,
-                Status = isFinalStatus ? SprintTaskStatus.Completed : SprintTaskStatus.Pending,
-                SprintPriority = (int)TaskPriority.Medium
-            };
-
-            _context.SprintTasks.Add(sprintTask);
-            await _context.SaveChangesAsync();
-
-            return Json(new
+                return Json(new
+                {
+                    success = false,
+                    message = "تاریخ شروع خالی ارسال شده اما ستون StartDate هنوز در دیتابیس nullable نیست. لطفا migration مربوطه را اجرا کنید."
+                });
+            }
+            catch (Exception ex)
             {
-                success = true,
-                message = "تسک با موفقیت ایجاد و به اسپرینت اضافه شد.",
-                taskId = newTask.Id,
-                issueKey = newTask.IssueKey,
-                statusId = targetStatusId,
-                statusName = targetStatusName
-            });
+                return Json(new
+                {
+                    success = false,
+                    message = "خطا در ایجاد کار: " + ex.Message
+                });
+            }
         }
 
         // 📌 ایجاد اسپرینت جدید

@@ -249,7 +249,7 @@
                 اطلاعات اصلی
             </div>
             
-            <div class="mb-4">
+            @*<div class="mb-4">
                 <label class="form-label">
                     <i class="bi bi-tag"></i>
                     نوع کار
@@ -257,7 +257,7 @@
                 <input type="text" class="form-control" value="Task" readonly />
                 <small class="text-muted">نوع این آیتم همیشه «تسک» است.</small>
             </div>
-
+            *@
             <div class="mb-4">
                 <label asp-for="Title" class="form-label">
                     <i class="bi bi-card-heading"></i>
@@ -289,9 +289,9 @@
                 <div>
                     <label class="form-label">
                         <i class="bi bi-calendar-event"></i>
-                        تاریخ شروع
+                        تاریخ شروع <span class="text-muted small">(اختیاری)</span>
                     </label>
-                    <input type="text" id="StartDateDisplay" class="form-control" autocomplete="off" />
+                    <input type="text" id="StartDateDisplay" class="form-control" autocomplete="off" placeholder="انتخاب تاریخ" />
                     <input type="hidden" asp-for="StartDateSh" id="StartDate" />
                     <span asp-validation-for="StartDateSh" class="text-danger small"></span>
                 </div>
@@ -392,11 +392,19 @@
             $("#StartDateDisplay").persianDatepicker({
                 format: 'YYYY/MM/DD',
                 autoClose: true,
+                initialValue: false,
+                initialValueType: 'persian',
                 altField: '#StartDate',
                 altFormat: 'YYYY/MM/DD',
                 calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } },
-                timePicker: { enabled: false }
+                timePicker: { enabled: false },
+                onSelect: function () {
+                    if (!$("#StartDateDisplay").val()) {
+                        $("#StartDate").val('');
+                    }
+                }
             });
+            $("#StartDate").val('');
 
             let isSubmittingForm = false;
             const form = document.querySelector('form');
@@ -404,6 +412,9 @@
             const originalButtonContent = submitButton ? submitButton.innerHTML : '';
 
             form?.addEventListener('submit', function (event) {
+                if (!$("#StartDateDisplay").val()?.trim()) {
+                    $("#StartDate").val('');
+                }
                 if (isSubmittingForm) {
                     event.preventDefault();
                     return false;
@@ -458,11 +469,19 @@
         $("#StartDateDisplay").persianDatepicker({
             format: 'YYYY/MM/DD',
             autoClose: true,
+            initialValue: false,
+            initialValueType: 'persian',
             altField: '#StartDate',
-            altFormat: 'YYYY/MM/DD',   // 👈 خروجی Hidden هم شمسی
+            altFormat: 'YYYY/MM/DD',
             calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' }},
-            timePicker: { enabled: false }
+            timePicker: { enabled: false },
+            onSelect: function () {
+                if (!$("#StartDateDisplay").val()) {
+                    $("#StartDate").val('');
+                }
+            }
         });
+        $("#StartDate").val('');
 
         // تاریخ پایان حذف شد — مهلت از تاریخ شروع + مدت محاسبه می‌شود.
         document.addEventListener('DOMContentLoaded', function () {
@@ -474,6 +493,9 @@
             const originalButtonContent = submitButton ? submitButton.innerHTML : '';
 
             form.addEventListener('submit', function (event) {
+                if (!$("#StartDateDisplay").val()?.trim()) {
+                    $("#StartDate").val('');
+                }
                 if (isSubmittingForm) {
                     event.preventDefault();
                     return false;

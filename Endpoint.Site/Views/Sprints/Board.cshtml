@@ -5581,7 +5581,13 @@
                     },
                     body: JSON.stringify(payload)
                 });
-                const result = await response.json();
+                const responseText = await response.text();
+                let result;
+                try {
+                    result = responseText ? JSON.parse(responseText) : {};
+                } catch (_) {
+                    throw new Error('پاسخ سرور نامعتبر است. لطفاً صفحه را رفرش کنید.');
+                }
                 if (!response.ok || !result.success) {
                     throw new Error(result.message || 'خطا در افزودن کار');
                 }
