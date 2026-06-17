@@ -53,9 +53,13 @@ namespace Endpoint.Site.Models
         public IssueType IssueType { get; set; } = IssueType.Task;
 
         [Required(ErrorMessage = "تاریخ شروع الزامی است")]
-        public string StartDateSh { get; set; }   // تاریخ شمسی به صورت متن
+        public string? StartDateSh { get; set; }   // تاریخ شمسی به صورت متن
 
-        public string? DueDateSh { get; set; }    // تاریخ شمسی به صورت متن
+        /// <summary>
+        /// مدت انجام کار به روز
+        /// </summary>
+        [Range(0, 3650, ErrorMessage = "مدت زمان باید بین ۰ تا ۳۶۵۰ روز باشد.")]
+        public int? DurationDays { get; set; }
 
         // دسته‌بندی (Component) - اختیاری مثل Jira
         public int? CategoryId { get; set; }

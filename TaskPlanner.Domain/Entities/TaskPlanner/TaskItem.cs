@@ -39,6 +39,11 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
 
         public DateTime? DueDate { get; set; }
 
+        /// <summary>
+        /// مدت انجام کار به روز (از تاریخ شروع تا مهلت)
+        /// </summary>
+        public int? DurationDays { get; set; }
+
         public bool IsCompleted { get; set; }
 
         // اولویت

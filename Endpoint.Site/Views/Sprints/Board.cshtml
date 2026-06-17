@@ -3097,9 +3097,11 @@
                                     <input type="text" class="form-control mb-2" id="editTaskStartDateDisplay" autocomplete="off">
                                     <input type="hidden" id="editTaskStartDate">
 
-                                    <label for="editTaskDueDateDisplay" class="form-label">تاریخ پایان</label>
-                                    <input type="text" class="form-control" id="editTaskDueDateDisplay" autocomplete="off">
-                                    <input type="hidden" id="editTaskDueDate">
+                                    <label for="editTaskDurationDays" class="form-label">مدت انجام (روز)</label>
+                                    <input type="number" class="form-control mb-2" id="editTaskDurationDays" min="0" max="3650" placeholder="مثلاً ۳">
+                                    <small class="text-muted d-block mb-2">با تاریخ شروع، مهلت انجام خودکار محاسبه می‌شود.</small>
+                                    <label class="form-label text-muted small">مهلت محاسبه‌شده</label>
+                                    <div class="form-control bg-light" id="editTaskComputedDueDate">—</div>
                                 </div>
 
                                 <div class="info-block">
@@ -3364,20 +3366,14 @@
             assignedUserSelect.disabled = false;
         }
 
-        function initTaskModalDatePickers(startDateValue, dueDateValue) {
+        function initTaskModalDatePickers(startDateValue) {
             if (!window.$ || !$.fn.persianDatepicker) return;
             const $startInput = $('#editTaskStartDateDisplay');
-            const $dueInput = $('#editTaskDueDateDisplay');
             const existingStartPicker = $startInput.data('datepicker');
-            const existingDuePicker = $dueInput.data('datepicker');
             if (existingStartPicker && typeof existingStartPicker.destroy === 'function') {
                 existingStartPicker.destroy();
             }
-            if (existingDuePicker && typeof existingDuePicker.destroy === 'function') {
-                existingDuePicker.destroy();
-            }
             $startInput.val(startDateValue || '').attr('value', startDateValue || '');
-            $dueInput.val(dueDateValue || '').attr('value', dueDateValue || '');
             $startInput.persianDatepicker({
                 format: 'YYYY/MM/DD',
                 autoClose: true,
@@ -3386,20 +3382,34 @@
                 altField: '#editTaskStartDate',
                 altFormat: 'YYYY/MM/DD',
                 timePicker: { enabled: false },
-                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
-            });
-            $dueInput.persianDatepicker({
-                format: 'YYYY/MM/DD',
-                autoClose: true,
-                initialValueType: 'persian',
-                initialValue: !!dueDateValue,
-                altField: '#editTaskDueDate',
-                altFormat: 'YYYY/MM/DD',
-                timePicker: { enabled: false },
-                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
+                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } },
+                onSelect: function () {
+                    updateComputedDueDateDisplay();
+                }
             });
             document.getElementById('editTaskStartDate').value = $startInput.val() || '';
-            document.getElementById('editTaskDueDate').value = $dueInput.val() || '';
+            updateComputedDueDateDisplay();
+        }
+
+        function updateComputedDueDateDisplay(fallbackDueDateSh) {
+            const displayEl = document.getElementById('editTaskComputedDueDate');
+            if (!displayEl) return;
+            const durationInput = document.getElementById('editTaskDurationDays');
+            const durationRaw = durationInput ? durationInput.value : '';
+            const duration = durationRaw === '' ? null : parseInt(durationRaw, 10);
+            const startSh = document.getElementById('editTaskStartDate')?.value || '';
+            if (startSh && duration !== null && !Number.isNaN(duration) && duration >= 0 && window.persianDate) {
+                try {
+                    const parts = startSh.split('/');
+                    if (parts.length === 3) {
+                        const pd = new persianDate([parseInt(parts[0], 10), parseInt(parts[1], 10), parseInt(parts[2], 10)]);
+                        pd.add('day', duration);
+                        displayEl.textContent = pd.format('YYYY/MM/DD');
+                        return;
+                    }
+                } catch (_) { /* fallback below */ }
+            }
+            displayEl.textContent = fallbackDueDateSh || '—';
         }
 
         function resetCreateTaskForm(statusId, statusName) {
@@ -3428,7 +3438,9 @@
                 effortLevelDisplay.textContent = 'تعیین نشده';
             }
             populateAssignedUserSelect(boardProjectMembers, '');
-            initTaskModalDatePickers(boardTodayPersian, '');
+            initTaskModalDatePickers(boardTodayPersian);
+            const durationInput = document.getElementById('editTaskDurationDays');
+            if (durationInput) durationInput.value = '';
             originalTaskData = null;
             clearReplyContext();
         }
@@ -5326,20 +5338,18 @@
                 document.getElementById('editTaskDescription').value = taskData.description || '';
                 const startDateDisplayEl = document.getElementById('editTaskStartDateDisplay');
                 const startDateHiddenEl = document.getElementById('editTaskStartDate');
-                const dueDateDisplayEl = document.getElementById('editTaskDueDateDisplay');
-                const dueDateHiddenEl = document.getElementById('editTaskDueDate');
+                const durationInputEl = document.getElementById('editTaskDurationDays');
                 const startDateValue = taskData.startDateSh || '';
-                const dueDateValue = taskData.dueDateSh || '';
+                const durationValue = taskData.durationDays ?? '';
 
                 startDateDisplayEl.value = startDateValue;
                 startDateDisplayEl.setAttribute('value', startDateValue);
                 startDateHiddenEl.value = startDateValue;
                 startDateHiddenEl.setAttribute('value', startDateValue);
-
-                dueDateDisplayEl.value = dueDateValue;
-                dueDateDisplayEl.setAttribute('value', dueDateValue);
-                dueDateHiddenEl.value = dueDateValue;
-                dueDateHiddenEl.setAttribute('value', dueDateValue);
+                if (durationInputEl) {
+                    durationInputEl.value = durationValue === null || durationValue === undefined ? '' : String(durationValue);
+                }
+                updateComputedDueDateDisplay(taskData.dueDateSh || '');
                 document.getElementById('editTaskCategory').value = taskData.categoryId || '';
                 document.getElementById('editTaskAssignedUser').value = taskData.assignedUserId || '';
                 const effortLevelSelect = document.getElementById('editTaskEffortLevel');
@@ -5443,49 +5453,7 @@
                    
 
                 // تنظیم Persian Datepicker
-                if ($.fn.persianDatepicker) 
-                {
-                    const $startInput = $('#editTaskStartDateDisplay');
-                    const $dueInput = $('#editTaskDueDateDisplay');
-                    const existingStartPicker = $startInput.data('datepicker');
-                    const existingDuePicker = $dueInput.data('datepicker');
-
-                    if (existingStartPicker && typeof existingStartPicker.destroy === 'function') {
-                        existingStartPicker.destroy();
-                    }
-                    if (existingDuePicker && typeof existingDuePicker.destroy === 'function') {
-                        existingDuePicker.destroy();
-                    }
-
-                    $startInput.val(startDateValue).attr('value', startDateValue);
-                    $dueInput.val(dueDateValue).attr('value', dueDateValue);
-
-                    $startInput.persianDatepicker({
-                        format: 'YYYY/MM/DD',
-                        autoClose: true,
-                        initialValueType: 'persian',
-                        initialValue: !!startDateValue,
-                        altField: '#editTaskStartDate',
-                        altFormat: 'YYYY/MM/DD',
-                        timePicker: { enabled: false },
-                        calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
-                    });
-
-                    $dueInput.persianDatepicker({
-                        format: 'YYYY/MM/DD',
-                        autoClose: true,
-                        initialValueType: 'persian',
-                        initialValue: !!dueDateValue,
-                        altField: '#editTaskDueDate',
-                        altFormat: 'YYYY/MM/DD',
-                        timePicker: { enabled: false },
-                        calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
-                    });
-
-                    // همسان‌سازی مقادیر hidden با مقدار واقعی نمایشگر
-                    document.getElementById('editTaskStartDate').value = $startInput.val() || '';
-                    document.getElementById('editTaskDueDate').value = $dueInput.val() || '';
-                }
+                initTaskModalDatePickers(startDateValue);
 
                 const boardChecklist = document.getElementById('boardChecklistPanel');
                 const et = taskData.issueType != null ? parseInt(taskData.issueType, 10) : NaN;
@@ -5546,7 +5514,12 @@
                 categoryId: document.getElementById('editTaskCategory').value ? parseInt(document.getElementById('editTaskCategory').value, 10) : null,
                 assignedUserId: assignedUserId,
                 startDateSh: document.getElementById('editTaskStartDate').value || '',
-                dueDateSh: document.getElementById('editTaskDueDate').value || '',
+                durationDays: (() => {
+                    const raw = document.getElementById('editTaskDurationDays')?.value;
+                    if (raw === '' || raw === null || raw === undefined) return null;
+                    const n = parseInt(raw, 10);
+                    return Number.isNaN(n) ? null : n;
+                })(),
                 effortLevel: document.getElementById('editTaskEffortLevel').value
                     ? parseInt(document.getElementById('editTaskEffortLevel').value, 10)
                     : null
@@ -5597,7 +5570,9 @@
                 if (effortLevelSelect) effortLevelSelect.value = '';
                 const effortLevelDisplay = document.getElementById('editTaskEffortLevelDisplay');
                 if (effortLevelDisplay) effortLevelDisplay.textContent = 'تعیین نشده';
-                initTaskModalDatePickers(boardTodayPersian, '');
+                initTaskModalDatePickers(boardTodayPersian);
+                const durationReset = document.getElementById('editTaskDurationDays');
+                if (durationReset) durationReset.value = '';
                 setTimeout(function() {
                     document.getElementById('editTaskTitle')?.focus();
                 }, 100);
@@ -5657,7 +5632,12 @@
                 ProjectIssueTypeId: projectIssueTypeId ? parseInt(projectIssueTypeId) : null,
                 ProjectId: parseInt(document.getElementById('editTaskProjectId').value),
                 StartDateSh: document.getElementById('editTaskStartDate').value || '',
-                DueDateSh: document.getElementById('editTaskDueDate').value || '',
+                DurationDays: (() => {
+                    const raw = document.getElementById('editTaskDurationDays')?.value;
+                    if (raw === '' || raw === null || raw === undefined) return null;
+                    const n = parseInt(raw, 10);
+                    return Number.isNaN(n) ? null : n;
+                })(),
                 CategoryId: document.getElementById('editTaskCategory').value ? parseInt(document.getElementById('editTaskCategory').value) : null,
                 AssignedUserId: assignedUserId,
                 EffortLevel: document.getElementById('editTaskEffortLevel').value
@@ -5822,6 +5802,14 @@
         });
 
         document.addEventListener('DOMContentLoaded', function() {
+            const durationInput = document.getElementById('editTaskDurationDays');
+            if (durationInput && !durationInput.dataset.bound) {
+                durationInput.dataset.bound = '1';
+                durationInput.addEventListener('input', function () {
+                    updateComputedDueDateDisplay(originalTaskData?.dueDateSh || '');
+                });
+            }
+
             const savedState = loadBoardState();
             registerBoardFilterEvents();
             if (savedState) {

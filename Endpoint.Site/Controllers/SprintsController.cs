@@ -1126,10 +1126,10 @@ namespace Endpoint.Site.Controllers
                     startDate = parsedStart.Value;
             }
 
-            DateTime? dueDate = null;
-            if (data.TryGetProperty("dueDateSh", out var dueDateProp) && !string.IsNullOrWhiteSpace(dueDateProp.GetString()))
+            int? durationDays = null;
+            if (data.TryGetProperty("durationDays", out var durationProp) && durationProp.ValueKind == JsonValueKind.Number)
             {
-                dueDate = dueDateProp.GetString()!.ToGregorianDateTime();
+                durationDays = durationProp.GetInt32();
             }
 
             int? storyPoints = null;
@@ -1152,7 +1152,6 @@ namespace Endpoint.Site.Controllers
                 ProjectIssueTypeId = projectIssueTypeId,
                 IssueKey = null,
                 StartDate = startDate,
-                DueDate = dueDate,
                 ProjectId = sprint.ProjectId,
                 CategoryId = categoryId,
                 AssignedUserId = data.TryGetProperty("assignedUserId", out var assignedProp) && !string.IsNullOrWhiteSpace(assignedProp.GetString()) ? assignedProp.GetString() : null,
@@ -1165,6 +1164,7 @@ namespace Endpoint.Site.Controllers
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
+            TaskScheduleHelper.ApplySchedule(newTask, startDate, durationDays);
 
             _context.TaskItems.Add(newTask);
             await _context.SaveChangesAsync();

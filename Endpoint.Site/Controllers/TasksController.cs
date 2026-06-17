@@ -420,6 +420,7 @@ namespace Endpoint.Site.Controllers
                         IssueKey = generatedIssueKey,
                         StartDate = DateTime.Today,
                         DueDate = parent.DueDate, // وراثت DueDate از parent
+                        DurationDays = parent.DurationDays,
                         ProjectId = parent.ProjectId,
                         CategoryId = selectedCategory?.Id ?? parent.CategoryId,
                         ParentTaskId = parent.Id,
@@ -1047,7 +1048,6 @@ namespace Endpoint.Site.Controllers
             }
 
             var start = vm.StartDateSh.ToGregorianDateTime();
-            var due = string.IsNullOrWhiteSpace(vm.DueDateSh) ? (DateTime?)null : vm.DueDateSh.ToGregorianDateTime();
 
             if (start is null)
             {
@@ -1217,7 +1217,6 @@ namespace Endpoint.Site.Controllers
                         ParentTaskId = vm.ParentId,
                         ProjectId = vm.ProjectId,
                         StartDate = start.Value,
-                        DueDate = due,
                         AssignedUserId = vm.AssignedUserId,
                         StoryPoints = vm.StoryPoints,
                         IsCompleted = false,
@@ -1226,6 +1225,7 @@ namespace Endpoint.Site.Controllers
                         UpdatedAt = DateTime.UtcNow,
                         ProjectIssueTypeId = selectedProjectIssueType?.Id
                     };
+                    TaskScheduleHelper.ApplySchedule(newTask, start, vm.DurationDays);
 
                     // اضافه کردن به context
                     _context.TaskItems.Add(newTask);
@@ -1618,6 +1618,7 @@ namespace Endpoint.Site.Controllers
                 projectId = task.ProjectId,
                 startDateSh = task.StartDate.ToShortPersianDateString(),
                 dueDateSh = task.DueDate != null ? task.DueDate.Value.ToShortPersianDateString() : string.Empty,
+                durationDays = task.DurationDays ?? TaskScheduleHelper.CalculateDurationDays(task.StartDate, task.DueDate),
                 startDate = task.StartDate,
                 dueDate = task.DueDate,
                 categoryId = task.CategoryId,
@@ -1742,6 +1743,7 @@ namespace Endpoint.Site.Controllers
                         IssueKey = generatedIssueKey,
                         StartDate = DateTime.Today,
                         DueDate = parent.DueDate,
+                        DurationDays = parent.DurationDays,
                         ProjectId = parent.ProjectId,
                         ProjectIssueTypeId = subtaskProjectIssueType?.Id,
                         CategoryId = parent.CategoryId,
@@ -1916,7 +1918,7 @@ namespace Endpoint.Site.Controllers
                 ParentId = task.ParentTaskId,
                 ProjectId = task.ProjectId,
                 StartDateSh = task.StartDate.ToShortPersianDateString(),
-                DueDateSh = task.DueDate.HasValue ? task.DueDate.Value.ToShortPersianDateString() : null,
+                DurationDays = task.DurationDays ?? TaskScheduleHelper.CalculateDurationDays(task.StartDate, task.DueDate),
                 AssignedUserId = task.AssignedUserId,
                 IssueType = task.IssueType,
                 ProjectIssueTypeId = task.ProjectIssueTypeId,
@@ -2009,7 +2011,7 @@ namespace Endpoint.Site.Controllers
                     ProjectIssueTypeId = int.TryParse(Request.Form["ProjectIssueTypeId"].FirstOrDefault(), out var pitId) ? pitId : (int?)null,
                     ProjectId = int.TryParse(Request.Form["ProjectId"].FirstOrDefault(), out var projectId) ? projectId : 0,
                     StartDateSh = Request.Form["StartDateSh"].FirstOrDefault(),
-                    DueDateSh = Request.Form["DueDateSh"].FirstOrDefault(),
+                    DurationDays = int.TryParse(Request.Form["DurationDays"].FirstOrDefault(), out var durationDays) ? durationDays : (int?)null,
                     CategoryId = int.TryParse(Request.Form["CategoryId"].FirstOrDefault(), out var catId) ? catId : (int?)null,
                     AssignedUserId = Request.Form["AssignedUserId"].FirstOrDefault(),
                     StoryPoints = int.TryParse(Request.Form["StoryPoints"].FirstOrDefault(), out var sp) ? sp : (int?)null,
@@ -2386,21 +2388,8 @@ namespace Endpoint.Site.Controllers
                 return View(vm);
             }
 
-            var parsedDueDate = string.IsNullOrWhiteSpace(vm.DueDateSh)
-                ? (DateTime?)null
-                : vm.DueDateSh.ToGregorianDateTime();
-            if (!string.IsNullOrWhiteSpace(vm.DueDateSh) && !parsedDueDate.HasValue)
-            {
-                if (isJsonRequest)
-                {
-                    return Json(new { success = false, message = "تاریخ پایان نامعتبر است." });
-                }
-                ModelState.AddModelError(nameof(vm.DueDateSh), "تاریخ پایان نامعتبر است.");
-                return View(vm);
-            }
-
             task.StartDate = parsedStartDate.Value;
-            task.DueDate = parsedDueDate;
+            TaskScheduleHelper.ApplySchedule(task, parsedStartDate, vm.DurationDays);
 
             // 👇 مسئول تسک
             // برای Subtask، AssignedUserId را از parent task بگیر (نه از vm)

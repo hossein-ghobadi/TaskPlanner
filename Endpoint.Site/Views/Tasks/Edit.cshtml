@@ -764,13 +764,13 @@
                             <span asp-validation-for="StartDateSh" class="text-danger small"></span>
                         </div>
                         <div class="mb-0">
-                            <label class="form-label">
-                                <i class="bi bi-calendar-check"></i>
-                                تاریخ پایان
+                            <label asp-for="DurationDays" class="form-label">
+                                <i class="bi bi-hourglass-split"></i>
+                                مدت انجام (روز)
                             </label>
-                            <input type="text" id="DueDateDisplay" class="form-control" autocomplete="off" value="@Model.DueDateSh" />
-                            <input type="hidden" asp-for="DueDateSh" id="DueDate" value="@Model.DueDateSh" />
-                            <span asp-validation-for="DueDateSh" class="text-danger small"></span>
+                            <input type="number" asp-for="DurationDays" class="form-control" min="0" max="3650" placeholder="مثلاً ۳" />
+                            <small class="text-muted">با تاریخ شروع، مهلت انجام خودکار محاسبه می‌شود.</small>
+                            <span asp-validation-for="DurationDays" class="text-danger small"></span>
                         </div>
                     </div>
 
@@ -908,13 +908,13 @@
                         <span asp-validation-for="StartDateSh" class="text-danger small"></span>
                     </div>
                     <div>
-                        <label class="form-label">
-                            <i class="bi bi-calendar-check"></i>
-                            تاریخ پایان
+                        <label asp-for="DurationDays" class="form-label">
+                            <i class="bi bi-hourglass-split"></i>
+                            مدت انجام (روز)
                         </label>
-                        <input type="text" id="DueDateDisplay" class="form-control" autocomplete="off" value="@Model.DueDateSh" />
-                        <input type="hidden" asp-for="DueDateSh" id="DueDate" value="@Model.DueDateSh" />
-                        <span asp-validation-for="DueDateSh" class="text-danger small"></span>
+                        <input type="number" asp-for="DurationDays" class="form-control" min="0" max="3650" placeholder="مثلاً ۳" />
+                        <small class="text-muted">با تاریخ شروع، مهلت انجام خودکار محاسبه می‌شود.</small>
+                        <span asp-validation-for="DurationDays" class="text-danger small"></span>
                     </div>
                 </div>
                 <div class="field-group mt-4">
@@ -1638,7 +1638,6 @@
         (function () {
             // 👇 مقدار اولیه hidden را ثابت نگه دار
             $("#StartDate").val("@Model.StartDateSh");
-            $("#DueDate").val("@Model.DueDateSh");
 
             // ✅ تاریخ شروع
             $("#StartDateDisplay").persianDatepicker({
@@ -1652,21 +1651,7 @@
                 calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
             });
 
-            // ✅ تاریخ پایان
-            $("#DueDateDisplay").persianDatepicker({
-                format: 'YYYY/MM/DD',
-                autoClose: true,
-                initialValueType: "persian",
-                initialValue: true,
-                altField: '#DueDate',
-                altFormat: 'YYYY/MM/DD',
-                timePicker: { enabled: false },
-                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
-            });
-
-            // بعد از مقداردهی، دوباره hidden ها را با مقدار نمایشگر همسان‌سازی کن
             $("#StartDate").val($("#StartDateDisplay").val() || "");
-            $("#DueDate").val($("#DueDateDisplay").val() || "");
 
             // 🎯 مدیریت IssueType و ProjectIssueType
             const projectIssueTypeInput = document.getElementById('projectIssueTypeId');
@@ -1733,7 +1718,6 @@
         $(function () {
             // 👇 مقدار اولیه hidden را ثابت نگه دار
             $("#StartDate").val("@Model.StartDateSh");
-            $("#DueDate").val("@Model.DueDateSh");
 
             // ✅ تاریخ شروع
             $("#StartDateDisplay").persianDatepicker({
@@ -1747,21 +1731,7 @@
                 calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
             });
 
-            // ✅ تاریخ پایان
-            $("#DueDateDisplay").persianDatepicker({
-                format: 'YYYY/MM/DD',
-                autoClose: true,
-                initialValueType: "persian",
-                initialValue: true,
-                altField: '#DueDate',
-                altFormat: 'YYYY/MM/DD',
-                timePicker: { enabled: false },
-                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } }
-            });
-
-            // بعد از مقداردهی، دوباره hidden ها را با مقدار نمایشگر همسان‌سازی کن
             $("#StartDate").val($("#StartDateDisplay").val() || "");
-            $("#DueDate").val($("#DueDateDisplay").val() || "");
 
             // 🎯 مدیریت IssueType و ProjectIssueType
             const projectIssueTypeInput = document.getElementById('projectIssueTypeId');

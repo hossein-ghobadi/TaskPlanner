@@ -298,12 +298,12 @@
 
                 <div>
                     <label class="form-label">
-                        <i class="bi bi-calendar-check"></i>
-                        تاریخ پایان
+                        <i class="bi bi-hourglass-split"></i>
+                        مدت انجام (روز)
                     </label>
-                    <input type="text" id="DueDateDisplay" class="form-control" autocomplete="off" />
-                    <input type="hidden" asp-for="DueDateSh" id="DueDate" />
-                    <span asp-validation-for="DueDateSh" class="text-danger small"></span>
+                    <input type="number" asp-for="DurationDays" class="form-control" min="0" max="3650" placeholder="مثلاً ۳" />
+                    <small class="text-muted">با تاریخ شروع، مهلت انجام خودکار محاسبه می‌شود.</small>
+                    <span asp-validation-for="DurationDays" class="text-danger small"></span>
                 </div>
             </div>
 
@@ -398,15 +398,6 @@
                 timePicker: { enabled: false }
             });
 
-            $("#DueDateDisplay").persianDatepicker({
-                format: 'YYYY/MM/DD',
-                autoClose: true,
-                altField: '#DueDate',
-                altFormat: 'YYYY/MM/DD',
-                calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } },
-                timePicker: { enabled: false }
-            });
-
             let isSubmittingForm = false;
             const form = document.querySelector('form');
             const submitButton = form?.querySelector('button[type="submit"]');
@@ -473,15 +464,7 @@
             timePicker: { enabled: false }
         });
 
-        // تاریخ پایان
-        $("#DueDateDisplay").persianDatepicker({
-            format: 'YYYY/MM/DD',
-            autoClose: true,
-            altField: '#DueDate',
-            altFormat: 'YYYY/MM/DD',
-            calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' }},
-            timePicker: { enabled: false }
-        });
+        // تاریخ پایان حذف شد — مهلت از تاریخ شروع + مدت محاسبه می‌شود.
         document.addEventListener('DOMContentLoaded', function () {
             const form = document.querySelector('form');
             if (!form) return;
