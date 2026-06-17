@@ -516,6 +516,50 @@
         color: #9ca3af;
     }
 
+    .subtask-title.editable {
+        cursor: text;
+    }
+
+    .subtask-title.editable:hover {
+        color: #2563eb;
+    }
+
+    .subtask-edit-input {
+        font-size: 0.9rem;
+        padding: 0.2rem 0.45rem;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .subtask-item-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex-shrink: 0;
+    }
+
+    .subtask-edit-btn {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: #3b82f6;
+        color: #fff;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+
+    .subtask-edit-btn:hover {
+        background: #2563eb;
+        color: #fff;
+    }
+
     .subtask-delete-btn {
         flex-shrink: 0;
         display: inline-flex;
@@ -1349,15 +1393,112 @@
             const title = escapeHtml(st.title || '');
             const completed = !!st.isCompleted;
             return `
-                <li class="subtask-item">
+                <li class="subtask-item" data-subtask-id="${id}">
                     <div class="subtask-item-main">
-                        <input type="checkbox" ${completed ? 'checked' : ''} onchange="toggleInlineSubtask(${id})" />
-                        <span class="subtask-title ${completed ? 'completed' : ''}">${title}</span>
+                        <input type="checkbox" class="inline-subtask-check" data-subtask-id="${id}" ${completed ? 'checked' : ''} />
+                        <span class="subtask-title editable ${completed ? 'completed' : ''}" data-subtask-id="${id}" title="برای ویرایش کلیک کنید">${title}</span>
                     </div>
-                    <button type="button" class="subtask-delete-btn" onclick="deleteInlineSubtask(${id})" title="حذف" aria-label="حذف"><i class="bi bi-trash"></i></button>
+                    <div class="subtask-item-actions">
+                        <button type="button" class="subtask-edit-btn" data-subtask-id="${id}" title="ویرایش" aria-label="ویرایش"><i class="bi bi-pencil"></i></button>
+                        <button type="button" class="subtask-delete-btn" data-subtask-id="${id}" title="حذف" aria-label="حذف"><i class="bi bi-trash"></i></button>
+                    </div>
                 </li>
             `;
         }).join('');
+    }
+
+    function beginInlineSubtaskEdit(subtaskId) {
+        const listEl = document.getElementById('inlineSubtasksList');
+        if (!listEl) return;
+        const li = listEl.querySelector(`.subtask-item[data-subtask-id="${subtaskId}"]`);
+        if (!li || li.querySelector('.subtask-edit-input')) return;
+
+        const titleSpan = li.querySelector('.subtask-title');
+        if (!titleSpan) return;
+        const currentTitle = titleSpan.textContent.trim();
+        const completed = titleSpan.classList.contains('completed');
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-control form-control-sm subtask-edit-input';
+        input.value = currentTitle;
+        input.maxLength = 500;
+        titleSpan.replaceWith(input);
+        input.focus();
+        input.select();
+
+        let saving = false;
+        const restoreTitle = (text) => {
+            const span = document.createElement('span');
+            span.className = `subtask-title editable${completed ? ' completed' : ''}`;
+            span.dataset.subtaskId = String(subtaskId);
+            span.title = 'برای ویرایش کلیک کنید';
+            span.textContent = text;
+            input.replaceWith(span);
+        };
+
+        const cancelEdit = () => {
+            if (saving) return;
+            restoreTitle(currentTitle);
+        };
+
+        const commitEdit = async () => {
+            if (saving) return;
+            const noteEl = document.getElementById('inlineSubtaskNote');
+            const newTitle = input.value.trim();
+            if (!newTitle) {
+                if (noteEl) noteEl.textContent = 'عنوان کارک الزامی است.';
+                input.focus();
+                return;
+            }
+            if (newTitle === currentTitle) {
+                cancelEdit();
+                return;
+            }
+            saving = true;
+            try {
+                if (noteEl) noteEl.textContent = 'در حال ذخیره...';
+                await updateInlineSubtask(subtaskId, newTitle);
+                if (noteEl) noteEl.textContent = '';
+            } catch (error) {
+                if (noteEl) noteEl.textContent = error?.message || 'ویرایش کارک انجام نشد.';
+                saving = false;
+                restoreTitle(currentTitle);
+            }
+        };
+
+        input.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter') {
+                ev.preventDefault();
+                commitEdit();
+            } else if (ev.key === 'Escape') {
+                ev.preventDefault();
+                cancelEdit();
+            }
+        });
+        input.addEventListener('blur', function () {
+            setTimeout(function () {
+                if (document.activeElement === input) return;
+                commitEdit();
+            }, 120);
+        });
+    }
+
+    async function updateInlineSubtask(subtaskId, title) {
+        const response = await fetch('/Tasks/UpdateInlineSubtask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subtaskId, title })
+        });
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(errText || 'update_failed');
+        }
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.message || 'update_failed');
+        }
+        await loadInlineSubtasks(editTaskIdForChat);
     }
 
     async function loadInlineSubtasks(parentTaskId) {
@@ -1445,6 +1586,7 @@
     function initInlineSubtaskPanel(parentTaskId) {
         const addBtn = document.getElementById('addInlineSubtaskBtn');
         const input = document.getElementById('inlineSubtaskTitle');
+        const listEl = document.getElementById('inlineSubtasksList');
         if (!addBtn || !input) return;
 
         addBtn.addEventListener('click', () => addInlineSubtask(parentTaskId));
@@ -1454,6 +1596,37 @@
                 addInlineSubtask(parentTaskId);
             }
         });
+
+        if (listEl && !listEl.dataset.delegationBound) {
+            listEl.dataset.delegationBound = '1';
+            listEl.addEventListener('change', function (e) {
+                const t = e.target;
+                if (t.classList && t.classList.contains('inline-subtask-check')) {
+                    const sid = parseInt(t.getAttribute('data-subtask-id'), 10);
+                    if (sid) toggleInlineSubtask(sid);
+                }
+            });
+            listEl.addEventListener('click', function (e) {
+                const editBtn = e.target.closest('.subtask-edit-btn');
+                if (editBtn) {
+                    e.preventDefault();
+                    const sid = parseInt(editBtn.getAttribute('data-subtask-id'), 10);
+                    if (sid) beginInlineSubtaskEdit(sid);
+                    return;
+                }
+                const titleEl = e.target.closest('.subtask-title.editable');
+                if (titleEl) {
+                    const sid = parseInt(titleEl.getAttribute('data-subtask-id'), 10);
+                    if (sid) beginInlineSubtaskEdit(sid);
+                    return;
+                }
+                const deleteBtn = e.target.closest('.subtask-delete-btn');
+                if (deleteBtn) {
+                    const sid = parseInt(deleteBtn.getAttribute('data-subtask-id'), 10);
+                    if (sid) deleteInlineSubtask(sid);
+                }
+            });
+        }
 
         loadInlineSubtasks(parentTaskId);
     }

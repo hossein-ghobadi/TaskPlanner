@@ -622,6 +622,43 @@
     text-decoration: line-through;
     color: #9ca3af;
     }
+    #editTaskModal .subtask-title-board.editable {
+    cursor: text;
+    }
+    #editTaskModal .subtask-title-board.editable:hover {
+    color: #2563eb;
+    }
+    #editTaskModal .subtask-edit-input-board {
+    font-size: 0.88rem;
+    padding: 0.2rem 0.45rem;
+    min-width: 0;
+    flex: 1;
+    }
+    #editTaskModal .subtask-item-actions-board {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+    }
+    #editTaskModal .subtask-edit-btn-board {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: #3b82f6;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    }
+    #editTaskModal .subtask-edit-btn-board:hover {
+    background: #2563eb;
+    color: #fff;
+    }
     #editTaskModal .subtask-delete-btn-board {
     flex-shrink: 0;
     display: inline-flex;
@@ -4978,15 +5015,114 @@
                 const title = escapeHtml(st.title || '');
                 const completed = !!st.isCompleted;
                 return `
-                    <li class="subtask-item-board">
+                    <li class="subtask-item-board" data-subtask-id="${id}">
                         <div class="subtask-item-main-board">
                             <input type="checkbox" class="board-subtask-check" data-subtask-id="${id}" ${completed ? 'checked' : ''} />
-                            <span class="subtask-title-board ${completed ? 'completed' : ''}">${title}</span>
+                            <span class="subtask-title-board editable ${completed ? 'completed' : ''}" data-subtask-id="${id}" title="برای ویرایش کلیک کنید">${title}</span>
                         </div>
-                        <button type="button" class="subtask-delete-btn-board" data-subtask-id="${id}" title="حذف" aria-label="حذف"><i class="bi bi-trash"></i></button>
+                        <div class="subtask-item-actions-board">
+                            <button type="button" class="subtask-edit-btn-board" data-subtask-id="${id}" title="ویرایش" aria-label="ویرایش"><i class="bi bi-pencil"></i></button>
+                            <button type="button" class="subtask-delete-btn-board" data-subtask-id="${id}" title="حذف" aria-label="حذف"><i class="bi bi-trash"></i></button>
+                        </div>
                     </li>
                 `;
             }).join('');
+        }
+
+        function beginBoardSubtaskEdit(subtaskId) {
+            const listEl = document.getElementById('boardInlineSubtasksList');
+            if (!listEl) return;
+            const li = listEl.querySelector(`.subtask-item-board[data-subtask-id="${subtaskId}"]`);
+            if (!li || li.querySelector('.subtask-edit-input-board')) return;
+
+            const titleSpan = li.querySelector('.subtask-title-board');
+            if (!titleSpan) return;
+            const currentTitle = titleSpan.textContent.trim();
+            const completed = titleSpan.classList.contains('completed');
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control form-control-sm subtask-edit-input-board';
+            input.value = currentTitle;
+            input.maxLength = 500;
+            titleSpan.replaceWith(input);
+            input.focus();
+            input.select();
+
+            let saving = false;
+            const restoreTitle = (text) => {
+                const span = document.createElement('span');
+                span.className = `subtask-title-board editable${completed ? ' completed' : ''}`;
+                span.dataset.subtaskId = String(subtaskId);
+                span.title = 'برای ویرایش کلیک کنید';
+                span.textContent = text;
+                input.replaceWith(span);
+            };
+
+            const cancelEdit = () => {
+                if (saving) return;
+                restoreTitle(currentTitle);
+            };
+
+            const commitEdit = async () => {
+                if (saving) return;
+                const noteEl = document.getElementById('boardInlineSubtaskNote');
+                const newTitle = input.value.trim();
+                if (!newTitle) {
+                    if (noteEl) noteEl.textContent = 'عنوان کارک الزامی است.';
+                    input.focus();
+                    return;
+                }
+                if (newTitle === currentTitle) {
+                    cancelEdit();
+                    return;
+                }
+                saving = true;
+                try {
+                    if (noteEl) noteEl.textContent = 'در حال ذخیره...';
+                    await updateBoardSubtask(subtaskId, newTitle);
+                    if (noteEl) noteEl.textContent = '';
+                } catch (error) {
+                    if (noteEl) noteEl.textContent = (error && error.message) || 'ویرایش کارک انجام نشد.';
+                    saving = false;
+                    restoreTitle(currentTitle);
+                }
+            };
+
+            input.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    commitEdit();
+                } else if (ev.key === 'Escape') {
+                    ev.preventDefault();
+                    cancelEdit();
+                }
+            });
+            input.addEventListener('blur', function () {
+                setTimeout(function () {
+                    if (document.activeElement === input) return;
+                    commitEdit();
+                }, 120);
+            });
+        }
+
+        async function updateBoardSubtask(subtaskId, title) {
+            const response = await fetch('/Tasks/UpdateInlineSubtask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subtaskId, title })
+            });
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(errText || 'update_failed');
+            }
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.message || 'update_failed');
+            }
+            if (boardSubtaskParentId) {
+                await loadBoardSubtasks(boardSubtaskParentId);
+            }
         }
 
         async function loadBoardSubtasks(parentId) {
@@ -5096,6 +5232,19 @@
                     }
                 });
                 listEl.addEventListener('click', function (e) {
+                    const editBtn = e.target.closest('.subtask-edit-btn-board');
+                    if (editBtn) {
+                        e.preventDefault();
+                        const sid = parseInt(editBtn.getAttribute('data-subtask-id'), 10);
+                        if (sid) beginBoardSubtaskEdit(sid);
+                        return;
+                    }
+                    const titleEl = e.target.closest('.subtask-title-board.editable');
+                    if (titleEl) {
+                        const sid = parseInt(titleEl.getAttribute('data-subtask-id'), 10);
+                        if (sid) beginBoardSubtaskEdit(sid);
+                        return;
+                    }
                     const btn = e.target.closest('.subtask-delete-btn-board');
                     if (btn) {
                         const sid = parseInt(btn.getAttribute('data-subtask-id'), 10);

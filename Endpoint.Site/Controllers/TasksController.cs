@@ -1832,6 +1832,41 @@ namespace Endpoint.Site.Controllers
             return Json(new { success = true, isCompleted = subtask.IsCompleted });
         }
 
+        [HttpPost]
+        public async Task<IActionResult> UpdateInlineSubtask([FromBody] JsonElement data)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!data.TryGetProperty("subtaskId", out var subtaskIdProp) || subtaskIdProp.ValueKind != JsonValueKind.Number)
+                return BadRequest("subtaskId الزامی است.");
+            if (!data.TryGetProperty("title", out var titleProp))
+                return BadRequest("title الزامی است.");
+
+            var subtaskId = subtaskIdProp.GetInt32();
+            var title = (titleProp.GetString() ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(title))
+                return BadRequest("عنوان کارک الزامی است.");
+
+            var subtask = await _context.TaskItems
+                .Include(t => t.Project)
+                .FirstOrDefaultAsync(t => t.Id == subtaskId && t.ParentTaskId != null);
+            if (subtask == null) return NotFound("کارک یافت نشد.");
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == subtask.ProjectId &&
+                    (p.CreatorUserId == userId ||
+                     p.Members.Any(m => m.UserId == userId) ||
+                     _context.ProjectInvitations.Any(i => i.ProjectId == subtask.ProjectId &&
+                                                          i.InviteeId == userId &&
+                                                          i.Status == InvitationStatus.Accepted)));
+            if (!hasAccess) return Forbid();
+
+            subtask.Title = title;
+            subtask.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, id = subtask.Id, title = subtask.Title });
+        }
+
         [HttpGet]
         public async Task<IActionResult> Edit(int? id)
         {
