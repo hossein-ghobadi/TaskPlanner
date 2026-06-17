@@ -24,8 +24,8 @@
     
     // گروه‌بندی کارها بر اساس تاریخ
     var tasksByDate = Model
-        .Where(t => t.StartDate >= startOfWeek && t.StartDate <= endOfWeek)
-        .GroupBy(t => t.StartDate.Date)
+        .Where(t => t.StartDate.HasValue && t.StartDate.Value >= startOfWeek && t.StartDate.Value <= endOfWeek)
+        .GroupBy(t => t.StartDate!.Value.Date)
         .ToDictionary(g => g.Key, g => g.ToList());
 }
 

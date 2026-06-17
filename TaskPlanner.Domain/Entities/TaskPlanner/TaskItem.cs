@@ -34,8 +34,7 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         [Required]
         public IssueType IssueType { get; set; } = IssueType.Task;
 
-        [Required]
-        public DateTime StartDate { get; set; }
+        public DateTime? StartDate { get; set; }
 
         public DateTime? DueDate { get; set; }
 

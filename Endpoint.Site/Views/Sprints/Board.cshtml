@@ -3093,8 +3093,8 @@
                             <div class="edit-task-side-card">
                                 <div class="info-block">
                                     <div class="small-title">زمان‌بندی</div>
-                                    <label for="editTaskStartDateDisplay" class="form-label">تاریخ شروع</label>
-                                    <input type="text" class="form-control mb-2" id="editTaskStartDateDisplay" autocomplete="off">
+                                    <label for="editTaskStartDateDisplay" class="form-label">تاریخ شروع <span class="text-muted small">(اختیاری)</span></label>
+                                    <input type="text" class="form-control mb-2" id="editTaskStartDateDisplay" autocomplete="off" placeholder="انتخاب تاریخ">
                                     <input type="hidden" id="editTaskStartDate">
 
                                     <label for="editTaskDurationDays" class="form-label">مدت انجام (روز)</label>
@@ -3366,6 +3366,34 @@
             assignedUserSelect.disabled = false;
         }
 
+        function toLatinDigits(value) {
+            if (!value) return '';
+            return String(value)
+                .replace(/[۰-۹]/g, (ch) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(ch)))
+                .replace(/[٠-٩]/g, (ch) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(ch)));
+        }
+
+        function toPersianDigits(value) {
+            return String(value ?? '').replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d, 10)]);
+        }
+
+        function getTaskModalStartDateSh() {
+            const hiddenEl = document.getElementById('editTaskStartDate');
+            const displayEl = document.getElementById('editTaskStartDateDisplay');
+            const raw = (hiddenEl?.value || displayEl?.value || '').trim();
+            return toLatinDigits(raw);
+        }
+
+        function syncTaskModalStartHidden() {
+            const hiddenEl = document.getElementById('editTaskStartDate');
+            if (!hiddenEl) return '';
+            const fromAlt = window.$ ? toLatinDigits($('#editTaskStartDate').val() || '') : '';
+            const fromDisplay = toLatinDigits(document.getElementById('editTaskStartDateDisplay')?.value || '');
+            const normalized = fromAlt || fromDisplay;
+            hiddenEl.value = normalized;
+            return normalized;
+        }
+
         function initTaskModalDatePickers(startDateValue) {
             if (!window.$ || !$.fn.persianDatepicker) return;
             const $startInput = $('#editTaskStartDateDisplay');
@@ -3373,21 +3401,26 @@
             if (existingStartPicker && typeof existingStartPicker.destroy === 'function') {
                 existingStartPicker.destroy();
             }
-            $startInput.val(startDateValue || '').attr('value', startDateValue || '');
+            const normalizedStart = toLatinDigits(startDateValue || '');
+            $startInput.val(normalizedStart ? startDateValue : '').attr('value', normalizedStart ? startDateValue : '');
+            if (document.getElementById('editTaskStartDate')) {
+                document.getElementById('editTaskStartDate').value = normalizedStart;
+            }
             $startInput.persianDatepicker({
                 format: 'YYYY/MM/DD',
                 autoClose: true,
                 initialValueType: 'persian',
-                initialValue: !!startDateValue,
+                initialValue: !!normalizedStart,
                 altField: '#editTaskStartDate',
                 altFormat: 'YYYY/MM/DD',
                 timePicker: { enabled: false },
                 calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } },
                 onSelect: function () {
+                    syncTaskModalStartHidden();
                     updateComputedDueDateDisplay();
                 }
             });
-            document.getElementById('editTaskStartDate').value = $startInput.val() || '';
+            syncTaskModalStartHidden();
             updateComputedDueDateDisplay();
         }
 
@@ -3396,20 +3429,24 @@
             if (!displayEl) return;
             const durationInput = document.getElementById('editTaskDurationDays');
             const durationRaw = durationInput ? durationInput.value : '';
-            const duration = durationRaw === '' ? null : parseInt(durationRaw, 10);
-            const startSh = document.getElementById('editTaskStartDate')?.value || '';
+            const duration = durationRaw === '' ? null : parseInt(toLatinDigits(durationRaw), 10);
+            const startSh = syncTaskModalStartHidden() || getTaskModalStartDateSh();
             if (startSh && duration !== null && !Number.isNaN(duration) && duration >= 0 && window.persianDate) {
                 try {
-                    const parts = startSh.split('/');
+                    const parts = startSh.split('/').map(p => p.trim());
                     if (parts.length === 3) {
-                        const pd = new persianDate([parseInt(parts[0], 10), parseInt(parts[1], 10), parseInt(parts[2], 10)]);
-                        pd.add('day', duration);
-                        displayEl.textContent = pd.format('YYYY/MM/DD');
-                        return;
+                        const year = parseInt(parts[0], 10);
+                        const month = parseInt(parts[1], 10);
+                        const day = parseInt(parts[2], 10);
+                        if (year > 0 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                            const duePd = new persianDate([year, month, day]).add('days', duration);
+                            displayEl.textContent = toPersianDigits(duePd.format('YYYY/MM/DD'));
+                            return;
+                        }
                     }
                 } catch (_) { /* fallback below */ }
             }
-            displayEl.textContent = fallbackDueDateSh || '—';
+            displayEl.textContent = fallbackDueDateSh ? toPersianDigits(fallbackDueDateSh) : '—';
         }
 
         function resetCreateTaskForm(statusId, statusName) {
@@ -3438,7 +3475,7 @@
                 effortLevelDisplay.textContent = 'تعیین نشده';
             }
             populateAssignedUserSelect(boardProjectMembers, '');
-            initTaskModalDatePickers(boardTodayPersian);
+            initTaskModalDatePickers('');
             const durationInput = document.getElementById('editTaskDurationDays');
             if (durationInput) durationInput.value = '';
             originalTaskData = null;
@@ -5344,8 +5381,8 @@
 
                 startDateDisplayEl.value = startDateValue;
                 startDateDisplayEl.setAttribute('value', startDateValue);
-                startDateHiddenEl.value = startDateValue;
-                startDateHiddenEl.setAttribute('value', startDateValue);
+                startDateHiddenEl.value = toLatinDigits(startDateValue);
+                startDateHiddenEl.setAttribute('value', toLatinDigits(startDateValue));
                 if (durationInputEl) {
                     durationInputEl.value = durationValue === null || durationValue === undefined ? '' : String(durationValue);
                 }
@@ -5513,7 +5550,7 @@
                 statusId: statusId,
                 categoryId: document.getElementById('editTaskCategory').value ? parseInt(document.getElementById('editTaskCategory').value, 10) : null,
                 assignedUserId: assignedUserId,
-                startDateSh: document.getElementById('editTaskStartDate').value || '',
+                startDateSh: syncTaskModalStartHidden() || '',
                 durationDays: (() => {
                     const raw = document.getElementById('editTaskDurationDays')?.value;
                     if (raw === '' || raw === null || raw === undefined) return null;
@@ -5570,7 +5607,7 @@
                 if (effortLevelSelect) effortLevelSelect.value = '';
                 const effortLevelDisplay = document.getElementById('editTaskEffortLevelDisplay');
                 if (effortLevelDisplay) effortLevelDisplay.textContent = 'تعیین نشده';
-                initTaskModalDatePickers(boardTodayPersian);
+                initTaskModalDatePickers('');
                 const durationReset = document.getElementById('editTaskDurationDays');
                 if (durationReset) durationReset.value = '';
                 setTimeout(function() {
@@ -5631,7 +5668,7 @@
                 IssueType: parseInt(issueType),
                 ProjectIssueTypeId: projectIssueTypeId ? parseInt(projectIssueTypeId) : null,
                 ProjectId: parseInt(document.getElementById('editTaskProjectId').value),
-                StartDateSh: document.getElementById('editTaskStartDate').value || '',
+                StartDateSh: syncTaskModalStartHidden() || '',
                 DurationDays: (() => {
                     const raw = document.getElementById('editTaskDurationDays')?.value;
                     if (raw === '' || raw === null || raw === undefined) return null;

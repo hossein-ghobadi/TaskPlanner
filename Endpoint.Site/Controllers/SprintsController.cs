@@ -1118,7 +1118,7 @@ namespace Endpoint.Site.Controllers
                 }
             }
 
-            var startDate = DateTime.Today;
+            DateTime? startDate = null;
             if (data.TryGetProperty("startDateSh", out var startDateProp) && !string.IsNullOrWhiteSpace(startDateProp.GetString()))
             {
                 var parsedStart = startDateProp.GetString()!.ToGregorianDateTime();
@@ -1151,7 +1151,6 @@ namespace Endpoint.Site.Controllers
                 IssueType = issueType,
                 ProjectIssueTypeId = projectIssueTypeId,
                 IssueKey = null,
-                StartDate = startDate,
                 ProjectId = sprint.ProjectId,
                 CategoryId = categoryId,
                 AssignedUserId = data.TryGetProperty("assignedUserId", out var assignedProp) && !string.IsNullOrWhiteSpace(assignedProp.GetString()) ? assignedProp.GetString() : null,

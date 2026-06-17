@@ -184,7 +184,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasKey("Id");
 
-                    b.ToTable("Boards");
+                    b.ToTable("Boards", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.Boards.BoardMember", b =>
@@ -211,7 +211,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.HasIndex("BoardId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("BoardMembers");
+                    b.ToTable("BoardMembers", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.Boards.BoardStatus", b =>
@@ -252,7 +252,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("BoardId", "Order");
 
-                    b.ToTable("BoardStatuses");
+                    b.ToTable("BoardStatuses", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.Boards.BoardTask", b =>
@@ -315,7 +315,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("ParentTaskId");
 
-                    b.ToTable("BoardTasks");
+                    b.ToTable("BoardTasks", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.Boards.BoardTaskComment", b =>
@@ -358,7 +358,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("BoardTaskId");
 
-                    b.ToTable("BoardTaskComments");
+                    b.ToTable("BoardTaskComments", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.Boards.BoardTaskCommentAttachment", b =>
@@ -401,7 +401,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("BoardTaskCommentId");
 
-                    b.ToTable("BoardTaskCommentAttachments");
+                    b.ToTable("BoardTaskCommentAttachments", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.Notifications.Notification", b =>
@@ -456,7 +456,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("UserId", "IsRead");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.BaleBotSyncState", b =>
@@ -475,7 +475,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasKey("Id");
 
-                    b.ToTable("BaleBotSyncStates");
+                    b.ToTable("BaleBotSyncStates", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.IssueStatusHistory", b =>
@@ -522,7 +522,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("TransitionId");
 
-                    b.ToTable("IssueStatusHistories");
+                    b.ToTable("IssueStatusHistories", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.Lead", b =>
@@ -595,7 +595,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("Status");
 
-                    b.ToTable("Leads");
+                    b.ToTable("Leads", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.LeadInvitation", b =>
@@ -640,7 +640,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("LeadId", "Status");
 
-                    b.ToTable("LeadInvitations");
+                    b.ToTable("LeadInvitations", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.LeadMember", b =>
@@ -673,7 +673,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.HasIndex("LeadId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("LeadMembers");
+                    b.ToTable("LeadMembers", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.LeadNote", b =>
@@ -709,7 +709,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("LeadId", "CreatedAt");
 
-                    b.ToTable("LeadNotes");
+                    b.ToTable("LeadNotes", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.LeadSession", b =>
@@ -741,7 +741,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("LeadId", "ScheduledAt");
 
-                    b.ToTable("LeadSessions");
+                    b.ToTable("LeadSessions", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.PersonalNote", b =>
@@ -782,7 +782,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("FolderId");
 
-                    b.ToTable("PersonalNotes");
+                    b.ToTable("PersonalNotes", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.PersonalNoteAttachment", b =>
@@ -821,7 +821,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("PersonalNoteId");
 
-                    b.ToTable("PersonalNoteAttachments");
+                    b.ToTable("PersonalNoteAttachments", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.PersonalNoteFolder", b =>
@@ -862,7 +862,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("PersonalNoteFolders");
+                    b.ToTable("PersonalNoteFolders", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.Project", b =>
@@ -904,7 +904,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("IssueKeyPrefix");
 
-                    b.ToTable("Projects");
+                    b.ToTable("Projects", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectBaleGroupLink", b =>
@@ -960,7 +960,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.HasIndex("ProjectId", "BaleChatId")
                         .IsUnique();
 
-                    b.ToTable("ProjectBaleGroupLinks");
+                    b.ToTable("ProjectBaleGroupLinks", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectChatGroup", b =>
@@ -997,7 +997,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("ProjectId", "Name");
 
-                    b.ToTable("ProjectChatGroups");
+                    b.ToTable("ProjectChatGroups", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectChatGroupMember", b =>
@@ -1028,7 +1028,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.HasIndex("ProjectChatGroupId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("ProjectChatGroupMembers");
+                    b.ToTable("ProjectChatGroupMembers", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectChatMessage", b =>
@@ -1109,7 +1109,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                         .IsUnique()
                         .HasFilter("[ExternalMessageId] IS NOT NULL");
 
-                    b.ToTable("ProjectChatMessages");
+                    b.ToTable("ProjectChatMessages", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectChatMessageAttachment", b =>
@@ -1152,7 +1152,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("ProjectChatMessageId");
 
-                    b.ToTable("ProjectChatMessageAttachments");
+                    b.ToTable("ProjectChatMessageAttachments", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGallery", b =>
@@ -1220,7 +1220,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("ProjectImageGalleries");
+                    b.ToTable("ProjectImageGalleries", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectImageGalleryFolder", b =>
@@ -1264,7 +1264,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("ProjectImageGalleryFolders");
+                    b.ToTable("ProjectImageGalleryFolders", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectInvitation", b =>
@@ -1306,7 +1306,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("ProjectId", "InviteeId", "Status");
 
-                    b.ToTable("ProjectInvitations");
+                    b.ToTable("ProjectInvitations", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectIssueType", b =>
@@ -1370,7 +1370,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.HasIndex("ProjectId", "Name")
                         .IsUnique();
 
-                    b.ToTable("ProjectIssueTypes");
+                    b.ToTable("ProjectIssueTypes", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectMember", b =>
@@ -1392,7 +1392,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("ProjectMembers");
+                    b.ToTable("ProjectMembers", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectNote", b =>
@@ -1442,7 +1442,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("SourceLeadId");
 
-                    b.ToTable("ProjectNotes");
+                    b.ToTable("ProjectNotes", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectNoteAttachment", b =>
@@ -1481,7 +1481,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("ProjectNoteId");
 
-                    b.ToTable("ProjectNoteAttachments");
+                    b.ToTable("ProjectNoteAttachments", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectNoteFolder", b =>
@@ -1525,7 +1525,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("ProjectNoteFolders");
+                    b.ToTable("ProjectNoteFolders", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.Sprint", b =>
@@ -1581,7 +1581,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("Sprints");
+                    b.ToTable("Sprints", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.SprintTask", b =>
@@ -1625,7 +1625,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.HasIndex("SprintId", "TaskId")
                         .IsUnique();
 
-                    b.ToTable("SprintTasks");
+                    b.ToTable("SprintTasks", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory", b =>
@@ -1654,7 +1654,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("TaskCategories");
+                    b.ToTable("TaskCategories", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.TaskComment", b =>
@@ -1695,7 +1695,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("TaskId");
 
-                    b.ToTable("TaskComments");
+                    b.ToTable("TaskComments", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.TaskCommentAttachment", b =>
@@ -1734,7 +1734,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("TaskCommentId");
 
-                    b.ToTable("TaskCommentAttachments");
+                    b.ToTable("TaskCommentAttachments", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.TaskItem", b =>
@@ -1849,7 +1849,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("ProjectId", "IssueType");
 
-                    b.ToTable("TaskItems");
+                    b.ToTable("TaskItems", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.WorkflowStatus", b =>
@@ -1904,7 +1904,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     b.HasIndex("SprintId");
 
-                    b.ToTable("WorkflowStatuses");
+                    b.ToTable("WorkflowStatuses", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.WorkflowTransition", b =>
@@ -1960,7 +1960,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.HasIndex("FromStatusId", "ToStatusId", "ProjectId")
                         .IsUnique();
 
-                    b.ToTable("WorkflowTransitions");
+                    b.ToTable("WorkflowTransitions", (string)null);
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.Users.User", b =>

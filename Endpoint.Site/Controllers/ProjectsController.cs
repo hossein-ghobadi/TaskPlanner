@@ -1689,7 +1689,8 @@ namespace Endpoint.Site.Controllers
             var tasks = dateType switch
             {
                 "StartDate" => await tasksQuery
-                    .Select(t => new { t.ProjectId, Date = t.StartDate })
+                    .Where(t => t.StartDate.HasValue)
+                    .Select(t => new { t.ProjectId, Date = t.StartDate!.Value })
                     .ToListAsync(),
                 "DueDate" => await tasksQuery
                     .Where(t => t.DueDate.HasValue)

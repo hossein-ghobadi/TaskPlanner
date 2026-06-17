@@ -52,8 +52,7 @@ namespace Endpoint.Site.Models
         [Required(ErrorMessage = "نوع Issue الزامی است")]
         public IssueType IssueType { get; set; } = IssueType.Task;
 
-        [Required(ErrorMessage = "تاریخ شروع الزامی است")]
-        public string? StartDateSh { get; set; }   // تاریخ شمسی به صورت متن
+        public string? StartDateSh { get; set; }   // تاریخ شمسی به صورت متن (اختیاری)
 
         /// <summary>
         /// مدت انجام کار به روز

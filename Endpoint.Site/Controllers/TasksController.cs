@@ -418,7 +418,7 @@ namespace Endpoint.Site.Controllers
                         IssueType = finalIssueType,
                         ProjectIssueTypeId = projectIssueTypeId,
                         IssueKey = generatedIssueKey,
-                        StartDate = DateTime.Today,
+                        StartDate = parent.StartDate,
                         DueDate = parent.DueDate, // وراثت DueDate از parent
                         DurationDays = parent.DurationDays,
                         ProjectId = parent.ProjectId,
@@ -872,8 +872,9 @@ namespace Endpoint.Site.Controllers
                 .Where(t =>
                     userProjectIds.Contains(t.ProjectId) &&
                     t.IssueType != IssueType.Epic &&
-                    t.StartDate.Date >= startOfWeek &&
-                    t.StartDate.Date <= endOfWeek)
+                    t.StartDate.HasValue &&
+                    t.StartDate.Value.Date >= startOfWeek &&
+                    t.StartDate.Value.Date <= endOfWeek)
                 .OrderBy(t => t.StartDate)
                 .ToListAsync();
 
@@ -1047,13 +1048,16 @@ namespace Endpoint.Site.Controllers
                 return View(vm);
             }
 
-            var start = vm.StartDateSh.ToGregorianDateTime();
-
-            if (start is null)
+            DateTime? start = null;
+            if (!string.IsNullOrWhiteSpace(vm.StartDateSh))
             {
-                ModelState.AddModelError(nameof(vm.StartDateSh), "تاریخ شروع معتبر نیست.");
-                await FillListsForCreate(vm.ProjectId);
-                return View(vm);
+                start = vm.StartDateSh.ToGregorianDateTime();
+                if (start is null)
+                {
+                    ModelState.AddModelError(nameof(vm.StartDateSh), "تاریخ شروع معتبر نیست.");
+                    await FillListsForCreate(vm.ProjectId);
+                    return View(vm);
+                }
             }
 
             if (vm.CategoryId.HasValue)
@@ -1216,7 +1220,7 @@ namespace Endpoint.Site.Controllers
                         CategoryId = vm.CategoryId,
                         ParentTaskId = vm.ParentId,
                         ProjectId = vm.ProjectId,
-                        StartDate = start.Value,
+                        StartDate = start,
                         AssignedUserId = vm.AssignedUserId,
                         StoryPoints = vm.StoryPoints,
                         IsCompleted = false,
@@ -1616,9 +1620,11 @@ namespace Endpoint.Site.Controllers
                 issueType = (int)task.IssueType,
                 projectIssueTypeId = task.ProjectIssueTypeId,
                 projectId = task.ProjectId,
-                startDateSh = task.StartDate.ToShortPersianDateString(),
+                startDateSh = task.StartDate?.ToShortPersianDateString() ?? "",
                 dueDateSh = task.DueDate != null ? task.DueDate.Value.ToShortPersianDateString() : string.Empty,
-                durationDays = task.DurationDays ?? TaskScheduleHelper.CalculateDurationDays(task.StartDate, task.DueDate),
+                durationDays = task.DurationDays ?? (task.StartDate.HasValue
+                    ? TaskScheduleHelper.CalculateDurationDays(task.StartDate, task.DueDate)
+                    : null),
                 startDate = task.StartDate,
                 dueDate = task.DueDate,
                 categoryId = task.CategoryId,
@@ -1741,7 +1747,7 @@ namespace Endpoint.Site.Controllers
                         Description = null,
                         IssueType = IssueType.Subtask,
                         IssueKey = generatedIssueKey,
-                        StartDate = DateTime.Today,
+                        StartDate = parent.StartDate,
                         DueDate = parent.DueDate,
                         DurationDays = parent.DurationDays,
                         ProjectId = parent.ProjectId,
@@ -1917,8 +1923,10 @@ namespace Endpoint.Site.Controllers
                 CategoryId = task.CategoryId,
                 ParentId = task.ParentTaskId,
                 ProjectId = task.ProjectId,
-                StartDateSh = task.StartDate.ToShortPersianDateString(),
-                DurationDays = task.DurationDays ?? TaskScheduleHelper.CalculateDurationDays(task.StartDate, task.DueDate),
+                StartDateSh = task.StartDate?.ToShortPersianDateString(),
+                DurationDays = task.DurationDays ?? (task.StartDate.HasValue
+                    ? TaskScheduleHelper.CalculateDurationDays(task.StartDate, task.DueDate)
+                    : null),
                 AssignedUserId = task.AssignedUserId,
                 IssueType = task.IssueType,
                 ProjectIssueTypeId = task.ProjectIssueTypeId,
@@ -2377,18 +2385,21 @@ namespace Endpoint.Site.Controllers
             // task.ProjectIssueTypeId = selectedProjectIssueType?.Id; // ❌ حذف شد - نوع کار قابل تغییر نیست
             // 🔒 ProjectId تغییر نمی‌کند - همیشه همان پروژه اصلی تسک باقی می‌ماند
             // task.ProjectId = vm.ProjectId; // ❌ حذف شد - پروژه قابل تغییر نیست
-            var parsedStartDate = vm.StartDateSh.ToGregorianDateTime();
-            if (!parsedStartDate.HasValue)
+            DateTime? parsedStartDate = null;
+            if (!string.IsNullOrWhiteSpace(vm.StartDateSh))
             {
-                if (isJsonRequest)
+                parsedStartDate = vm.StartDateSh.ToGregorianDateTime();
+                if (!parsedStartDate.HasValue)
                 {
-                    return Json(new { success = false, message = "تاریخ شروع نامعتبر است." });
+                    if (isJsonRequest)
+                    {
+                        return Json(new { success = false, message = "تاریخ شروع نامعتبر است." });
+                    }
+                    ModelState.AddModelError(nameof(vm.StartDateSh), "تاریخ شروع نامعتبر است.");
+                    return View(vm);
                 }
-                ModelState.AddModelError(nameof(vm.StartDateSh), "تاریخ شروع نامعتبر است.");
-                return View(vm);
             }
 
-            task.StartDate = parsedStartDate.Value;
             TaskScheduleHelper.ApplySchedule(task, parsedStartDate, vm.DurationDays);
 
             // 👇 مسئول تسک

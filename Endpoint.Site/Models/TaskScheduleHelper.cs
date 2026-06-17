@@ -4,28 +4,27 @@ namespace Endpoint.Site.Models
 {
     public static class TaskScheduleHelper
     {
-        public static int? CalculateDurationDays(DateTime startDate, DateTime? dueDate)
+        public static int? CalculateDurationDays(DateTime? startDate, DateTime? dueDate)
         {
-            if (!dueDate.HasValue)
+            if (!startDate.HasValue || !dueDate.HasValue)
             {
                 return null;
             }
 
-            var days = (dueDate.Value.Date - startDate.Date).Days;
+            var days = (dueDate.Value.Date - startDate.Value.Date).Days;
             return days >= 0 ? days : null;
         }
 
         public static void ApplySchedule(TaskItem task, DateTime? startDate, int? durationDays)
         {
-            if (startDate.HasValue)
-            {
-                task.StartDate = startDate.Value.Date;
-            }
+            task.StartDate = startDate.HasValue ? startDate.Value.Date : null;
 
             if (durationDays.HasValue && durationDays.Value >= 0)
             {
                 task.DurationDays = durationDays.Value;
-                task.DueDate = task.StartDate.Date.AddDays(durationDays.Value);
+                task.DueDate = task.StartDate.HasValue
+                    ? task.StartDate.Value.Date.AddDays(durationDays.Value)
+                    : null;
                 return;
             }
 

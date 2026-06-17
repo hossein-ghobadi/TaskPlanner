@@ -7,7 +7,9 @@
         ? "Completed"
         : "Index";
     var pc = new System.Globalization.PersianCalendar();
-    string ToJalali(DateTime d) => $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
+    string ToJalali(DateTime? d) => d.HasValue
+        ? $"{pc.GetYear(d.Value):0000}/{pc.GetMonth(d.Value):00}/{pc.GetDayOfMonth(d.Value):00}"
+        : "—";
     
     // تبدیل اعداد به حروف فارسی
     string ConvertToPersianWords(int number)
@@ -1203,7 +1205,9 @@
         ? "Completed"
         : "Index";
     var pc = new System.Globalization.PersianCalendar();
-    string ToJalali(DateTime d) => $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
+    string ToJalali(DateTime? d) => d.HasValue
+        ? $"{pc.GetYear(d.Value):0000}/{pc.GetMonth(d.Value):00}/{pc.GetDayOfMonth(d.Value):00}"
+        : "—";
     
     // تبدیل اعداد به حروف فارسی
     string ConvertToPersianWords(int number)
