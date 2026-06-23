@@ -45,6 +45,8 @@
     let marqueeEl = null;
     let connectSourceId = null;
     let dragState = null;
+    /** @type {{ id: string, sx: number, sy: number, sw: number, sh: number } | null} */
+    let resizeState = null;
     /** @type {{ fromId: string, x: number, y: number } | null} */
     let linkDrag = null;
     let linkHoverId = null;
@@ -92,6 +94,8 @@
             text: n.text != null ? String(n.text) : "ایده جدید",
             x: typeof n.x === "number" ? n.x : 0,
             y: typeof n.y === "number" ? n.y : 0,
+            w: typeof n.w === "number" && Number.isFinite(n.w) ? Math.max(60, Math.round(n.w)) : null,
+            h: typeof n.h === "number" && Number.isFinite(n.h) ? Math.max(34, Math.round(n.h)) : null,
             background: n.background || "#ffffff",
             textColor: n.textColor || "#0f172a",
             fontSize: clampNodeFontSize(n.fontSize),
@@ -850,6 +854,8 @@
             wrap.classList.toggle("mindmap-node--root", isRoot);
             wrap.classList.toggle("mindmap-node--primary", isPrimary);
             wrap.classList.toggle("mindmap-node--leaf", isLeaf);
+            const hasSize = typeof node.w === "number" || typeof node.h === "number";
+            wrap.classList.toggle("mindmap-node--sized", hasSize);
             applyNodeSizing(wrap, node.fontSize);
             if (isRoot) {
                 wrap.style.backgroundColor = node.background;
@@ -868,6 +874,17 @@
             }
             if (node.id === linkHoverId && linkDrag && node.id !== linkDrag.fromId) {
                 wrap.classList.add("link-drop-target");
+            }
+
+            if (typeof node.w === "number") {
+                wrap.style.width = node.w + "px";
+            } else {
+                wrap.style.removeProperty("width");
+            }
+            if (typeof node.h === "number") {
+                wrap.style.height = node.h + "px";
+            } else {
+                wrap.style.removeProperty("height");
             }
 
             const stack = document.createElement("div");
@@ -988,8 +1005,20 @@
             });
             linkHandle.appendChild(connector);
 
+            const resizeHandle = document.createElement("button");
+            resizeHandle.type = "button";
+            resizeHandle.className = "mindmap-node__resize-handle";
+            resizeHandle.title = "تغییر اندازه (عرض و ارتفاع)";
+            resizeHandle.setAttribute("aria-label", "تغییر اندازه نود");
+            resizeHandle.addEventListener("mousedown", (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                startResize(node.id, e);
+            });
+
             wrap.appendChild(stack);
             wrap.appendChild(linkHandle);
+            wrap.appendChild(resizeHandle);
 
             cluster.appendChild(wrap);
             canvas.appendChild(cluster);
@@ -998,6 +1027,75 @@
         syncPanel();
         drawLinksFromDom();
         applyViewportTransform();
+    }
+
+    function startResize(nodeId, event) {
+        if (event.button !== 0) {
+            return;
+        }
+        const node = getNode(nodeId);
+        if (!node) {
+            return;
+        }
+        // هنگام resize، اگر در حال ویرایش متن بودیم، اول commit کنیم تا اندازه ثابت بماند.
+        if (editingNodeId && editingNodeId !== nodeId) {
+            commitInlineEdit(editingNodeId);
+        }
+        syncSingleNodeSelection(nodeId);
+        refreshSelectionVisuals();
+
+        const shell = canvas.querySelector('.mindmap-node[data-id="' + nodeId + '"]');
+        if (!shell) {
+            return;
+        }
+        const rect = shell.getBoundingClientRect();
+        const worldW = Math.max(1, rect.width / viewScale);
+        const worldH = Math.max(1, rect.height / viewScale);
+        resizeState = {
+            id: nodeId,
+            sx: event.clientX,
+            sy: event.clientY,
+            sw: typeof node.w === "number" ? node.w : worldW,
+            sh: typeof node.h === "number" ? node.h : worldH
+        };
+        document.body.style.cursor = "nwse-resize";
+        window.addEventListener("mousemove", onResizeMove);
+        window.addEventListener("mouseup", onResizeEnd, true);
+    }
+
+    function onResizeMove(event) {
+        if (!resizeState) {
+            return;
+        }
+        const node = getNode(resizeState.id);
+        if (!node) {
+            return;
+        }
+        const dx = (event.clientX - resizeState.sx) / viewScale;
+        const dy = (event.clientY - resizeState.sy) / viewScale;
+        const nextW = Math.max(80, Math.round(resizeState.sw + dx));
+        const nextH = Math.max(44, Math.round(resizeState.sh + dy));
+        node.w = nextW;
+        node.h = nextH;
+
+        const shell = canvas.querySelector('.mindmap-node[data-id="' + resizeState.id + '"]');
+        if (shell) {
+            shell.style.width = nextW + "px";
+            shell.style.height = nextH + "px";
+        }
+        scheduleDrawLinks();
+    }
+
+    function onResizeEnd() {
+        if (!resizeState) {
+            return;
+        }
+        window.removeEventListener("mousemove", onResizeMove);
+        window.removeEventListener("mouseup", onResizeEnd, true);
+        document.body.style.cursor = "";
+        resizeState = null;
+        saveState();
+        scheduleDrawLinks();
     }
 
     function spawnChild(parentId, label) {
@@ -1290,6 +1388,9 @@
     }
 
     function startDrag(event) {
+        if (resizeState) {
+            return;
+        }
         if (event.button === 0 && spacePanArmed && viewport && stage) {
             if (!event.target.closest(".mindmap-zoom-toolbar")) {
                 panDragState = {
@@ -1317,7 +1418,8 @@
             event.target.closest(".mindmap-node__connector") ||
             event.target.closest(".mindmap-node__chip") ||
             event.target.closest(".mindmap-node__delete") ||
-            event.target.closest(".mindmap-node__input")
+            event.target.closest(".mindmap-node__input") ||
+            event.target.closest(".mindmap-node__resize-handle")
         ) {
             return;
         }
