@@ -10,7 +10,14 @@
     }
 }
 
-<aside class="app-sidebar">
+<aside class="app-sidebar" data-app-sidebar>
+    <button type="button"
+            class="app-sidebar-toggle d-none d-lg-inline-flex"
+            data-app-sidebar-toggle
+            aria-expanded="true"
+            aria-label="جمع کردن سایدبار">
+        <i class="bi bi-chevron-double-right" aria-hidden="true"></i>
+    </button>
     <form id="app-sidebar-logout-form" method="post" action="/account/logout" class="app-sidebar-logout-form-hidden m-0">
         <input name="__RequestVerificationToken" type="hidden" value="@ViewBag.AntiforgeryToken" />
     </form>

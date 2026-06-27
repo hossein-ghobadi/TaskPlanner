@@ -216,8 +216,8 @@
     }
     .kanban-board {
     display: flex;
-    gap: 0.75rem;
-    padding: 0.35rem 0;
+    gap: 1.25rem;
+    padding: 0.35rem 0.5rem;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
@@ -230,11 +230,14 @@
     .board-columns {
     display: flex;
     flex-direction: row;
-    gap: 0.75rem;
+    gap: 1.25rem;
     overflow-x: auto;
     padding-bottom: 0.65rem;
     }
     .kanban-column {
+    width: 280px;
+    max-width: 280px;
+    flex: 0 0 280px;
     min-width: 280px;
     background: #e9eaec;
     border-radius: 10px;
@@ -263,6 +266,13 @@
     justify-content: space-between;
     align-items: center;
     color: #212529;
+    min-width: 0;
+    gap: 0.35rem;
+    }
+    .column-header > span:first-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     }
     .add-task-btn {
     margin-top: 0.5rem;
@@ -355,9 +365,11 @@
     .column-tasks {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    min-width: 0;
     }
     .task-card {
     background: #ffffff;
@@ -369,6 +381,12 @@
     user-select: none;
     position: relative;
     border: 1px solid #e4e6ea;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     }
     .task-card:hover {
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
@@ -413,6 +431,19 @@
     }
     .subtask-item {
     flex-direction: row-reverse;
+    }
+    .task-card .task-meta {
+    font-size: 0.8rem;
+    color: #6c757d;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    }
+    .subtask-item .fw-bold,
+    .subtask-item small {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     }
     .subtask-item .flex-grow-1 {
     text-align: right;
@@ -703,11 +734,18 @@
     .task-title {
     font-weight: 500;
     margin-bottom: 0.5rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     }
     .task-title a {
     color: #212529;
     text-decoration: none;
     transition: color 0.2s;
+    display: block;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     }
     .task-title a:hover {
     color: #0d6efd;
@@ -716,13 +754,19 @@
     font-size: 0.85rem;
     color: #6c757d;
     margin-bottom: 0.5rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     }
     .task-footer {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.35rem;
     font-size: 0.8rem;
     color: #6c757d;
+    min-width: 0;
     }
     .task-badge {
     display: inline-block;
@@ -730,6 +774,9 @@
     border-radius: 4px;
     font-size: 0.75rem;
     font-weight: 500;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     }
     .badge-assigned {
     background: #e3f2fd;
@@ -1016,8 +1063,8 @@
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
-    padding: 0.25rem 0;
-    gap: 0.75rem;
+    padding: 0.25rem 0.35rem;
+    gap: 1rem;
     /* برای بهبود scroll در موبایل */
     scroll-snap-type: x proximity;
     }
@@ -1133,7 +1180,7 @@
     padding: 0.4rem 0.5rem;
     }
     .kanban-board {
-    gap: 0.6rem;
+    gap: 0.875rem;
     }
     .kanban-column {
     min-width: 260px;
@@ -1234,7 +1281,7 @@
 
     @@media (max-width: 400px) {
     .kanban-board {
-    gap: 0.5rem;
+    gap: 0.75rem;
     }
     .kanban-column {
     min-width: 240px;
@@ -1833,9 +1880,6 @@
 
 
     /* تم کلاسیک: نزدیک به نمونه — فضای کار روشن، ستون خاکستری ملایم، کارت و افزودن کار سفید */
-    .board-container.board-theme-classic:not(.board-bg-photo) {
-    background: #f4f4f4 !important;
-    }
     .board-container.board-theme-classic .board-header {
     background: #ffffff;
     border: 1px solid #e2e5e8;
@@ -1935,8 +1979,8 @@
     box-shadow: 0 0 0 2px rgba(63, 77, 103, 0.12);
     }
     .board-container.board-theme-classic .kanban-board {
-    gap: 0.65rem;
-    padding: 0.35rem 0;
+    gap: 1.25rem;
+    padding: 0.35rem 0.5rem;
     }
     .board-container.board-theme-classic .kanban-column {
     background: #e9eaec;
