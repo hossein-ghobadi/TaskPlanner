@@ -35,6 +35,13 @@
             <h2 class="form-title">ورود به سیستم</h2>
             <p class="form-subtitle">لطفا اطلاعات ورود خود را وارد کنید</p>
 
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success" role="alert">
+                    <i class="bi bi-check-circle"></i> @TempData["Success"]
+                </div>
+            }
+
             @if (TempData["Error"] != null)
             {
                 <div class="alert alert-danger" role="alert">
@@ -62,6 +69,10 @@
                         </button>
                     </div>
                     <span asp-validation-for="Password" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3 text-end">
+                    <a asp-action="ForgotPassword" class="forgot-password-link">رمز عبور را فراموش کرده‌اید؟</a>
                 </div>
 
                 <div class="mb-4 form-check">
@@ -377,6 +388,29 @@
     .auth-switch-text a:hover {
         color: #4f46e5;
         text-decoration: underline;
+    }
+
+    .forgot-password-link {
+        color: #6366f1;
+        font-size: 0.86rem;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .forgot-password-link:hover {
+        color: #4f46e5;
+        text-decoration: underline;
+    }
+
+    .alert-success {
+        background-color: #ecfdf5 !important;
+        border: 1px solid #a7f3d0 !important;
+        color: #047857 !important;
+        font-weight: 600;
+        padding: 12px 14px;
+        border-radius: 10px;
+        font-size: 0.88rem;
+        margin-bottom: 1rem;
     }
 
     @@keyframes fadeIn {

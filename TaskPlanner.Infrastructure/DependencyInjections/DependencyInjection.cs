@@ -22,6 +22,7 @@ using TaskPlanner.Application.Services.NotificationService;
 using TaskPlanner.Application.Services.LeadService;
 using TaskPlanner.Application.Services.DashboardService;
 using TaskPlanner.Application.Services.Bale;
+using TaskPlanner.Application.Services.SMS;
 
 
 namespace TaskPlanner.Infrastructure.DependencyInjections
@@ -56,6 +57,8 @@ namespace TaskPlanner.Infrastructure.DependencyInjections
             services.AddScoped<INotificationService, NotificationService>();
 
             services.AddBaleServices(configuration);
+
+            services.AddSmsServices(configuration);
 
             return services;
         }

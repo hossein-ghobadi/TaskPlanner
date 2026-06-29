@@ -1,11 +1,10 @@
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskPlanner.Domain.Entities.Users;
 using Endpoint.Site.Models;
-using System.Security.Claims;
-using System;
+using TaskPlanner.Application.Services.SMS;
+using TaskPlanner.Application.Services.SMS.Commands;
 
 namespace Endpoint.Site.Controllers
 {
@@ -13,15 +12,21 @@ namespace Endpoint.Site.Controllers
     {
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
+        private readonly ISmsSendService _smsSendService;
+        private readonly ISmsCheckService _smsCheckService;
         private readonly ILogger<AccountController> _logger;
 
         public AccountController(
             UserManager<User> userManager,
             SignInManager<User> signInManager,
+            ISmsSendService smsSendService,
+            ISmsCheckService smsCheckService,
             ILogger<AccountController> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _smsSendService = smsSendService;
+            _smsCheckService = smsCheckService;
             _logger = logger;
         }
 
@@ -50,16 +55,15 @@ namespace Endpoint.Site.Controllers
                     return View(model);
                 }
 
-                // 🚀 بهینه‌سازی: جستجوی کاربر با یک query واحد (به جای 3 query جداگانه)
-                // بررسی UserName، Email (Normalized) و Phone در یک query
                 var userName = model.UserName;
                 var normalizedUserName = userName.ToUpper();
-                
+
                 var user = await _userManager.Users
-                    .FirstOrDefaultAsync(u => 
+                    .FirstOrDefaultAsync(u =>
                         (u.NormalizedUserName != null && u.NormalizedUserName == normalizedUserName) ||
                         (u.NormalizedEmail != null && u.NormalizedEmail == normalizedUserName) ||
-                        (u.Phone != null && u.Phone == userName));
+                        (u.Phone != null && u.Phone == userName) ||
+                        (u.PhoneNumber != null && u.PhoneNumber == userName));
 
                 if (user == null)
                 {
@@ -120,8 +124,37 @@ namespace Endpoint.Site.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterViewModel model)
         {
+            model.Phone = PhoneNumberNormalizer.Normalize(model.Phone);
+
             if (!ModelState.IsValid)
             {
+                return View(model);
+            }
+
+            if (!PhoneNumberNormalizer.IsValidIranianMobile(model.Phone))
+            {
+                ModelState.AddModelError(nameof(model.Phone), "شماره موبایل معتبر نیست");
+                return View(model);
+            }
+
+            var phoneExists = await _userManager.Users.AnyAsync(u =>
+                u.Phone == model.Phone || u.PhoneNumber == model.Phone);
+
+            if (phoneExists)
+            {
+                ModelState.AddModelError(nameof(model.Phone), "این شماره موبایل قبلاً ثبت شده است");
+                return View(model);
+            }
+
+            var smsCheck = await _smsCheckService.CheckAsync(new RequestSmsCheckDto
+            {
+                PhoneNumber = model.Phone,
+                Code = model.SmsCode
+            });
+
+            if (!smsCheck.isSuccess || !smsCheck.data)
+            {
+                ModelState.AddModelError(nameof(model.SmsCode), smsCheck.message ?? "کد تأیید پیامک نامعتبر است");
                 return View(model);
             }
 
@@ -131,17 +164,19 @@ namespace Endpoint.Site.Controllers
                 Email = model.Email,
                 FullName = model.FullName,
                 Phone = model.Phone,
+                PhoneNumber = model.Phone,
                 InsertTime = DateTime.Now,
                 IsActive = true,
-                EmailConfirmed = false
+                IsVarify = true,
+                EmailConfirmed = false,
+                PhoneNumberConfirmed = true
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (result.Succeeded)
             {
-                _logger.LogInformation("User {UserName} registered", user.UserName);
-                
+                _logger.LogInformation("User {UserName} registered with SMS verification", user.UserName);
                 await _signInManager.SignInAsync(user, isPersistent: false);
                 return RedirectToAction("Index", "Home");
             }
@@ -152,6 +187,142 @@ namespace Endpoint.Site.Controllers
             }
 
             return View(model);
+        }
+
+        [HttpPost]
+        [Route("/account/send-register-sms")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SendRegisterSms([FromBody] SendSmsCodeRequest request)
+        {
+            var phone = PhoneNumberNormalizer.Normalize(request.Phone);
+
+            if (!PhoneNumberNormalizer.IsValidIranianMobile(phone))
+            {
+                return Json(new { success = false, message = "شماره موبایل معتبر نیست" });
+            }
+
+            var phoneExists = await _userManager.Users.AnyAsync(u =>
+                u.Phone == phone || u.PhoneNumber == phone);
+
+            if (phoneExists)
+            {
+                return Json(new { success = false, message = "این شماره موبایل قبلاً ثبت شده است" });
+            }
+
+            var sendResult = await _smsSendService.SendAsync(new RequestSmsSendDto
+            {
+                PhoneNumber = phone
+            });
+
+            return Json(new
+            {
+                success = sendResult.isSuccess && sendResult.data,
+                message = sendResult.message ?? (sendResult.data ? "کد تأیید ارسال شد" : "ارسال پیامک ناموفق بود")
+            });
+        }
+
+        [HttpGet]
+        [Route("/forgot-password")]
+        [Route("/account/forgot-password")]
+        public IActionResult ForgotPassword()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        [Route("/forgot-password")]
+        [Route("/account/forgot-password")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
+        {
+            model.Phone = PhoneNumberNormalizer.Normalize(model.Phone);
+
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            if (!PhoneNumberNormalizer.IsValidIranianMobile(model.Phone))
+            {
+                ModelState.AddModelError(nameof(model.Phone), "شماره موبایل معتبر نیست");
+                return View(model);
+            }
+
+            var user = await _userManager.Users.FirstOrDefaultAsync(u =>
+                u.Phone == model.Phone || u.PhoneNumber == model.Phone);
+
+            if (user == null)
+            {
+                ModelState.AddModelError(nameof(model.Phone), "کاربری با این شماره موبایل یافت نشد");
+                return View(model);
+            }
+
+            if (!user.IsActive)
+            {
+                ModelState.AddModelError(string.Empty, "حساب کاربری شما غیرفعال است");
+                return View(model);
+            }
+
+            var smsCheck = await _smsCheckService.CheckAsync(new RequestSmsCheckDto
+            {
+                PhoneNumber = model.Phone,
+                Code = model.SmsCode
+            });
+
+            if (!smsCheck.isSuccess || !smsCheck.data)
+            {
+                ModelState.AddModelError(nameof(model.SmsCode), smsCheck.message ?? "کد تأیید پیامک نامعتبر است");
+                return View(model);
+            }
+
+            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var resetResult = await _userManager.ResetPasswordAsync(user, resetToken, model.NewPassword);
+
+            if (resetResult.Succeeded)
+            {
+                _logger.LogInformation("Password reset via SMS for user {UserName}", user.UserName);
+                TempData["Success"] = "رمز عبور با موفقیت تغییر کرد. اکنون می‌توانید وارد شوید.";
+                return RedirectToAction(nameof(Login));
+            }
+
+            foreach (var error in resetResult.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [Route("/account/send-forgot-password-sms")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SendForgotPasswordSms([FromBody] SendSmsCodeRequest request)
+        {
+            var phone = PhoneNumberNormalizer.Normalize(request.Phone);
+
+            if (!PhoneNumberNormalizer.IsValidIranianMobile(phone))
+            {
+                return Json(new { success = false, message = "شماره موبایل معتبر نیست" });
+            }
+
+            var userExists = await _userManager.Users.AnyAsync(u =>
+                u.Phone == phone || u.PhoneNumber == phone);
+
+            if (!userExists)
+            {
+                return Json(new { success = false, message = "کاربری با این شماره موبایل یافت نشد" });
+            }
+
+            var sendResult = await _smsSendService.SendAsync(new RequestSmsSendDto
+            {
+                PhoneNumber = phone
+            });
+
+            return Json(new
+            {
+                success = sendResult.isSuccess && sendResult.data,
+                message = sendResult.message ?? (sendResult.data ? "کد تأیید ارسال شد" : "ارسال پیامک ناموفق بود")
+            });
         }
 
         [HttpPost]
