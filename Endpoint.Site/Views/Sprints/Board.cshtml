@@ -3162,6 +3162,19 @@
                                         }
                                     </select>
 
+                                    <label for="editTaskFeature" class="form-label">فیچر</label>
+                                    <select class="form-select mb-2" id="editTaskFeature">
+                                        <option value="">-- بدون فیچر --</option>
+                                        @{
+                                            var featuresForEdit = ViewBag.Features as List<TaskPlanner.Domain.Entities.TaskPlanner.ProjectFeature>
+                                                ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.ProjectFeature>();
+                                        }
+                                        @foreach (var feature in featuresForEdit)
+                                        {
+                                            <option value="@feature.Id">@feature.Name</option>
+                                        }
+                                    </select>
+
                                     <label for="editTaskAssignedUser" class="form-label">مسئول کار</label>
                                     <select class="form-select mb-2" id="editTaskAssignedUser">
                                         <option value="">-- انتخاب کاربر --</option>
@@ -3503,6 +3516,7 @@
             document.getElementById('editTaskTitle').value = '';
             document.getElementById('editTaskDescription').value = '';
             document.getElementById('editTaskCategory').value = '';
+            document.getElementById('editTaskFeature').value = '';
             document.getElementById('editTaskAssignedUser').value = '';
             const effortLevelSelect = document.getElementById('editTaskEffortLevel');
             const effortLevelDisplay = document.getElementById('editTaskEffortLevelDisplay');
@@ -5432,6 +5446,7 @@
                 }
                 updateComputedDueDateDisplay(taskData.dueDateSh || '');
                 document.getElementById('editTaskCategory').value = taskData.categoryId || '';
+                document.getElementById('editTaskFeature').value = taskData.featureId || '';
                 document.getElementById('editTaskAssignedUser').value = taskData.assignedUserId || '';
                 const effortLevelSelect = document.getElementById('editTaskEffortLevel');
                 const effortLevelDisplay = document.getElementById('editTaskEffortLevelDisplay');
@@ -5593,6 +5608,7 @@
                 issueType: issueType,
                 statusId: statusId,
                 categoryId: document.getElementById('editTaskCategory').value ? parseInt(document.getElementById('editTaskCategory').value, 10) : null,
+                featureId: document.getElementById('editTaskFeature').value ? parseInt(document.getElementById('editTaskFeature').value, 10) : null,
                 assignedUserId: assignedUserId,
                 startDateSh: syncTaskModalStartHidden() || '',
                 durationDays: (() => {
@@ -5652,6 +5668,7 @@
                 document.getElementById('editTaskTitle').value = '';
                 document.getElementById('editTaskDescription').value = '';
                 document.getElementById('editTaskCategory').value = '';
+                document.getElementById('editTaskFeature').value = '';
                 if (assignedUserSelect) assignedUserSelect.value = '';
                 const effortLevelSelect = document.getElementById('editTaskEffortLevel');
                 if (effortLevelSelect) effortLevelSelect.value = '';
@@ -5726,6 +5743,7 @@
                     return Number.isNaN(n) ? null : n;
                 })(),
                 CategoryId: document.getElementById('editTaskCategory').value ? parseInt(document.getElementById('editTaskCategory').value) : null,
+                FeatureId: document.getElementById('editTaskFeature').value ? parseInt(document.getElementById('editTaskFeature').value) : null,
                 AssignedUserId: assignedUserId,
                 EffortLevel: document.getElementById('editTaskEffortLevel').value
                     ? parseInt(document.getElementById('editTaskEffortLevel').value)

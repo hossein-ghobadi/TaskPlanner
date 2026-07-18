@@ -213,6 +213,12 @@ namespace Endpoint.Site.Controllers
                 .ToListAsync();
             ViewBag.Categories = categories;
 
+            ViewBag.Features = await _context.ProjectFeatures
+                .AsNoTracking()
+                .Where(f => f.ProjectId == sprint.ProjectId)
+                .OrderBy(f => f.Name)
+                .ToListAsync();
+
             // دریافت اعضای پروژه برای فرم ایجاد تسک
             var memberIds = await _context.ProjectMembers
                 .Where(m => m.ProjectId == sprint.ProjectId)
@@ -335,6 +341,12 @@ namespace Endpoint.Site.Controllers
                 .OrderBy(c => c.Name)
                 .ToListAsync();
             ViewBag.Categories = categories;
+
+            ViewBag.Features = await _context.ProjectFeatures
+                .AsNoTracking()
+                .Where(f => f.ProjectId == projectId)
+                .OrderBy(f => f.Name)
+                .ToListAsync();
 
             var memberUserIds = await _context.ProjectMembers
                 .Where(m => m.ProjectId == projectId)
@@ -1072,6 +1084,21 @@ namespace Endpoint.Site.Controllers
                 if (categoryId <= 0) categoryId = null;
             }
 
+            // دریافت featureId (اختیاری)
+            int? featureId = null;
+            if (data.TryGetProperty("featureId", out var featureProp) && featureProp.ValueKind == JsonValueKind.Number)
+            {
+                var requestedFeatureId = featureProp.GetInt32();
+                if (requestedFeatureId > 0)
+                {
+                    var featureExists = await _context.ProjectFeatures
+                        .AsNoTracking()
+                        .AnyAsync(f => f.Id == requestedFeatureId && f.ProjectId == sprint.ProjectId);
+                    if (featureExists)
+                        featureId = requestedFeatureId;
+                }
+            }
+
             // دریافت IssueType (پیش‌فرض: Task)
             IssueType issueType = IssueType.Task;
             if (data.TryGetProperty("issueType", out var issueTypeProp) && issueTypeProp.ValueKind == JsonValueKind.Number)
@@ -1155,6 +1182,7 @@ namespace Endpoint.Site.Controllers
                     IssueKey = null,
                     ProjectId = sprint.ProjectId,
                     CategoryId = categoryId,
+                    FeatureId = featureId,
                     AssignedUserId = data.TryGetProperty("assignedUserId", out var assignedProp) && !string.IsNullOrWhiteSpace(assignedProp.GetString()) ? assignedProp.GetString() : null,
                     StoryPoints = storyPoints,
                     StatusId = targetStatusId,

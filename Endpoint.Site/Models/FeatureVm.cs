@@ -64,6 +64,7 @@ namespace Endpoint.Site.Models
     public class FeaturePageStateItemVm
     {
         public int Id { get; set; }
+        public int FeatureId { get; set; }
         public FeaturePageStateType StateType { get; set; }
 
         [Required(ErrorMessage = "توضیح رفتار الزامی است")]
@@ -76,6 +77,7 @@ namespace Endpoint.Site.Models
     public class FeatureApiContractItemVm
     {
         public int Id { get; set; }
+        public int FeatureId { get; set; }
 
         [Required(ErrorMessage = "Endpoint الزامی است")]
         [StringLength(500)]
@@ -182,6 +184,7 @@ namespace Endpoint.Site.Models
         public string? CodeReviewerName { get; set; }
         public bool CanManageCodeReview { get; set; }
         public bool CanChangeCodeReviewer { get; set; }
+        public bool CanManageFeatureSpec { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
 

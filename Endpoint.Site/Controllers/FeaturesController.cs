@@ -157,7 +157,7 @@ namespace Endpoint.Site.Controllers
             ViewBag.ProjectId = feature.ProjectId;
             ViewData["Title"] = feature.Name;
 
-            var vm = MapDetails(feature, canManageCodeReview: isReviewer || isCreator, canChangeCodeReviewer: isCreator);
+            var vm = MapDetails(feature, canManageCodeReview: isReviewer || isCreator, canChangeCodeReviewer: isCreator, canManageFeatureSpec: isCreator);
             return View(vm);
         }
 
@@ -224,6 +224,10 @@ namespace Endpoint.Site.Controllers
             if (!await HasProjectAccessAsync(feature.ProjectId))
                 return RedirectToAction("Index", "Projects");
 
+            var deny = await DenyUnlessProjectCreatorAsync(feature.ProjectId, feature.Id);
+            if (deny != null)
+                return deny;
+
             ViewBag.ProjectId = feature.ProjectId;
             ViewData["Title"] = "ویرایش مشخصات فیچر";
 
@@ -277,6 +281,10 @@ namespace Endpoint.Site.Controllers
 
             if (!await HasProjectAccessAsync(feature.ProjectId))
                 return RedirectToAction("Index", "Projects");
+
+            var deny = await DenyUnlessProjectCreatorAsync(feature.ProjectId, feature.Id);
+            if (deny != null)
+                return deny;
 
             vm.Functions ??= new List<FeatureFunctionItemVm>();
             vm.PageStates ??= new List<FeaturePageStateItemVm>();
@@ -377,6 +385,10 @@ namespace Endpoint.Site.Controllers
             if (!await HasProjectAccessAsync(feature.ProjectId))
                 return RedirectToAction("Index", "Projects");
 
+            var deny = await DenyUnlessProjectCreatorAsync(feature.ProjectId, feature.Id);
+            if (deny != null)
+                return deny;
+
             if (string.IsNullOrWhiteSpace(vm.Title))
             {
                 TempData["Error"] = "عنوان کارکرد الزامی است.";
@@ -410,6 +422,10 @@ namespace Endpoint.Site.Controllers
             if (!await HasProjectAccessAsync(function.Feature.ProjectId))
                 return RedirectToAction("Index", "Projects");
 
+            var deny = await DenyUnlessProjectCreatorAsync(function.Feature.ProjectId, function.FeatureId);
+            if (deny != null)
+                return deny;
+
             if (string.IsNullOrWhiteSpace(vm.Title))
             {
                 TempData["Error"] = "عنوان کارکرد الزامی است.";
@@ -437,6 +453,10 @@ namespace Endpoint.Site.Controllers
             if (!await HasProjectAccessAsync(function.Feature.ProjectId))
                 return RedirectToAction("Index", "Projects");
 
+            var deny = await DenyUnlessProjectCreatorAsync(function.Feature.ProjectId, function.FeatureId);
+            if (deny != null)
+                return deny;
+
             var featureId = function.FeatureId;
             _context.FeatureFunctions.Remove(function);
             function.Feature.UpdatedAt = DateTime.UtcNow;
@@ -458,6 +478,10 @@ namespace Endpoint.Site.Controllers
 
             if (!await HasProjectAccessAsync(feature.ProjectId))
                 return RedirectToAction("Index", "Projects");
+
+            var deny = await DenyUnlessProjectCreatorAsync(feature.ProjectId, feature.Id);
+            if (deny != null)
+                return deny;
 
             if (string.IsNullOrWhiteSpace(vm.Description))
             {
@@ -492,6 +516,10 @@ namespace Endpoint.Site.Controllers
             if (!await HasProjectAccessAsync(rule.Feature.ProjectId))
                 return RedirectToAction("Index", "Projects");
 
+            var deny = await DenyUnlessProjectCreatorAsync(rule.Feature.ProjectId, rule.FeatureId);
+            if (deny != null)
+                return deny;
+
             if (string.IsNullOrWhiteSpace(vm.Description))
             {
                 TempData["Error"] = "توضیح قانون الزامی است.";
@@ -519,12 +547,214 @@ namespace Endpoint.Site.Controllers
             if (!await HasProjectAccessAsync(rule.Feature.ProjectId))
                 return RedirectToAction("Index", "Projects");
 
+            var deny = await DenyUnlessProjectCreatorAsync(rule.Feature.ProjectId, rule.FeatureId);
+            if (deny != null)
+                return deny;
+
             var featureId = rule.FeatureId;
             _context.FeatureBusinessRules.Remove(rule);
             rule.Feature.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "قانون کسب‌وکار حذف شد.";
+            return RedirectToAction(nameof(Details), new { id = featureId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddPageState(FeaturePageStateItemVm vm)
+        {
+            var feature = await _context.ProjectFeatures
+                .Include(f => f.PageStates)
+                .FirstOrDefaultAsync(f => f.Id == vm.FeatureId);
+            if (feature == null)
+                return NotFound();
+
+            if (!await HasProjectAccessAsync(feature.ProjectId))
+                return RedirectToAction("Index", "Projects");
+
+            var deny = await DenyUnlessProjectCreatorAsync(feature.ProjectId, feature.Id);
+            if (deny != null)
+                return deny;
+
+            if (!Enum.IsDefined(typeof(FeaturePageStateType), vm.StateType))
+            {
+                TempData["Error"] = "نوع وضعیت معتبر نیست.";
+                return RedirectToAction(nameof(Details), new { id = vm.FeatureId });
+            }
+
+            if (feature.PageStates.Any(p => p.StateType == vm.StateType))
+            {
+                TempData["Error"] = "این وضعیت قبلاً برای فیچر تعریف شده است.";
+                return RedirectToAction(nameof(Details), new { id = vm.FeatureId });
+            }
+
+            if (string.IsNullOrWhiteSpace(vm.BehaviorDescription))
+            {
+                TempData["Error"] = "توضیح رفتار الزامی است.";
+                return RedirectToAction(nameof(Details), new { id = vm.FeatureId });
+            }
+
+            feature.PageStates.Add(new FeaturePageState
+            {
+                FeatureId = feature.Id,
+                StateType = vm.StateType,
+                BehaviorDescription = vm.BehaviorDescription.Trim(),
+                HasSeparateDesign = vm.HasSeparateDesign
+            });
+            feature.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "وضعیت صفحه اضافه شد.";
+            return RedirectToAction(nameof(Details), new { id = feature.Id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditPageState(FeaturePageStateItemVm vm)
+        {
+            var pageState = await _context.FeaturePageStates
+                .Include(p => p.Feature)
+                .FirstOrDefaultAsync(p => p.Id == vm.Id);
+            if (pageState == null)
+                return NotFound();
+
+            if (!await HasProjectAccessAsync(pageState.Feature.ProjectId))
+                return RedirectToAction("Index", "Projects");
+
+            var deny = await DenyUnlessProjectCreatorAsync(pageState.Feature.ProjectId, pageState.FeatureId);
+            if (deny != null)
+                return deny;
+
+            if (string.IsNullOrWhiteSpace(vm.BehaviorDescription))
+            {
+                TempData["Error"] = "توضیح رفتار الزامی است.";
+                return RedirectToAction(nameof(Details), new { id = pageState.FeatureId });
+            }
+
+            pageState.BehaviorDescription = vm.BehaviorDescription.Trim();
+            pageState.HasSeparateDesign = vm.HasSeparateDesign;
+            pageState.Feature.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "وضعیت صفحه ویرایش شد.";
+            return RedirectToAction(nameof(Details), new { id = pageState.FeatureId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeletePageState(int id)
+        {
+            var pageState = await _context.FeaturePageStates
+                .Include(p => p.Feature)
+                .FirstOrDefaultAsync(p => p.Id == id);
+            if (pageState == null)
+                return NotFound();
+
+            if (!await HasProjectAccessAsync(pageState.Feature.ProjectId))
+                return RedirectToAction("Index", "Projects");
+
+            var deny = await DenyUnlessProjectCreatorAsync(pageState.Feature.ProjectId, pageState.FeatureId);
+            if (deny != null)
+                return deny;
+
+            var featureId = pageState.FeatureId;
+            _context.FeaturePageStates.Remove(pageState);
+            pageState.Feature.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "وضعیت صفحه حذف شد.";
+            return RedirectToAction(nameof(Details), new { id = featureId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddApiContract(FeatureApiContractItemVm vm)
+        {
+            var feature = await _context.ProjectFeatures
+                .Include(f => f.ApiContracts)
+                .FirstOrDefaultAsync(f => f.Id == vm.FeatureId);
+            if (feature == null)
+                return NotFound();
+
+            if (!await HasProjectAccessAsync(feature.ProjectId))
+                return RedirectToAction("Index", "Projects");
+
+            var deny = await DenyUnlessProjectCreatorAsync(feature.ProjectId, feature.Id);
+            if (deny != null)
+                return deny;
+
+            if (string.IsNullOrWhiteSpace(vm.Endpoint))
+            {
+                TempData["Error"] = "Endpoint الزامی است.";
+                return RedirectToAction(nameof(Details), new { id = vm.FeatureId });
+            }
+
+            var nextOrder = feature.ApiContracts.Count == 0 ? 0 : feature.ApiContracts.Max(a => a.SortOrder) + 1;
+            var entity = new FeatureApiContract { FeatureId = feature.Id };
+            ApplyApiContract(entity, vm, nextOrder);
+            feature.ApiContracts.Add(entity);
+            feature.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "قرارداد API اضافه شد.";
+            return RedirectToAction(nameof(Details), new { id = feature.Id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditApiContract(FeatureApiContractItemVm vm)
+        {
+            var api = await _context.FeatureApiContracts
+                .Include(a => a.Feature)
+                .FirstOrDefaultAsync(a => a.Id == vm.Id);
+            if (api == null)
+                return NotFound();
+
+            if (!await HasProjectAccessAsync(api.Feature.ProjectId))
+                return RedirectToAction("Index", "Projects");
+
+            var deny = await DenyUnlessProjectCreatorAsync(api.Feature.ProjectId, api.FeatureId);
+            if (deny != null)
+                return deny;
+
+            if (string.IsNullOrWhiteSpace(vm.Endpoint))
+            {
+                TempData["Error"] = "Endpoint الزامی است.";
+                return RedirectToAction(nameof(Details), new { id = api.FeatureId });
+            }
+
+            ApplyApiContract(api, vm, api.SortOrder);
+            api.Feature.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "قرارداد API ویرایش شد.";
+            return RedirectToAction(nameof(Details), new { id = api.FeatureId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteApiContract(int id)
+        {
+            var api = await _context.FeatureApiContracts
+                .Include(a => a.Feature)
+                .FirstOrDefaultAsync(a => a.Id == id);
+            if (api == null)
+                return NotFound();
+
+            if (!await HasProjectAccessAsync(api.Feature.ProjectId))
+                return RedirectToAction("Index", "Projects");
+
+            var deny = await DenyUnlessProjectCreatorAsync(api.Feature.ProjectId, api.FeatureId);
+            if (deny != null)
+                return deny;
+
+            var featureId = api.FeatureId;
+            _context.FeatureApiContracts.Remove(api);
+            api.Feature.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "قرارداد API حذف شد.";
             return RedirectToAction(nameof(Details), new { id = featureId });
         }
 
@@ -815,7 +1045,7 @@ namespace Endpoint.Site.Controllers
                 .FirstOrDefaultAsync(f => f.Id == id);
         }
 
-        private FeatureDetailsVm MapDetails(ProjectFeature feature, bool canManageCodeReview, bool canChangeCodeReviewer)
+        private FeatureDetailsVm MapDetails(ProjectFeature feature, bool canManageCodeReview, bool canChangeCodeReviewer, bool canManageFeatureSpec)
         {
             return new FeatureDetailsVm
             {
@@ -828,6 +1058,7 @@ namespace Endpoint.Site.Controllers
                 CodeReviewerName = DisplayName(feature.CodeReviewerUser),
                 CanManageCodeReview = canManageCodeReview,
                 CanChangeCodeReviewer = canChangeCodeReviewer,
+                CanManageFeatureSpec = canManageFeatureSpec,
                 CreatedAt = feature.CreatedAt,
                 UpdatedAt = feature.UpdatedAt,
                 Functions = feature.Functions.OrderBy(x => x.SortOrder).Select(x => new FeatureFunctionItemVm
@@ -839,6 +1070,7 @@ namespace Endpoint.Site.Controllers
                 PageStates = feature.PageStates.OrderBy(x => x.StateType).Select(x => new FeaturePageStateItemVm
                 {
                     Id = x.Id,
+                    FeatureId = feature.Id,
                     StateType = x.StateType,
                     BehaviorDescription = x.BehaviorDescription,
                     HasSeparateDesign = x.HasSeparateDesign
@@ -880,6 +1112,7 @@ namespace Endpoint.Site.Controllers
         private static FeatureApiContractItemVm MapApiItem(FeatureApiContract x) => new()
         {
             Id = x.Id,
+            FeatureId = x.FeatureId,
             Endpoint = x.Endpoint,
             HttpMethod = x.HttpMethod,
             RequestDescription = x.RequestDescription,
@@ -1031,6 +1264,15 @@ namespace Endpoint.Site.Controllers
 
             return await _context.Projects.AsNoTracking()
                 .AnyAsync(p => p.Id == projectId && p.CreatorUserId == userId);
+        }
+
+        private async Task<IActionResult?> DenyUnlessProjectCreatorAsync(int projectId, int featureId)
+        {
+            if (await IsProjectCreatorAsync(projectId))
+                return null;
+
+            TempData["Error"] = "فقط سازنده پروژه می‌تواند این عملیات را انجام دهد.";
+            return RedirectToAction(nameof(Details), new { id = featureId });
         }
 
         private async Task<bool> IsProjectMemberOrCreatorAsync(int projectId, string userId)

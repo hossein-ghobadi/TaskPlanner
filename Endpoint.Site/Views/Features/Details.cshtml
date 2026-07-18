@@ -21,11 +21,11 @@
             }
         </div>
         <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-outline-primary" asp-action="EditSpec" asp-route-id="@Model.Id">
-                <i class="bi bi-journal-text me-1"></i> ویرایش مشخصات
-            </a>
-            @if (Model.CanChangeCodeReviewer)
+            @if (Model.CanManageFeatureSpec)
             {
+                <a class="btn btn-outline-primary" asp-action="EditSpec" asp-route-id="@Model.Id">
+                    <i class="bi bi-journal-text me-1"></i> ویرایش مشخصات
+                </a>
                 <a class="btn btn-outline-secondary" asp-action="Settings" asp-route-id="@Model.Id">
                     <i class="bi bi-gear me-1"></i> تنظیمات
                 </a>
@@ -55,9 +55,12 @@
                     <span class="fw-bold">
                         <i class="bi bi-list-check text-success me-1"></i> کارکردها
                     </span>
-                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addFunctionModal">
-                        <i class="bi bi-plus"></i> افزودن
-                    </button>
+                    @if (Model.CanManageFeatureSpec)
+                    {
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addFunctionModal">
+                            <i class="bi bi-plus"></i> افزودن
+                        </button>
+                    }
                 </div>
                 <div class="card-body">
                     @if (Model.Functions.Count == 0)
@@ -71,26 +74,29 @@
                             {
                                 <li class="d-flex justify-content-between align-items-start gap-2 mb-2">
                                     <span>@item.Title</span>
-                                    <div class="btn-group btn-group-sm flex-shrink-0">
-                                        <button type="button"
-                                                class="btn btn-outline-secondary py-0 px-1"
-                                                title="ویرایش"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#editFunctionModal"
-                                                data-id="@item.Id"
-                                                data-title="@item.Title">
-                                            <i class="bi bi-pencil"></i>
-                                        </button>
-                                        <button type="button"
-                                                class="btn btn-outline-danger py-0 px-1"
-                                                title="حذف"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#deleteFunctionModal"
-                                                data-id="@item.Id"
-                                                data-title="@item.Title">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
+                                    @if (Model.CanManageFeatureSpec)
+                                    {
+                                        <div class="btn-group btn-group-sm flex-shrink-0">
+                                            <button type="button"
+                                                    class="btn btn-outline-secondary py-0 px-1"
+                                                    title="ویرایش"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#editFunctionModal"
+                                                    data-id="@item.Id"
+                                                    data-title="@item.Title">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-outline-danger py-0 px-1"
+                                                    title="حذف"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteFunctionModal"
+                                                    data-id="@item.Id"
+                                                    data-title="@item.Title">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    }
                                 </li>
                             }
                         </ul>
@@ -105,9 +111,12 @@
                     <span class="fw-bold">
                         <i class="bi bi-shield-check text-warning me-1"></i> قوانین کسب‌وکار
                     </span>
-                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addBusinessRuleModal">
-                        <i class="bi bi-plus"></i> افزودن
-                    </button>
+                    @if (Model.CanManageFeatureSpec)
+                    {
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addBusinessRuleModal">
+                            <i class="bi bi-plus"></i> افزودن
+                        </button>
+                    }
                 </div>
                 <div class="card-body">
                     @if (Model.BusinessRules.Count == 0)
@@ -121,26 +130,29 @@
                             {
                                 <li class="d-flex justify-content-between align-items-start gap-2 mb-2">
                                     <span>@item.Description</span>
-                                    <div class="btn-group btn-group-sm flex-shrink-0">
-                                        <button type="button"
-                                                class="btn btn-outline-secondary py-0 px-1"
-                                                title="ویرایش"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#editBusinessRuleModal"
-                                                data-id="@item.Id"
-                                                data-description="@item.Description">
-                                            <i class="bi bi-pencil"></i>
-                                        </button>
-                                        <button type="button"
-                                                class="btn btn-outline-danger py-0 px-1"
-                                                title="حذف"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#deleteBusinessRuleModal"
-                                                data-id="@item.Id"
-                                                data-description="@item.Description">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
+                                    @if (Model.CanManageFeatureSpec)
+                                    {
+                                        <div class="btn-group btn-group-sm flex-shrink-0">
+                                            <button type="button"
+                                                    class="btn btn-outline-secondary py-0 px-1"
+                                                    title="ویرایش"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#editBusinessRuleModal"
+                                                    data-id="@item.Id"
+                                                    data-description="@item.Description">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-outline-danger py-0 px-1"
+                                                    title="حذف"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteBusinessRuleModal"
+                                                    data-id="@item.Id"
+                                                    data-description="@item.Description">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    }
                                 </li>
                             }
                         </ul>
@@ -151,39 +163,99 @@
 
         <div class="col-12">
             <div class="card shadow-sm border-0">
-                <div class="card-header bg-white fw-bold">
-                    <i class="bi bi-window-stack text-info me-1"></i> وضعیت‌های صفحه
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">
+                        <i class="bi bi-window-stack text-info me-1"></i> وضعیت‌های صفحه
+                    </span>
+                    @{
+                        var existingStateTypes = Model.PageStates.Select(p => p.StateType).ToHashSet();
+                        var availableStateTypes = Enum.GetValues<FeaturePageStateType>()
+                            .Where(t => !existingStateTypes.Contains(t))
+                            .ToList();
+                    }
+                    @if (Model.CanManageFeatureSpec && availableStateTypes.Count > 0)
+                    {
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addPageStateModal">
+                            <i class="bi bi-plus"></i> افزودن
+                        </button>
+                    }
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table mb-0 align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 9rem;">وضعیت</th>
-                                    <th>رفتار</th>
-                                    <th style="width: 8rem;">طراحی جدا</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var s in Model.PageStates)
-                                {
+                    @if (Model.PageStates.Count == 0)
+                    {
+                        <p class="text-muted mb-0 p-3">هنوز وضعیت صفحه‌ای تعریف نشده است.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table mb-0 align-middle">
+                                <thead class="table-light">
                                     <tr>
-                                        <td><span class="badge bg-secondary">@s.StateType.GetDisplayName()</span></td>
-                                        <td>@s.BehaviorDescription</td>
-                                        <td>@(s.HasSeparateDesign ? "بله" : "خیر")</td>
+                                        <th style="width: 9rem;">وضعیت</th>
+                                        <th>رفتار</th>
+                                        <th style="width: 8rem;">طراحی جدا</th>
+                                        @if (Model.CanManageFeatureSpec)
+                                        {
+                                            <th style="width: 6rem;"></th>
+                                        }
                                     </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    @foreach (var s in Model.PageStates)
+                                    {
+                                        <tr>
+                                            <td><span class="badge bg-secondary">@s.StateType.GetDisplayName()</span></td>
+                                            <td>@s.BehaviorDescription</td>
+                                            <td>@(s.HasSeparateDesign ? "بله" : "خیر")</td>
+                                            @if (Model.CanManageFeatureSpec)
+                                            {
+                                                <td class="text-end">
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button type="button"
+                                                                class="btn btn-outline-secondary py-0 px-1"
+                                                                title="ویرایش"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#editPageStateModal"
+                                                                data-id="@s.Id"
+                                                                data-state-name="@s.StateType.GetDisplayName()"
+                                                                data-behavior="@s.BehaviorDescription"
+                                                                data-separate="@(s.HasSeparateDesign ? "true" : "false")">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </button>
+                                                        <button type="button"
+                                                                class="btn btn-outline-danger py-0 px-1"
+                                                                title="حذف"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#deletePageStateModal"
+                                                                data-id="@s.Id"
+                                                                data-state-name="@s.StateType.GetDisplayName()">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
 
         <div class="col-12">
             <div class="card shadow-sm border-0">
-                <div class="card-header bg-white fw-bold">
-                    <i class="bi bi-braces text-primary me-1"></i> قرارداد API
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">
+                        <i class="bi bi-braces text-primary me-1"></i> قرارداد API
+                    </span>
+                    @if (Model.CanManageFeatureSpec)
+                    {
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addApiContractModal">
+                            <i class="bi bi-plus"></i> افزودن
+                        </button>
+                    }
                 </div>
                 <div class="card-body">
                     @if (Model.ApiContracts.Count == 0)
@@ -195,12 +267,36 @@
                         @foreach (var api in Model.ApiContracts)
                         {
                             <div class="border rounded p-3 mb-3">
-                                <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
-                                    <span class="badge bg-dark">@api.HttpMethod</span>
-                                    <code>@api.Endpoint</code>
-                                    @if (!string.IsNullOrWhiteSpace(api.StatusCodes))
+                                <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-2">
+                                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                                        <span class="badge bg-dark">@api.HttpMethod</span>
+                                        <code>@api.Endpoint</code>
+                                        @if (!string.IsNullOrWhiteSpace(api.StatusCodes))
+                                        {
+                                            <span class="badge bg-light text-dark">Status: @api.StatusCodes</span>
+                                        }
+                                    </div>
+                                    @if (Model.CanManageFeatureSpec)
                                     {
-                                        <span class="badge bg-light text-dark">Status: @api.StatusCodes</span>
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button"
+                                                    class="btn btn-outline-secondary py-0 px-1"
+                                                    title="ویرایش"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#editApiContractModal"
+                                                    data-id="@api.Id">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-outline-danger py-0 px-1"
+                                                    title="حذف"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteApiContractModal"
+                                                    data-id="@api.Id"
+                                                    data-label="@($"{api.HttpMethod} {api.Endpoint}")">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
                                     }
                                 </div>
                                 <div class="row g-2 small">
@@ -218,7 +314,62 @@
                                     }
                                     @if (!string.IsNullOrWhiteSpace(api.FieldsDescription))
                                     {
-                                        <div class="col-md-6"><strong>فیلدها:</strong><pre class="bg-light p-2 rounded mb-0">@api.FieldsDescription</pre></div>
+                                        <div class="col-12">
+                                            <strong>فیلدها:</strong>
+                                            @{
+                                                var fieldLines = api.FieldsDescription
+                                                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                                                    .Select(l => l.Trim())
+                                                    .Where(l => l.Length > 0)
+                                                    .ToList();
+                                                var parsedFields = fieldLines
+                                                    .Select(l =>
+                                                    {
+                                                        var parts = l.Split('|');
+                                                        if (parts.Length >= 3)
+                                                        {
+                                                            return new
+                                                            {
+                                                                Name = parts[0].Trim(),
+                                                                Type = parts[1].Trim(),
+                                                                Nullability = parts[2].Trim(),
+                                                                Ok = true
+                                                            };
+                                                        }
+                                                        return new { Name = l, Type = "", Nullability = "", Ok = false };
+                                                    })
+                                                    .ToList();
+                                                var allParsed = parsedFields.Count > 0 && parsedFields.All(f => f.Ok);
+                                            }
+                                            @if (allParsed)
+                                            {
+                                                <div class="table-responsive mt-1">
+                                                    <table class="table table-sm table-bordered mb-0 bg-light">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>نام</th>
+                                                                <th>نوع</th>
+                                                                <th>الزام</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach (var f in parsedFields)
+                                                            {
+                                                                <tr>
+                                                                    <td><code>@f.Name</code></td>
+                                                                    <td>@f.Type</td>
+                                                                    <td>@f.Nullability</td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <pre class="bg-light p-2 rounded mb-0 mt-1">@api.FieldsDescription</pre>
+                                            }
+                                        </div>
                                     }
                                     @if (!string.IsNullOrWhiteSpace(api.Pagination) || !string.IsNullOrWhiteSpace(api.Filter) || !string.IsNullOrWhiteSpace(api.Sort))
                                     {
@@ -513,8 +664,450 @@
     </div>
 </div>
 
+@{
+    var pageStateExisting = Model.PageStates.Select(p => p.StateType).ToHashSet();
+    var pageStateAvailable = Enum.GetValues<FeaturePageStateType>()
+        .Where(t => !pageStateExisting.Contains(t))
+        .ToList();
+}
+
+@if (pageStateAvailable.Count > 0)
+{
+    <!-- وضعیت صفحه: افزودن -->
+    <div class="modal fade" id="addPageStateModal" tabindex="-1" aria-labelledby="addPageStateModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="AddPageState" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="FeatureId" value="@Model.Id" />
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addPageStateModalLabel">
+                            <i class="bi bi-plus-circle me-1"></i> افزودن وضعیت صفحه
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">وضعیت <span class="text-danger">*</span></label>
+                            <select class="form-select" name="StateType" required>
+                                @foreach (var t in pageStateAvailable)
+                                {
+                                    <option value="@((int)t)">@t.GetDisplayName()</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">رفتار <span class="text-danger">*</span></label>
+                            <textarea class="form-control" name="BehaviorDescription" rows="3" maxlength="2000" required
+                                      placeholder="رفتار سیستم در این وضعیت..."></textarea>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="HasSeparateDesign" value="true" id="addPageStateSeparate" />
+                            <label class="form-check-label" for="addPageStateSeparate">طراحی جداگانه دارد</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                        <button type="submit" class="btn btn-primary">ثبت</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- وضعیت صفحه: ویرایش -->
+<div class="modal fade" id="editPageStateModal" tabindex="-1" aria-labelledby="editPageStateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="EditPageState" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" id="editPageStateId" />
+                <input type="hidden" name="FeatureId" value="@Model.Id" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editPageStateModalLabel">
+                        <i class="bi bi-pencil me-1"></i> ویرایش وضعیت صفحه
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">وضعیت</label>
+                        <div><span class="badge bg-secondary" id="editPageStateName"></span></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">رفتار <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="BehaviorDescription" id="editPageStateBehavior" rows="3" maxlength="2000" required></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="HasSeparateDesign" value="true" id="editPageStateSeparate" />
+                        <label class="form-check-label" for="editPageStateSeparate">طراحی جداگانه دارد</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ذخیره</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- وضعیت صفحه: حذف -->
+<div class="modal fade" id="deletePageStateModal" tabindex="-1" aria-labelledby="deletePageStateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="DeletePageState" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="deletePageStateId" />
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deletePageStateModalLabel">
+                        <i class="bi bi-trash me-1"></i> حذف وضعیت صفحه
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">آیا از حذف وضعیت <strong id="deletePageStateName"></strong> مطمئن هستید؟</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger">حذف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- قرارداد API: افزودن -->
+<div class="modal fade" id="addApiContractModal" tabindex="-1" aria-labelledby="addApiContractModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form asp-action="AddApiContract" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="FeatureId" value="@Model.Id" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addApiContractModalLabel">
+                        <i class="bi bi-plus-circle me-1"></i> افزودن قرارداد API
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label">Method <span class="text-danger">*</span></label>
+                            <select class="form-select" name="HttpMethod" required>
+                                <option>GET</option>
+                                <option>POST</option>
+                                <option>PUT</option>
+                                <option>PATCH</option>
+                                <option>DELETE</option>
+                            </select>
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label">Endpoint <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="Endpoint" maxlength="500" required placeholder="/api/products" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Request</label>
+                            <textarea class="form-control" name="RequestDescription" rows="3" maxlength="4000"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Response</label>
+                            <textarea class="form-control" name="ResponseDescription" rows="3" maxlength="4000"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Error Response</label>
+                            <textarea class="form-control" name="ErrorResponseDescription" rows="2" maxlength="4000"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Status Codes</label>
+                            <input type="text" class="form-control" name="StatusCodes" maxlength="200" placeholder="200, 400, 401, 404" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Pagination</label>
+                            <input type="text" class="form-control" name="Pagination" maxlength="1000"
+                                   placeholder="page, pageSize — مثلاً page=1&pageSize=20" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Filter</label>
+                            <input type="text" class="form-control" name="Filter" maxlength="1000"
+                                   placeholder="status, search — مثلاً status=Active&search=علی" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Sort</label>
+                            <input type="text" class="form-control" name="Sort" maxlength="1000"
+                                   placeholder="sortBy, sortDir — مثلاً sortBy=createdAt&sortDir=desc" />
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0">فیلدها (نام، نوع، Required/Nullable)</label>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="addApiFieldRowBtn">
+                                    <i class="bi bi-plus"></i> افزودن فیلد
+                                </button>
+                            </div>
+                            <div id="addApiFieldsList" class="api-fields-list"></div>
+                            <input type="hidden" name="FieldsDescription" id="addApiFieldsDescription" />
+                            <small class="text-muted">مثال: fullName | string | Required</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ثبت</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- قرارداد API: ویرایش -->
+<div class="modal fade" id="editApiContractModal" tabindex="-1" aria-labelledby="editApiContractModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form asp-action="EditApiContract" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" id="editApiId" />
+                <input type="hidden" name="FeatureId" value="@Model.Id" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editApiContractModalLabel">
+                        <i class="bi bi-pencil me-1"></i> ویرایش قرارداد API
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label">Method <span class="text-danger">*</span></label>
+                            <select class="form-select" name="HttpMethod" id="editApiHttpMethod" required>
+                                <option>GET</option>
+                                <option>POST</option>
+                                <option>PUT</option>
+                                <option>PATCH</option>
+                                <option>DELETE</option>
+                            </select>
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label">Endpoint <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="Endpoint" id="editApiEndpoint" maxlength="500" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Request</label>
+                            <textarea class="form-control" name="RequestDescription" id="editApiRequest" rows="3" maxlength="4000"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Response</label>
+                            <textarea class="form-control" name="ResponseDescription" id="editApiResponse" rows="3" maxlength="4000"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Error Response</label>
+                            <textarea class="form-control" name="ErrorResponseDescription" id="editApiError" rows="2" maxlength="4000"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Status Codes</label>
+                            <input type="text" class="form-control" name="StatusCodes" id="editApiStatusCodes" maxlength="200" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Pagination</label>
+                            <input type="text" class="form-control" name="Pagination" id="editApiPagination" maxlength="1000"
+                                   placeholder="page, pageSize — مثلاً page=1&pageSize=20" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Filter</label>
+                            <input type="text" class="form-control" name="Filter" id="editApiFilter" maxlength="1000"
+                                   placeholder="status, search — مثلاً status=Active&search=علی" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Sort</label>
+                            <input type="text" class="form-control" name="Sort" id="editApiSort" maxlength="1000"
+                                   placeholder="sortBy, sortDir — مثلاً sortBy=createdAt&sortDir=desc" />
+                        </div>
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0">فیلدها (نام، نوع، Required/Nullable)</label>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="editApiFieldRowBtn">
+                                    <i class="bi bi-plus"></i> افزودن فیلد
+                                </button>
+                            </div>
+                            <div id="editApiFieldsList" class="api-fields-list"></div>
+                            <input type="hidden" name="FieldsDescription" id="editApiFieldsDescription" />
+                            <small class="text-muted">مثال: fullName | string | Required</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ذخیره</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- قرارداد API: حذف -->
+<div class="modal fade" id="deleteApiContractModal" tabindex="-1" aria-labelledby="deleteApiContractModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="DeleteApiContract" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="deleteApiId" />
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteApiContractModalLabel">
+                        <i class="bi bi-trash me-1"></i> حذف قرارداد API
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">آیا از حذف قرارداد <strong id="deleteApiLabel"></strong> مطمئن هستید؟</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger">حذف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
     (function () {
+        var apiContractsById = {};
+        @foreach (var api in Model.ApiContracts)
+        {
+            <text>
+            apiContractsById[@api.Id] = {
+                id: @api.Id,
+                httpMethod: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(api.HttpMethod)),
+                endpoint: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(api.Endpoint)),
+                requestDescription: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(api.RequestDescription ?? "")),
+                responseDescription: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(api.ResponseDescription ?? "")),
+                errorResponseDescription: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(api.ErrorResponseDescription ?? "")),
+                statusCodes: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(api.StatusCodes ?? "")),
+                pagination: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(api.Pagination ?? "")),
+                filter: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(api.Filter ?? "")),
+                sort: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(api.Sort ?? "")),
+                fieldsDescription: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(api.FieldsDescription ?? ""))
+            };
+            </text>
+        }
+
+        var fieldTypeOptions = ['string', 'int', 'long', 'decimal', 'bool', 'DateTime', 'Guid', 'object', 'array'];
+
+        function createFieldRow(container, field) {
+            field = field || { name: '', type: 'string', nullability: 'Required' };
+            var row = document.createElement('div');
+            row.className = 'input-group input-group-sm mb-2 api-field-row';
+
+            var nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'form-control api-field-name';
+            nameInput.placeholder = 'نام فیلد';
+            nameInput.value = field.name || '';
+            nameInput.maxLength = 200;
+
+            var typeSelect = document.createElement('select');
+            typeSelect.className = 'form-select api-field-type';
+            typeSelect.style.maxWidth = '8rem';
+            fieldTypeOptions.forEach(function (t) {
+                var opt = document.createElement('option');
+                opt.value = t;
+                opt.textContent = t;
+                if ((field.type || 'string').toLowerCase() === t.toLowerCase()) opt.selected = true;
+                typeSelect.appendChild(opt);
+            });
+            if (field.type && fieldTypeOptions.every(function (t) { return t.toLowerCase() !== field.type.toLowerCase(); })) {
+                var custom = document.createElement('option');
+                custom.value = field.type;
+                custom.textContent = field.type;
+                custom.selected = true;
+                typeSelect.appendChild(custom);
+            }
+
+            var nullSelect = document.createElement('select');
+            nullSelect.className = 'form-select api-field-nullability';
+            nullSelect.style.maxWidth = '8rem';
+            ['Required', 'Nullable'].forEach(function (n) {
+                var opt = document.createElement('option');
+                opt.value = n;
+                opt.textContent = n;
+                if ((field.nullability || 'Required') === n) opt.selected = true;
+                nullSelect.appendChild(opt);
+            });
+
+            var removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-outline-danger';
+            removeBtn.title = 'حذف';
+            removeBtn.innerHTML = '<i class="bi bi-trash"></i>';
+            removeBtn.addEventListener('click', function () { row.remove(); });
+
+            row.appendChild(nameInput);
+            row.appendChild(typeSelect);
+            row.appendChild(nullSelect);
+            row.appendChild(removeBtn);
+            container.appendChild(row);
+        }
+
+        function clearFieldRows(container) {
+            if (container) container.innerHTML = '';
+        }
+
+        function parseFieldsDescription(text) {
+            if (!text || !String(text).trim()) return [];
+            return String(text).split(/\r?\n/).map(function (line) {
+                line = line.trim();
+                if (!line) return null;
+                var parts = line.split('|').map(function (p) { return p.trim(); });
+                if (parts.length >= 3) {
+                    return { name: parts[0], type: parts[1], nullability: parts[2] === 'Nullable' ? 'Nullable' : 'Required' };
+                }
+                return { name: line, type: 'string', nullability: 'Required' };
+            }).filter(Boolean);
+        }
+
+        function serializeFieldRows(container) {
+            if (!container) return '';
+            var lines = [];
+            container.querySelectorAll('.api-field-row').forEach(function (row) {
+                var name = (row.querySelector('.api-field-name')?.value || '').trim();
+                if (!name) return;
+                var type = (row.querySelector('.api-field-type')?.value || 'string').trim();
+                var nullability = row.querySelector('.api-field-nullability')?.value || 'Required';
+                lines.push(name + ' | ' + type + ' | ' + nullability);
+            });
+            return lines.join('\n');
+        }
+
+        function loadFieldsInto(container, text) {
+            clearFieldRows(container);
+            var fields = parseFieldsDescription(text);
+            if (fields.length === 0) {
+                createFieldRow(container);
+                return;
+            }
+            fields.forEach(function (f) { createFieldRow(container, f); });
+        }
+
+        var addFieldsList = document.getElementById('addApiFieldsList');
+        var editFieldsList = document.getElementById('editApiFieldsList');
+
+        document.getElementById('addApiFieldRowBtn')?.addEventListener('click', function () {
+            createFieldRow(addFieldsList);
+        });
+        document.getElementById('editApiFieldRowBtn')?.addEventListener('click', function () {
+            createFieldRow(editFieldsList);
+        });
+
+        document.getElementById('addApiContractModal')?.addEventListener('show.bs.modal', function () {
+            loadFieldsInto(addFieldsList, '');
+        });
+
+        document.querySelector('#addApiContractModal form')?.addEventListener('submit', function () {
+            document.getElementById('addApiFieldsDescription').value = serializeFieldRows(addFieldsList);
+        });
+        document.querySelector('#editApiContractModal form')?.addEventListener('submit', function () {
+            document.getElementById('editApiFieldsDescription').value = serializeFieldRows(editFieldsList);
+        });
+
         document.getElementById('editFunctionModal')?.addEventListener('show.bs.modal', function (event) {
             var btn = event.relatedTarget;
             if (!btn) return;
@@ -541,6 +1134,48 @@
             if (!btn) return;
             document.getElementById('deleteBusinessRuleId').value = btn.getAttribute('data-id') || '';
             document.getElementById('deleteBusinessRuleDescription').textContent = btn.getAttribute('data-description') || '';
+        });
+
+        document.getElementById('editPageStateModal')?.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            document.getElementById('editPageStateId').value = btn.getAttribute('data-id') || '';
+            document.getElementById('editPageStateName').textContent = btn.getAttribute('data-state-name') || '';
+            document.getElementById('editPageStateBehavior').value = btn.getAttribute('data-behavior') || '';
+            document.getElementById('editPageStateSeparate').checked = btn.getAttribute('data-separate') === 'true';
+        });
+
+        document.getElementById('deletePageStateModal')?.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            document.getElementById('deletePageStateId').value = btn.getAttribute('data-id') || '';
+            document.getElementById('deletePageStateName').textContent = btn.getAttribute('data-state-name') || '';
+        });
+
+        document.getElementById('editApiContractModal')?.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            var id = btn.getAttribute('data-id');
+            var api = apiContractsById[id];
+            if (!api) return;
+            document.getElementById('editApiId').value = api.id;
+            document.getElementById('editApiHttpMethod').value = api.httpMethod || 'GET';
+            document.getElementById('editApiEndpoint').value = api.endpoint || '';
+            document.getElementById('editApiRequest').value = api.requestDescription || '';
+            document.getElementById('editApiResponse').value = api.responseDescription || '';
+            document.getElementById('editApiError').value = api.errorResponseDescription || '';
+            document.getElementById('editApiStatusCodes').value = api.statusCodes || '';
+            document.getElementById('editApiPagination').value = api.pagination || '';
+            document.getElementById('editApiFilter').value = api.filter || '';
+            document.getElementById('editApiSort').value = api.sort || '';
+            loadFieldsInto(editFieldsList, api.fieldsDescription || '');
+        });
+
+        document.getElementById('deleteApiContractModal')?.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            document.getElementById('deleteApiId').value = btn.getAttribute('data-id') || '';
+            document.getElementById('deleteApiLabel').textContent = btn.getAttribute('data-label') || '';
         });
     })();
 </script>

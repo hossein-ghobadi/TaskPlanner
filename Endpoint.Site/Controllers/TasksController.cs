@@ -1667,6 +1667,7 @@ namespace Endpoint.Site.Controllers
                 startDate = task.StartDate,
                 dueDate = task.DueDate,
                 categoryId = task.CategoryId,
+                featureId = task.FeatureId,
                 assignedUserId = task.AssignedUserId,
                 storyPoints = task.StoryPoints,
                 availableIssueTypes = availableIssueTypes,

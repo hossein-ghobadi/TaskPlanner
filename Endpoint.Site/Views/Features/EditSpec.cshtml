@@ -116,15 +116,18 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Pagination</label>
-                                <input asp-for="ApiContracts[i].Pagination" class="form-control" />
+                                <input asp-for="ApiContracts[i].Pagination" class="form-control"
+                                       placeholder="page, pageSize — مثلاً page=1&pageSize=20" />
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Filter</label>
-                                <input asp-for="ApiContracts[i].Filter" class="form-control" />
+                                <input asp-for="ApiContracts[i].Filter" class="form-control"
+                                       placeholder="status, search — مثلاً status=Active&search=علی" />
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Sort</label>
-                                <input asp-for="ApiContracts[i].Sort" class="form-control" />
+                                <input asp-for="ApiContracts[i].Sort" class="form-control"
+                                       placeholder="sortBy, sortDir — مثلاً sortBy=createdAt&sortDir=desc" />
                             </div>
                             <div class="col-12">
                                 <label class="form-label">فیلدها (نام، نوع، Required/Nullable)</label>
@@ -215,15 +218,18 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label">Pagination</label>
-                <input name="ApiContracts[__i__].Pagination" class="form-control" />
+                <input name="ApiContracts[__i__].Pagination" class="form-control"
+                       placeholder="page, pageSize — مثلاً page=1&pageSize=20" />
             </div>
             <div class="col-md-4">
                 <label class="form-label">Filter</label>
-                <input name="ApiContracts[__i__].Filter" class="form-control" />
+                <input name="ApiContracts[__i__].Filter" class="form-control"
+                       placeholder="status, search — مثلاً status=Active&search=علی" />
             </div>
             <div class="col-md-4">
                 <label class="form-label">Sort</label>
-                <input name="ApiContracts[__i__].Sort" class="form-control" />
+                <input name="ApiContracts[__i__].Sort" class="form-control"
+                       placeholder="sortBy, sortDir — مثلاً sortBy=createdAt&sortDir=desc" />
             </div>
             <div class="col-12">
                 <label class="form-label">فیلدها</label>
