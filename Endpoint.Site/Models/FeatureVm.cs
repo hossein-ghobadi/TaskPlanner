@@ -122,18 +122,6 @@ namespace Endpoint.Site.Models
         public string Description { get; set; } = "";
     }
 
-    public class FeatureSpecEditVm
-    {
-        public int Id { get; set; }
-        public int ProjectId { get; set; }
-        public string FeatureName { get; set; } = "";
-
-        public List<FeatureFunctionItemVm> Functions { get; set; } = new();
-        public List<FeaturePageStateItemVm> PageStates { get; set; } = new();
-        public List<FeatureApiContractItemVm> ApiContracts { get; set; } = new();
-        public List<FeatureBusinessRuleItemVm> BusinessRules { get; set; } = new();
-    }
-
     public class FeatureCodeReviewCreateVm
     {
         public int FeatureId { get; set; }

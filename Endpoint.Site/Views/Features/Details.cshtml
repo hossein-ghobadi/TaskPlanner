@@ -23,9 +23,6 @@
         <div class="d-flex flex-wrap gap-2">
             @if (Model.CanManageFeatureSpec)
             {
-                <a class="btn btn-outline-primary" asp-action="EditSpec" asp-route-id="@Model.Id">
-                    <i class="bi bi-journal-text me-1"></i> ویرایش مشخصات
-                </a>
                 <a class="btn btn-outline-secondary" asp-action="Settings" asp-route-id="@Model.Id">
                     <i class="bi bi-gear me-1"></i> تنظیمات
                 </a>
