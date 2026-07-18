@@ -79,17 +79,86 @@
         <div class="alert alert-danger">@TempData["Error"]</div>
     }
 
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body">
+            <form method="get" asp-action="Index" class="row g-2 align-items-end">
+                <input type="hidden" name="projectId" value="@Model.ProjectId" />
+                <div class="col-md-3">
+                    <label class="form-label small mb-1" for="featureId">فیچر</label>
+                    <select class="form-select form-select-sm" id="featureId" name="featureId" asp-items="Model.FeatureOptions"></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1" for="askedToUserId">فرد مورد سوال</label>
+                    <select class="form-select form-select-sm" id="askedToUserId" name="askedToUserId">
+                        <option value="">همه افراد</option>
+                        @foreach (var m in Model.MemberOptions)
+                        {
+                            if (string.Equals(m.Value, Model.AskedToUserId, StringComparison.Ordinal))
+                            {
+                                <option value="@m.Value" selected>@m.Text</option>
+                            }
+                            else
+                            {
+                                <option value="@m.Value">@m.Text</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1" for="createdByUserId">پرسیده‌شده توسط</label>
+                    <select class="form-select form-select-sm" id="createdByUserId" name="createdByUserId">
+                        <option value="">همه افراد</option>
+                        @foreach (var m in Model.MemberOptions)
+                        {
+                            if (string.Equals(m.Value, Model.CreatedByUserId, StringComparison.Ordinal))
+                            {
+                                <option value="@m.Value" selected>@m.Text</option>
+                            }
+                            else
+                            {
+                                <option value="@m.Value">@m.Text</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="bi bi-funnel me-1"></i> فیلتر
+                    </button>
+                    <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-projectId="@Model.ProjectId">
+                        پاک کردن
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="card shadow-sm border-0 w-100">
         <div class="card-body p-0">
             @if (Model.Tickets.Count == 0)
             {
                 <div class="text-center text-muted py-5 px-3">
                     <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
-                    <p class="mb-3">هنوز تیکتی ثبت نشده است.</p>
-                    <a class="btn btn-primary" asp-action="Create" asp-route-projectId="@Model.ProjectId">
-                        <i class="bi bi-plus-lg me-1"></i>
-                        اولین تیکت را بسازید
-                    </a>
+                    @{
+                        var hasFilter = Model.FeatureId.HasValue
+                            || !string.IsNullOrWhiteSpace(Model.AskedToUserId)
+                            || !string.IsNullOrWhiteSpace(Model.CreatedByUserId);
+                    }
+                    @if (hasFilter)
+                    {
+                        <p class="mb-3">تیکتی با این فیلترها پیدا نشد.</p>
+                        <a class="btn btn-outline-secondary" asp-action="Index" asp-route-projectId="@Model.ProjectId">
+                            پاک کردن فیلتر
+                        </a>
+                    }
+                    else
+                    {
+                        <p class="mb-3">هنوز تیکتی ثبت نشده است.</p>
+                        <a class="btn btn-primary" asp-action="Create" asp-route-projectId="@Model.ProjectId">
+                            <i class="bi bi-plus-lg me-1"></i>
+                            اولین تیکت را بسازید
+                        </a>
+                    }
                 </div>
             }
             else

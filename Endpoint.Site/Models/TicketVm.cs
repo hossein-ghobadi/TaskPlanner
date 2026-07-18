@@ -9,6 +9,11 @@ namespace Endpoint.Site.Models
         public int ProjectId { get; set; }
         public string ProjectName { get; set; } = "";
         public bool IsProjectCreator { get; set; }
+        public int? FeatureId { get; set; }
+        public string? AskedToUserId { get; set; }
+        public string? CreatedByUserId { get; set; }
+        public List<SelectListItem> FeatureOptions { get; set; } = new();
+        public List<SelectListItem> MemberOptions { get; set; } = new();
         public List<TicketListItemVm> Tickets { get; set; } = new();
     }
 

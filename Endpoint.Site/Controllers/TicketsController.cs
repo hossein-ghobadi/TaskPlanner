@@ -24,7 +24,12 @@ namespace Endpoint.Site.Controllers
             _userManager = userManager;
         }
 
-        public async Task<IActionResult> Index(int? projectId, int? id)
+        public async Task<IActionResult> Index(
+            int? projectId,
+            int? id,
+            int? featureId,
+            string? askedToUserId,
+            string? createdByUserId)
         {
             var pid = projectId ?? id;
             if (!pid.HasValue)
@@ -57,9 +62,43 @@ namespace Endpoint.Site.Controllers
                     t.AskedToUserId == userId);
             }
 
+            if (featureId.HasValue)
+                query = query.Where(t => t.FeatureId == featureId.Value);
+
+            if (!string.IsNullOrWhiteSpace(askedToUserId))
+                query = query.Where(t => t.AskedToUserId == askedToUserId);
+
+            if (!string.IsNullOrWhiteSpace(createdByUserId))
+                query = query.Where(t => t.CreatedByUserId == createdByUserId);
+
             var tickets = await query
                 .OrderByDescending(t => t.CreatedAt)
                 .ToListAsync();
+
+            var features = await _context.ProjectFeatures.AsNoTracking()
+                .Where(f => f.ProjectId == projectIdVal)
+                .OrderBy(f => f.Name)
+                .Select(f => new SelectListItem
+                {
+                    Value = f.Id.ToString(),
+                    Text = f.Name,
+                    Selected = featureId == f.Id
+                })
+                .ToListAsync();
+
+            features.Insert(0, new SelectListItem
+            {
+                Value = "",
+                Text = "همه فیچرها",
+                Selected = !featureId.HasValue
+            });
+
+            var members = await GetProjectMemberOptionsAsync(projectIdVal);
+            var memberOptions = members.Select(m => new SelectListItem
+            {
+                Value = m.UserId,
+                Text = m.DisplayName
+            }).ToList();
 
             ViewBag.ProjectId = projectIdVal;
             ViewData["Title"] = "تیکت‌های پروژه";
@@ -69,6 +108,11 @@ namespace Endpoint.Site.Controllers
                 ProjectId = projectIdVal,
                 ProjectName = project.Name,
                 IsProjectCreator = isCreator,
+                FeatureId = featureId,
+                AskedToUserId = askedToUserId,
+                CreatedByUserId = createdByUserId,
+                FeatureOptions = features,
+                MemberOptions = memberOptions,
                 Tickets = tickets.Select(t => new TicketListItemVm
                 {
                     Id = t.Id,
