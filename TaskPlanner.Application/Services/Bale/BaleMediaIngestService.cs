@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TaskPlanner.Application.Interfaces.Contexts;
+using TaskPlanner.Application.Services.FileUpload;
 using TaskPlanner.Application.Services.TaskPlanner;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
@@ -168,7 +169,7 @@ namespace TaskPlanner.Application.Services.Bale
                 return new ProjectChatMessageAttachment
                 {
                     FileName = fileName,
-                    FilePath = url,
+                    FilePath = FileUrls.ToStoragePath(url),
                     FileType = "Image",
                     FileSize = bytesResult.Data.Length,
                     MimeType = "image/jpeg",

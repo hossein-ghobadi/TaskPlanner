@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using TaskPlanner.Application.Interfaces.Contexts;
+using TaskPlanner.Application.Services.FileUpload;
 using TaskPlanner.Application.Services.NotificationService;
 using TaskPlanner.Application.Services.ProjectService;
 using TaskPlanner.Domain.Entities.TaskPlanner;
@@ -16,19 +17,22 @@ namespace TaskPlanner.Application.Services.LeadService
         private readonly IProjectQueryService _projectQueryService;
         private readonly UserManager<User> _userManager;
         private readonly INotificationService _notificationService;
+        private readonly IFileUrlService _fileUrlService;
 
         public LeadService(
             IMVPTestDatabaseContext context,
             IProjectCommandService projectCommandService,
             IProjectQueryService projectQueryService,
             UserManager<User> userManager,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            IFileUrlService fileUrlService)
         {
             _context = context;
             _projectCommandService = projectCommandService;
             _projectQueryService = projectQueryService;
             _userManager = userManager;
             _notificationService = notificationService;
+            _fileUrlService = fileUrlService;
         }
 
         public async Task<IReadOnlyList<LeadListItemDto>> GetMyLeadsAsync(string userId, CancellationToken cancellationToken = default)
@@ -126,7 +130,7 @@ namespace TaskPlanner.Application.Services.LeadService
                 .Where(u => u.Phone != null && invitePhones.Contains(u.Phone))
                 .ToDictionaryAsync(u => u.Phone!, u => !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName! : (u.UserName ?? "کاربر"), cancellationToken);
 
-            return new LeadDetailsDto
+            var result = new LeadDetailsDto
             {
                 Id = lead.Id,
                 Title = lead.Title,
@@ -177,6 +181,16 @@ namespace TaskPlanner.Application.Services.LeadService
                     }).ToList()
                 }).ToList()
             };
+
+            foreach (var note in result.NotesList)
+            {
+                foreach (var attachment in note.Attachments)
+                {
+                    attachment.FilePath = _fileUrlService.ToPublicUrl(attachment.FilePath);
+                }
+            }
+
+            return result;
         }
 
         public async Task<int> CreateAsync(CreateLeadDto dto, string ownerUserId, CancellationToken cancellationToken = default)

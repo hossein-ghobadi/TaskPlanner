@@ -111,9 +111,9 @@
                     @foreach (var img in Model)
                     {
                         var itemTags = (img.Tags ?? "").Split(new[] { ',', '\u060C' }, StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim()).Where(t => t.Length > 0).ToList();
-                        <div class="figma-frame-item figma-artboard" data-src="@img.FilePath" data-id="@img.Id" data-tags="@(img.Tags ?? "")">
+                        <div class="figma-frame-item figma-artboard" data-src="@FileUrls.ToPublicUrl(img.FilePath)" data-id="@img.Id" data-tags="@(img.Tags ?? "")">
                             <div class="figma-frame-image-wrap">
-                                <img src="@img.FilePath" alt="@img.Title" loading="lazy" />
+                                <img src="@FileUrls.ToPublicUrl(img.FilePath)" alt="@img.Title" loading="lazy" />
                             </div>
                             <div class="figma-frame-title">@img.Title</div>
                             <div class="figma-frame-tags-row">

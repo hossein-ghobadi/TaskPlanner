@@ -75,14 +75,14 @@
                         @if (att.FileType == "Image")
                         {
                             <div class="attachment-item attachment-image">
-                                <img src="@att.FilePath" alt="@att.FileName" class="attachment-img" />
+                                <img src="@FileUrls.ToPublicUrl(att.FilePath)" alt="@att.FileName" class="attachment-img" />
                             </div>
                         }
                         else if (att.FileType == "Audio")
                         {
                             <div class="attachment-item attachment-audio">
                                 <audio controls class="attachment-audio-player">
-                                    <source src="@att.FilePath" type="@att.MimeType">
+                                    <source src="@FileUrls.ToPublicUrl(att.FilePath)" type="@att.MimeType">
                                 </audio>
                             </div>
                         }

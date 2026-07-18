@@ -23,6 +23,7 @@ using TaskPlanner.Application.Services.LeadService;
 using TaskPlanner.Application.Services.DashboardService;
 using TaskPlanner.Application.Services.Bale;
 using TaskPlanner.Application.Services.SMS;
+using TaskPlanner.Application.Services.FileUpload;
 
 
 namespace TaskPlanner.Infrastructure.DependencyInjections
@@ -33,7 +34,7 @@ namespace TaskPlanner.Infrastructure.DependencyInjections
         {
             // Register infrastructure services, such as external APIs, file storage, etc.
 
-
+            services.AddSingleton<IFileUrlService, FileUrlService>();
           
             services.AddScoped<IRemoteUploader, RemoteUploader>();
             services.AddScoped<ITaskPlannerFileUploader, TaskPlannerFileUploader>();

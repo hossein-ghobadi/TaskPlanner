@@ -4,7 +4,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using TaskPlanner.Application.Services;
 using TaskPlanner.Application.Services.TaskPlanner;
 
 namespace TaskPlanner.Application.Services.FileUpload
@@ -16,24 +15,24 @@ namespace TaskPlanner.Application.Services.FileUpload
         private readonly string[] _allowedDocumentExtensions = { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".zip", ".rar" };
         
         private const long MaxFileSize = 10 * 1024 * 1024; // 10 MB
-        //private readonly IRemoteUploader _remoteUploader;
         private readonly IImageUploader _imageUploader;
         private readonly IVoiceUploader _voiceUploader;
         private readonly IDocumentUploader _documentUploader;
+        private readonly IFileUrlService _fileUrlService;
         private readonly ILogger<FileUploadService> _logger;
 
         public FileUploadService(
             IImageUploader imageUploader,
             IVoiceUploader voiceUploader,
             IDocumentUploader documentUploader,
-            //IRemoteUploader remoteUploader,
+            IFileUrlService fileUrlService,
             ILogger<FileUploadService> logger)
         {
             _imageUploader = imageUploader;
             _voiceUploader = voiceUploader;
             _documentUploader = documentUploader;
+            _fileUrlService = fileUrlService;
             _logger = logger;
-            //_remoteUploader = remoteUploader;
         }
 
         public async Task<(bool Success, string FilePath, string Error)> UploadFileAsync(IFormFile file, string folder)
@@ -63,7 +62,6 @@ namespace TaskPlanner.Application.Services.FileUpload
                     return (false, string.Empty, "فرمت فایل مجاز نیست");
                 }
 
-                // تشخیص نوع فایل و انتخاب uploader مناسب
                 var fileType = GetFileType(file.FileName);
                 string remoteUrl;
                 
@@ -83,21 +81,26 @@ namespace TaskPlanner.Application.Services.FileUpload
                         break;
                     default:
                         _logger.LogInformation("📁 آپلود فایل عمومی به باکت...");
-                        remoteUrl = await _documentUploader.UploadAsync(file, folder); // fallback
+                        remoteUrl = await _documentUploader.UploadAsync(file, folder);
                         break;
                 }
+
+                // فقط مسیر نسبی در دیتابیس ذخیره می‌شود
+                var storagePath = _fileUrlService.ToStoragePath(remoteUrl);
                 
-                _logger.LogInformation("✅ آپلود به باکت موفقیت‌آمیز: {Url}", remoteUrl);
-                return (true, remoteUrl, string.Empty);
+                _logger.LogInformation("✅ آپلود به باکت موفقیت‌آمیز: {Url} → ذخیره: {StoragePath}", remoteUrl, storagePath);
+                return (true, storagePath, string.Empty);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ خطا در آپلود فایل {FileName}", file?.FileName);
-                // در صورت شکست آپلود، خطا رو برگردون (exception پرتاب نکن)
                 return (false, string.Empty, $"خطا در آپلود فایل: {ex.Message}");
             }
         }
 
+        public string ToPublicUrl(string? storagePath) => _fileUrlService.ToPublicUrl(storagePath);
+
+        public string ToStoragePath(string? urlOrPath) => _fileUrlService.ToStoragePath(urlOrPath);
 
         public bool DeleteFile(string filePath)
         {
@@ -108,16 +111,13 @@ namespace TaskPlanner.Application.Services.FileUpload
                 if (string.IsNullOrEmpty(filePath))
                     return false;
 
-                // اگر فایل با http شروع می‌شه، یعنی در باکت ذخیره شده
                 if (filePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
                     filePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 {
                     _logger.LogInformation("فایل در باکت است - حذف نمی‌شود");
-                    // TODO: پیاده‌سازی API حذف فایل از باکت در صورت نیاز
                     return true;
                 }
                 
-                // فایل local است
                 var fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", filePath.TrimStart('/'));
                 
                 if (File.Exists(fullPath))
@@ -126,9 +126,10 @@ namespace TaskPlanner.Application.Services.FileUpload
                     _logger.LogInformation("✅ فایل local حذف شد: {Path}", fullPath);
                     return true;
                 }
-                
-                _logger.LogWarning("فایل پیدا نشد: {Path}", fullPath);
-                return false;
+
+                // مسیر نسبی remote در wwwroot نیست
+                _logger.LogInformation("فایل local پیدا نشد (احتمالاً remote): {Path}", filePath);
+                return true;
             }
             catch (Exception ex)
             {
@@ -161,4 +162,3 @@ namespace TaskPlanner.Application.Services.FileUpload
         }
     }
 }
-

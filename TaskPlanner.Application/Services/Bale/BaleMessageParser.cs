@@ -1,4 +1,5 @@
 using TaskPlanner.Domain.Entities.TaskPlanner;
+using TaskPlanner.Application.Services.FileUpload;
 
 namespace TaskPlanner.Application.Services.Bale
 {
@@ -149,12 +150,12 @@ namespace TaskPlanner.Application.Services.Bale
                 ExternalSenderLastName = entity.ExternalSenderLastName,
                 ExternalSenderPhone = entity.ExternalSenderPhone,
                 ExternalIsChannelSender = entity.ExternalIsChannelSender,
-                ExternalSenderPhotoPath = entity.ExternalSenderPhotoPath,
+                ExternalSenderPhotoPath = FileUrls.ToPublicUrl(entity.ExternalSenderPhotoPath),
                 Attachments = attachments.Select(a => new BaleSyncedMessageAttachmentDto
                 {
                     Id = a.Id,
                     FileName = a.FileName,
-                    FilePath = a.FilePath,
+                    FilePath = FileUrls.ToPublicUrl(a.FilePath),
                     FileType = a.FileType,
                     FileSize = a.FileSize,
                     MimeType = a.MimeType,

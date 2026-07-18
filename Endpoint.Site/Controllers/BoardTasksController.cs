@@ -724,6 +724,14 @@ namespace Endpoint.Site.Controllers
                 })
                 .ToListAsync();
 
+            foreach (var comment in comments)
+            {
+                foreach (var attachment in comment.Attachments)
+                {
+                    attachment.FilePath = _fileUploadService.ToPublicUrl(attachment.FilePath);
+                }
+            }
+
             return Json(new { success = true, comments = comments });
         }
 
@@ -833,7 +841,7 @@ namespace Endpoint.Site.Controllers
                 {
                     Id = a.Id,
                     FileName = a.FileName,
-                    FilePath = a.FilePath,
+                    FilePath = _fileUploadService.ToPublicUrl(a.FilePath),
                     FileType = a.FileType,
                     FileSize = a.FileSize,
                     MimeType = a.MimeType,

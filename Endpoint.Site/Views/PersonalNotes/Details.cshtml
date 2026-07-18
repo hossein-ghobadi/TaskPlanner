@@ -117,14 +117,14 @@
                     @if (att.FileType == "Image")
                     {
                         <div class="attachment-item attachment-image-full">
-                            <img src="@att.FilePath"
+                            <img src="@FileUrls.ToPublicUrl(att.FilePath)"
                                  alt="@att.FileName"
                                  class="attachment-img-full attachment-preview-trigger"
-                                 data-preview-src="@att.FilePath"
+                                 data-preview-src="@FileUrls.ToPublicUrl(att.FilePath)"
                                  data-preview-alt="@att.FileName" />
                             <div class="attachment-info-overlay">
                                 <span class="attachment-name-full">@att.FileName</span>
-                                <a href="@att.FilePath" download="@att.FileName" class="attachment-download-btn">
+                                <a href="@FileUrls.ToPublicUrl(att.FilePath)" download="@att.FileName" class="attachment-download-btn">
                                     <i class="bi bi-download"></i>
                                 </a>
                             </div>
@@ -135,13 +135,13 @@
                         <div class="attachment-item attachment-audio-full">
                             <div class="audio-wrapper">
                                 <audio controls class="attachment-audio-player-full">
-                                    <source src="@att.FilePath" type="@att.MimeType">
+                                    <source src="@FileUrls.ToPublicUrl(att.FilePath)" type="@att.MimeType">
                                 </audio>
                                 <div class="audio-info">
                                     <span class="audio-name">@att.FileName</span>
                                     <span class="audio-size">@(Math.Round(att.FileSize / 1024.0, 1)) KB</span>
                                 </div>
-                                <a href="@att.FilePath" download="@att.FileName" class="audio-download">
+                                <a href="@FileUrls.ToPublicUrl(att.FilePath)" download="@att.FileName" class="audio-download">
                                     <i class="bi bi-download"></i>
                                 </a>
                             </div>
@@ -149,7 +149,7 @@
                     }
                     else if (att.FileType == "Document")
                     {
-                        <a href="@att.FilePath" target="_blank" class="attachment-item attachment-document-full">
+                        <a href="@FileUrls.ToPublicUrl(att.FilePath)" target="_blank" class="attachment-item attachment-document-full">
                             <div class="attachment-icon-large">
                                 <i class="bi bi-file-earmark-text"></i>
                             </div>
@@ -164,7 +164,7 @@
                     }
                     else
                     {
-                        <a href="@att.FilePath" target="_blank" class="attachment-item attachment-file-full">
+                        <a href="@FileUrls.ToPublicUrl(att.FilePath)" target="_blank" class="attachment-item attachment-file-full">
                             <div class="attachment-icon-large">
                                 <i class="bi bi-file-earmark"></i>
                             </div>

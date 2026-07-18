@@ -36,7 +36,7 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">عکس:</label>
                         <div class="image-preview">
-                            <img src="@Model.FilePath" alt="@Model.Title" class="img-thumbnail" style="max-width: 400px;" />
+                            <img src="@FileUrls.ToPublicUrl(Model.FilePath)" alt="@Model.Title" class="img-thumbnail" style="max-width: 400px;" />
                         </div>
                     </div>
 

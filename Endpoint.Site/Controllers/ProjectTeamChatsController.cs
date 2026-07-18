@@ -166,6 +166,15 @@ namespace Endpoint.Site.Controllers
                 })
                 .ToListAsync();
 
+            foreach (var message in messages)
+            {
+                message.ExternalSenderPhotoPath = _fileUploadService.ToPublicUrl(message.ExternalSenderPhotoPath);
+                foreach (var attachment in message.Attachments)
+                {
+                    attachment.FilePath = _fileUploadService.ToPublicUrl(attachment.FilePath);
+                }
+            }
+
             return Json(messages);
         }
 
@@ -416,7 +425,7 @@ namespace Endpoint.Site.Controllers
                 {
                     Id = a.Id,
                     FileName = a.FileName,
-                    FilePath = a.FilePath,
+                    FilePath = _fileUploadService.ToPublicUrl(a.FilePath),
                     FileType = a.FileType,
                     FileSize = a.FileSize,
                     MimeType = a.MimeType,

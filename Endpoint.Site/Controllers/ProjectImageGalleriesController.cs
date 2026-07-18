@@ -419,7 +419,7 @@ namespace Endpoint.Site.Controllers
                 Description = image.Description,
                 ProjectId = image.ProjectId,
                 FolderId = image.FolderId,
-                CurrentFilePath = image.FilePath,
+                CurrentFilePath = _fileUploadService.ToPublicUrl(image.FilePath),
                 Tags = image.Tags
             };
 

@@ -108,14 +108,14 @@
                                 @if (att.FileType == "Image")
                                 {
                                     <div class="attachment-preview-image">
-                                        <img src="@att.FilePath" alt="@att.FileName" />
+                                        <img src="@FileUrls.ToPublicUrl(att.FilePath)" alt="@att.FileName" />
                                     </div>
                                     <div class="attachment-preview-info">
                                         <span class="attachment-preview-file-name">@att.FileName</span>
                                         <span class="attachment-preview-file-size">@(Math.Round(att.FileSize / 1024.0, 1)) KB</span>
                                     </div>
                                     <div class="attachment-preview-actions">
-                                        <a href="@att.FilePath" target="_blank" class="btn-download">
+                                        <a href="@FileUrls.ToPublicUrl(att.FilePath)" target="_blank" class="btn-download">
                                             <i class="bi bi-download"></i>
                                             <span>دانلود</span>
                                         </a>
@@ -129,7 +129,7 @@
                                 {
                                     <div class="attachment-preview-audio">
                                         <audio controls>
-                                            <source src="@att.FilePath" type="@att.MimeType">
+                                            <source src="@FileUrls.ToPublicUrl(att.FilePath)" type="@att.MimeType">
                                         </audio>
                                     </div>
                                     <div class="attachment-preview-info">
@@ -137,7 +137,7 @@
                                         <span class="attachment-preview-file-size">@(Math.Round(att.FileSize / 1024.0, 1)) KB</span>
                                     </div>
                                     <div class="attachment-preview-actions">
-                                        <a href="@att.FilePath" target="_blank" class="btn-download">
+                                        <a href="@FileUrls.ToPublicUrl(att.FilePath)" target="_blank" class="btn-download">
                                             <i class="bi bi-download"></i>
                                             <span>دانلود</span>
                                         </a>
@@ -157,7 +157,7 @@
                                         <span class="attachment-preview-file-size">@(Math.Round(att.FileSize / 1024.0, 1)) KB</span>
                                     </div>
                                     <div class="attachment-preview-actions">
-                                        <a href="@att.FilePath" target="_blank" class="btn-download">
+                                        <a href="@FileUrls.ToPublicUrl(att.FilePath)" target="_blank" class="btn-download">
                                             <i class="bi bi-download"></i>
                                             <span>دانلود</span>
                                         </a>
@@ -177,7 +177,7 @@
                                         <span class="attachment-preview-file-size">@(Math.Round(att.FileSize / 1024.0, 1)) KB</span>
                                 </div>
                                     <div class="attachment-preview-actions">
-                                        <a href="@att.FilePath" target="_blank" class="btn-download">
+                                        <a href="@FileUrls.ToPublicUrl(att.FilePath)" target="_blank" class="btn-download">
                                             <i class="bi bi-download"></i>
                                             <span>دانلود</span>
                                         </a>

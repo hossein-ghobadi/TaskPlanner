@@ -132,18 +132,18 @@
                                     @if (att.FileType == "Image")
                                     {
                                         @*<div class="attachment-item attachment-image">
-                                            <img src="@att.FilePath" alt="@att.FileName" class="attachment-img" />
+                                            <img src="@FileUrls.ToPublicUrl(att.FilePath)" alt="@att.FileName" class="attachment-img" />
                                             <div class="attachment-overlay">
                                                 <i class="bi bi-zoom-in"></i>
                                             </div>
                                         </div>*@
                                         <div class="attachment-item attachment-image">
                                             <!-- اضافه کردن onclick برای باز کردن مودال -->
-                                            <img src="@att.FilePath"
+                                            <img src="@FileUrls.ToPublicUrl(att.FilePath)"
                                                  alt="@att.FileName"
                                                  class="attachment-img"
-                                                 onclick="openImageModal('@att.FilePath'); event.stopPropagation();" />
-                                            <div class="attachment-overlay" onclick="openImageModal('@att.FilePath'); event.stopPropagation();">
+                                                 onclick="openImageModal('@FileUrls.ToPublicUrl(att.FilePath)'); event.stopPropagation();" />
+                                            <div class="attachment-overlay" onclick="openImageModal('@FileUrls.ToPublicUrl(att.FilePath)'); event.stopPropagation();">
                                                 <i class="bi bi-zoom-in"></i>
                                             </div>
                                         </div>
@@ -152,7 +152,7 @@
                                     {
                                         <div class="attachment-item attachment-audio">
                                             <audio controls class="attachment-audio-player">
-                                                <source src="@att.FilePath" type="@att.MimeType">
+                                                <source src="@FileUrls.ToPublicUrl(att.FilePath)" type="@att.MimeType">
                                             </audio>
                                             <div class="attachment-info">
                                                 <i class="bi bi-music-note-beamed"></i>
@@ -162,7 +162,7 @@
                                     }
                                     else if (att.FileType == "Document")
                                     {
-                                        <a href="@att.FilePath" target="_blank" class="attachment-item attachment-document">
+                                        <a href="@FileUrls.ToPublicUrl(att.FilePath)" target="_blank" class="attachment-item attachment-document">
                                             <div class="attachment-icon">
                                                 <i class="bi bi-file-earmark-text"></i>
                                             </div>
@@ -175,7 +175,7 @@
                                     }
                                     else
                                     {
-                                        <a href="@att.FilePath" target="_blank" class="attachment-item attachment-file">
+                                        <a href="@FileUrls.ToPublicUrl(att.FilePath)" target="_blank" class="attachment-item attachment-file">
                                             <div class="attachment-icon">
                                                 <i class="bi bi-file-earmark"></i>
                                             </div>

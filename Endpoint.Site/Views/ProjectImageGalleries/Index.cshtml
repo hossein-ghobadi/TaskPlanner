@@ -138,7 +138,7 @@
                             <input type="checkbox" class="form-check-input gallery-item-checkbox" value="@image.Id" name="ids" />
                         </div>
                         <div class="gallery-item-image">
-                            <img src="@image.FilePath" alt="@image.Title" loading="lazy" />
+                            <img src="@FileUrls.ToPublicUrl(image.FilePath)" alt="@image.Title" loading="lazy" />
                             <div class="gallery-item-overlay">
                                 <div class="gallery-item-title">@image.Title</div>
                                 @if (!string.IsNullOrEmpty(image.Description))
