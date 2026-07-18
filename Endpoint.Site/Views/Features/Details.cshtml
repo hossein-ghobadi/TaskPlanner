@@ -391,18 +391,15 @@
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <span class="fw-bold"><i class="bi bi-list-task me-1"></i> تسک‌های فیچر</span>
-                    <a class="btn btn-sm btn-success" asp-controller="Tasks" asp-action="Create" asp-route-projectId="@Model.ProjectId" asp-route-featureId="@Model.Id">
+                    <button type="button" class="btn btn-sm btn-success" onclick="openFeatureCreateTask()">
                         <i class="bi bi-plus"></i> تسک جدید
-                    </a>
+                    </button>
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-0" id="featureTasksCardBody">
                     @if (Model.Tasks.Count == 0)
                     {
-                        <p class="text-muted p-3 mb-0">هنوز تسکی به این فیچر متصل نشده است. تسک‌ها می‌توانند داخل یا خارج اسپرینت باشند.</p>
-                    }
-                    else
-                    {
-                        <div class="table-responsive">
+                        <p class="text-muted p-3 mb-0" id="featureTasksEmpty">هنوز تسکی به این فیچر متصل نشده است. تسک‌ها می‌توانند داخل یا خارج اسپرینت باشند.</p>
+                        <div class="table-responsive d-none" id="featureTasksTableWrap">
                             <table class="table mb-0 align-middle">
                                 <thead class="table-light">
                                     <tr>
@@ -413,7 +410,24 @@
                                         <th></th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="featureTasksTableBody"></tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive" id="featureTasksTableWrap">
+                            <table class="table mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>کلید</th>
+                                        <th>عنوان</th>
+                                        <th>مسئول</th>
+                                        <th>اسپرینت</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="featureTasksTableBody">
                                     @foreach (var t in Model.Tasks)
                                     {
                                         <tr>
@@ -437,7 +451,19 @@
                                                 }
                                             </td>
                                             <td class="text-end">
-                                                <a class="btn btn-sm btn-outline-primary" asp-controller="Tasks" asp-action="Details" asp-route-id="@t.Id">جزئیات</a>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-primary feature-edit-task-btn"
+                                                            title="ویرایش"
+                                                            data-task-id="@t.Id">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger feature-delete-task-btn"
+                                                            title="حذف"
+                                                            data-task-id="@t.Id"
+                                                            data-task-title="@t.Title">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     }
@@ -779,8 +805,65 @@
 </div>
 
 <!-- قرارداد API: افزودن -->
+<style>
+    #addApiContractModal .modal-body,
+    #editApiContractModal .modal-body {
+        padding: 1.25rem 1.5rem;
+    }
+    #addApiContractModal .modal-body > .row,
+    #editApiContractModal .modal-body > .row {
+        --bs-gutter-x: 1.25rem;
+        --bs-gutter-y: 1rem;
+    }
+    .api-query-params {
+        margin-top: .25rem;
+    }
+    .api-param-block {
+        height: 100%;
+        padding: 1rem 1rem .85rem;
+        border: 1px solid #e9ecef;
+        border-radius: .5rem;
+        background: #f8f9fa;
+    }
+    .api-param-block .api-param-header {
+        margin-bottom: .75rem;
+        gap: .5rem;
+    }
+    .api-param-list {
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        margin-bottom: .5rem;
+        min-height: 2.25rem;
+    }
+    .api-param-row {
+        margin-bottom: 0 !important;
+    }
+    .api-param-row .btn {
+        min-width: 2.25rem;
+    }
+    .api-param-block .form-text-example {
+        display: block;
+        margin-top: .15rem;
+        line-height: 1.4;
+    }
+    .api-fields-section {
+        margin-top: .5rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e9ecef;
+    }
+    .api-fields-list {
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        margin: .75rem 0 .5rem;
+    }
+    .api-fields-list .api-field-row {
+        margin-bottom: 0 !important;
+    }
+</style>
 <div class="modal fade" id="addApiContractModal" tabindex="-1" aria-labelledby="addApiContractModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <form asp-action="AddApiContract" method="post">
                 @Html.AntiForgeryToken()
@@ -792,7 +875,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-2">
+                    <div class="row g-3">
                         <div class="col-md-3">
                             <label class="form-label">Method <span class="text-danger">*</span></label>
                             <select class="form-select" name="HttpMethod" required>
@@ -823,31 +906,61 @@
                             <label class="form-label">Status Codes</label>
                             <input type="text" class="form-control" name="StatusCodes" maxlength="200" placeholder="200, 400, 401, 404" />
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Pagination</label>
-                            <input type="text" class="form-control" name="Pagination" maxlength="1000"
-                                   placeholder="page, pageSize — مثلاً page=1&pageSize=20" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Filter</label>
-                            <input type="text" class="form-control" name="Filter" maxlength="1000"
-                                   placeholder="status, search — مثلاً status=Active&search=علی" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Sort</label>
-                            <input type="text" class="form-control" name="Sort" maxlength="1000"
-                                   placeholder="sortBy, sortDir — مثلاً sortBy=createdAt&sortDir=desc" />
+                        <div class="col-12">
+                            <div class="row g-3 api-query-params">
+                                <div class="col-md-4">
+                                    <div class="api-param-block">
+                                        <div class="d-flex justify-content-between align-items-center api-param-header">
+                                            <label class="form-label mb-0 fw-semibold">Pagination</label>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-param-add="addApiPaginationList" title="افزودن">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                        </div>
+                                        <div id="addApiPaginationList" class="api-param-list" data-placeholder="مثلاً page"></div>
+                                        <input type="hidden" name="Pagination" id="addApiPagination" />
+                                        <small class="text-muted form-text-example">مثال: page, pageSize</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="api-param-block">
+                                        <div class="d-flex justify-content-between align-items-center api-param-header">
+                                            <label class="form-label mb-0 fw-semibold">Filter</label>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-param-add="addApiFilterList" title="افزودن">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                        </div>
+                                        <div id="addApiFilterList" class="api-param-list" data-placeholder="مثلاً status"></div>
+                                        <input type="hidden" name="Filter" id="addApiFilter" />
+                                        <small class="text-muted form-text-example">مثال: status, search</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="api-param-block">
+                                        <div class="d-flex justify-content-between align-items-center api-param-header">
+                                            <label class="form-label mb-0 fw-semibold">Sort</label>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-param-add="addApiSortList" title="افزودن">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                        </div>
+                                        <div id="addApiSortList" class="api-param-list" data-placeholder="مثلاً sortBy"></div>
+                                        <input type="hidden" name="Sort" id="addApiSort" />
+                                        <small class="text-muted form-text-example">مثال: sortBy, sortDir</small>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-12">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label class="form-label mb-0">فیلدها (نام، نوع، Required/Nullable)</label>
-                                <button type="button" class="btn btn-sm btn-outline-primary" id="addApiFieldRowBtn">
-                                    <i class="bi bi-plus"></i> افزودن فیلد
-                                </button>
+                            <div class="api-fields-section">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label mb-0 fw-semibold">فیلدها (نام، نوع، Required/Nullable)</label>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="addApiFieldRowBtn">
+                                        <i class="bi bi-plus"></i> افزودن فیلد
+                                    </button>
+                                </div>
+                                <div id="addApiFieldsList" class="api-fields-list"></div>
+                                <input type="hidden" name="FieldsDescription" id="addApiFieldsDescription" />
+                                <small class="text-muted form-text-example">مثال: fullName | string | Required</small>
                             </div>
-                            <div id="addApiFieldsList" class="api-fields-list"></div>
-                            <input type="hidden" name="FieldsDescription" id="addApiFieldsDescription" />
-                            <small class="text-muted">مثال: fullName | string | Required</small>
                         </div>
                     </div>
                 </div>
@@ -862,7 +975,7 @@
 
 <!-- قرارداد API: ویرایش -->
 <div class="modal fade" id="editApiContractModal" tabindex="-1" aria-labelledby="editApiContractModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <form asp-action="EditApiContract" method="post">
                 @Html.AntiForgeryToken()
@@ -875,7 +988,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-2">
+                    <div class="row g-3">
                         <div class="col-md-3">
                             <label class="form-label">Method <span class="text-danger">*</span></label>
                             <select class="form-select" name="HttpMethod" id="editApiHttpMethod" required>
@@ -906,31 +1019,61 @@
                             <label class="form-label">Status Codes</label>
                             <input type="text" class="form-control" name="StatusCodes" id="editApiStatusCodes" maxlength="200" />
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Pagination</label>
-                            <input type="text" class="form-control" name="Pagination" id="editApiPagination" maxlength="1000"
-                                   placeholder="page, pageSize — مثلاً page=1&pageSize=20" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Filter</label>
-                            <input type="text" class="form-control" name="Filter" id="editApiFilter" maxlength="1000"
-                                   placeholder="status, search — مثلاً status=Active&search=علی" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Sort</label>
-                            <input type="text" class="form-control" name="Sort" id="editApiSort" maxlength="1000"
-                                   placeholder="sortBy, sortDir — مثلاً sortBy=createdAt&sortDir=desc" />
+                        <div class="col-12">
+                            <div class="row g-3 api-query-params">
+                                <div class="col-md-4">
+                                    <div class="api-param-block">
+                                        <div class="d-flex justify-content-between align-items-center api-param-header">
+                                            <label class="form-label mb-0 fw-semibold">Pagination</label>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-param-add="editApiPaginationList" title="افزودن">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                        </div>
+                                        <div id="editApiPaginationList" class="api-param-list" data-placeholder="مثلاً page"></div>
+                                        <input type="hidden" name="Pagination" id="editApiPagination" />
+                                        <small class="text-muted form-text-example">مثال: page, pageSize</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="api-param-block">
+                                        <div class="d-flex justify-content-between align-items-center api-param-header">
+                                            <label class="form-label mb-0 fw-semibold">Filter</label>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-param-add="editApiFilterList" title="افزودن">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                        </div>
+                                        <div id="editApiFilterList" class="api-param-list" data-placeholder="مثلاً status"></div>
+                                        <input type="hidden" name="Filter" id="editApiFilter" />
+                                        <small class="text-muted form-text-example">مثال: status, search</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="api-param-block">
+                                        <div class="d-flex justify-content-between align-items-center api-param-header">
+                                            <label class="form-label mb-0 fw-semibold">Sort</label>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-param-add="editApiSortList" title="افزودن">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                        </div>
+                                        <div id="editApiSortList" class="api-param-list" data-placeholder="مثلاً sortBy"></div>
+                                        <input type="hidden" name="Sort" id="editApiSort" />
+                                        <small class="text-muted form-text-example">مثال: sortBy, sortDir</small>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-12">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label class="form-label mb-0">فیلدها (نام، نوع، Required/Nullable)</label>
-                                <button type="button" class="btn btn-sm btn-outline-primary" id="editApiFieldRowBtn">
-                                    <i class="bi bi-plus"></i> افزودن فیلد
-                                </button>
+                            <div class="api-fields-section">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label mb-0 fw-semibold">فیلدها (نام، نوع، Required/Nullable)</label>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="editApiFieldRowBtn">
+                                        <i class="bi bi-plus"></i> افزودن فیلد
+                                    </button>
+                                </div>
+                                <div id="editApiFieldsList" class="api-fields-list"></div>
+                                <input type="hidden" name="FieldsDescription" id="editApiFieldsDescription" />
+                                <small class="text-muted form-text-example">مثال: fullName | string | Required</small>
                             </div>
-                            <div id="editApiFieldsList" class="api-fields-list"></div>
-                            <input type="hidden" name="FieldsDescription" id="editApiFieldsDescription" />
-                            <small class="text-muted">مثال: fullName | string | Required</small>
                         </div>
                     </div>
                 </div>
@@ -995,7 +1138,7 @@
         function createFieldRow(container, field) {
             field = field || { name: '', type: 'string', nullability: 'Required' };
             var row = document.createElement('div');
-            row.className = 'input-group input-group-sm mb-2 api-field-row';
+            row.className = 'input-group api-field-row';
 
             var nameInput = document.createElement('input');
             nameInput.type = 'text';
@@ -1051,6 +1194,77 @@
             if (container) container.innerHTML = '';
         }
 
+        function createParamRow(container, value) {
+            var placeholder = container.getAttribute('data-placeholder') || 'نام پارامتر';
+            var row = document.createElement('div');
+            row.className = 'input-group api-param-row';
+
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control api-param-name';
+            input.placeholder = placeholder;
+            input.value = value || '';
+            input.maxLength = 100;
+
+            var removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-outline-danger';
+            removeBtn.title = 'حذف';
+            removeBtn.innerHTML = '<i class="bi bi-trash"></i>';
+            removeBtn.addEventListener('click', function () { row.remove(); });
+
+            row.appendChild(input);
+            row.appendChild(removeBtn);
+            container.appendChild(row);
+        }
+
+        function parseParamList(text) {
+            if (!text || !String(text).trim()) return [];
+            return String(text)
+                .split(/[,;&\r\n]+/)
+                .map(function (part) {
+                    part = part.trim();
+                    if (!part) return '';
+                    var eq = part.indexOf('=');
+                    return (eq >= 0 ? part.substring(0, eq) : part).trim();
+                })
+                .filter(Boolean);
+        }
+
+        function serializeParamRows(container) {
+            if (!container) return '';
+            var names = [];
+            container.querySelectorAll('.api-param-row .api-param-name').forEach(function (input) {
+                var name = (input.value || '').trim();
+                if (name) names.push(name);
+            });
+            return names.join(', ');
+        }
+
+        function loadParamsInto(container, text) {
+            if (!container) return;
+            container.innerHTML = '';
+            var items = parseParamList(text);
+            if (items.length === 0) {
+                createParamRow(container, '');
+                return;
+            }
+            items.forEach(function (name) { createParamRow(container, name); });
+        }
+
+        function syncParamHidden(listId, hiddenId) {
+            var list = document.getElementById(listId);
+            var hidden = document.getElementById(hiddenId);
+            if (hidden) hidden.value = serializeParamRows(list);
+        }
+
+        document.querySelectorAll('[data-param-add]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var list = document.getElementById(btn.getAttribute('data-param-add'));
+                if (list) createParamRow(list, '');
+            });
+        });
+
         function parseFieldsDescription(text) {
             if (!text || !String(text).trim()) return [];
             return String(text).split(/\r?\n/).map(function (line) {
@@ -1099,13 +1313,22 @@
 
         document.getElementById('addApiContractModal')?.addEventListener('show.bs.modal', function () {
             loadFieldsInto(addFieldsList, '');
+            loadParamsInto(document.getElementById('addApiPaginationList'), '');
+            loadParamsInto(document.getElementById('addApiFilterList'), '');
+            loadParamsInto(document.getElementById('addApiSortList'), '');
         });
 
         document.querySelector('#addApiContractModal form')?.addEventListener('submit', function () {
             document.getElementById('addApiFieldsDescription').value = serializeFieldRows(addFieldsList);
+            syncParamHidden('addApiPaginationList', 'addApiPagination');
+            syncParamHidden('addApiFilterList', 'addApiFilter');
+            syncParamHidden('addApiSortList', 'addApiSort');
         });
         document.querySelector('#editApiContractModal form')?.addEventListener('submit', function () {
             document.getElementById('editApiFieldsDescription').value = serializeFieldRows(editFieldsList);
+            syncParamHidden('editApiPaginationList', 'editApiPagination');
+            syncParamHidden('editApiFilterList', 'editApiFilter');
+            syncParamHidden('editApiSortList', 'editApiSort');
         });
 
         document.getElementById('editFunctionModal')?.addEventListener('show.bs.modal', function (event) {
@@ -1165,9 +1388,9 @@
             document.getElementById('editApiResponse').value = api.responseDescription || '';
             document.getElementById('editApiError').value = api.errorResponseDescription || '';
             document.getElementById('editApiStatusCodes').value = api.statusCodes || '';
-            document.getElementById('editApiPagination').value = api.pagination || '';
-            document.getElementById('editApiFilter').value = api.filter || '';
-            document.getElementById('editApiSort').value = api.sort || '';
+            loadParamsInto(document.getElementById('editApiPaginationList'), api.pagination || '');
+            loadParamsInto(document.getElementById('editApiFilterList'), api.filter || '');
+            loadParamsInto(document.getElementById('editApiSortList'), api.sort || '');
             loadFieldsInto(editFieldsList, api.fieldsDescription || '');
         });
 
@@ -1176,6 +1399,505 @@
             if (!btn) return;
             document.getElementById('deleteApiId').value = btn.getAttribute('data-id') || '';
             document.getElementById('deleteApiLabel').textContent = btn.getAttribute('data-label') || '';
+        });
+    })();
+</script>
+
+@{
+    var featureTaskCategories = ViewBag.Categories as List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory>
+        ?? new List<TaskPlanner.Domain.Entities.TaskPlanner.TaskCategory>();
+    var featureTaskMembers = ViewBag.TaskMembers as List<FeatureMemberOptionVm>
+        ?? new List<FeatureMemberOptionVm>();
+    var defaultProjectIssueTypeId = ViewBag.DefaultProjectIssueTypeId as int?;
+    var defaultIssueTypeBase = ViewBag.DefaultIssueTypeBase as int? ?? 3;
+}
+
+<style>
+    #featureTaskModal .feature-task-main-card,
+    #featureTaskModal .feature-task-side-card {
+        background: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: .75rem;
+        padding: 1.1rem 1.15rem;
+        height: 100%;
+    }
+    #featureTaskModal .feature-task-side-card .small-title {
+        font-size: .8rem;
+        font-weight: 700;
+        color: #6c757d;
+        margin-bottom: .75rem;
+        text-transform: uppercase;
+        letter-spacing: .02em;
+    }
+    #featureTaskModal .feature-task-side-card .info-block + .info-block {
+        margin-top: 1.15rem;
+        padding-top: 1rem;
+        border-top: 1px solid #eee;
+    }
+</style>
+
+<div class="modal fade" id="featureTaskModal" tabindex="-1" aria-labelledby="featureTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="featureTaskModalLabel">
+                    <i class="bi bi-plus-circle me-2" id="featureTaskModalIcon"></i>
+                    <span id="featureTaskModalTitleText">افزودن کار جدید</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="featureTaskMode" value="create" />
+                <input type="hidden" id="featureTaskId" value="" />
+                <input type="hidden" id="featureTaskProjectId" value="@Model.ProjectId" />
+                <input type="hidden" id="featureTaskFeatureId" value="@Model.Id" />
+                <input type="hidden" id="featureTaskProjectIssueTypeId" value="@(defaultProjectIssueTypeId?.ToString() ?? "")" />
+                <input type="hidden" id="featureTaskIssueType" value="@defaultIssueTypeBase" />
+                <input type="hidden" id="featureTaskStoryPoints" value="" />
+
+                <div class="row g-3">
+                    <div class="col-lg-8">
+                        <div class="feature-task-main-card">
+                            <div class="mb-3">
+                                <label for="featureTaskTitle" class="form-label">عنوان کار <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="featureTaskTitle" required placeholder="عنوان کار را وارد کنید" />
+                            </div>
+                            <div class="mb-3">
+                                <label for="featureTaskDescription" class="form-label">توضیحات</label>
+                                <textarea class="form-control" id="featureTaskDescription" rows="5" placeholder="توضیحات کار را وارد کنید"></textarea>
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label">سطح کار</label>
+                                <div class="form-control bg-light" id="featureTaskEffortDisplay">تعیین نشده</div>
+                                <small class="text-muted">برای تغییر، از ستون اطلاعات استفاده کنید.</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="feature-task-side-card">
+                            <div class="info-block">
+                                <div class="small-title">زمان‌بندی</div>
+                                <label for="featureTaskStartDate" class="form-label">تاریخ شروع <span class="text-muted small">(اختیاری)</span></label>
+                                <input type="text" class="form-control mb-2" id="featureTaskStartDate" autocomplete="off" placeholder="مثلاً 1404/01/15" />
+                                <label for="featureTaskDurationDays" class="form-label">مدت انجام (روز)</label>
+                                <input type="number" class="form-control mb-2" id="featureTaskDurationDays" min="0" max="3650" placeholder="مثلاً ۳" />
+                                <small class="text-muted d-block mb-2">با تاریخ شروع، مهلت انجام خودکار محاسبه می‌شود.</small>
+                            </div>
+                            <div class="info-block">
+                                <div class="small-title">اطلاعات</div>
+                                <label for="featureTaskCategory" class="form-label">دسته‌بندی</label>
+                                <select class="form-select mb-2" id="featureTaskCategory">
+                                    <option value="">-- بدون دسته --</option>
+                                    @foreach (var cat in featureTaskCategories)
+                                    {
+                                        <option value="@cat.Id">@cat.Name</option>
+                                    }
+                                </select>
+
+                                <label class="form-label">فیچر</label>
+                                <input type="text" class="form-control mb-2 bg-light" value="@Model.Name" readonly />
+
+                                <label for="featureTaskAssignee" class="form-label">مسئول کار</label>
+                                <select class="form-select mb-2" id="featureTaskAssignee">
+                                    <option value="">-- انتخاب کاربر --</option>
+                                    @foreach (var m in featureTaskMembers)
+                                    {
+                                        <option value="@m.UserId">@m.DisplayName</option>
+                                    }
+                                </select>
+
+                                <label for="featureTaskEffort" class="form-label">سطح کار</label>
+                                <select class="form-select mb-0" id="featureTaskEffort">
+                                    <option value="">-- انتخاب سطح --</option>
+                                    <option value="1">ساده</option>
+                                    <option value="2">متوسط</option>
+                                    <option value="3">پرزحمت</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i> انصراف
+                </button>
+                <button type="button" class="btn btn-primary" id="featureTaskSubmitBtn">
+                    <i class="bi bi-plus-lg me-1"></i> <span id="featureTaskSubmitText">افزودن کار</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="featureDeleteTaskModal" tabindex="-1" aria-labelledby="featureDeleteTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="featureDeleteTaskModalLabel">
+                    <i class="bi bi-trash me-1"></i> حذف کار
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="featureDeleteTaskId" />
+                <p class="mb-0">آیا از حذف کار <strong id="featureDeleteTaskTitle"></strong> مطمئن هستید؟</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-danger" id="featureDeleteTaskConfirmBtn">حذف</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var effortLabels = { '': 'تعیین نشده', '1': 'ساده', '2': 'متوسط', '3': 'پرزحمت' };
+        var effortSelect = document.getElementById('featureTaskEffort');
+        var effortDisplay = document.getElementById('featureTaskEffortDisplay');
+        var originalFeatureTask = null;
+        var defaultProjectIssueTypeId = document.getElementById('featureTaskProjectIssueTypeId')?.value || '';
+        var defaultIssueTypeBase = document.getElementById('featureTaskIssueType')?.value || '3';
+
+        effortSelect?.addEventListener('change', function () {
+            if (effortDisplay) effortDisplay.textContent = effortLabels[this.value] || 'تعیین نشده';
+        });
+
+        function mapStoryPointsToEffortLevel(sp) {
+            if (sp == null || sp === '') return '';
+            var n = parseInt(sp, 10);
+            if (Number.isNaN(n)) return '';
+            if (n <= 3) return '1';
+            if (n <= 8) return '2';
+            return '3';
+        }
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text == null ? '' : String(text);
+            return div.innerHTML;
+        }
+
+        function buildTaskActionsHtml(taskId, title) {
+            var btn = document.createElement('div');
+            btn.className = 'btn-group btn-group-sm';
+            btn.innerHTML =
+                '<button type="button" class="btn btn-outline-primary feature-edit-task-btn" title="ویرایش" data-task-id="' + taskId + '">' +
+                '<i class="bi bi-pencil"></i></button>' +
+                '<button type="button" class="btn btn-outline-danger feature-delete-task-btn" title="حذف" data-task-id="' + taskId + '" data-task-title="">' +
+                '<i class="bi bi-trash"></i></button>';
+            var deleteBtn = btn.querySelector('.feature-delete-task-btn');
+            if (deleteBtn) deleteBtn.setAttribute('data-task-title', title || '');
+            return btn.outerHTML;
+        }
+
+        function resetFeatureTaskForm() {
+            document.getElementById('featureTaskId').value = '';
+            document.getElementById('featureTaskTitle').value = '';
+            document.getElementById('featureTaskDescription').value = '';
+            document.getElementById('featureTaskCategory').value = '';
+            document.getElementById('featureTaskAssignee').value = '';
+            document.getElementById('featureTaskStartDate').value = '';
+            document.getElementById('featureTaskDurationDays').value = '';
+            document.getElementById('featureTaskProjectIssueTypeId').value = defaultProjectIssueTypeId;
+            document.getElementById('featureTaskIssueType').value = defaultIssueTypeBase;
+            document.getElementById('featureTaskStoryPoints').value = '';
+            if (effortSelect) effortSelect.value = '';
+            if (effortDisplay) effortDisplay.textContent = 'تعیین نشده';
+            originalFeatureTask = null;
+        }
+
+        function setFeatureTaskModalMode(mode) {
+            document.getElementById('featureTaskMode').value = mode;
+            var titleEl = document.getElementById('featureTaskModalTitleText');
+            var iconEl = document.getElementById('featureTaskModalIcon');
+            var submitText = document.getElementById('featureTaskSubmitText');
+            var submitBtn = document.getElementById('featureTaskSubmitBtn');
+            if (mode === 'edit') {
+                if (titleEl) titleEl.textContent = 'جزئیات و ویرایش کار';
+                if (iconEl) iconEl.className = 'bi bi-pencil-square me-2';
+                if (submitText) submitText.textContent = 'ذخیره تغییرات';
+                if (submitBtn) submitBtn.querySelector('i')?.setAttribute('class', 'bi bi-check-lg me-1');
+            } else {
+                if (titleEl) titleEl.textContent = 'افزودن کار جدید';
+                if (iconEl) iconEl.className = 'bi bi-plus-circle me-2';
+                if (submitText) submitText.textContent = 'افزودن کار';
+                if (submitBtn) {
+                    var icon = submitBtn.querySelector('i');
+                    if (icon) icon.className = 'bi bi-plus-lg me-1';
+                }
+            }
+        }
+
+        window.openFeatureCreateTask = function () {
+            setFeatureTaskModalMode('create');
+            resetFeatureTaskForm();
+            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('featureTaskModal'));
+            modal.show();
+            setTimeout(function () { document.getElementById('featureTaskTitle')?.focus(); }, 200);
+        };
+
+        window.openFeatureEditTask = async function (taskId) {
+            if (!taskId) return;
+            setFeatureTaskModalMode('edit');
+            resetFeatureTaskForm();
+            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('featureTaskModal'));
+            modal.show();
+
+            try {
+                var response = await fetch('/Tasks/GetTaskDetails?id=' + taskId);
+                var taskData = await response.json();
+                if (!response.ok || !taskData.success) {
+                    throw new Error(taskData.message || 'خطا در دریافت اطلاعات کار');
+                }
+
+                originalFeatureTask = taskData;
+                document.getElementById('featureTaskId').value = taskData.id;
+                document.getElementById('featureTaskProjectId').value = taskData.projectId;
+                document.getElementById('featureTaskProjectIssueTypeId').value = taskData.projectIssueTypeId || '';
+                document.getElementById('featureTaskIssueType').value = taskData.issueType || defaultIssueTypeBase;
+                document.getElementById('featureTaskTitle').value = taskData.title || '';
+                document.getElementById('featureTaskDescription').value = taskData.description || '';
+                document.getElementById('featureTaskStartDate').value = taskData.startDateSh || '';
+                document.getElementById('featureTaskDurationDays').value =
+                    taskData.durationDays == null ? '' : String(taskData.durationDays);
+                document.getElementById('featureTaskCategory').value = taskData.categoryId || '';
+                document.getElementById('featureTaskAssignee').value = taskData.assignedUserId || '';
+                document.getElementById('featureTaskStoryPoints').value =
+                    taskData.storyPoints == null ? '' : String(taskData.storyPoints);
+
+                var effort = mapStoryPointsToEffortLevel(taskData.storyPoints);
+                if (effortSelect) effortSelect.value = effort;
+                if (effortDisplay) effortDisplay.textContent = effortLabels[effort] || 'تعیین نشده';
+            } catch (err) {
+                alert(err.message || 'خطا در بارگذاری کار');
+                bootstrap.Modal.getInstance(document.getElementById('featureTaskModal'))?.hide();
+            }
+        };
+
+        window.openFeatureDeleteTask = function (taskId, title) {
+            document.getElementById('featureDeleteTaskId').value = taskId;
+            document.getElementById('featureDeleteTaskTitle').textContent = title || '';
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('featureDeleteTaskModal')).show();
+        };
+
+        function appendFeatureTaskRow(task) {
+            var empty = document.getElementById('featureTasksEmpty');
+            var wrap = document.getElementById('featureTasksTableWrap');
+            var body = document.getElementById('featureTasksTableBody');
+            if (!body || !wrap) return;
+
+            if (empty) empty.classList.add('d-none');
+            wrap.classList.remove('d-none');
+
+            var sprintHtml = task.inSprint
+                ? '<span class="badge bg-info text-dark">' + escapeHtml(task.sprintName || 'اسپرینت') + '</span>'
+                : '<span class="text-muted">خارج از اسپرینت</span>';
+            var completedBadge = task.isCompleted ? ' <span class="badge bg-success ms-1">انجام‌شده</span>' : '';
+
+            var tr = document.createElement('tr');
+            tr.setAttribute('data-task-id', task.taskId);
+            tr.innerHTML =
+                '<td><code>' + escapeHtml(task.issueKey || '—') + '</code></td>' +
+                '<td>' + escapeHtml(task.title || '') + completedBadge + '</td>' +
+                '<td>' + escapeHtml(task.assignedUserName || '—') + '</td>' +
+                '<td>' + sprintHtml + '</td>' +
+                '<td class="text-end">' + buildTaskActionsHtml(task.taskId, task.title) + '</td>';
+            body.prepend(tr);
+        }
+
+        function updateFeatureTaskRow(taskId, data) {
+            var row = document.querySelector('#featureTasksTableBody tr[data-task-id="' + taskId + '"]');
+            if (!row) return;
+
+            row.setAttribute('data-task-id', taskId);
+            var cells = row.children;
+            if (cells.length < 5) return;
+            cells[1].innerHTML = escapeHtml(data.title || '');
+            cells[2].textContent = data.assignedUserName || '—';
+            cells[4].innerHTML = buildTaskActionsHtml(taskId, data.title);
+        }
+
+        function removeFeatureTaskRow(taskId) {
+            var row = document.querySelector('#featureTasksTableBody tr[data-task-id="' + taskId + '"]');
+            if (row) row.remove();
+
+            var body = document.getElementById('featureTasksTableBody');
+            if (body && body.children.length === 0) {
+                var empty = document.getElementById('featureTasksEmpty');
+                var wrap = document.getElementById('featureTasksTableWrap');
+                if (wrap) wrap.classList.add('d-none');
+                if (empty) empty.classList.remove('d-none');
+                else {
+                    var cardBody = document.getElementById('featureTasksCardBody');
+                    if (cardBody && !document.getElementById('featureTasksEmpty')) {
+                        var p = document.createElement('p');
+                        p.id = 'featureTasksEmpty';
+                        p.className = 'text-muted p-3 mb-0';
+                        p.textContent = 'هنوز تسکی به این فیچر متصل نشده است. تسک‌ها می‌توانند داخل یا خارج اسپرینت باشند.';
+                        cardBody.prepend(p);
+                    }
+                }
+            }
+        }
+
+        // mark existing server-rendered rows
+        document.querySelectorAll('#featureTasksTableBody tr').forEach(function (row) {
+            var btn = row.querySelector('[data-task-id]');
+            if (btn) row.setAttribute('data-task-id', btn.getAttribute('data-task-id'));
+        });
+
+        document.getElementById('featureTasksCardBody')?.addEventListener('click', function (event) {
+            var editBtn = event.target.closest('.feature-edit-task-btn');
+            if (editBtn) {
+                var editId = parseInt(editBtn.getAttribute('data-task-id'), 10);
+                if (editId) openFeatureEditTask(editId);
+                return;
+            }
+
+            var deleteBtn = event.target.closest('.feature-delete-task-btn');
+            if (deleteBtn) {
+                var deleteId = parseInt(deleteBtn.getAttribute('data-task-id'), 10);
+                var deleteTitle = deleteBtn.getAttribute('data-task-title') || '';
+                if (deleteId) openFeatureDeleteTask(deleteId, deleteTitle);
+            }
+        });
+
+        document.getElementById('featureTaskSubmitBtn')?.addEventListener('click', async function () {
+            var mode = document.getElementById('featureTaskMode').value || 'create';
+            var title = (document.getElementById('featureTaskTitle')?.value || '').trim();
+            if (!title) {
+                alert('عنوان کار الزامی است.');
+                document.getElementById('featureTaskTitle')?.focus();
+                return;
+            }
+
+            var btn = document.getElementById('featureTaskSubmitBtn');
+            var original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>در حال ذخیره...';
+
+            try {
+                if (mode === 'edit') {
+                    var taskId = parseInt(document.getElementById('featureTaskId').value, 10);
+                    var issueType = document.getElementById('featureTaskIssueType').value;
+                    if (!issueType) throw new Error('نوع کار نامعتبر است.');
+
+                    var formData = {
+                        Id: taskId,
+                        Title: title,
+                        Description: document.getElementById('featureTaskDescription').value || '',
+                        IssueType: parseInt(issueType, 10),
+                        ProjectIssueTypeId: document.getElementById('featureTaskProjectIssueTypeId').value
+                            ? parseInt(document.getElementById('featureTaskProjectIssueTypeId').value, 10) : null,
+                        ProjectId: parseInt(document.getElementById('featureTaskProjectId').value, 10),
+                        StartDateSh: (document.getElementById('featureTaskStartDate').value || '').trim(),
+                        DurationDays: (function () {
+                            var raw = document.getElementById('featureTaskDurationDays')?.value;
+                            if (raw === '' || raw == null) return null;
+                            var n = parseInt(raw, 10);
+                            return Number.isNaN(n) ? null : n;
+                        })(),
+                        CategoryId: document.getElementById('featureTaskCategory').value
+                            ? parseInt(document.getElementById('featureTaskCategory').value, 10) : null,
+                        FeatureId: parseInt(document.getElementById('featureTaskFeatureId').value, 10),
+                        AssignedUserId: document.getElementById('featureTaskAssignee').value || null,
+                        EffortLevel: document.getElementById('featureTaskEffort').value
+                            ? parseInt(document.getElementById('featureTaskEffort').value, 10) : null,
+                        StoryPoints: document.getElementById('featureTaskStoryPoints').value
+                            ? parseInt(document.getElementById('featureTaskStoryPoints').value, 10)
+                            : (originalFeatureTask?.storyPoints ?? null)
+                    };
+
+                    var editResponse = await fetch('/Tasks/EditFromBoard', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: JSON.stringify(formData),
+                        credentials: 'same-origin'
+                    });
+                    var editResult = await editResponse.json();
+                    if (!editResponse.ok || !editResult.success) {
+                        throw new Error(editResult.message || 'خطا در ویرایش کار');
+                    }
+
+                    var assigneeSelect = document.getElementById('featureTaskAssignee');
+                    var assigneeName = formData.AssignedUserId
+                        ? (assigneeSelect.options[assigneeSelect.selectedIndex]?.text || '—')
+                        : '—';
+                    updateFeatureTaskRow(taskId, { title: formData.Title, assignedUserName: assigneeName });
+                    bootstrap.Modal.getInstance(document.getElementById('featureTaskModal'))?.hide();
+                } else {
+                    var payload = {
+                        projectId: parseInt(document.getElementById('featureTaskProjectId').value, 10),
+                        featureId: parseInt(document.getElementById('featureTaskFeatureId').value, 10),
+                        title: title,
+                        description: document.getElementById('featureTaskDescription').value || '',
+                        categoryId: document.getElementById('featureTaskCategory').value
+                            ? parseInt(document.getElementById('featureTaskCategory').value, 10) : null,
+                        assignedUserId: document.getElementById('featureTaskAssignee').value || null,
+                        startDateSh: (document.getElementById('featureTaskStartDate').value || '').trim(),
+                        durationDays: (function () {
+                            var raw = document.getElementById('featureTaskDurationDays')?.value;
+                            if (raw === '' || raw == null) return null;
+                            var n = parseInt(raw, 10);
+                            return Number.isNaN(n) ? null : n;
+                        })(),
+                        effortLevel: document.getElementById('featureTaskEffort').value
+                            ? parseInt(document.getElementById('featureTaskEffort').value, 10) : null
+                    };
+                    var pit = document.getElementById('featureTaskProjectIssueTypeId').value;
+                    if (pit) payload.projectIssueTypeId = parseInt(pit, 10);
+
+                    var createResponse = await fetch('/Tasks/CreateForFeature', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    var createResult = await createResponse.json();
+                    if (!createResponse.ok || !createResult.success) {
+                        throw new Error(createResult.message || 'خطا در افزودن کار');
+                    }
+
+                    appendFeatureTaskRow(createResult);
+                    bootstrap.Modal.getInstance(document.getElementById('featureTaskModal'))?.hide();
+                }
+            } catch (err) {
+                alert(err.message || 'خطا در ذخیره کار');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        });
+
+        document.getElementById('featureDeleteTaskConfirmBtn')?.addEventListener('click', async function () {
+            var taskId = parseInt(document.getElementById('featureDeleteTaskId').value, 10);
+            if (!taskId) return;
+
+            var btn = this;
+            var original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>در حال حذف...';
+
+            try {
+                var response = await fetch('/Tasks/DeleteTask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ taskId: taskId })
+                });
+                var result = await response.json().catch(function () { return {}; });
+                if (!response.ok || result.success === false) {
+                    throw new Error(result.message || 'خطا در حذف کار');
+                }
+
+                removeFeatureTaskRow(taskId);
+                bootstrap.Modal.getInstance(document.getElementById('featureDeleteTaskModal'))?.hide();
+            } catch (err) {
+                alert(err.message || 'خطا در حذف کار');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
         });
     })();
 </script>

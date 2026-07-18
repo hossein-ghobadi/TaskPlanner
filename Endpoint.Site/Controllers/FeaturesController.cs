@@ -157,6 +157,25 @@ namespace Endpoint.Site.Controllers
             ViewBag.ProjectId = feature.ProjectId;
             ViewData["Title"] = feature.Name;
 
+            ViewBag.Categories = await _context.TaskCategories
+                .AsNoTracking()
+                .Where(c => c.ProjectId == feature.ProjectId)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+
+            ViewBag.TaskMembers = await GetProjectMemberOptionsAsync(feature.ProjectId);
+
+            var defaultIssueType = await _context.ProjectIssueTypes.AsNoTracking()
+                .Where(p => p.ProjectId == feature.ProjectId && p.Level != IssueTypeLevel.Subtask)
+                .OrderBy(p => p.Order)
+                .FirstOrDefaultAsync(p => p.BaseType == IssueType.Task)
+                ?? await _context.ProjectIssueTypes.AsNoTracking()
+                    .Where(p => p.ProjectId == feature.ProjectId && p.Level != IssueTypeLevel.Subtask)
+                    .OrderBy(p => p.Order)
+                    .FirstOrDefaultAsync();
+            ViewBag.DefaultProjectIssueTypeId = defaultIssueType?.Id;
+            ViewBag.DefaultIssueTypeBase = defaultIssueType != null ? (int)defaultIssueType.BaseType : (int)IssueType.Task;
+
             var vm = MapDetails(feature, canManageCodeReview: isReviewer || isCreator, canChangeCodeReviewer: isCreator, canManageFeatureSpec: isCreator);
             return View(vm);
         }

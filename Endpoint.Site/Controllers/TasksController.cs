@@ -1444,6 +1444,235 @@ namespace Endpoint.Site.Controllers
             return RedirectToAction(nameof(Index), new { projectId = vm.ProjectId });
         }
 
+        /// <summary>
+        /// ایجاد سریع تسک از صفحه جزئیات فیچر (مودال)
+        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> CreateForFeature([FromBody] JsonElement data)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Json(new { success = false, message = "کاربر احراز هویت نشده است." });
+
+            if (!data.TryGetProperty("projectId", out var projectIdProp) || projectIdProp.ValueKind != JsonValueKind.Number ||
+                !data.TryGetProperty("featureId", out var featureIdProp) || featureIdProp.ValueKind != JsonValueKind.Number ||
+                !data.TryGetProperty("title", out var titleProp))
+            {
+                return Json(new { success = false, message = "پروژه، فیچر و عنوان الزامی است." });
+            }
+
+            var projectId = projectIdProp.GetInt32();
+            var featureId = featureIdProp.GetInt32();
+            var title = (titleProp.GetString() ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(title))
+                return Json(new { success = false, message = "عنوان الزامی است." });
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == projectId &&
+                    (p.CreatorUserId == userId ||
+                     p.Members.Any(m => m.UserId == userId) ||
+                     _context.ProjectInvitations.Any(i => i.ProjectId == projectId && i.InviteeId == userId && i.Status == InvitationStatus.Accepted)));
+            if (!hasAccess)
+                return Json(new { success = false, message = "شما به این پروژه دسترسی ندارید." });
+
+            var featureExists = await _context.ProjectFeatures.AsNoTracking()
+                .AnyAsync(f => f.Id == featureId && f.ProjectId == projectId);
+            if (!featureExists)
+                return Json(new { success = false, message = "فیچر انتخاب‌شده متعلق به این پروژه نیست." });
+
+            var projectInfo = await _context.Projects.AsNoTracking()
+                .Where(p => p.Id == projectId)
+                .Select(p => new { p.IssueKeyPrefix, p.Name })
+                .FirstOrDefaultAsync();
+            if (projectInfo == null)
+                return Json(new { success = false, message = "پروژه یافت نشد." });
+
+            int? categoryId = null;
+            if (data.TryGetProperty("categoryId", out var catProp) && catProp.ValueKind == JsonValueKind.Number)
+            {
+                var cid = catProp.GetInt32();
+                if (cid > 0 && await _context.TaskCategories.AsNoTracking().AnyAsync(c => c.Id == cid && c.ProjectId == projectId))
+                    categoryId = cid;
+            }
+
+            IssueType issueType = IssueType.Task;
+            int? projectIssueTypeId = null;
+            if (data.TryGetProperty("projectIssueTypeId", out var pitProp) && pitProp.ValueKind == JsonValueKind.Number)
+            {
+                var pitId = pitProp.GetInt32();
+                var pit = await _context.ProjectIssueTypes
+                    .FirstOrDefaultAsync(p => p.Id == pitId && p.ProjectId == projectId);
+                if (pit != null)
+                {
+                    projectIssueTypeId = pit.Id;
+                    issueType = pit.BaseType;
+                }
+            }
+            if (!projectIssueTypeId.HasValue)
+            {
+                var defaultPit = await _context.ProjectIssueTypes
+                    .Where(p => p.ProjectId == projectId && p.Level != IssueTypeLevel.Subtask)
+                    .OrderBy(p => p.Order)
+                    .FirstOrDefaultAsync(p => p.BaseType == IssueType.Task)
+                    ?? await _context.ProjectIssueTypes
+                        .Where(p => p.ProjectId == projectId && p.Level != IssueTypeLevel.Subtask)
+                        .OrderBy(p => p.Order)
+                        .FirstOrDefaultAsync();
+                if (defaultPit != null)
+                {
+                    projectIssueTypeId = defaultPit.Id;
+                    issueType = defaultPit.BaseType;
+                }
+            }
+
+            string? assignedUserId = null;
+            if (data.TryGetProperty("assignedUserId", out var assignedProp) &&
+                assignedProp.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrWhiteSpace(assignedProp.GetString()))
+            {
+                assignedUserId = assignedProp.GetString();
+            }
+
+            DateTime? startDate = null;
+            if (data.TryGetProperty("startDateSh", out var startDateProp) && !string.IsNullOrWhiteSpace(startDateProp.GetString()))
+            {
+                startDate = startDateProp.GetString()!.ToGregorianDateTime();
+            }
+
+            int? durationDays = null;
+            if (data.TryGetProperty("durationDays", out var durationProp) && durationProp.ValueKind == JsonValueKind.Number)
+                durationDays = durationProp.GetInt32();
+
+            int? storyPoints = null;
+            if (data.TryGetProperty("effortLevel", out var effortProp) && effortProp.ValueKind == JsonValueKind.Number)
+            {
+                storyPoints = TaskEffortLevelMapper.ToStoryPoints((TaskEffortLevel)effortProp.GetInt32());
+            }
+
+            try
+            {
+                var newTask = new TaskItem
+                {
+                    Title = title,
+                    Description = data.TryGetProperty("description", out var descProp) ? descProp.GetString() : null,
+                    IssueType = issueType,
+                    ProjectIssueTypeId = projectIssueTypeId,
+                    IssueKey = null,
+                    ProjectId = projectId,
+                    CategoryId = categoryId,
+                    FeatureId = featureId,
+                    AssignedUserId = assignedUserId,
+                    StoryPoints = storyPoints,
+                    IsCompleted = false,
+                    CreatedByUserId = userId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                TaskScheduleHelper.ApplySchedule(newTask, startDate, durationDays);
+
+                _context.TaskItems.Add(newTask);
+                await _context.SaveChangesAsync();
+
+                newTask.IssueKey = $"{projectInfo.IssueKeyPrefix}-{newTask.Id}";
+                await _context.SaveChangesAsync();
+
+                if (!string.IsNullOrWhiteSpace(assignedUserId) &&
+                    !string.Equals(assignedUserId, userId, StringComparison.OrdinalIgnoreCase))
+                {
+                    await _notificationService.CreateNotificationAsync(new NotificationCreateRequest
+                    {
+                        UserId = assignedUserId,
+                        Title = "تسک جدید به شما واگذار شد",
+                        Message = $"تسک «{newTask.Title}» در پروژه «{projectInfo.Name}» به شما واگذار شد.",
+                        RelatedEntityId = newTask.Id.ToString(),
+                        RelatedEntityType = nameof(TaskItem),
+                        Type = NotificationCreateType.TaskAssigned,
+                        PayloadJson = JsonSerializer.Serialize(new
+                        {
+                            taskId = newTask.Id,
+                            issueKey = newTask.IssueKey,
+                            projectId = newTask.ProjectId
+                        })
+                    });
+                }
+
+                // افزودن خودکار به اسپرینت فعال در صورت امکان
+                var activeSprint = await _context.Sprints
+                    .FirstOrDefaultAsync(s => s.ProjectId == projectId && s.Status == SprintStatus.Active);
+                string? sprintName = null;
+                var inSprint = false;
+                if (activeSprint != null)
+                {
+                    var selectedPit = projectIssueTypeId.HasValue
+                        ? await _context.ProjectIssueTypes.AsNoTracking().FirstOrDefaultAsync(p => p.Id == projectIssueTypeId.Value)
+                        : null;
+                    var canAddToSprint = selectedPit?.CanAddToSprint
+                        ?? (issueType is IssueType.Task or IssueType.Story or IssueType.Bug);
+
+                    if (canAddToSprint)
+                    {
+                        var defaultStatus = await _context.WorkflowStatuses
+                            .Where(ws => ws.SprintId == activeSprint.Id && ws.Type == WorkflowType.Todo)
+                            .OrderBy(ws => ws.IsDefault ? 0 : 1)
+                            .ThenBy(ws => ws.Order)
+                            .FirstOrDefaultAsync()
+                            ?? await _context.WorkflowStatuses
+                                .Where(ws => ws.SprintId == activeSprint.Id)
+                                .OrderBy(ws => ws.IsDefault ? 0 : ws.Order)
+                                .FirstOrDefaultAsync();
+
+                        _context.SprintTasks.Add(new SprintTask
+                        {
+                            SprintId = activeSprint.Id,
+                            TaskId = newTask.Id,
+                            AddedByUserId = userId,
+                            AddedAt = DateTime.UtcNow,
+                            Status = SprintTaskStatus.Pending,
+                            SprintPriority = 1
+                        });
+
+                        if (defaultStatus != null)
+                        {
+                            newTask.StatusId = defaultStatus.Id;
+                            newTask.WorkflowStatusId = defaultStatus.Id;
+                            newTask.SprintId = activeSprint.Id;
+                            newTask.IsCompleted = defaultStatus.IsFinal;
+                        }
+
+                        await _context.SaveChangesAsync();
+                        sprintName = activeSprint.Name;
+                        inSprint = true;
+                    }
+                }
+
+                await _notificationService.TrySendDueSoonNotificationAsync(newTask, projectInfo.Name);
+
+                var assigneeName = "—";
+                if (!string.IsNullOrEmpty(assignedUserId))
+                {
+                    var assignee = await _userManager.FindByIdAsync(assignedUserId);
+                    assigneeName = assignee?.FullName ?? assignee?.UserName ?? "—";
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    message = "تسک با موفقیت ایجاد شد.",
+                    taskId = newTask.Id,
+                    issueKey = newTask.IssueKey,
+                    title = newTask.Title,
+                    isCompleted = newTask.IsCompleted,
+                    assignedUserName = assigneeName,
+                    inSprint,
+                    sprintName
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "خطا در ایجاد تسک: " + ex.Message });
+            }
+        }
+
         private async Task FillListsForCreate(int projectId)
         {
             var project = await _context.Projects.FindAsync(projectId);
