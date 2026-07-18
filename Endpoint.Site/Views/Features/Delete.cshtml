@@ -17,6 +17,10 @@
                 {
                     <span>تسک‌های متصل (@ViewBag.TaskCount مورد) از فیچر جدا می‌شوند ولی خود تسک‌ها حذف نمی‌شوند.</span>
                 }
+                @if ((int)(ViewBag.TicketCount ?? 0) > 0)
+                {
+                    <span>تیکت‌های متصل (@ViewBag.TicketCount مورد) از فیچر جدا می‌شوند ولی خود تیکت‌ها حذف نمی‌شوند.</span>
+                }
             </p>
             <form asp-action="Delete" method="post">
                 <input type="hidden" name="id" value="@Model.Id" />

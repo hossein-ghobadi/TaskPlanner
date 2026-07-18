@@ -844,6 +844,7 @@ namespace Endpoint.Site.Controllers
             var feature = await _context.ProjectFeatures
                 .Include(f => f.Project)
                 .Include(f => f.Tasks)
+                .Include(f => f.Tickets)
                 .FirstOrDefaultAsync(f => f.Id == id);
             if (feature == null)
                 return NotFound();
@@ -854,6 +855,7 @@ namespace Endpoint.Site.Controllers
             ViewBag.ProjectId = feature.ProjectId;
             ViewBag.ProjectName = feature.Project?.Name ?? "پروژه";
             ViewBag.TaskCount = feature.Tasks?.Count ?? 0;
+            ViewBag.TicketCount = feature.Tickets?.Count ?? 0;
             ViewData["Title"] = "حذف فیچر";
             return View(feature);
         }
@@ -864,6 +866,7 @@ namespace Endpoint.Site.Controllers
         {
             var feature = await _context.ProjectFeatures
                 .Include(f => f.Tasks)
+                .Include(f => f.Tickets)
                 .FirstOrDefaultAsync(f => f.Id == id);
             if (feature == null)
                 return NotFound();
@@ -873,10 +876,15 @@ namespace Endpoint.Site.Controllers
 
             var projectId = feature.ProjectId;
 
-            // جدا کردن تسک‌ها از فیچر قبل از حذف
+            // جدا کردن تسک‌ها و تیکت‌ها از فیچر قبل از حذف
             foreach (var task in feature.Tasks)
             {
                 task.FeatureId = null;
+            }
+
+            foreach (var ticket in feature.Tickets)
+            {
+                ticket.FeatureId = null;
             }
 
             _context.ProjectFeatures.Remove(feature);
