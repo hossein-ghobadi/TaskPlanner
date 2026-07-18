@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskPlanner.Persistence.Contexts;
 
@@ -11,9 +12,11 @@ using TaskPlanner.Persistence.Contexts;
 namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 {
     [DbContext(typeof(MVPTestDatabaseContext))]
-    partial class MVPTestDatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260718112615_add-projectTickect")]
+    partial class addprojectTickect
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1766,6 +1769,10 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Answer")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
                     b.Property<string>("AskedToUserId")
                         .IsRequired()
                         .HasMaxLength(450)
@@ -1813,42 +1820,6 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.HasIndex("ProjectId");
 
                     b.ToTable("ProjectTickets");
-                });
-
-            modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectTicketMessage", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AuthorUserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Body")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Kind")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TicketId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AuthorUserId");
-
-                    b.HasIndex("TicketId");
-
-                    b.ToTable("ProjectTicketMessages");
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.Sprint", b =>
@@ -2967,25 +2938,6 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectTicketMessage", b =>
-                {
-                    b.HasOne("TaskPlanner.Domain.Entities.Users.User", "AuthorUser")
-                        .WithMany()
-                        .HasForeignKey("AuthorUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TaskPlanner.Domain.Entities.TaskPlanner.ProjectTicket", "Ticket")
-                        .WithMany("Messages")
-                        .HasForeignKey("TicketId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("AuthorUser");
-
-                    b.Navigation("Ticket");
-                });
-
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.Sprint", b =>
                 {
                     b.HasOne("TaskPlanner.Domain.Entities.TaskPlanner.Project", "Project")
@@ -3282,11 +3234,6 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.Navigation("Children");
 
                     b.Navigation("Notes");
-                });
-
-            modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.ProjectTicket", b =>
-                {
-                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.Sprint", b =>

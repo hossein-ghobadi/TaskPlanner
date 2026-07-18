@@ -1,0 +1,65 @@
+@model Endpoint.Site.Models.TicketCreateVm
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "ثبت تیکت جدید";
+}
+
+<div class="w-100">
+    <div class="card shadow-sm border-0 w-100">
+        <div class="card-header bg-white">
+            <h4 class="mb-0 fw-bold">
+                <i class="bi bi-ticket-detailed text-success me-2"></i>
+                ثبت تیکت جدید
+            </h4>
+            <small class="text-muted">پروژه: @ViewBag.ProjectName</small>
+        </div>
+        <div class="card-body">
+            <form asp-action="Create" method="post">
+                <input type="hidden" name="projectId" value="@ViewBag.ProjectId" />
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                <div class="mb-3">
+                    <label asp-for="Title" class="form-label">عنوان سوال <span class="text-danger">*</span></label>
+                    <input asp-for="Title" class="form-control" placeholder="سوال خود را کوتاه بنویسید" />
+                    <span asp-validation-for="Title" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Type" class="form-label">نوع تیکت <span class="text-danger">*</span></label>
+                    <select asp-for="Type" asp-items="Model.TypeOptions" class="form-select"></select>
+                    <span asp-validation-for="Type" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Description" class="form-label">توضیحات</label>
+                    <textarea asp-for="Description" class="form-control" rows="5" placeholder="جزئیات سوال..."></textarea>
+                    <span asp-validation-for="Description" class="text-danger"></span>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="FeatureId" class="form-label">فیچر مورد سوال</label>
+                        <select asp-for="FeatureId" asp-items="Model.FeatureOptions" class="form-select"></select>
+                        <span asp-validation-for="FeatureId" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="AskedToUserId" class="form-label">فرد مورد سوال <span class="text-danger">*</span></label>
+                        <select asp-for="AskedToUserId" asp-items="Model.MemberOptions" class="form-select">
+                            <option value="">— انتخاب کنید —</option>
+                        </select>
+                        <span asp-validation-for="AskedToUserId" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-1"></i> ثبت تیکت
+                    </button>
+                    <a asp-action="Index" asp-route-projectId="@ViewBag.ProjectId" class="btn btn-outline-secondary">
+                        انصراف
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

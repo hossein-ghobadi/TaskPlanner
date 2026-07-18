@@ -68,6 +68,11 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public ICollection<ProjectFeature> Features { get; set; } = new List<ProjectFeature>();
 
         /// <summary>
+        /// تیکت‌های / سوالات پروژه
+        /// </summary>
+        public ICollection<ProjectTicket> Tickets { get; set; } = new List<ProjectTicket>();
+
+        /// <summary>
         /// Generate کردن IssueKey بعدی برای این پروژه
         /// مثلاً: PROJ-1, PROJ-2, ...
         /// </summary>

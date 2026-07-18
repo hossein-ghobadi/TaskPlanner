@@ -56,6 +56,8 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<FeatureApiContract> FeatureApiContracts { get; set; }
         public DbSet<FeatureBusinessRule> FeatureBusinessRules { get; set; }
         public DbSet<FeatureCodeReview> FeatureCodeReviews { get; set; }
+        public DbSet<ProjectTicket> ProjectTickets { get; set; }
+        public DbSet<ProjectTicketMessage> ProjectTicketMessages { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         
         // Board entities (separate from TaskPlanner)
@@ -849,6 +851,67 @@ namespace TaskPlanner.Persistence.Contexts
 
             modelBuilder.Entity<TaskItem>()
                 .HasIndex(t => t.FeatureId);
+
+            // ========== Project Tickets ==========
+            modelBuilder.Entity<ProjectTicket>()
+                .HasOne(t => t.Project)
+                .WithMany(p => p.Tickets)
+                .HasForeignKey(t => t.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProjectTicket>()
+                .HasOne(t => t.Feature)
+                .WithMany(f => f.Tickets)
+                .HasForeignKey(t => t.FeatureId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<ProjectTicket>()
+                .HasOne(t => t.AskedToUser)
+                .WithMany()
+                .HasForeignKey(t => t.AskedToUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ProjectTicket>()
+                .HasOne(t => t.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(t => t.CreatedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<ProjectTicket>()
+                .HasIndex(t => t.ProjectId);
+
+            modelBuilder.Entity<ProjectTicket>()
+                .HasIndex(t => t.FeatureId);
+
+            modelBuilder.Entity<ProjectTicket>()
+                .HasIndex(t => t.AskedToUserId);
+
+            modelBuilder.Entity<ProjectTicket>()
+                .Property(t => t.AskedToUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<ProjectTicket>()
+                .Property(t => t.CreatedByUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<ProjectTicketMessage>()
+                .HasOne(m => m.Ticket)
+                .WithMany(t => t.Messages)
+                .HasForeignKey(m => m.TicketId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProjectTicketMessage>()
+                .HasOne(m => m.AuthorUser)
+                .WithMany()
+                .HasForeignKey(m => m.AuthorUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ProjectTicketMessage>()
+                .HasIndex(m => m.TicketId);
+
+            modelBuilder.Entity<ProjectTicketMessage>()
+                .Property(m => m.AuthorUserId)
+                .HasMaxLength(450);
         }
         public void MarkAsModified<T>(T entity) where T : class
         {

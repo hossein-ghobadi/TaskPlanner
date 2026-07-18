@@ -48,6 +48,8 @@ namespace TaskPlanner.Application.Interfaces.Contexts
         DbSet<FeatureApiContract> FeatureApiContracts { get; set; }
         DbSet<FeatureBusinessRule> FeatureBusinessRules { get; set; }
         DbSet<FeatureCodeReview> FeatureCodeReviews { get; set; }
+        DbSet<ProjectTicket> ProjectTickets { get; set; }
+        DbSet<ProjectTicketMessage> ProjectTicketMessages { get; set; }
         
         // Board entities (separate from TaskPlanner)
         DbSet<Board> Boards { get; set; }

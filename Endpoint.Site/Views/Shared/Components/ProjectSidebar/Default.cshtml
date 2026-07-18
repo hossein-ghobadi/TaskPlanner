@@ -35,6 +35,10 @@
             <i class="bi bi-puzzle"></i>
             <span>فیچرها</span>
         </a>
+        <a class="project-nav-link @(Model.ActiveNav == "tickets" ? "active" : null)" href="/Tickets/Index?projectId=@Model.ProjectId">
+            <i class="bi bi-ticket-detailed"></i>
+            <span>تیکت‌ها</span>
+        </a>
         <a class="project-nav-link @(Model.ActiveNav == "notes" ? "active" : null)" href="/ProjectNotes/Index?projectId=@Model.ProjectId">
             <i class="bi bi-sticky"></i>
             <span>یادداشت‌ها</span>

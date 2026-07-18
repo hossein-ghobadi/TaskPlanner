@@ -97,6 +97,10 @@ namespace Endpoint.Site.ViewComponents
             {
                 return "features";
             }
+            if (p.Contains("/tickets"))
+            {
+                return "tickets";
+            }
             if (p.Contains("/projectnotes"))
             {
                 return "notes";

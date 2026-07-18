@@ -1,0 +1,195 @@
+@model Endpoint.Site.Models.TicketDetailsVm
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@using DNTPersianUtils.Core
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = Model.Title;
+
+    string StatusBadge(TicketStatus status) => status switch
+    {
+        TicketStatus.Open => "bg-warning text-dark",
+        TicketStatus.Answered => "bg-success",
+        TicketStatus.Closed => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+
+    string StatusText(TicketStatus status) => status switch
+    {
+        TicketStatus.Open => "باز",
+        TicketStatus.Answered => "پاسخ‌داده‌شده",
+        TicketStatus.Closed => "بسته",
+        _ => status.ToString()
+    };
+
+    string TypeText(TicketType type) => type switch
+    {
+        TicketType.SpecificationMissing => "نقص مشخصات",
+        TicketType.Bug => "باگ",
+        TicketType.CriticalBug => "باگ بحرانی",
+        TicketType.Improvement => "بهبود",
+        TicketType.Other => "سایر",
+        _ => type.ToString()
+    };
+
+    string PersianDate(DateTime dt) =>
+        dt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers();
+}
+
+<div class="w-100">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+        <div>
+            <h4 class="mb-1 fw-bold">
+                <i class="bi bi-ticket-detailed text-primary me-2"></i>
+                @Model.Title
+            </h4>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <small class="text-muted">پروژه: <strong>@Model.ProjectName</strong></small>
+                <span class="badge @StatusBadge(Model.Status)">@StatusText(Model.Status)</span>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-route-projectId="@Model.ProjectId">
+                بازگشت به لیست
+            </a>
+            @if (Model.CanManage)
+            {
+                <form asp-action="Delete" method="post" class="d-inline"
+                      onsubmit="return confirm('آیا از حذف این تیکت مطمئن هستید؟');">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="bi bi-trash me-1"></i> حذف
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-header bg-white fw-bold">گفتگو</div>
+                <div class="card-body">
+                    @if (Model.Messages.Count == 0)
+                    {
+                        <p class="text-muted mb-0">هنوز پیامی ثبت نشده است.</p>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column gap-3">
+                            @foreach (var msg in Model.Messages)
+                            {
+                                var isAnswer = msg.Kind == TicketMessageKind.Answer;
+                                <div class="border rounded p-3 @(isAnswer ? "bg-light" : "")">
+                                    <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+                                        <div>
+                                            <span class="badge @(isAnswer ? "bg-success" : "bg-primary")">
+                                                @(isAnswer ? "پاسخ" : "سوال")
+                                            </span>
+                                            <strong class="ms-1">@msg.AuthorName</strong>
+                                        </div>
+                                        <small class="text-muted">@PersianDate(msg.CreatedAt)</small>
+                                    </div>
+                                    <div style="white-space: pre-wrap;">@msg.Body</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (Model.CanAnswer)
+            {
+                <div class="card shadow-sm border-0 mb-3">
+                    <div class="card-header bg-white fw-bold">ثبت پاسخ</div>
+                    <div class="card-body">
+                        <form asp-action="AddAnswer" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="TicketId" value="@Model.Id" />
+                            <div class="mb-3">
+                                <label class="form-label" for="answerBody">متن پاسخ</label>
+                                <textarea class="form-control" id="answerBody" name="Body" rows="4" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="Status">وضعیت</label>
+                                <select class="form-select" id="Status" name="Status">
+                                    <option value="@((int)TicketStatus.Answered)" selected>پاسخ‌داده‌شده</option>
+                                    <option value="@((int)TicketStatus.Open)">باز</option>
+                                    <option value="@((int)TicketStatus.Closed)">بسته</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i> ارسال پاسخ
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            }
+
+            @if (Model.CanAskFollowUp)
+            {
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white fw-bold">سوال بعدی</div>
+                    <div class="card-body">
+                        <form asp-action="AddQuestion" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="TicketId" value="@Model.Id" />
+                            <div class="mb-3">
+                                <label class="form-label" for="questionBody">متن سوال</label>
+                                <textarea class="form-control" id="questionBody" name="Body" rows="4" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-plus-circle me-1"></i> ارسال سوال
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-bold">اطلاعات</div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-5 text-muted">نوع</dt>
+                        <dd class="col-7">@TypeText(Model.Type)</dd>
+
+                        <dt class="col-5 text-muted">فیچر</dt>
+                        <dd class="col-7">
+                            @if (Model.FeatureId.HasValue)
+                            {
+                                <a asp-controller="Features" asp-action="Details" asp-route-id="@Model.FeatureId">@(Model.FeatureName ?? "—")</a>
+                            }
+                            else
+                            {
+                                <span>—</span>
+                            }
+                        </dd>
+
+                        <dt class="col-5 text-muted">مورد سوال</dt>
+                        <dd class="col-7">@Model.AskedToUserName</dd>
+
+                        <dt class="col-5 text-muted">پرسیده‌شده توسط</dt>
+                        <dd class="col-7">@Model.CreatedByUserName</dd>
+
+                        <dt class="col-5 text-muted">ایجاد</dt>
+                        <dd class="col-7">@PersianDate(Model.CreatedAt)</dd>
+
+                        <dt class="col-5 text-muted">به‌روزرسانی</dt>
+                        <dd class="col-7">@PersianDate(Model.UpdatedAt)</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
