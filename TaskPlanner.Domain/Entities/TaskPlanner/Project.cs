@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -61,6 +61,11 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         /// IssueType های سفارشی پروژه
         /// </summary>
         public ICollection<ProjectIssueType> IssueTypes { get; set; } = new List<ProjectIssueType>();
+
+        /// <summary>
+        /// فیچرهای پروژه
+        /// </summary>
+        public ICollection<ProjectFeature> Features { get; set; } = new List<ProjectFeature>();
 
         /// <summary>
         /// Generate کردن IssueKey بعدی برای این پروژه

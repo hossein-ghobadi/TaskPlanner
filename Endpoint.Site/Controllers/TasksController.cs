@@ -915,7 +915,7 @@ namespace Endpoint.Site.Controllers
             return View(weeklyTasks);
         }
         [HttpGet]
-        public async Task<IActionResult> Create(int? projectId)
+        public async Task<IActionResult> Create(int? projectId, int? featureId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -948,6 +948,13 @@ namespace Endpoint.Site.Controllers
             ViewBag.Categories = await _context.TaskCategories
                 .Where(c => c.ProjectId == project.Id)
                 .OrderBy(c => c.Name)
+                .ToListAsync();
+
+            ViewBag.Features = await _context.ProjectFeatures
+                .AsNoTracking()
+                .Where(f => f.ProjectId == project.Id)
+                .OrderBy(f => f.Name)
+                .Select(f => new { f.Id, f.Name })
                 .ToListAsync();
 
             // 🧩 تسک‌های این پروژه برای انتخاب Parent Task
@@ -1018,8 +1025,19 @@ namespace Endpoint.Site.Controllers
             {
                 ProjectId = projectId.Value,
                 IssueType = IssueType.Task,
-                EffortLevel = TaskEffortLevel.Medium
+                EffortLevel = TaskEffortLevel.Medium,
+                FeatureId = featureId
             };
+
+            if (featureId.HasValue)
+            {
+                var featureExists = await _context.ProjectFeatures
+                    .AnyAsync(f => f.Id == featureId.Value && f.ProjectId == projectId.Value);
+                if (!featureExists)
+                {
+                    model.FeatureId = null;
+                }
+            }
 
             var defaultProjectIssueType = projectIssueTypes
                 .FirstOrDefault(pit => pit.BaseType == IssueType.Task && pit.Level == IssueTypeLevel.StoryLevel)
@@ -1068,6 +1086,19 @@ namespace Endpoint.Site.Controllers
                 if (!categoryIsValid)
                 {
                     ModelState.AddModelError(nameof(vm.CategoryId), "دسته‌بندی انتخاب‌شده متعلق به این پروژه نیست.");
+                    await FillListsForCreate(vm.ProjectId);
+                    return View(vm);
+                }
+            }
+
+            if (vm.FeatureId.HasValue)
+            {
+                var featureIsValid = await _context.ProjectFeatures
+                    .AnyAsync(f => f.Id == vm.FeatureId.Value && f.ProjectId == vm.ProjectId);
+
+                if (!featureIsValid)
+                {
+                    ModelState.AddModelError(nameof(vm.FeatureId), "فیچر انتخاب‌شده متعلق به این پروژه نیست.");
                     await FillListsForCreate(vm.ProjectId);
                     return View(vm);
                 }
@@ -1218,6 +1249,7 @@ namespace Endpoint.Site.Controllers
                         IssueType = vm.IssueType,
                         IssueKey = generatedIssueKey,
                         CategoryId = vm.CategoryId,
+                        FeatureId = vm.FeatureId,
                         ParentTaskId = vm.ParentId,
                         ProjectId = vm.ProjectId,
                         StartDate = start,
@@ -1422,6 +1454,13 @@ namespace Endpoint.Site.Controllers
             ViewBag.Categories = await _context.TaskCategories
                 .Where(c => c.ProjectId == projectId)
                 .OrderBy(c => c.Name)
+                .ToListAsync();
+
+            ViewBag.Features = await _context.ProjectFeatures
+                .AsNoTracking()
+                .Where(f => f.ProjectId == projectId)
+                .OrderBy(f => f.Name)
+                .Select(f => new { f.Id, f.Name })
                 .ToListAsync();
 
             ViewBag.Tasks = await _context.TaskItems
@@ -1921,6 +1960,7 @@ namespace Endpoint.Site.Controllers
                 Title = task.Title,
                 Description = task.Description,
                 CategoryId = task.CategoryId,
+                FeatureId = task.FeatureId,
                 ParentId = task.ParentTaskId,
                 ProjectId = task.ProjectId,
                 StartDateSh = task.StartDate?.ToShortPersianDateString(),
@@ -1937,6 +1977,13 @@ namespace Endpoint.Site.Controllers
             ViewBag.Categories = await _context.TaskCategories
                 .Where(c => c.ProjectId == task.ProjectId)
                 .OrderBy(c => c.Name)
+                .ToListAsync();
+
+            ViewBag.Features = await _context.ProjectFeatures
+                .AsNoTracking()
+                .Where(f => f.ProjectId == task.ProjectId)
+                .OrderBy(f => f.Name)
+                .Select(f => new { f.Id, f.Name })
                 .ToListAsync();
 
             ViewBag.ProjectIssueTypes = await _context.ProjectIssueTypes
@@ -2380,6 +2427,37 @@ namespace Endpoint.Site.Controllers
             task.Title = vm.Title;
             task.Description = vm.Description;
             task.CategoryId = vm.CategoryId;
+            if (vm.FeatureId.HasValue)
+            {
+                var featureIsValid = await _context.ProjectFeatures
+                    .AnyAsync(f => f.Id == vm.FeatureId.Value && f.ProjectId == task.ProjectId);
+                if (!featureIsValid)
+                {
+                    if (isJsonRequest)
+                    {
+                        return Json(new { success = false, message = "فیچر انتخاب‌شده متعلق به این پروژه نیست." });
+                    }
+                    ModelState.AddModelError(nameof(vm.FeatureId), "فیچر انتخاب‌شده متعلق به این پروژه نیست.");
+                    ViewBag.Categories = await _context.TaskCategories
+                        .Where(c => c.ProjectId == task.ProjectId)
+                        .OrderBy(c => c.Name)
+                        .ToListAsync();
+                    ViewBag.Features = await _context.ProjectFeatures
+                        .AsNoTracking()
+                        .Where(f => f.ProjectId == task.ProjectId)
+                        .OrderBy(f => f.Name)
+                        .Select(f => new { f.Id, f.Name })
+                        .ToListAsync();
+                    ViewBag.ProjectIssueTypes = await _context.ProjectIssueTypes
+                        .Where(pit => pit.ProjectId == task.ProjectId)
+                        .OrderBy(pit => pit.Order)
+                        .ToListAsync();
+                    ViewBag.ParentTaskTitle = await GetParentTaskTitleAsync(task.ParentTaskId);
+                    ViewBag.Projects = task.Project != null ? new List<Project> { task.Project } : new List<Project>();
+                    return View(vm);
+                }
+            }
+            task.FeatureId = vm.FeatureId;
             // 🔒 IssueType تغییر نمی‌کند - نوع کار قابل ویرایش نیست
             // task.IssueType = vm.IssueType; // ❌ حذف شد - نوع کار قابل تغییر نیست
             // task.ProjectIssueTypeId = selectedProjectIssueType?.Id; // ❌ حذف شد - نوع کار قابل تغییر نیست

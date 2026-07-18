@@ -41,6 +41,13 @@ namespace TaskPlanner.Application.Interfaces.Contexts
         DbSet<IssueStatusHistory> IssueStatusHistories { get; set; }
         DbSet<Notification> Notifications { get; set; }
         DbSet<ProjectIssueType> ProjectIssueTypes { get; set; }
+
+        DbSet<ProjectFeature> ProjectFeatures { get; set; }
+        DbSet<FeatureFunction> FeatureFunctions { get; set; }
+        DbSet<FeaturePageState> FeaturePageStates { get; set; }
+        DbSet<FeatureApiContract> FeatureApiContracts { get; set; }
+        DbSet<FeatureBusinessRule> FeatureBusinessRules { get; set; }
+        DbSet<FeatureCodeReview> FeatureCodeReviews { get; set; }
         
         // Board entities (separate from TaskPlanner)
         DbSet<Board> Boards { get; set; }

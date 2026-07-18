@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
 namespace Endpoint.Site.Models
@@ -62,6 +62,11 @@ namespace Endpoint.Site.Models
 
         // دسته‌بندی (Component) - اختیاری مثل Jira
         public int? CategoryId { get; set; }
+
+        /// <summary>
+        /// فیچر مرتبط (اختیاری)
+        /// </summary>
+        public int? FeatureId { get; set; }
 
         /// <summary>
         /// Parent Issue (برای Story باید Epic باشه، برای Subtask باید Task/Story/Bug باشه)

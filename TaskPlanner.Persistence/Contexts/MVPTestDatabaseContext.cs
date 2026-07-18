@@ -50,6 +50,12 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<WorkflowTransition> WorkflowTransitions { get; set; }
         public DbSet<IssueStatusHistory> IssueStatusHistories { get; set; }
         public DbSet<ProjectIssueType> ProjectIssueTypes { get; set; }
+        public DbSet<ProjectFeature> ProjectFeatures { get; set; }
+        public DbSet<FeatureFunction> FeatureFunctions { get; set; }
+        public DbSet<FeaturePageState> FeaturePageStates { get; set; }
+        public DbSet<FeatureApiContract> FeatureApiContracts { get; set; }
+        public DbSet<FeatureBusinessRule> FeatureBusinessRules { get; set; }
+        public DbSet<FeatureCodeReview> FeatureCodeReviews { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         
         // Board entities (separate from TaskPlanner)
@@ -761,6 +767,88 @@ namespace TaskPlanner.Persistence.Contexts
 
             modelBuilder.Entity<LeadNote>()
                 .HasIndex(n => new { n.LeadId, n.CreatedAt });
+
+            // ========== Project Features ==========
+            modelBuilder.Entity<ProjectFeature>()
+                .HasOne(f => f.Project)
+                .WithMany(p => p.Features)
+                .HasForeignKey(f => f.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProjectFeature>()
+                .HasOne(f => f.CodeReviewerUser)
+                .WithMany()
+                .HasForeignKey(f => f.CodeReviewerUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<ProjectFeature>()
+                .HasIndex(f => f.ProjectId);
+
+            modelBuilder.Entity<ProjectFeature>()
+                .Property(f => f.CodeReviewerUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<ProjectFeature>()
+                .Property(f => f.CreatedByUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<FeatureFunction>()
+                .HasOne(x => x.Feature)
+                .WithMany(f => f.Functions)
+                .HasForeignKey(x => x.FeatureId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<FeaturePageState>()
+                .HasOne(x => x.Feature)
+                .WithMany(f => f.PageStates)
+                .HasForeignKey(x => x.FeatureId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<FeaturePageState>()
+                .HasIndex(x => new { x.FeatureId, x.StateType })
+                .IsUnique();
+
+            modelBuilder.Entity<FeatureApiContract>()
+                .HasOne(x => x.Feature)
+                .WithMany(f => f.ApiContracts)
+                .HasForeignKey(x => x.FeatureId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<FeatureBusinessRule>()
+                .HasOne(x => x.Feature)
+                .WithMany(f => f.BusinessRules)
+                .HasForeignKey(x => x.FeatureId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<FeatureCodeReview>()
+                .HasOne(x => x.Feature)
+                .WithMany(f => f.CodeReviews)
+                .HasForeignKey(x => x.FeatureId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<FeatureCodeReview>()
+                .HasOne(x => x.ReviewerUser)
+                .WithMany()
+                .HasForeignKey(x => x.ReviewerUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<FeatureCodeReview>()
+                .HasOne(x => x.RevieweeUser)
+                .WithMany()
+                .HasForeignKey(x => x.RevieweeUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<FeatureCodeReview>()
+                .HasIndex(x => x.FeatureId);
+
+            modelBuilder.Entity<TaskItem>()
+                .HasOne(t => t.Feature)
+                .WithMany(f => f.Tasks)
+                .HasForeignKey(t => t.FeatureId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<TaskItem>()
+                .HasIndex(t => t.FeatureId);
         }
         public void MarkAsModified<T>(T entity) where T : class
         {

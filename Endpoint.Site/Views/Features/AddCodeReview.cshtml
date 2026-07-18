@@ -1,0 +1,54 @@
+@model Endpoint.Site.Models.FeatureCodeReviewCreateVm
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "ثبت Code Review";
+}
+
+<div class="w-100">
+    <div class="card shadow-sm w-100">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="bi bi-code-square"></i> ثبت امتیاز Code Review
+            </h4>
+            <small>فیچر: @ViewBag.FeatureName</small>
+        </div>
+        <div class="card-body">
+            <form asp-action="AddCodeReview" method="post">
+                <input type="hidden" asp-for="FeatureId" />
+                <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                <div class="mb-3">
+                    <label asp-for="RevieweeUserId" class="form-label">
+                        <strong>عضو پروژه (دریافت‌کننده امتیاز)</strong>
+                        <span class="text-danger">*</span>
+                    </label>
+                    <select asp-for="RevieweeUserId" class="form-select" asp-items="Model.MemberOptions">
+                        <option value="">-- انتخاب کنید --</option>
+                    </select>
+                    <span asp-validation-for="RevieweeUserId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Score" class="form-label">
+                        <strong>امتیاز (۰ تا ۱۰۰)</strong>
+                        <span class="text-danger">*</span>
+                    </label>
+                    <input asp-for="Score" type="number" min="0" max="100" class="form-control" />
+                    <span asp-validation-for="Score" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Comment" class="form-label"><strong>توضیحات</strong></label>
+                    <textarea asp-for="Comment" class="form-control" rows="3" placeholder="نکات مثبت، موارد قابل بهبود، ..."></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> ثبت امتیاز
+                    </button>
+                    <a asp-action="Details" asp-route-id="@Model.FeatureId" class="btn btn-secondary">انصراف</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

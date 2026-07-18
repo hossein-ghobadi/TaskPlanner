@@ -1,0 +1,32 @@
+@model TaskPlanner.Domain.Entities.TaskPlanner.ProjectFeature
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "حذف فیچر";
+}
+
+<div class="w-100">
+    <div class="card shadow-sm border-danger">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0"><i class="bi bi-trash"></i> حذف فیچر</h4>
+        </div>
+        <div class="card-body">
+            <p>آیا از حذف فیچر <strong>@Model.Name</strong> مطمئن هستید؟</p>
+            <p class="text-muted small">
+                مشخصات، قراردادهای API، قوانین و امتیازهای Code Review حذف می‌شوند.
+                @if ((int)(ViewBag.TaskCount ?? 0) > 0)
+                {
+                    <span>تسک‌های متصل (@ViewBag.TaskCount مورد) از فیچر جدا می‌شوند ولی خود تسک‌ها حذف نمی‌شوند.</span>
+                }
+            </p>
+            <form asp-action="Delete" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> حذف قطعی
+                    </button>
+                    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">انصراف</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

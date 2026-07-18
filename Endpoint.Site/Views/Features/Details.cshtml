@@ -1,0 +1,546 @@
+@model Endpoint.Site.Models.FeatureDetailsVm
+@using TaskPlanner.Domain.Entities.TaskPlanner
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = Model.Name;
+}
+
+<div class="w-100">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+        <div>
+            <h4 class="mb-1 fw-bold">
+                <i class="bi bi-puzzle text-primary me-2"></i>
+                @Model.Name
+            </h4>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <small class="text-muted">پروژه: <strong>@Model.ProjectName</strong></small>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Model.Description))
+            {
+                <p class="text-muted mt-2 mb-0">@Model.Description</p>
+            }
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-primary" asp-action="EditSpec" asp-route-id="@Model.Id">
+                <i class="bi bi-journal-text me-1"></i> ویرایش مشخصات
+            </a>
+            @if (Model.CanChangeCodeReviewer)
+            {
+                <a class="btn btn-outline-secondary" asp-action="Settings" asp-route-id="@Model.Id">
+                    <i class="bi bi-gear me-1"></i> تنظیمات
+                </a>
+            }
+            <a class="btn btn-outline-warning" asp-action="Edit" asp-route-id="@Model.Id">
+                <i class="bi bi-pencil me-1"></i> ویرایش
+            </a>
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-route-projectId="@Model.ProjectId">
+                بازگشت
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">
+                        <i class="bi bi-list-check text-success me-1"></i> کارکردها
+                    </span>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addFunctionModal">
+                        <i class="bi bi-plus"></i> افزودن
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (Model.Functions.Count == 0)
+                    {
+                        <p class="text-muted mb-0">هنوز کارکردی تعریف نشده است.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var item in Model.Functions)
+                            {
+                                <li class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                    <span>@item.Title</span>
+                                    <div class="btn-group btn-group-sm flex-shrink-0">
+                                        <button type="button"
+                                                class="btn btn-outline-secondary py-0 px-1"
+                                                title="ویرایش"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#editFunctionModal"
+                                                data-id="@item.Id"
+                                                data-title="@item.Title">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-outline-danger py-0 px-1"
+                                                title="حذف"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteFunctionModal"
+                                                data-id="@item.Id"
+                                                data-title="@item.Title">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">
+                        <i class="bi bi-shield-check text-warning me-1"></i> قوانین کسب‌وکار
+                    </span>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addBusinessRuleModal">
+                        <i class="bi bi-plus"></i> افزودن
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (Model.BusinessRules.Count == 0)
+                    {
+                        <p class="text-muted mb-0">هنوز قانونی تعریف نشده است.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var item in Model.BusinessRules)
+                            {
+                                <li class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                    <span>@item.Description</span>
+                                    <div class="btn-group btn-group-sm flex-shrink-0">
+                                        <button type="button"
+                                                class="btn btn-outline-secondary py-0 px-1"
+                                                title="ویرایش"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#editBusinessRuleModal"
+                                                data-id="@item.Id"
+                                                data-description="@item.Description">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-outline-danger py-0 px-1"
+                                                title="حذف"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteBusinessRuleModal"
+                                                data-id="@item.Id"
+                                                data-description="@item.Description">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-bold">
+                    <i class="bi bi-window-stack text-info me-1"></i> وضعیت‌های صفحه
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 9rem;">وضعیت</th>
+                                    <th>رفتار</th>
+                                    <th style="width: 8rem;">طراحی جدا</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var s in Model.PageStates)
+                                {
+                                    <tr>
+                                        <td><span class="badge bg-secondary">@s.StateType.GetDisplayName()</span></td>
+                                        <td>@s.BehaviorDescription</td>
+                                        <td>@(s.HasSeparateDesign ? "بله" : "خیر")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-bold">
+                    <i class="bi bi-braces text-primary me-1"></i> قرارداد API
+                </div>
+                <div class="card-body">
+                    @if (Model.ApiContracts.Count == 0)
+                    {
+                        <p class="text-muted mb-0">هنوز قرارداد API تعریف نشده است.</p>
+                    }
+                    else
+                    {
+                        @foreach (var api in Model.ApiContracts)
+                        {
+                            <div class="border rounded p-3 mb-3">
+                                <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                                    <span class="badge bg-dark">@api.HttpMethod</span>
+                                    <code>@api.Endpoint</code>
+                                    @if (!string.IsNullOrWhiteSpace(api.StatusCodes))
+                                    {
+                                        <span class="badge bg-light text-dark">Status: @api.StatusCodes</span>
+                                    }
+                                </div>
+                                <div class="row g-2 small">
+                                    @if (!string.IsNullOrWhiteSpace(api.RequestDescription))
+                                    {
+                                        <div class="col-md-6"><strong>Request:</strong><pre class="bg-light p-2 rounded mb-0">@api.RequestDescription</pre></div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(api.ResponseDescription))
+                                    {
+                                        <div class="col-md-6"><strong>Response:</strong><pre class="bg-light p-2 rounded mb-0">@api.ResponseDescription</pre></div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(api.ErrorResponseDescription))
+                                    {
+                                        <div class="col-md-6"><strong>Error Response:</strong><pre class="bg-light p-2 rounded mb-0">@api.ErrorResponseDescription</pre></div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(api.FieldsDescription))
+                                    {
+                                        <div class="col-md-6"><strong>فیلدها:</strong><pre class="bg-light p-2 rounded mb-0">@api.FieldsDescription</pre></div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(api.Pagination) || !string.IsNullOrWhiteSpace(api.Filter) || !string.IsNullOrWhiteSpace(api.Sort))
+                                    {
+                                        <div class="col-12">
+                                            @if (!string.IsNullOrWhiteSpace(api.Pagination)) { <div><strong>Pagination:</strong> @api.Pagination</div> }
+                                            @if (!string.IsNullOrWhiteSpace(api.Filter)) { <div><strong>Filter:</strong> @api.Filter</div> }
+                                            @if (!string.IsNullOrWhiteSpace(api.Sort)) { <div><strong>Sort:</strong> @api.Sort</div> }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold"><i class="bi bi-list-task me-1"></i> تسک‌های فیچر</span>
+                    <a class="btn btn-sm btn-success" asp-controller="Tasks" asp-action="Create" asp-route-projectId="@Model.ProjectId" asp-route-featureId="@Model.Id">
+                        <i class="bi bi-plus"></i> تسک جدید
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.Tasks.Count == 0)
+                    {
+                        <p class="text-muted p-3 mb-0">هنوز تسکی به این فیچر متصل نشده است. تسک‌ها می‌توانند داخل یا خارج اسپرینت باشند.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>کلید</th>
+                                        <th>عنوان</th>
+                                        <th>مسئول</th>
+                                        <th>اسپرینت</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var t in Model.Tasks)
+                                    {
+                                        <tr>
+                                            <td><code>@(t.IssueKey ?? "—")</code></td>
+                                            <td>
+                                                @t.Title
+                                                @if (t.IsCompleted)
+                                                {
+                                                    <span class="badge bg-success ms-1">انجام‌شده</span>
+                                                }
+                                            </td>
+                                            <td>@(t.AssignedUserName ?? "—")</td>
+                                            <td>
+                                                @if (t.InSprint)
+                                                {
+                                                    <span class="badge bg-info text-dark">@(t.SprintName ?? "اسپرینت")</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">خارج از اسپرینت</span>
+                                                }
+                                            </td>
+                                            <td class="text-end">
+                                                <a class="btn btn-sm btn-outline-primary" asp-controller="Tasks" asp-action="Details" asp-route-id="@t.Id">جزئیات</a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold"><i class="bi bi-code-square me-1"></i> Code Review</span>
+                    @if (Model.CanManageCodeReview)
+                    {
+                        <a class="btn btn-sm btn-primary" asp-action="AddCodeReview" asp-route-id="@Model.Id">
+                            <i class="bi bi-plus"></i> ثبت امتیاز
+                        </a>
+                    }
+                </div>
+                <div class="card-body">
+                    <div class="mb-3 small">
+                        <strong>مسئول Review:</strong>
+                        @(Model.CodeReviewerName ?? "تعیین نشده")
+                        @if (Model.CanChangeCodeReviewer)
+                        {
+                            <a asp-action="Settings" asp-route-id="@Model.Id" class="ms-2">تغییر</a>
+                        }
+                    </div>
+                    @if (Model.CodeReviews.Count == 0)
+                    {
+                        <p class="text-muted mb-0">هنوز امتیازی ثبت نشده است.</p>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var r in Model.CodeReviews)
+                            {
+                                <div class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <strong>@r.RevieweeName</strong>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-primary">@r.Score</span>
+                                            @if (Model.CanManageCodeReview)
+                                            {
+                                                <a asp-action="DeleteCodeReview" asp-route-id="@r.Id"
+                                                   class="btn btn-sm btn-outline-danger py-0 px-1"
+                                                   title="حذف امتیاز">
+                                                    <i class="bi bi-trash"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="small text-muted">توسط @r.ReviewerName</div>
+                                    @if (!string.IsNullOrWhiteSpace(r.Comment))
+                                    {
+                                        <div class="small mt-1">@r.Comment</div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- کارکردها: افزودن -->
+<div class="modal fade" id="addFunctionModal" tabindex="-1" aria-labelledby="addFunctionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="AddFunction" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="FeatureId" value="@Model.Id" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addFunctionModalLabel">
+                        <i class="bi bi-plus-circle me-1"></i> افزودن کارکرد
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">عنوان کارکرد <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="Title" maxlength="500" required placeholder="مثلاً: ثبت سفارش جدید" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ثبت</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- کارکردها: ویرایش -->
+<div class="modal fade" id="editFunctionModal" tabindex="-1" aria-labelledby="editFunctionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="EditFunction" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" id="editFunctionId" />
+                <input type="hidden" name="FeatureId" value="@Model.Id" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editFunctionModalLabel">
+                        <i class="bi bi-pencil me-1"></i> ویرایش کارکرد
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">عنوان کارکرد <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="Title" id="editFunctionTitle" maxlength="500" required />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ذخیره</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- کارکردها: حذف -->
+<div class="modal fade" id="deleteFunctionModal" tabindex="-1" aria-labelledby="deleteFunctionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="DeleteFunction" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="deleteFunctionId" />
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteFunctionModalLabel">
+                        <i class="bi bi-trash me-1"></i> حذف کارکرد
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">آیا از حذف کارکرد <strong id="deleteFunctionTitle"></strong> مطمئن هستید؟</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger">حذف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- قوانین: افزودن -->
+<div class="modal fade" id="addBusinessRuleModal" tabindex="-1" aria-labelledby="addBusinessRuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="AddBusinessRule" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="FeatureId" value="@Model.Id" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addBusinessRuleModalLabel">
+                        <i class="bi bi-plus-circle me-1"></i> افزودن قانون کسب‌وکار
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">توضیح قانون <span class="text-danger">*</span></label>
+                    <textarea class="form-control" name="Description" rows="3" maxlength="2000" required placeholder="رفتار سیستم در این شرایط..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ثبت</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- قوانین: ویرایش -->
+<div class="modal fade" id="editBusinessRuleModal" tabindex="-1" aria-labelledby="editBusinessRuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="EditBusinessRule" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" id="editBusinessRuleId" />
+                <input type="hidden" name="FeatureId" value="@Model.Id" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editBusinessRuleModalLabel">
+                        <i class="bi bi-pencil me-1"></i> ویرایش قانون کسب‌وکار
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">توضیح قانون <span class="text-danger">*</span></label>
+                    <textarea class="form-control" name="Description" id="editBusinessRuleDescription" rows="3" maxlength="2000" required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">ذخیره</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- قوانین: حذف -->
+<div class="modal fade" id="deleteBusinessRuleModal" tabindex="-1" aria-labelledby="deleteBusinessRuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="DeleteBusinessRule" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="deleteBusinessRuleId" />
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteBusinessRuleModalLabel">
+                        <i class="bi bi-trash me-1"></i> حذف قانون کسب‌وکار
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">آیا از حذف قانون <strong id="deleteBusinessRuleDescription"></strong> مطمئن هستید؟</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger">حذف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        document.getElementById('editFunctionModal')?.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            document.getElementById('editFunctionId').value = btn.getAttribute('data-id') || '';
+            document.getElementById('editFunctionTitle').value = btn.getAttribute('data-title') || '';
+        });
+
+        document.getElementById('deleteFunctionModal')?.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            document.getElementById('deleteFunctionId').value = btn.getAttribute('data-id') || '';
+            document.getElementById('deleteFunctionTitle').textContent = btn.getAttribute('data-title') || '';
+        });
+
+        document.getElementById('editBusinessRuleModal')?.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            document.getElementById('editBusinessRuleId').value = btn.getAttribute('data-id') || '';
+            document.getElementById('editBusinessRuleDescription').value = btn.getAttribute('data-description') || '';
+        });
+
+        document.getElementById('deleteBusinessRuleModal')?.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            document.getElementById('deleteBusinessRuleId').value = btn.getAttribute('data-id') || '';
+            document.getElementById('deleteBusinessRuleDescription').textContent = btn.getAttribute('data-description') || '';
+        });
+    })();
+</script>

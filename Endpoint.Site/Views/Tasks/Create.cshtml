@@ -328,6 +328,17 @@
                         <option value="">-- بدون دسته‌بندی --</option>
                     </select>
                 </div>
+
+                <div>
+                    <label asp-for="FeatureId" class="form-label">
+                        <i class="bi bi-puzzle"></i>
+                        فیچر (اختیاری)
+                    </label>
+                    <select asp-for="FeatureId" class="form-select"
+                            asp-items="@(new SelectList(ViewBag.Features as System.Collections.IEnumerable, "Id", "Name"))">
+                        <option value="">-- بدون فیچر --</option>
+                    </select>
+                </div>
             </div>
 
             <div class="field-group mt-4">

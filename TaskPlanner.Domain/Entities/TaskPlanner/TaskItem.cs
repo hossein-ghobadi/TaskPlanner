@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using System;
 using System.ComponentModel.DataAnnotations;
 using TaskPlanner.Domain.Entities.Users;
@@ -72,6 +72,12 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         // مثلاً: Frontend, Backend, Database, Testing
         public int? CategoryId { get; set; }
         public TaskCategory? Category { get; set; }
+
+        /// <summary>
+        /// فیچر مرتبط (اختیاری) — تسک می‌تواند خارج از اسپرینت هم به فیچر تعلق داشته باشد
+        /// </summary>
+        public int? FeatureId { get; set; }
+        public ProjectFeature? Feature { get; set; }
 
         /// <summary>
         /// وضعیت فعلی Issue در Workflow (مثل To Do, In Progress, Done)
