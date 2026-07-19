@@ -212,6 +212,12 @@ namespace Endpoint.Site.Controllers
                 .Include(t => t.CreatedByUser)
                 .Include(t => t.Messages)
                     .ThenInclude(m => m.AuthorUser)
+                .Include(t => t.Tasks)
+                    .ThenInclude(task => task.AssignedUser)
+                .Include(t => t.Tasks)
+                    .ThenInclude(task => task.SprintTasks)
+                        .ThenInclude(st => st.Sprint)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (ticket == null)
@@ -249,6 +255,12 @@ namespace Endpoint.Site.Controllers
                         .Include(t => t.CreatedByUser)
                         .Include(t => t.Messages)
                             .ThenInclude(m => m.AuthorUser)
+                        .Include(t => t.Tasks)
+                            .ThenInclude(task => task.AssignedUser)
+                        .Include(t => t.Tasks)
+                            .ThenInclude(task => task.SprintTasks)
+                                .ThenInclude(st => st.Sprint)
+                        .AsSplitQuery()
                         .FirstAsync(t => t.Id == id);
                 }
             }
@@ -260,6 +272,27 @@ namespace Endpoint.Site.Controllers
 
             ViewBag.ProjectId = ticket.ProjectId;
             ViewData["Title"] = ticket.Title;
+
+            ViewBag.Categories = await _context.TaskCategories
+                .AsNoTracking()
+                .Where(c => c.ProjectId == ticket.ProjectId)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+
+            ViewBag.TaskMembers = (await GetProjectMemberOptionsAsync(ticket.ProjectId))
+                .Select(m => new TicketMemberOptionVm { UserId = m.UserId, DisplayName = m.DisplayName })
+                .ToList();
+
+            var defaultIssueType = await _context.ProjectIssueTypes.AsNoTracking()
+                .Where(p => p.ProjectId == ticket.ProjectId && p.Level != IssueTypeLevel.Subtask)
+                .OrderBy(p => p.Order)
+                .FirstOrDefaultAsync(p => p.BaseType == IssueType.Task)
+                ?? await _context.ProjectIssueTypes.AsNoTracking()
+                    .Where(p => p.ProjectId == ticket.ProjectId && p.Level != IssueTypeLevel.Subtask)
+                    .OrderBy(p => p.Order)
+                    .FirstOrDefaultAsync();
+            ViewBag.DefaultProjectIssueTypeId = defaultIssueType?.Id;
+            ViewBag.DefaultIssueTypeBase = defaultIssueType != null ? (int)defaultIssueType.BaseType : (int)IssueType.Task;
 
             return View(new TicketDetailsVm
             {
@@ -280,6 +313,7 @@ namespace Endpoint.Site.Controllers
                 CanAnswer = isAsked,
                 CanAskFollowUp = isAsker,
                 CanManage = isCreator || isAsker,
+                CanCreateTask = isAsker || isAsked || isCreator,
                 Messages = ticket.Messages
                     .OrderBy(m => m.CreatedAt)
                     .ThenBy(m => m.Id)
@@ -291,7 +325,21 @@ namespace Endpoint.Site.Controllers
                         AuthorName = DisplayName(m.AuthorUser),
                         AuthorUserId = m.AuthorUserId,
                         CreatedAt = m.CreatedAt
-                    }).ToList()
+                    }).ToList(),
+                Tasks = ticket.Tasks.Select(t =>
+                {
+                    var sprintTask = t.SprintTasks?.OrderByDescending(st => st.AddedAt).FirstOrDefault();
+                    return new TicketTaskItemVm
+                    {
+                        Id = t.Id,
+                        IssueKey = t.IssueKey,
+                        Title = t.Title,
+                        IsCompleted = t.IsCompleted,
+                        AssignedUserName = DisplayName(t.AssignedUser),
+                        InSprint = sprintTask != null,
+                        SprintName = sprintTask?.Sprint?.Name
+                    };
+                }).OrderBy(t => t.Title).ToList()
             });
         }
 
@@ -389,6 +437,7 @@ namespace Endpoint.Site.Controllers
         {
             var ticket = await _context.ProjectTickets
                 .Include(t => t.Project)
+                .Include(t => t.Tasks)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (ticket == null)
@@ -405,6 +454,12 @@ namespace Endpoint.Site.Controllers
             {
                 TempData["Error"] = "شما مجاز به حذف این تیکت نیستید.";
                 return RedirectToAction(nameof(Details), new { id });
+            }
+
+            // جدا کردن تسک‌ها از تیکت قبل از حذف
+            foreach (var task in ticket.Tasks)
+            {
+                task.TicketId = null;
             }
 
             var projectId = ticket.ProjectId;

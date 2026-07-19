@@ -33,6 +33,13 @@
 
     string PersianDate(DateTime dt) =>
         dt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers();
+
+    var ticketTaskCategories = ViewBag.Categories as List<TaskCategory>
+        ?? new List<TaskCategory>();
+    var ticketTaskMembers = ViewBag.TaskMembers as List<TicketMemberOptionVm>
+        ?? new List<TicketMemberOptionVm>();
+    var defaultProjectIssueTypeId = ViewBag.DefaultProjectIssueTypeId as int?;
+    var defaultIssueTypeBase = ViewBag.DefaultIssueTypeBase as int? ?? 3;
 }
 
 <div class="w-100">
@@ -48,6 +55,12 @@
             </div>
         </div>
         <div class="d-flex flex-wrap gap-2">
+            @if (Model.CanCreateTask)
+            {
+                <button type="button" class="btn btn-success" onclick="openTicketCreateTask()">
+                    <i class="bi bi-plus-lg me-1"></i> افزودن تسک
+                </button>
+            }
             <a class="btn btn-outline-secondary" asp-action="Index" asp-route-projectId="@Model.ProjectId">
                 بازگشت به لیست
             </a>
@@ -157,7 +170,7 @@
         </div>
 
         <div class="col-lg-4">
-            <div class="card shadow-sm border-0">
+            <div class="card shadow-sm border-0 mb-3">
                 <div class="card-header bg-white fw-bold">اطلاعات</div>
                 <div class="card-body">
                     <dl class="row mb-0">
@@ -190,6 +203,597 @@
                     </dl>
                 </div>
             </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold"><i class="bi bi-list-task me-1"></i> لیست تسک‌ها</span>
+                    @if (Model.CanCreateTask)
+                    {
+                        <button type="button" class="btn btn-sm btn-success" onclick="openTicketCreateTask()">
+                            <i class="bi bi-plus"></i> تسک جدید
+                        </button>
+                    }
+                </div>
+                <div class="card-body p-0" id="ticketTasksCardBody">
+                    @if (Model.Tasks.Count == 0)
+                    {
+                        <p class="text-muted p-3 mb-0" id="ticketTasksEmpty">هنوز تسکی به این تیکت متصل نشده است.</p>
+                        <div class="table-responsive d-none" id="ticketTasksTableWrap">
+                            <table class="table mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 1%; white-space: nowrap;"></th>
+                                        <th>کلید</th>
+                                        <th>عنوان</th>
+                                        <th>مسئول</th>
+                                        <th>اسپرینت</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ticketTasksTableBody"></tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive" id="ticketTasksTableWrap">
+                            <table class="table mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 1%; white-space: nowrap;"></th>
+                                        <th>کلید</th>
+                                        <th>عنوان</th>
+                                        <th>مسئول</th>
+                                        <th>اسپرینت</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ticketTasksTableBody">
+                                    @foreach (var t in Model.Tasks)
+                                    {
+                                        <tr data-task-id="@t.Id">
+                                            <td class="text-nowrap pe-0">
+                                                @if (Model.CanCreateTask)
+                                                {
+                                                    <div class="btn-group btn-group-sm">
+                                                        <button type="button" class="btn btn-outline-primary ticket-edit-task-btn"
+                                                                title="ویرایش"
+                                                                data-task-id="@t.Id">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-danger ticket-delete-task-btn"
+                                                                title="حذف"
+                                                                data-task-id="@t.Id"
+                                                                data-task-title="@t.Title">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                }
+                                            </td>
+                                            <td><code>@(t.IssueKey ?? "—")</code></td>
+                                            <td>
+                                                @t.Title
+                                                @if (t.IsCompleted)
+                                                {
+                                                    <span class="badge bg-success ms-1">انجام‌شده</span>
+                                                }
+                                            </td>
+                                            <td>@(t.AssignedUserName ?? "—")</td>
+                                            <td>
+                                                @if (t.InSprint)
+                                                {
+                                                    <span class="badge bg-info text-dark text-wrap text-start"
+                                                          style="white-space: normal; max-width: 100%;"
+                                                          title="@(t.SprintName ?? "اسپرینت")">@(t.SprintName ?? "اسپرینت")</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">خارج از اسپرینت</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+@if (Model.CanCreateTask)
+{
+<style>
+    #ticketTaskModal .ticket-task-main-card,
+    #ticketTaskModal .ticket-task-side-card {
+        background: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: .75rem;
+        padding: 1.1rem 1.15rem;
+        height: 100%;
+    }
+    #ticketTaskModal .ticket-task-side-card .small-title {
+        font-size: .8rem;
+        font-weight: 700;
+        color: #6c757d;
+        margin-bottom: .5rem;
+    }
+    #ticketTaskModal .info-block + .info-block {
+        margin-top: 1.15rem;
+        padding-top: 1rem;
+        border-top: 1px solid #eee;
+    }
+</style>
+
+<div class="modal fade" id="ticketTaskModal" tabindex="-1" aria-labelledby="ticketTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ticketTaskModalLabel">
+                    <i class="bi bi-plus-circle me-2" id="ticketTaskModalIcon"></i>
+                    <span id="ticketTaskModalTitleText">افزودن تسک به تیکت</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="ticketTaskMode" value="create" />
+                <input type="hidden" id="ticketTaskId" value="" />
+                <input type="hidden" id="ticketTaskProjectId" value="@Model.ProjectId" />
+                <input type="hidden" id="ticketTaskTicketId" value="@Model.Id" />
+                <input type="hidden" id="ticketTaskFeatureId" value="@(Model.FeatureId?.ToString() ?? "")" />
+                <input type="hidden" id="ticketTaskProjectIssueTypeId" value="@(defaultProjectIssueTypeId?.ToString() ?? "")" />
+                <input type="hidden" id="ticketTaskIssueType" value="@defaultIssueTypeBase" />
+                <input type="hidden" id="ticketTaskStoryPoints" value="" />
+
+                <div class="row g-3">
+                    <div class="col-lg-8">
+                        <div class="ticket-task-main-card">
+                            <div class="mb-3">
+                                <label for="ticketTaskTitle" class="form-label">عنوان کار <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="ticketTaskTitle" required placeholder="عنوان کار را وارد کنید" />
+                            </div>
+                            <div class="mb-3">
+                                <label for="ticketTaskDescription" class="form-label">توضیحات</label>
+                                <textarea class="form-control" id="ticketTaskDescription" rows="5" placeholder="توضیحات کار را وارد کنید"></textarea>
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label">سطح کار</label>
+                                <div class="form-control bg-light" id="ticketTaskEffortDisplay">تعیین نشده</div>
+                                <small class="text-muted">برای تغییر، از ستون اطلاعات استفاده کنید.</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="ticket-task-side-card">
+                            <div class="info-block">
+                                <div class="small-title">زمان‌بندی</div>
+                                <label for="ticketTaskStartDate" class="form-label">تاریخ شروع <span class="text-muted small">(اختیاری)</span></label>
+                                <input type="text" class="form-control mb-2" id="ticketTaskStartDate" autocomplete="off" placeholder="مثلاً 1404/01/15" />
+                                <label for="ticketTaskDurationDays" class="form-label">مدت انجام (روز)</label>
+                                <input type="number" class="form-control mb-2" id="ticketTaskDurationDays" min="0" max="3650" placeholder="مثلاً ۳" />
+                                <small class="text-muted d-block mb-2">با تاریخ شروع، مهلت انجام خودکار محاسبه می‌شود.</small>
+                            </div>
+                            <div class="info-block">
+                                <div class="small-title">اطلاعات</div>
+                                <label for="ticketTaskCategory" class="form-label">دسته‌بندی</label>
+                                <select class="form-select mb-2" id="ticketTaskCategory">
+                                    <option value="">-- بدون دسته --</option>
+                                    @foreach (var cat in ticketTaskCategories)
+                                    {
+                                        <option value="@cat.Id">@cat.Name</option>
+                                    }
+                                </select>
+
+                                <label class="form-label">تیکت</label>
+                                <input type="text" class="form-control mb-2 bg-light" value="@Model.Title" readonly />
+
+                                @if (!string.IsNullOrWhiteSpace(Model.FeatureName))
+                                {
+                                    <label class="form-label">فیچر مرتبط</label>
+                                    <input type="text" class="form-control mb-2 bg-light" value="@Model.FeatureName" readonly />
+                                }
+
+                                <label for="ticketTaskAssignee" class="form-label">مسئول کار</label>
+                                <select class="form-select mb-2" id="ticketTaskAssignee">
+                                    <option value="">-- انتخاب کاربر --</option>
+                                    @foreach (var m in ticketTaskMembers)
+                                    {
+                                        <option value="@m.UserId">@m.DisplayName</option>
+                                    }
+                                </select>
+
+                                <label for="ticketTaskEffort" class="form-label">سطح کار</label>
+                                <select class="form-select mb-0" id="ticketTaskEffort">
+                                    <option value="">-- انتخاب سطح --</option>
+                                    <option value="1">ساده</option>
+                                    <option value="2">متوسط</option>
+                                    <option value="3">پرزحمت</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i> انصراف
+                </button>
+                <button type="button" class="btn btn-primary" id="ticketTaskSubmitBtn">
+                    <i class="bi bi-plus-lg me-1"></i> <span id="ticketTaskSubmitText">افزودن کار</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="ticketDeleteTaskModal" tabindex="-1" aria-labelledby="ticketDeleteTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="ticketDeleteTaskModalLabel">
+                    <i class="bi bi-trash me-1"></i> حذف کار
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="ticketDeleteTaskId" />
+                <p class="mb-0">آیا از حذف کار <strong id="ticketDeleteTaskTitle"></strong> مطمئن هستید؟</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-danger" id="ticketDeleteTaskConfirmBtn">حذف</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var effortLabels = { '': 'تعیین نشده', '1': 'ساده', '2': 'متوسط', '3': 'پرزحمت' };
+        var effortSelect = document.getElementById('ticketTaskEffort');
+        var effortDisplay = document.getElementById('ticketTaskEffortDisplay');
+        var originalTicketTask = null;
+        var defaultProjectIssueTypeId = document.getElementById('ticketTaskProjectIssueTypeId')?.value || '';
+        var defaultIssueTypeBase = document.getElementById('ticketTaskIssueType')?.value || '3';
+        var defaultFeatureId = document.getElementById('ticketTaskFeatureId')?.value || '';
+
+        effortSelect?.addEventListener('change', function () {
+            if (effortDisplay) effortDisplay.textContent = effortLabels[this.value] || 'تعیین نشده';
+        });
+
+        function mapStoryPointsToEffortLevel(sp) {
+            if (sp == null || sp === '') return '';
+            var n = parseInt(sp, 10);
+            if (Number.isNaN(n)) return '';
+            if (n <= 3) return '1';
+            if (n <= 8) return '2';
+            return '3';
+        }
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text == null ? '' : String(text);
+            return div.innerHTML;
+        }
+
+        function buildTaskActionsHtml(taskId, title) {
+            var btn = document.createElement('div');
+            btn.className = 'btn-group btn-group-sm';
+            btn.innerHTML =
+                '<button type="button" class="btn btn-outline-primary ticket-edit-task-btn" title="ویرایش" data-task-id="' + taskId + '">' +
+                '<i class="bi bi-pencil"></i></button>' +
+                '<button type="button" class="btn btn-outline-danger ticket-delete-task-btn" title="حذف" data-task-id="' + taskId + '" data-task-title="">' +
+                '<i class="bi bi-trash"></i></button>';
+            var deleteBtn = btn.querySelector('.ticket-delete-task-btn');
+            if (deleteBtn) deleteBtn.setAttribute('data-task-title', title || '');
+            return btn.outerHTML;
+        }
+
+        function resetTicketTaskForm() {
+            document.getElementById('ticketTaskId').value = '';
+            document.getElementById('ticketTaskTitle').value = '';
+            document.getElementById('ticketTaskDescription').value = '';
+            document.getElementById('ticketTaskCategory').value = '';
+            document.getElementById('ticketTaskAssignee').value = '';
+            document.getElementById('ticketTaskStartDate').value = '';
+            document.getElementById('ticketTaskDurationDays').value = '';
+            document.getElementById('ticketTaskProjectIssueTypeId').value = defaultProjectIssueTypeId;
+            document.getElementById('ticketTaskIssueType').value = defaultIssueTypeBase;
+            document.getElementById('ticketTaskFeatureId').value = defaultFeatureId;
+            document.getElementById('ticketTaskStoryPoints').value = '';
+            if (effortSelect) effortSelect.value = '';
+            if (effortDisplay) effortDisplay.textContent = 'تعیین نشده';
+            originalTicketTask = null;
+        }
+
+        function setTicketTaskModalMode(mode) {
+            document.getElementById('ticketTaskMode').value = mode;
+            var titleEl = document.getElementById('ticketTaskModalTitleText');
+            var iconEl = document.getElementById('ticketTaskModalIcon');
+            var submitText = document.getElementById('ticketTaskSubmitText');
+            var submitBtn = document.getElementById('ticketTaskSubmitBtn');
+            if (mode === 'edit') {
+                if (titleEl) titleEl.textContent = 'جزئیات و ویرایش کار';
+                if (iconEl) iconEl.className = 'bi bi-pencil-square me-2';
+                if (submitText) submitText.textContent = 'ذخیره تغییرات';
+                if (submitBtn) submitBtn.querySelector('i')?.setAttribute('class', 'bi bi-check-lg me-1');
+            } else {
+                if (titleEl) titleEl.textContent = 'افزودن تسک به تیکت';
+                if (iconEl) iconEl.className = 'bi bi-plus-circle me-2';
+                if (submitText) submitText.textContent = 'افزودن کار';
+                if (submitBtn) {
+                    var icon = submitBtn.querySelector('i');
+                    if (icon) icon.className = 'bi bi-plus-lg me-1';
+                }
+            }
+        }
+
+        window.openTicketCreateTask = function () {
+            setTicketTaskModalMode('create');
+            resetTicketTaskForm();
+            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('ticketTaskModal'));
+            modal.show();
+            setTimeout(function () { document.getElementById('ticketTaskTitle')?.focus(); }, 200);
+        };
+
+        window.openTicketEditTask = async function (taskId) {
+            if (!taskId) return;
+            setTicketTaskModalMode('edit');
+            resetTicketTaskForm();
+            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('ticketTaskModal'));
+            modal.show();
+
+            try {
+                var response = await fetch('/Tasks/GetTaskDetails?id=' + taskId);
+                var taskData = await response.json();
+                if (!response.ok || !taskData.success) {
+                    throw new Error(taskData.message || 'خطا در دریافت اطلاعات کار');
+                }
+
+                originalTicketTask = taskData;
+                document.getElementById('ticketTaskId').value = taskData.id;
+                document.getElementById('ticketTaskProjectId').value = taskData.projectId;
+                document.getElementById('ticketTaskProjectIssueTypeId').value = taskData.projectIssueTypeId || '';
+                document.getElementById('ticketTaskIssueType').value = taskData.issueType || defaultIssueTypeBase;
+                document.getElementById('ticketTaskFeatureId').value =
+                    taskData.featureId != null ? String(taskData.featureId) : defaultFeatureId;
+                document.getElementById('ticketTaskTitle').value = taskData.title || '';
+                document.getElementById('ticketTaskDescription').value = taskData.description || '';
+                document.getElementById('ticketTaskStartDate').value = taskData.startDateSh || '';
+                document.getElementById('ticketTaskDurationDays').value =
+                    taskData.durationDays == null ? '' : String(taskData.durationDays);
+                document.getElementById('ticketTaskCategory').value = taskData.categoryId || '';
+                document.getElementById('ticketTaskAssignee').value = taskData.assignedUserId || '';
+                document.getElementById('ticketTaskStoryPoints').value =
+                    taskData.storyPoints == null ? '' : String(taskData.storyPoints);
+
+                var effort = mapStoryPointsToEffortLevel(taskData.storyPoints);
+                if (effortSelect) effortSelect.value = effort;
+                if (effortDisplay) effortDisplay.textContent = effortLabels[effort] || 'تعیین نشده';
+            } catch (err) {
+                alert(err.message || 'خطا در بارگذاری کار');
+                bootstrap.Modal.getInstance(document.getElementById('ticketTaskModal'))?.hide();
+            }
+        };
+
+        window.openTicketDeleteTask = function (taskId, title) {
+            document.getElementById('ticketDeleteTaskId').value = taskId;
+            document.getElementById('ticketDeleteTaskTitle').textContent = title || '';
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('ticketDeleteTaskModal')).show();
+        };
+
+        function appendTicketTaskRow(task) {
+            var empty = document.getElementById('ticketTasksEmpty');
+            var wrap = document.getElementById('ticketTasksTableWrap');
+            var body = document.getElementById('ticketTasksTableBody');
+            if (!body || !wrap) return;
+
+            if (empty) empty.classList.add('d-none');
+            wrap.classList.remove('d-none');
+
+            var sprintName = task.sprintName || 'اسپرینت';
+            var sprintHtml = task.inSprint
+                ? '<span class="badge bg-info text-dark text-wrap text-start" style="white-space: normal; max-width: 100%;" title="' + escapeHtml(sprintName) + '">' + escapeHtml(sprintName) + '</span>'
+                : '<span class="text-muted">خارج از اسپرینت</span>';
+            var completedBadge = task.isCompleted ? ' <span class="badge bg-success ms-1">انجام‌شده</span>' : '';
+
+            var tr = document.createElement('tr');
+            tr.setAttribute('data-task-id', task.taskId);
+            tr.innerHTML =
+                '<td class="text-nowrap pe-0">' + buildTaskActionsHtml(task.taskId, task.title) + '</td>' +
+                '<td><code>' + escapeHtml(task.issueKey || '—') + '</code></td>' +
+                '<td>' + escapeHtml(task.title || '') + completedBadge + '</td>' +
+                '<td>' + escapeHtml(task.assignedUserName || '—') + '</td>' +
+                '<td>' + sprintHtml + '</td>';
+            body.prepend(tr);
+        }
+
+        function updateTicketTaskRow(taskId, data) {
+            var row = document.querySelector('#ticketTasksTableBody tr[data-task-id="' + taskId + '"]');
+            if (!row) return;
+
+            var cells = row.children;
+            if (cells.length < 5) return;
+            cells[0].innerHTML = buildTaskActionsHtml(taskId, data.title);
+            cells[2].innerHTML = escapeHtml(data.title || '');
+            cells[3].textContent = data.assignedUserName || '—';
+        }
+
+        function removeTicketTaskRow(taskId) {
+            var row = document.querySelector('#ticketTasksTableBody tr[data-task-id="' + taskId + '"]');
+            if (row) row.remove();
+
+            var body = document.getElementById('ticketTasksTableBody');
+            if (body && body.children.length === 0) {
+                var empty = document.getElementById('ticketTasksEmpty');
+                var wrap = document.getElementById('ticketTasksTableWrap');
+                if (wrap) wrap.classList.add('d-none');
+                if (empty) empty.classList.remove('d-none');
+                else {
+                    var cardBody = document.getElementById('ticketTasksCardBody');
+                    if (cardBody && !document.getElementById('ticketTasksEmpty')) {
+                        var p = document.createElement('p');
+                        p.id = 'ticketTasksEmpty';
+                        p.className = 'text-muted p-3 mb-0';
+                        p.textContent = 'هنوز تسکی به این تیکت متصل نشده است.';
+                        cardBody.prepend(p);
+                    }
+                }
+            }
+        }
+
+        document.getElementById('ticketTasksCardBody')?.addEventListener('click', function (event) {
+            var editBtn = event.target.closest('.ticket-edit-task-btn');
+            if (editBtn) {
+                var editId = parseInt(editBtn.getAttribute('data-task-id'), 10);
+                if (editId) openTicketEditTask(editId);
+                return;
+            }
+
+            var deleteBtn = event.target.closest('.ticket-delete-task-btn');
+            if (deleteBtn) {
+                var deleteId = parseInt(deleteBtn.getAttribute('data-task-id'), 10);
+                var deleteTitle = deleteBtn.getAttribute('data-task-title') || '';
+                if (deleteId) openTicketDeleteTask(deleteId, deleteTitle);
+            }
+        });
+
+        document.getElementById('ticketTaskSubmitBtn')?.addEventListener('click', async function () {
+            var mode = document.getElementById('ticketTaskMode').value || 'create';
+            var title = (document.getElementById('ticketTaskTitle')?.value || '').trim();
+            if (!title) {
+                alert('عنوان کار الزامی است.');
+                document.getElementById('ticketTaskTitle')?.focus();
+                return;
+            }
+
+            var btn = document.getElementById('ticketTaskSubmitBtn');
+            var original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>در حال ذخیره...';
+
+            try {
+                if (mode === 'edit') {
+                    var taskId = parseInt(document.getElementById('ticketTaskId').value, 10);
+                    var issueType = document.getElementById('ticketTaskIssueType').value;
+                    if (!issueType) throw new Error('نوع کار نامعتبر است.');
+
+                    var featureRaw = document.getElementById('ticketTaskFeatureId').value;
+                    var formData = {
+                        Id: taskId,
+                        Title: title,
+                        Description: document.getElementById('ticketTaskDescription').value || '',
+                        IssueType: parseInt(issueType, 10),
+                        ProjectIssueTypeId: document.getElementById('ticketTaskProjectIssueTypeId').value
+                            ? parseInt(document.getElementById('ticketTaskProjectIssueTypeId').value, 10) : null,
+                        ProjectId: parseInt(document.getElementById('ticketTaskProjectId').value, 10),
+                        StartDateSh: (document.getElementById('ticketTaskStartDate').value || '').trim(),
+                        DurationDays: (function () {
+                            var raw = document.getElementById('ticketTaskDurationDays')?.value;
+                            if (raw === '' || raw == null) return null;
+                            var n = parseInt(raw, 10);
+                            return Number.isNaN(n) ? null : n;
+                        })(),
+                        CategoryId: document.getElementById('ticketTaskCategory').value
+                            ? parseInt(document.getElementById('ticketTaskCategory').value, 10) : null,
+                        FeatureId: featureRaw ? parseInt(featureRaw, 10) : null,
+                        AssignedUserId: document.getElementById('ticketTaskAssignee').value || null,
+                        EffortLevel: document.getElementById('ticketTaskEffort').value
+                            ? parseInt(document.getElementById('ticketTaskEffort').value, 10) : null,
+                        StoryPoints: document.getElementById('ticketTaskStoryPoints').value
+                            ? parseInt(document.getElementById('ticketTaskStoryPoints').value, 10)
+                            : (originalTicketTask?.storyPoints ?? null)
+                    };
+
+                    var editResponse = await fetch('/Tasks/EditFromBoard', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: JSON.stringify(formData),
+                        credentials: 'same-origin'
+                    });
+                    var editResult = await editResponse.json();
+                    if (!editResponse.ok || !editResult.success) {
+                        throw new Error(editResult.message || 'خطا در ویرایش کار');
+                    }
+
+                    var assigneeSelect = document.getElementById('ticketTaskAssignee');
+                    var assigneeName = formData.AssignedUserId
+                        ? (assigneeSelect.options[assigneeSelect.selectedIndex]?.text || '—')
+                        : '—';
+                    updateTicketTaskRow(taskId, { title: formData.Title, assignedUserName: assigneeName });
+                    bootstrap.Modal.getInstance(document.getElementById('ticketTaskModal'))?.hide();
+                } else {
+                    var payload = {
+                        projectId: parseInt(document.getElementById('ticketTaskProjectId').value, 10),
+                        ticketId: parseInt(document.getElementById('ticketTaskTicketId').value, 10),
+                        title: title,
+                        description: document.getElementById('ticketTaskDescription').value || '',
+                        categoryId: document.getElementById('ticketTaskCategory').value
+                            ? parseInt(document.getElementById('ticketTaskCategory').value, 10) : null,
+                        assignedUserId: document.getElementById('ticketTaskAssignee').value || null,
+                        startDateSh: (document.getElementById('ticketTaskStartDate').value || '').trim(),
+                        durationDays: (function () {
+                            var raw = document.getElementById('ticketTaskDurationDays')?.value;
+                            if (raw === '' || raw == null) return null;
+                            var n = parseInt(raw, 10);
+                            return Number.isNaN(n) ? null : n;
+                        })(),
+                        effortLevel: document.getElementById('ticketTaskEffort').value
+                            ? parseInt(document.getElementById('ticketTaskEffort').value, 10) : null
+                    };
+                    var pit = document.getElementById('ticketTaskProjectIssueTypeId').value;
+                    if (pit) payload.projectIssueTypeId = parseInt(pit, 10);
+
+                    var createResponse = await fetch('/Tasks/CreateForTicket', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    var createResult = await createResponse.json();
+                    if (!createResponse.ok || !createResult.success) {
+                        throw new Error(createResult.message || 'خطا در افزودن کار');
+                    }
+
+                    appendTicketTaskRow(createResult);
+                    bootstrap.Modal.getInstance(document.getElementById('ticketTaskModal'))?.hide();
+                }
+            } catch (err) {
+                alert(err.message || 'خطا در ذخیره کار');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        });
+
+        document.getElementById('ticketDeleteTaskConfirmBtn')?.addEventListener('click', async function () {
+            var taskId = parseInt(document.getElementById('ticketDeleteTaskId').value, 10);
+            if (!taskId) return;
+
+            var btn = this;
+            var original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>در حال حذف...';
+
+            try {
+                var response = await fetch('/Tasks/DeleteTask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ taskId: taskId })
+                });
+                var result = await response.json().catch(function () { return {}; });
+                if (!response.ok || result.success === false) {
+                    throw new Error(result.message || 'خطا در حذف کار');
+                }
+
+                removeTicketTaskRow(taskId);
+                bootstrap.Modal.getInstance(document.getElementById('ticketDeleteTaskModal'))?.hide();
+            } catch (err) {
+                alert(err.message || 'خطا در حذف کار');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        });
+    })();
+</script>
+}

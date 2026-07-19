@@ -47,6 +47,11 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<ProjectTicketMessage> Messages { get; set; } = new List<ProjectTicketMessage>();
+
+        /// <summary>
+        /// تسک‌های تعریف‌شده برای این تیکت
+        /// </summary>
+        public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
     }
 
     public enum TicketType

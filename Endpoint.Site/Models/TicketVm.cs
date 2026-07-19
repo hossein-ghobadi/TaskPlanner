@@ -70,7 +70,29 @@ namespace Endpoint.Site.Models
         public bool CanAnswer { get; set; }
         public bool CanAskFollowUp { get; set; }
         public bool CanManage { get; set; }
+        /// <summary>
+        /// پرسش‌کننده یا پاسخ‌دهنده می‌توانند برای تیکت تسک تعریف کنند
+        /// </summary>
+        public bool CanCreateTask { get; set; }
         public List<TicketMessageItemVm> Messages { get; set; } = new();
+        public List<TicketTaskItemVm> Tasks { get; set; } = new();
+    }
+
+    public class TicketTaskItemVm
+    {
+        public int Id { get; set; }
+        public string? IssueKey { get; set; }
+        public string Title { get; set; } = "";
+        public bool IsCompleted { get; set; }
+        public string? AssignedUserName { get; set; }
+        public bool InSprint { get; set; }
+        public string? SprintName { get; set; }
+    }
+
+    public class TicketMemberOptionVm
+    {
+        public string UserId { get; set; } = "";
+        public string DisplayName { get; set; } = "";
     }
 
     public class TicketMessageItemVm

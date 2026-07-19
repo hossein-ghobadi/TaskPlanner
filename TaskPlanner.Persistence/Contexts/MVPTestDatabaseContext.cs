@@ -852,6 +852,15 @@ namespace TaskPlanner.Persistence.Contexts
             modelBuilder.Entity<TaskItem>()
                 .HasIndex(t => t.FeatureId);
 
+            modelBuilder.Entity<TaskItem>()
+                .HasOne(t => t.Ticket)
+                .WithMany(tk => tk.Tasks)
+                .HasForeignKey(t => t.TicketId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<TaskItem>()
+                .HasIndex(t => t.TicketId);
+
             // ========== Project Tickets ==========
             modelBuilder.Entity<ProjectTicket>()
                 .HasOne(t => t.Project)

@@ -384,7 +384,7 @@
             </div>
         </div>
 
-        <div class="col-lg-7">
+        <div class="@(Model.CanManageCodeReview ? "col-lg-7" : "col-lg-12")">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <span class="fw-bold"><i class="bi bi-list-task me-1"></i> تسک‌های فیچر</span>
@@ -472,16 +472,15 @@
             </div>
         </div>
 
+        @if (Model.CanManageCodeReview)
+        {
         <div class="col-lg-5">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <span class="fw-bold"><i class="bi bi-code-square me-1"></i> Code Review</span>
-                    @if (Model.CanManageCodeReview)
-                    {
-                        <a class="btn btn-sm btn-primary" asp-action="AddCodeReview" asp-route-id="@Model.Id">
-                            <i class="bi bi-plus"></i> ثبت امتیاز
-                        </a>
-                    }
+                    <a class="btn btn-sm btn-primary" asp-action="AddCodeReview" asp-route-id="@Model.Id">
+                        <i class="bi bi-plus"></i> ثبت امتیاز
+                    </a>
                 </div>
                 <div class="card-body">
                     <div class="mb-3 small">
@@ -506,14 +505,11 @@
                                         <strong>@r.RevieweeName</strong>
                                         <div class="d-flex align-items-center gap-2">
                                             <span class="badge bg-primary">@r.Score</span>
-                                            @if (Model.CanManageCodeReview)
-                                            {
-                                                <a asp-action="DeleteCodeReview" asp-route-id="@r.Id"
-                                                   class="btn btn-sm btn-outline-danger py-0 px-1"
-                                                   title="حذف امتیاز">
-                                                    <i class="bi bi-trash"></i>
-                                                </a>
-                                            }
+                                            <a asp-action="DeleteCodeReview" asp-route-id="@r.Id"
+                                               class="btn btn-sm btn-outline-danger py-0 px-1"
+                                               title="حذف امتیاز">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
                                         </div>
                                     </div>
                                     <div class="small text-muted">توسط @r.ReviewerName</div>
@@ -528,6 +524,7 @@
                 </div>
             </div>
         </div>
+        }
     </div>
 </div>
 

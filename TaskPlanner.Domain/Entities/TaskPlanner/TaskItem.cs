@@ -80,6 +80,12 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public ProjectFeature? Feature { get; set; }
 
         /// <summary>
+        /// تیکت مرتبط (اختیاری) — تسک می‌تواند از صفحه تیکت تعریف و به آن لینک شود
+        /// </summary>
+        public int? TicketId { get; set; }
+        public ProjectTicket? Ticket { get; set; }
+
+        /// <summary>
         /// وضعیت فعلی Issue در Workflow (مثل To Do, In Progress, Done)
         /// </summary>
         public int? StatusId { get; set; }
