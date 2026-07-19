@@ -173,6 +173,8 @@ namespace Endpoint.Site.Models
         public bool CanManageCodeReview { get; set; }
         public bool CanChangeCodeReviewer { get; set; }
         public bool CanManageFeatureSpec { get; set; }
+        /// <summary>وضعیت صفحه و قرارداد API — همه اعضای پروژه</summary>
+        public bool CanManagePageStatesAndApi { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
 

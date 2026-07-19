@@ -176,7 +176,12 @@ namespace Endpoint.Site.Controllers
             ViewBag.DefaultProjectIssueTypeId = defaultIssueType?.Id;
             ViewBag.DefaultIssueTypeBase = defaultIssueType != null ? (int)defaultIssueType.BaseType : (int)IssueType.Task;
 
-            var vm = MapDetails(feature, canManageCodeReview: isReviewer || isCreator, canChangeCodeReviewer: isCreator, canManageFeatureSpec: isCreator);
+            var vm = MapDetails(
+                feature,
+                canManageCodeReview: isReviewer || isCreator,
+                canChangeCodeReviewer: isCreator,
+                canManageFeatureSpec: isCreator,
+                canManagePageStatesAndApi: true);
             return View(vm);
         }
 
@@ -242,33 +247,30 @@ namespace Endpoint.Site.Controllers
                 .Include(f => f.Functions)
                 .FirstOrDefaultAsync(f => f.Id == vm.FeatureId);
             if (feature == null)
-                return NotFound();
+                return SpecError("فیچر یافت نشد.", vm.FeatureId, 404);
 
             if (!await HasProjectAccessAsync(feature.ProjectId))
-                return RedirectToAction("Index", "Projects");
+                return SpecError("دسترسی ندارید.", vm.FeatureId, 403);
 
             var deny = await DenyUnlessProjectCreatorAsync(feature.ProjectId, feature.Id);
             if (deny != null)
                 return deny;
 
             if (string.IsNullOrWhiteSpace(vm.Title))
-            {
-                TempData["Error"] = "عنوان کارکرد الزامی است.";
-                return RedirectToAction(nameof(Details), new { id = vm.FeatureId });
-            }
+                return SpecError("عنوان کارکرد الزامی است.", vm.FeatureId);
 
             var nextOrder = feature.Functions.Count == 0 ? 0 : feature.Functions.Max(f => f.SortOrder) + 1;
-            feature.Functions.Add(new FeatureFunction
+            var entity = new FeatureFunction
             {
                 FeatureId = feature.Id,
                 Title = vm.Title.Trim(),
                 SortOrder = nextOrder
-            });
+            };
+            feature.Functions.Add(entity);
             feature.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "کارکرد اضافه شد.";
-            return RedirectToAction(nameof(Details), new { id = feature.Id });
+            return SpecSuccess("کارکرد اضافه شد.", feature.Id, new { id = entity.Id, title = entity.Title });
         }
 
         [HttpPost]
@@ -279,27 +281,23 @@ namespace Endpoint.Site.Controllers
                 .Include(f => f.Feature)
                 .FirstOrDefaultAsync(f => f.Id == vm.Id);
             if (function == null)
-                return NotFound();
+                return SpecError("کارکرد یافت نشد.", vm.FeatureId, 404);
 
             if (!await HasProjectAccessAsync(function.Feature.ProjectId))
-                return RedirectToAction("Index", "Projects");
+                return SpecError("دسترسی ندارید.", function.FeatureId, 403);
 
             var deny = await DenyUnlessProjectCreatorAsync(function.Feature.ProjectId, function.FeatureId);
             if (deny != null)
                 return deny;
 
             if (string.IsNullOrWhiteSpace(vm.Title))
-            {
-                TempData["Error"] = "عنوان کارکرد الزامی است.";
-                return RedirectToAction(nameof(Details), new { id = function.FeatureId });
-            }
+                return SpecError("عنوان کارکرد الزامی است.", function.FeatureId);
 
             function.Title = vm.Title.Trim();
             function.Feature.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "کارکرد ویرایش شد.";
-            return RedirectToAction(nameof(Details), new { id = function.FeatureId });
+            return SpecSuccess("کارکرد ویرایش شد.", function.FeatureId, new { id = function.Id, title = function.Title });
         }
 
         [HttpPost]
@@ -310,22 +308,22 @@ namespace Endpoint.Site.Controllers
                 .Include(f => f.Feature)
                 .FirstOrDefaultAsync(f => f.Id == id);
             if (function == null)
-                return NotFound();
+                return SpecError("کارکرد یافت نشد.", 0, 404);
 
             if (!await HasProjectAccessAsync(function.Feature.ProjectId))
-                return RedirectToAction("Index", "Projects");
+                return SpecError("دسترسی ندارید.", function.FeatureId, 403);
 
             var deny = await DenyUnlessProjectCreatorAsync(function.Feature.ProjectId, function.FeatureId);
             if (deny != null)
                 return deny;
 
             var featureId = function.FeatureId;
+            var deletedId = function.Id;
             _context.FeatureFunctions.Remove(function);
             function.Feature.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "کارکرد حذف شد.";
-            return RedirectToAction(nameof(Details), new { id = featureId });
+            return SpecSuccess("کارکرد حذف شد.", featureId, new { id = deletedId });
         }
 
         [HttpPost]
@@ -336,33 +334,30 @@ namespace Endpoint.Site.Controllers
                 .Include(f => f.BusinessRules)
                 .FirstOrDefaultAsync(f => f.Id == vm.FeatureId);
             if (feature == null)
-                return NotFound();
+                return SpecError("فیچر یافت نشد.", vm.FeatureId, 404);
 
             if (!await HasProjectAccessAsync(feature.ProjectId))
-                return RedirectToAction("Index", "Projects");
+                return SpecError("دسترسی ندارید.", vm.FeatureId, 403);
 
             var deny = await DenyUnlessProjectCreatorAsync(feature.ProjectId, feature.Id);
             if (deny != null)
                 return deny;
 
             if (string.IsNullOrWhiteSpace(vm.Description))
-            {
-                TempData["Error"] = "توضیح قانون الزامی است.";
-                return RedirectToAction(nameof(Details), new { id = vm.FeatureId });
-            }
+                return SpecError("توضیح قانون الزامی است.", vm.FeatureId);
 
             var nextOrder = feature.BusinessRules.Count == 0 ? 0 : feature.BusinessRules.Max(r => r.SortOrder) + 1;
-            feature.BusinessRules.Add(new FeatureBusinessRule
+            var entity = new FeatureBusinessRule
             {
                 FeatureId = feature.Id,
                 Description = vm.Description.Trim(),
                 SortOrder = nextOrder
-            });
+            };
+            feature.BusinessRules.Add(entity);
             feature.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "قانون کسب‌وکار اضافه شد.";
-            return RedirectToAction(nameof(Details), new { id = feature.Id });
+            return SpecSuccess("قانون کسب‌وکار اضافه شد.", feature.Id, new { id = entity.Id, description = entity.Description });
         }
 
         [HttpPost]
@@ -373,27 +368,23 @@ namespace Endpoint.Site.Controllers
                 .Include(r => r.Feature)
                 .FirstOrDefaultAsync(r => r.Id == vm.Id);
             if (rule == null)
-                return NotFound();
+                return SpecError("قانون یافت نشد.", vm.FeatureId, 404);
 
             if (!await HasProjectAccessAsync(rule.Feature.ProjectId))
-                return RedirectToAction("Index", "Projects");
+                return SpecError("دسترسی ندارید.", rule.FeatureId, 403);
 
             var deny = await DenyUnlessProjectCreatorAsync(rule.Feature.ProjectId, rule.FeatureId);
             if (deny != null)
                 return deny;
 
             if (string.IsNullOrWhiteSpace(vm.Description))
-            {
-                TempData["Error"] = "توضیح قانون الزامی است.";
-                return RedirectToAction(nameof(Details), new { id = rule.FeatureId });
-            }
+                return SpecError("توضیح قانون الزامی است.", rule.FeatureId);
 
             rule.Description = vm.Description.Trim();
             rule.Feature.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "قانون کسب‌وکار ویرایش شد.";
-            return RedirectToAction(nameof(Details), new { id = rule.FeatureId });
+            return SpecSuccess("قانون کسب‌وکار ویرایش شد.", rule.FeatureId, new { id = rule.Id, description = rule.Description });
         }
 
         [HttpPost]
@@ -404,22 +395,22 @@ namespace Endpoint.Site.Controllers
                 .Include(r => r.Feature)
                 .FirstOrDefaultAsync(r => r.Id == id);
             if (rule == null)
-                return NotFound();
+                return SpecError("قانون یافت نشد.", 0, 404);
 
             if (!await HasProjectAccessAsync(rule.Feature.ProjectId))
-                return RedirectToAction("Index", "Projects");
+                return SpecError("دسترسی ندارید.", rule.FeatureId, 403);
 
             var deny = await DenyUnlessProjectCreatorAsync(rule.Feature.ProjectId, rule.FeatureId);
             if (deny != null)
                 return deny;
 
             var featureId = rule.FeatureId;
+            var deletedId = rule.Id;
             _context.FeatureBusinessRules.Remove(rule);
             rule.Feature.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "قانون کسب‌وکار حذف شد.";
-            return RedirectToAction(nameof(Details), new { id = featureId });
+            return SpecSuccess("قانون کسب‌وکار حذف شد.", featureId, new { id = deletedId });
         }
 
         [HttpPost]
@@ -430,45 +421,39 @@ namespace Endpoint.Site.Controllers
                 .Include(f => f.PageStates)
                 .FirstOrDefaultAsync(f => f.Id == vm.FeatureId);
             if (feature == null)
-                return NotFound();
+                return SpecError("فیچر یافت نشد.", vm.FeatureId, 404);
 
             if (!await HasProjectAccessAsync(feature.ProjectId))
-                return RedirectToAction("Index", "Projects");
-
-            var deny = await DenyUnlessProjectCreatorAsync(feature.ProjectId, feature.Id);
-            if (deny != null)
-                return deny;
+                return SpecError("دسترسی ندارید.", vm.FeatureId, 403);
 
             if (!Enum.IsDefined(typeof(FeaturePageStateType), vm.StateType))
-            {
-                TempData["Error"] = "نوع وضعیت معتبر نیست.";
-                return RedirectToAction(nameof(Details), new { id = vm.FeatureId });
-            }
+                return SpecError("نوع وضعیت معتبر نیست.", vm.FeatureId);
 
             if (feature.PageStates.Any(p => p.StateType == vm.StateType))
-            {
-                TempData["Error"] = "این وضعیت قبلاً برای فیچر تعریف شده است.";
-                return RedirectToAction(nameof(Details), new { id = vm.FeatureId });
-            }
+                return SpecError("این وضعیت قبلاً برای فیچر تعریف شده است.", vm.FeatureId);
 
             if (string.IsNullOrWhiteSpace(vm.BehaviorDescription))
-            {
-                TempData["Error"] = "توضیح رفتار الزامی است.";
-                return RedirectToAction(nameof(Details), new { id = vm.FeatureId });
-            }
+                return SpecError("توضیح رفتار الزامی است.", vm.FeatureId);
 
-            feature.PageStates.Add(new FeaturePageState
+            var entity = new FeaturePageState
             {
                 FeatureId = feature.Id,
                 StateType = vm.StateType,
                 BehaviorDescription = vm.BehaviorDescription.Trim(),
                 HasSeparateDesign = vm.HasSeparateDesign
-            });
+            };
+            feature.PageStates.Add(entity);
             feature.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "وضعیت صفحه اضافه شد.";
-            return RedirectToAction(nameof(Details), new { id = feature.Id });
+            return SpecSuccess("وضعیت صفحه اضافه شد.", feature.Id, new
+            {
+                id = entity.Id,
+                stateType = (int)entity.StateType,
+                stateName = entity.StateType.GetDisplayName(),
+                behaviorDescription = entity.BehaviorDescription,
+                hasSeparateDesign = entity.HasSeparateDesign
+            });
         }
 
         [HttpPost]
@@ -479,28 +464,27 @@ namespace Endpoint.Site.Controllers
                 .Include(p => p.Feature)
                 .FirstOrDefaultAsync(p => p.Id == vm.Id);
             if (pageState == null)
-                return NotFound();
+                return SpecError("وضعیت صفحه یافت نشد.", vm.FeatureId, 404);
 
             if (!await HasProjectAccessAsync(pageState.Feature.ProjectId))
-                return RedirectToAction("Index", "Projects");
-
-            var deny = await DenyUnlessProjectCreatorAsync(pageState.Feature.ProjectId, pageState.FeatureId);
-            if (deny != null)
-                return deny;
+                return SpecError("دسترسی ندارید.", pageState.FeatureId, 403);
 
             if (string.IsNullOrWhiteSpace(vm.BehaviorDescription))
-            {
-                TempData["Error"] = "توضیح رفتار الزامی است.";
-                return RedirectToAction(nameof(Details), new { id = pageState.FeatureId });
-            }
+                return SpecError("توضیح رفتار الزامی است.", pageState.FeatureId);
 
             pageState.BehaviorDescription = vm.BehaviorDescription.Trim();
             pageState.HasSeparateDesign = vm.HasSeparateDesign;
             pageState.Feature.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "وضعیت صفحه ویرایش شد.";
-            return RedirectToAction(nameof(Details), new { id = pageState.FeatureId });
+            return SpecSuccess("وضعیت صفحه ویرایش شد.", pageState.FeatureId, new
+            {
+                id = pageState.Id,
+                stateType = (int)pageState.StateType,
+                stateName = pageState.StateType.GetDisplayName(),
+                behaviorDescription = pageState.BehaviorDescription,
+                hasSeparateDesign = pageState.HasSeparateDesign
+            });
         }
 
         [HttpPost]
@@ -511,22 +495,23 @@ namespace Endpoint.Site.Controllers
                 .Include(p => p.Feature)
                 .FirstOrDefaultAsync(p => p.Id == id);
             if (pageState == null)
-                return NotFound();
+                return SpecError("وضعیت صفحه یافت نشد.", 0, 404);
 
             if (!await HasProjectAccessAsync(pageState.Feature.ProjectId))
-                return RedirectToAction("Index", "Projects");
-
-            var deny = await DenyUnlessProjectCreatorAsync(pageState.Feature.ProjectId, pageState.FeatureId);
-            if (deny != null)
-                return deny;
+                return SpecError("دسترسی ندارید.", pageState.FeatureId, 403);
 
             var featureId = pageState.FeatureId;
+            var deleted = new
+            {
+                id = pageState.Id,
+                stateType = (int)pageState.StateType,
+                stateName = pageState.StateType.GetDisplayName()
+            };
             _context.FeaturePageStates.Remove(pageState);
             pageState.Feature.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "وضعیت صفحه حذف شد.";
-            return RedirectToAction(nameof(Details), new { id = featureId });
+            return SpecSuccess("وضعیت صفحه حذف شد.", featureId, deleted);
         }
 
         [HttpPost]
@@ -541,10 +526,6 @@ namespace Endpoint.Site.Controllers
 
             if (!await HasProjectAccessAsync(feature.ProjectId))
                 return RedirectToAction("Index", "Projects");
-
-            var deny = await DenyUnlessProjectCreatorAsync(feature.ProjectId, feature.Id);
-            if (deny != null)
-                return deny;
 
             if (string.IsNullOrWhiteSpace(vm.Endpoint))
             {
@@ -576,10 +557,6 @@ namespace Endpoint.Site.Controllers
             if (!await HasProjectAccessAsync(api.Feature.ProjectId))
                 return RedirectToAction("Index", "Projects");
 
-            var deny = await DenyUnlessProjectCreatorAsync(api.Feature.ProjectId, api.FeatureId);
-            if (deny != null)
-                return deny;
-
             if (string.IsNullOrWhiteSpace(vm.Endpoint))
             {
                 TempData["Error"] = "Endpoint الزامی است.";
@@ -606,10 +583,6 @@ namespace Endpoint.Site.Controllers
 
             if (!await HasProjectAccessAsync(api.Feature.ProjectId))
                 return RedirectToAction("Index", "Projects");
-
-            var deny = await DenyUnlessProjectCreatorAsync(api.Feature.ProjectId, api.FeatureId);
-            if (deny != null)
-                return deny;
 
             var featureId = api.FeatureId;
             _context.FeatureApiContracts.Remove(api);
@@ -915,7 +888,12 @@ namespace Endpoint.Site.Controllers
                 .FirstOrDefaultAsync(f => f.Id == id);
         }
 
-        private FeatureDetailsVm MapDetails(ProjectFeature feature, bool canManageCodeReview, bool canChangeCodeReviewer, bool canManageFeatureSpec)
+        private FeatureDetailsVm MapDetails(
+            ProjectFeature feature,
+            bool canManageCodeReview,
+            bool canChangeCodeReviewer,
+            bool canManageFeatureSpec,
+            bool canManagePageStatesAndApi)
         {
             return new FeatureDetailsVm
             {
@@ -929,6 +907,7 @@ namespace Endpoint.Site.Controllers
                 CanManageCodeReview = canManageCodeReview,
                 CanChangeCodeReviewer = canChangeCodeReviewer,
                 CanManageFeatureSpec = canManageFeatureSpec,
+                CanManagePageStatesAndApi = canManagePageStatesAndApi,
                 CreatedAt = feature.CreatedAt,
                 UpdatedAt = feature.UpdatedAt,
                 Functions = feature.Functions.OrderBy(x => x.SortOrder).Select(x => new FeatureFunctionItemVm
@@ -1103,13 +1082,36 @@ namespace Endpoint.Site.Controllers
                 .AnyAsync(p => p.Id == projectId && p.CreatorUserId == userId);
         }
 
+        private bool IsAjaxRequest() =>
+            string.Equals(Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+
+        private IActionResult SpecSuccess(string message, int featureId, object? data = null)
+        {
+            if (IsAjaxRequest())
+                return Json(new { success = true, message, data });
+
+            TempData["Success"] = message;
+            return RedirectToAction(nameof(Details), new { id = featureId });
+        }
+
+        private IActionResult SpecError(string message, int featureId, int statusCode = 400)
+        {
+            if (IsAjaxRequest())
+            {
+                Response.StatusCode = statusCode;
+                return Json(new { success = false, message });
+            }
+
+            TempData["Error"] = message;
+            return RedirectToAction(nameof(Details), new { id = featureId });
+        }
+
         private async Task<IActionResult?> DenyUnlessProjectCreatorAsync(int projectId, int featureId)
         {
             if (await IsProjectCreatorAsync(projectId))
                 return null;
 
-            TempData["Error"] = "فقط سازنده پروژه می‌تواند این عملیات را انجام دهد.";
-            return RedirectToAction(nameof(Details), new { id = featureId });
+            return SpecError("فقط سازنده پروژه می‌تواند این عملیات را انجام دهد.", featureId, 403);
         }
 
         private async Task<bool> IsProjectMemberOrCreatorAsync(int projectId, string userId)

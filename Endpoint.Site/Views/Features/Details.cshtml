@@ -59,45 +59,39 @@
                         </button>
                     }
                 </div>
-                <div class="card-body">
-                    @if (Model.Functions.Count == 0)
-                    {
-                        <p class="text-muted mb-0">هنوز کارکردی تعریف نشده است.</p>
-                    }
-                    else
-                    {
-                        <ul class="list-unstyled mb-0">
-                            @foreach (var item in Model.Functions)
-                            {
-                                <li class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                                    <span>@item.Title</span>
-                                    @if (Model.CanManageFeatureSpec)
-                                    {
-                                        <div class="btn-group btn-group-sm flex-shrink-0">
-                                            <button type="button"
-                                                    class="btn btn-outline-secondary py-0 px-1"
-                                                    title="ویرایش"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#editFunctionModal"
-                                                    data-id="@item.Id"
-                                                    data-title="@item.Title">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button type="button"
-                                                    class="btn btn-outline-danger py-0 px-1"
-                                                    title="حذف"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#deleteFunctionModal"
-                                                    data-id="@item.Id"
-                                                    data-title="@item.Title">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                    }
-                                </li>
-                            }
-                        </ul>
-                    }
+                <div class="card-body" id="functionsCardBody">
+                    <p class="text-muted mb-0 @(Model.Functions.Count == 0 ? "" : "d-none")" id="functionsEmpty">هنوز کارکردی تعریف نشده است.</p>
+                    <ul class="list-unstyled mb-0 @(Model.Functions.Count == 0 ? "d-none" : "")" id="functionsList">
+                        @foreach (var item in Model.Functions)
+                        {
+                            <li class="d-flex justify-content-between align-items-start gap-2 mb-2" data-id="@item.Id">
+                                <span class="item-text">@item.Title</span>
+                                @if (Model.CanManageFeatureSpec)
+                                {
+                                    <div class="btn-group btn-group-sm flex-shrink-0">
+                                        <button type="button"
+                                                class="btn btn-outline-secondary py-0 px-1"
+                                                title="ویرایش"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#editFunctionModal"
+                                                data-id="@item.Id"
+                                                data-title="@item.Title">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-outline-danger py-0 px-1"
+                                                title="حذف"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteFunctionModal"
+                                                data-id="@item.Id"
+                                                data-title="@item.Title">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                }
+                            </li>
+                        }
+                    </ul>
                 </div>
             </div>
         </div>
@@ -115,45 +109,39 @@
                         </button>
                     }
                 </div>
-                <div class="card-body">
-                    @if (Model.BusinessRules.Count == 0)
-                    {
-                        <p class="text-muted mb-0">هنوز قانونی تعریف نشده است.</p>
-                    }
-                    else
-                    {
-                        <ul class="list-unstyled mb-0">
-                            @foreach (var item in Model.BusinessRules)
-                            {
-                                <li class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                                    <span>@item.Description</span>
-                                    @if (Model.CanManageFeatureSpec)
-                                    {
-                                        <div class="btn-group btn-group-sm flex-shrink-0">
-                                            <button type="button"
-                                                    class="btn btn-outline-secondary py-0 px-1"
-                                                    title="ویرایش"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#editBusinessRuleModal"
-                                                    data-id="@item.Id"
-                                                    data-description="@item.Description">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button type="button"
-                                                    class="btn btn-outline-danger py-0 px-1"
-                                                    title="حذف"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#deleteBusinessRuleModal"
-                                                    data-id="@item.Id"
-                                                    data-description="@item.Description">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                    }
-                                </li>
-                            }
-                        </ul>
-                    }
+                <div class="card-body" id="businessRulesCardBody">
+                    <p class="text-muted mb-0 @(Model.BusinessRules.Count == 0 ? "" : "d-none")" id="businessRulesEmpty">هنوز قانونی تعریف نشده است.</p>
+                    <ul class="list-unstyled mb-0 @(Model.BusinessRules.Count == 0 ? "d-none" : "")" id="businessRulesList">
+                        @foreach (var item in Model.BusinessRules)
+                        {
+                            <li class="d-flex justify-content-between align-items-start gap-2 mb-2" data-id="@item.Id">
+                                <span class="item-text">@item.Description</span>
+                                @if (Model.CanManageFeatureSpec)
+                                {
+                                    <div class="btn-group btn-group-sm flex-shrink-0">
+                                        <button type="button"
+                                                class="btn btn-outline-secondary py-0 px-1"
+                                                title="ویرایش"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#editBusinessRuleModal"
+                                                data-id="@item.Id"
+                                                data-description="@item.Description">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-outline-danger py-0 px-1"
+                                                title="حذف"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteBusinessRuleModal"
+                                                data-id="@item.Id"
+                                                data-description="@item.Description">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                }
+                            </li>
+                        }
+                    </ul>
                 </div>
             </div>
         </div>
@@ -170,73 +158,71 @@
                             .Where(t => !existingStateTypes.Contains(t))
                             .ToList();
                     }
-                    @if (Model.CanManageFeatureSpec && availableStateTypes.Count > 0)
+                    @if (Model.CanManagePageStatesAndApi)
                     {
-                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addPageStateModal">
+                        <button type="button"
+                                class="btn btn-sm btn-primary @(availableStateTypes.Count == 0 ? "d-none" : "")"
+                                id="addPageStateBtn"
+                                data-bs-toggle="modal"
+                                data-bs-target="#addPageStateModal">
                             <i class="bi bi-plus"></i> افزودن
                         </button>
                     }
                 </div>
-                <div class="card-body p-0">
-                    @if (Model.PageStates.Count == 0)
-                    {
-                        <p class="text-muted mb-0 p-3">هنوز وضعیت صفحه‌ای تعریف نشده است.</p>
-                    }
-                    else
-                    {
-                        <div class="table-responsive">
-                            <table class="table mb-0 align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 9rem;">وضعیت</th>
-                                        <th>رفتار</th>
-                                        <th style="width: 8rem;">طراحی جدا</th>
-                                        @if (Model.CanManageFeatureSpec)
+                <div class="card-body p-0" id="pageStatesCardBody">
+                    <p class="text-muted mb-0 p-3 @(Model.PageStates.Count == 0 ? "" : "d-none")" id="pageStatesEmpty">هنوز وضعیت صفحه‌ای تعریف نشده است.</p>
+                    <div class="table-responsive @(Model.PageStates.Count == 0 ? "d-none" : "")" id="pageStatesTableWrap">
+                        <table class="table mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 9rem;">وضعیت</th>
+                                    <th>رفتار</th>
+                                    <th style="width: 8rem;">طراحی جدا</th>
+                                    @if (Model.CanManagePageStatesAndApi)
+                                    {
+                                        <th style="width: 6rem;"></th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody id="pageStatesList">
+                                @foreach (var s in Model.PageStates)
+                                {
+                                    <tr data-id="@s.Id" data-state-type="@((int)s.StateType)">
+                                        <td><span class="badge bg-secondary">@s.StateType.GetDisplayName()</span></td>
+                                        <td class="item-behavior">@s.BehaviorDescription</td>
+                                        <td class="item-separate">@(s.HasSeparateDesign ? "بله" : "خیر")</td>
+                                        @if (Model.CanManagePageStatesAndApi)
                                         {
-                                            <th style="width: 6rem;"></th>
+                                            <td class="text-end">
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button"
+                                                            class="btn btn-outline-secondary py-0 px-1"
+                                                            title="ویرایش"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#editPageStateModal"
+                                                            data-id="@s.Id"
+                                                            data-state-name="@s.StateType.GetDisplayName()"
+                                                            data-behavior="@s.BehaviorDescription"
+                                                            data-separate="@(s.HasSeparateDesign ? "true" : "false")">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button type="button"
+                                                            class="btn btn-outline-danger py-0 px-1"
+                                                            title="حذف"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#deletePageStateModal"
+                                                            data-id="@s.Id"
+                                                            data-state-name="@s.StateType.GetDisplayName()">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
                                         }
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var s in Model.PageStates)
-                                    {
-                                        <tr>
-                                            <td><span class="badge bg-secondary">@s.StateType.GetDisplayName()</span></td>
-                                            <td>@s.BehaviorDescription</td>
-                                            <td>@(s.HasSeparateDesign ? "بله" : "خیر")</td>
-                                            @if (Model.CanManageFeatureSpec)
-                                            {
-                                                <td class="text-end">
-                                                    <div class="btn-group btn-group-sm">
-                                                        <button type="button"
-                                                                class="btn btn-outline-secondary py-0 px-1"
-                                                                title="ویرایش"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#editPageStateModal"
-                                                                data-id="@s.Id"
-                                                                data-state-name="@s.StateType.GetDisplayName()"
-                                                                data-behavior="@s.BehaviorDescription"
-                                                                data-separate="@(s.HasSeparateDesign ? "true" : "false")">
-                                                            <i class="bi bi-pencil"></i>
-                                                        </button>
-                                                        <button type="button"
-                                                                class="btn btn-outline-danger py-0 px-1"
-                                                                title="حذف"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#deletePageStateModal"
-                                                                data-id="@s.Id"
-                                                                data-state-name="@s.StateType.GetDisplayName()">
-                                                            <i class="bi bi-trash"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            }
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -247,7 +233,7 @@
                     <span class="fw-bold">
                         <i class="bi bi-braces text-primary me-1"></i> قرارداد API
                     </span>
-                    @if (Model.CanManageFeatureSpec)
+                    @if (Model.CanManagePageStatesAndApi)
                     {
                         <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addApiContractModal">
                             <i class="bi bi-plus"></i> افزودن
@@ -273,7 +259,7 @@
                                             <span class="badge bg-light text-dark">Status: @api.StatusCodes</span>
                                         }
                                     </div>
-                                    @if (Model.CanManageFeatureSpec)
+                                    @if (Model.CanManagePageStatesAndApi)
                                     {
                                         <div class="btn-group btn-group-sm">
                                             <button type="button"
@@ -532,7 +518,7 @@
 <div class="modal fade" id="addFunctionModal" tabindex="-1" aria-labelledby="addFunctionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form asp-action="AddFunction" method="post">
+            <form asp-action="AddFunction" method="post" data-ajax-spec="add-function">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="FeatureId" value="@Model.Id" />
                 <div class="modal-header">
@@ -558,7 +544,7 @@
 <div class="modal fade" id="editFunctionModal" tabindex="-1" aria-labelledby="editFunctionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form asp-action="EditFunction" method="post">
+            <form asp-action="EditFunction" method="post" data-ajax-spec="edit-function">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="Id" id="editFunctionId" />
                 <input type="hidden" name="FeatureId" value="@Model.Id" />
@@ -585,7 +571,7 @@
 <div class="modal fade" id="deleteFunctionModal" tabindex="-1" aria-labelledby="deleteFunctionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form asp-action="DeleteFunction" method="post">
+            <form asp-action="DeleteFunction" method="post" data-ajax-spec="delete-function">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" id="deleteFunctionId" />
                 <div class="modal-header bg-danger text-white">
@@ -610,7 +596,7 @@
 <div class="modal fade" id="addBusinessRuleModal" tabindex="-1" aria-labelledby="addBusinessRuleModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form asp-action="AddBusinessRule" method="post">
+            <form asp-action="AddBusinessRule" method="post" data-ajax-spec="add-business-rule">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="FeatureId" value="@Model.Id" />
                 <div class="modal-header">
@@ -636,7 +622,7 @@
 <div class="modal fade" id="editBusinessRuleModal" tabindex="-1" aria-labelledby="editBusinessRuleModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form asp-action="EditBusinessRule" method="post">
+            <form asp-action="EditBusinessRule" method="post" data-ajax-spec="edit-business-rule">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="Id" id="editBusinessRuleId" />
                 <input type="hidden" name="FeatureId" value="@Model.Id" />
@@ -663,7 +649,7 @@
 <div class="modal fade" id="deleteBusinessRuleModal" tabindex="-1" aria-labelledby="deleteBusinessRuleModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form asp-action="DeleteBusinessRule" method="post">
+            <form asp-action="DeleteBusinessRule" method="post" data-ajax-spec="delete-business-rule">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" id="deleteBusinessRuleId" />
                 <div class="modal-header bg-danger text-white">
@@ -691,13 +677,13 @@
         .ToList();
 }
 
-@if (pageStateAvailable.Count > 0)
+@if (Model.CanManagePageStatesAndApi)
 {
     <!-- وضعیت صفحه: افزودن -->
     <div class="modal fade" id="addPageStateModal" tabindex="-1" aria-labelledby="addPageStateModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form asp-action="AddPageState" method="post">
+                <form asp-action="AddPageState" method="post" data-ajax-spec="add-page-state">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="FeatureId" value="@Model.Id" />
                     <div class="modal-header">
@@ -709,7 +695,7 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">وضعیت <span class="text-danger">*</span></label>
-                            <select class="form-select" name="StateType" required>
+                            <select class="form-select" name="StateType" id="addPageStateType" required>
                                 @foreach (var t in pageStateAvailable)
                                 {
                                     <option value="@((int)t)">@t.GetDisplayName()</option>
@@ -740,7 +726,7 @@
 <div class="modal fade" id="editPageStateModal" tabindex="-1" aria-labelledby="editPageStateModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form asp-action="EditPageState" method="post">
+            <form asp-action="EditPageState" method="post" data-ajax-spec="edit-page-state">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="Id" id="editPageStateId" />
                 <input type="hidden" name="FeatureId" value="@Model.Id" />
@@ -777,7 +763,7 @@
 <div class="modal fade" id="deletePageStateModal" tabindex="-1" aria-labelledby="deletePageStateModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form asp-action="DeletePageState" method="post">
+            <form asp-action="DeletePageState" method="post" data-ajax-spec="delete-page-state">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="id" id="deletePageStateId" />
                 <div class="modal-header bg-danger text-white">
@@ -1393,6 +1379,236 @@
             if (!btn) return;
             document.getElementById('deleteApiId').value = btn.getAttribute('data-id') || '';
             document.getElementById('deleteApiLabel').textContent = btn.getAttribute('data-label') || '';
+        });
+
+        var canManageSpec = @(Model.CanManageFeatureSpec ? "true" : "false");
+        var canManagePageStatesAndApi = @(Model.CanManagePageStatesAndApi ? "true" : "false");
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text == null ? '' : String(text);
+            return div.innerHTML;
+        }
+
+        function showSpecAlert(message, isError) {
+            var existing = document.getElementById('featureSpecAjaxAlert');
+            if (existing) existing.remove();
+            var alert = document.createElement('div');
+            alert.id = 'featureSpecAjaxAlert';
+            alert.className = 'alert alert-' + (isError ? 'danger' : 'success') + ' alert-dismissible fade show';
+            alert.setAttribute('role', 'alert');
+            alert.innerHTML = escapeHtml(message) +
+                '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+            var container = document.querySelector('.w-100');
+            if (container) {
+                var firstRow = container.querySelector('.row.g-3');
+                container.insertBefore(alert, firstRow || container.firstChild);
+            }
+            setTimeout(function () {
+                if (alert.parentNode) alert.remove();
+            }, 4000);
+        }
+
+        function hideModal(form) {
+            var modalEl = form.closest('.modal');
+            if (!modalEl) return;
+            var modal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.hide();
+        }
+
+        function syncListEmpty(listEl, emptyEl) {
+            var hasItems = listEl && listEl.children.length > 0;
+            if (listEl) listEl.classList.toggle('d-none', !hasItems);
+            if (emptyEl) emptyEl.classList.toggle('d-none', hasItems);
+        }
+
+        function buildFunctionItem(id, title) {
+            var li = document.createElement('li');
+            li.className = 'd-flex justify-content-between align-items-start gap-2 mb-2';
+            li.setAttribute('data-id', id);
+            var html = '<span class="item-text">' + escapeHtml(title) + '</span>';
+            if (canManageSpec) {
+                html +=
+                    '<div class="btn-group btn-group-sm flex-shrink-0">' +
+                    '<button type="button" class="btn btn-outline-secondary py-0 px-1" title="ویرایش" data-bs-toggle="modal" data-bs-target="#editFunctionModal" data-id="' + id + '" data-title="' + escapeHtml(title) + '"><i class="bi bi-pencil"></i></button>' +
+                    '<button type="button" class="btn btn-outline-danger py-0 px-1" title="حذف" data-bs-toggle="modal" data-bs-target="#deleteFunctionModal" data-id="' + id + '" data-title="' + escapeHtml(title) + '"><i class="bi bi-trash"></i></button>' +
+                    '</div>';
+            }
+            li.innerHTML = html;
+            return li;
+        }
+
+        function buildBusinessRuleItem(id, description) {
+            var li = document.createElement('li');
+            li.className = 'd-flex justify-content-between align-items-start gap-2 mb-2';
+            li.setAttribute('data-id', id);
+            var html = '<span class="item-text">' + escapeHtml(description) + '</span>';
+            if (canManageSpec) {
+                html +=
+                    '<div class="btn-group btn-group-sm flex-shrink-0">' +
+                    '<button type="button" class="btn btn-outline-secondary py-0 px-1" title="ویرایش" data-bs-toggle="modal" data-bs-target="#editBusinessRuleModal" data-id="' + id + '" data-description="' + escapeHtml(description) + '"><i class="bi bi-pencil"></i></button>' +
+                    '<button type="button" class="btn btn-outline-danger py-0 px-1" title="حذف" data-bs-toggle="modal" data-bs-target="#deleteBusinessRuleModal" data-id="' + id + '" data-description="' + escapeHtml(description) + '"><i class="bi bi-trash"></i></button>' +
+                    '</div>';
+            }
+            li.innerHTML = html;
+            return li;
+        }
+
+        function buildPageStateRow(item) {
+            var tr = document.createElement('tr');
+            tr.setAttribute('data-id', item.id);
+            tr.setAttribute('data-state-type', item.stateType);
+            var separateText = item.hasSeparateDesign ? 'بله' : 'خیر';
+            var html =
+                '<td><span class="badge bg-secondary">' + escapeHtml(item.stateName) + '</span></td>' +
+                '<td class="item-behavior">' + escapeHtml(item.behaviorDescription) + '</td>' +
+                '<td class="item-separate">' + separateText + '</td>';
+            if (canManagePageStatesAndApi) {
+                html +=
+                    '<td class="text-end"><div class="btn-group btn-group-sm">' +
+                    '<button type="button" class="btn btn-outline-secondary py-0 px-1" title="ویرایش" data-bs-toggle="modal" data-bs-target="#editPageStateModal" data-id="' + item.id + '" data-state-name="' + escapeHtml(item.stateName) + '" data-behavior="' + escapeHtml(item.behaviorDescription) + '" data-separate="' + (item.hasSeparateDesign ? 'true' : 'false') + '"><i class="bi bi-pencil"></i></button>' +
+                    '<button type="button" class="btn btn-outline-danger py-0 px-1" title="حذف" data-bs-toggle="modal" data-bs-target="#deletePageStateModal" data-id="' + item.id + '" data-state-name="' + escapeHtml(item.stateName) + '"><i class="bi bi-trash"></i></button>' +
+                    '</div></td>';
+            }
+            tr.innerHTML = html;
+            return tr;
+        }
+
+        function syncPageStatesEmpty() {
+            var list = document.getElementById('pageStatesList');
+            var empty = document.getElementById('pageStatesEmpty');
+            var wrap = document.getElementById('pageStatesTableWrap');
+            var hasItems = list && list.children.length > 0;
+            if (wrap) wrap.classList.toggle('d-none', !hasItems);
+            if (empty) empty.classList.toggle('d-none', hasItems);
+        }
+
+        function syncAddPageStateButton() {
+            var select = document.getElementById('addPageStateType');
+            var btn = document.getElementById('addPageStateBtn');
+            if (!btn || !select) return;
+            btn.classList.toggle('d-none', select.options.length === 0);
+        }
+
+        function removePageStateOption(stateType) {
+            var select = document.getElementById('addPageStateType');
+            if (!select) return;
+            Array.from(select.options).forEach(function (opt) {
+                if (opt.value === String(stateType)) opt.remove();
+            });
+            syncAddPageStateButton();
+        }
+
+        function addPageStateOption(stateType, stateName) {
+            var select = document.getElementById('addPageStateType');
+            if (!select) return;
+            var exists = Array.from(select.options).some(function (opt) { return opt.value === String(stateType); });
+            if (exists) return;
+            var opt = document.createElement('option');
+            opt.value = String(stateType);
+            opt.textContent = stateName;
+            select.appendChild(opt);
+            var options = Array.from(select.options);
+            options.sort(function (a, b) { return Number(a.value) - Number(b.value); });
+            options.forEach(function (o) { select.appendChild(o); });
+            syncAddPageStateButton();
+        }
+
+        function handleSpecSuccess(action, data, form) {
+            if (action === 'add-function' && data) {
+                var list = document.getElementById('functionsList');
+                list.appendChild(buildFunctionItem(data.id, data.title));
+                syncListEmpty(list, document.getElementById('functionsEmpty'));
+                form.reset();
+            } else if (action === 'edit-function' && data) {
+                var item = document.querySelector('#functionsList li[data-id="' + data.id + '"]');
+                if (item) {
+                    var text = item.querySelector('.item-text');
+                    if (text) text.textContent = data.title;
+                    item.querySelectorAll('button[data-id]').forEach(function (b) {
+                        b.setAttribute('data-title', data.title);
+                    });
+                }
+            } else if (action === 'delete-function' && data) {
+                document.querySelector('#functionsList li[data-id="' + data.id + '"]')?.remove();
+                syncListEmpty(document.getElementById('functionsList'), document.getElementById('functionsEmpty'));
+            } else if (action === 'add-business-rule' && data) {
+                var rulesList = document.getElementById('businessRulesList');
+                rulesList.appendChild(buildBusinessRuleItem(data.id, data.description));
+                syncListEmpty(rulesList, document.getElementById('businessRulesEmpty'));
+                form.reset();
+            } else if (action === 'edit-business-rule' && data) {
+                var ruleItem = document.querySelector('#businessRulesList li[data-id="' + data.id + '"]');
+                if (ruleItem) {
+                    var ruleText = ruleItem.querySelector('.item-text');
+                    if (ruleText) ruleText.textContent = data.description;
+                    ruleItem.querySelectorAll('button[data-id]').forEach(function (b) {
+                        b.setAttribute('data-description', data.description);
+                    });
+                }
+            } else if (action === 'delete-business-rule' && data) {
+                document.querySelector('#businessRulesList li[data-id="' + data.id + '"]')?.remove();
+                syncListEmpty(document.getElementById('businessRulesList'), document.getElementById('businessRulesEmpty'));
+            } else if (action === 'add-page-state' && data) {
+                document.getElementById('pageStatesList').appendChild(buildPageStateRow(data));
+                syncPageStatesEmpty();
+                removePageStateOption(data.stateType);
+                form.reset();
+            } else if (action === 'edit-page-state' && data) {
+                var row = document.querySelector('#pageStatesList tr[data-id="' + data.id + '"]');
+                if (row) {
+                    var behavior = row.querySelector('.item-behavior');
+                    var separate = row.querySelector('.item-separate');
+                    if (behavior) behavior.textContent = data.behaviorDescription;
+                    if (separate) separate.textContent = data.hasSeparateDesign ? 'بله' : 'خیر';
+                    row.querySelectorAll('button[data-id]').forEach(function (b) {
+                        if (b.hasAttribute('data-behavior')) b.setAttribute('data-behavior', data.behaviorDescription);
+                        if (b.hasAttribute('data-separate')) b.setAttribute('data-separate', data.hasSeparateDesign ? 'true' : 'false');
+                    });
+                }
+            } else if (action === 'delete-page-state' && data) {
+                document.querySelector('#pageStatesList tr[data-id="' + data.id + '"]')?.remove();
+                syncPageStatesEmpty();
+                addPageStateOption(data.stateType, data.stateName);
+            }
+        }
+
+        document.querySelectorAll('form[data-ajax-spec]').forEach(function (form) {
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+
+                var submitBtn = form.querySelector('[type="submit"]');
+                if (submitBtn) submitBtn.disabled = true;
+
+                try {
+                    var response = await fetch(form.action, {
+                        method: 'POST',
+                        body: new FormData(form),
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        },
+                        credentials: 'same-origin'
+                    });
+
+                    var result = await response.json().catch(function () { return null; });
+                    if (!response.ok || !result || !result.success) {
+                        throw new Error((result && result.message) || 'عملیات ناموفق بود.');
+                    }
+
+                    handleSpecSuccess(form.getAttribute('data-ajax-spec'), result.data, form);
+                    hideModal(form);
+                    showSpecAlert(result.message || 'عملیات با موفقیت انجام شد.', false);
+                } catch (err) {
+                    showSpecAlert(err.message || 'خطا در انجام عملیات', true);
+                } finally {
+                    if (submitBtn) submitBtn.disabled = false;
+                }
+            });
         });
     })();
 </script>
