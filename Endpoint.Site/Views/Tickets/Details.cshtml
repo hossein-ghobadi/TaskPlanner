@@ -112,7 +112,28 @@
                                         </div>
                                         <small class="text-muted">@PersianDate(msg.CreatedAt)</small>
                                     </div>
-                                    <div style="white-space: pre-wrap;">@msg.Body</div>
+                                    @if (!string.IsNullOrWhiteSpace(msg.Body))
+                                    {
+                                        <div style="white-space: pre-wrap;">@msg.Body</div>
+                                    }
+                                    @if (msg.Attachments.Count > 0)
+                                    {
+                                        <div class="d-flex flex-wrap gap-2 mt-2">
+                                            @foreach (var att in msg.Attachments)
+                                            {
+                                                <button type="button"
+                                                        class="btn p-0 border-0 ticket-image-thumb"
+                                                        data-image-url="@att.FileUrl"
+                                                        data-image-name="@att.FileName"
+                                                        title="مشاهده تصویر">
+                                                    <img src="@att.FileUrl"
+                                                         alt="@att.FileName"
+                                                         class="rounded border"
+                                                         style="max-width: 220px; max-height: 180px; object-fit: cover; cursor: zoom-in;" />
+                                                </button>
+                                            }
+                                        </div>
+                                    }
                                 </div>
                             }
                         </div>
@@ -125,12 +146,18 @@
                 <div class="card shadow-sm border-0 mb-3">
                     <div class="card-header bg-white fw-bold">ثبت پاسخ</div>
                     <div class="card-body">
-                        <form asp-action="AddAnswer" method="post">
+                        <form asp-action="AddAnswer" method="post" enctype="multipart/form-data">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="TicketId" value="@Model.Id" />
                             <div class="mb-3">
                                 <label class="form-label" for="answerBody">متن پاسخ</label>
-                                <textarea class="form-control" id="answerBody" name="Body" rows="4" required></textarea>
+                                <textarea class="form-control" id="answerBody" name="Body" rows="4"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="answerImages">
+                                    <i class="bi bi-image me-1"></i> عکس‌ها
+                                </label>
+                                <input type="file" class="form-control" id="answerImages" name="Images" accept="image/*" multiple />
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="Status">وضعیت</label>
@@ -153,12 +180,18 @@
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-white fw-bold">سوال بعدی</div>
                     <div class="card-body">
-                        <form asp-action="AddQuestion" method="post">
+                        <form asp-action="AddQuestion" method="post" enctype="multipart/form-data">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="TicketId" value="@Model.Id" />
                             <div class="mb-3">
                                 <label class="form-label" for="questionBody">متن سوال</label>
-                                <textarea class="form-control" id="questionBody" name="Body" rows="4" required></textarea>
+                                <textarea class="form-control" id="questionBody" name="Body" rows="4"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="questionImages">
+                                    <i class="bi bi-image me-1"></i> عکس‌ها
+                                </label>
+                                <input type="file" class="form-control" id="questionImages" name="Images" accept="image/*" multiple />
                             </div>
                             <button type="submit" class="btn btn-success">
                                 <i class="bi bi-plus-circle me-1"></i> ارسال سوال
@@ -300,6 +333,131 @@
         </div>
     </div>
 </div>
+
+<div id="ticketImageLightbox" class="ticket-image-lightbox" hidden>
+    <button type="button" class="ticket-image-lightbox-close" aria-label="بستن">&times;</button>
+    <img id="ticketImageLightboxImg" src="" alt="" />
+    <div id="ticketImageLightboxCaption" class="ticket-image-lightbox-caption"></div>
+</div>
+
+<style>
+    .ticket-image-thumb {
+        background: transparent;
+        line-height: 0;
+    }
+    .ticket-image-thumb:focus {
+        outline: 2px solid #0d6efd;
+        outline-offset: 2px;
+    }
+    .ticket-image-lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background: rgba(0, 0, 0, 0.85);
+        cursor: zoom-out;
+    }
+    .ticket-image-lightbox[hidden] {
+        display: none !important;
+    }
+    .ticket-image-lightbox img {
+        max-width: min(96vw, 1200px);
+        max-height: 85vh;
+        object-fit: contain;
+        border-radius: .5rem;
+        box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.4);
+        cursor: default;
+    }
+    .ticket-image-lightbox-caption {
+        color: #fff;
+        font-size: .875rem;
+        margin-top: .75rem;
+        text-align: center;
+        max-width: 90vw;
+        word-break: break-word;
+    }
+    .ticket-image-lightbox-close {
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        color: #111;
+        font-size: 1.75rem;
+        line-height: 1;
+        cursor: pointer;
+        z-index: 2001;
+    }
+    .ticket-image-lightbox-close:hover {
+        background: #fff;
+    }
+</style>
+
+<script>
+    (function () {
+        function initTicketImageLightbox() {
+            var overlay = document.getElementById('ticketImageLightbox');
+            var img = document.getElementById('ticketImageLightboxImg');
+            var caption = document.getElementById('ticketImageLightboxCaption');
+            var closeBtn = overlay && overlay.querySelector('.ticket-image-lightbox-close');
+            if (!overlay || !img) return;
+
+            function openLightbox(url, name) {
+                if (!url) return;
+                img.src = url;
+                img.alt = name || '';
+                if (caption) caption.textContent = name || '';
+                overlay.hidden = false;
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeLightbox() {
+                overlay.hidden = true;
+                img.src = '';
+                img.alt = '';
+                if (caption) caption.textContent = '';
+                document.body.style.overflow = '';
+            }
+
+            document.addEventListener('click', function (event) {
+                var btn = event.target.closest('.ticket-image-thumb');
+                if (!btn) return;
+                event.preventDefault();
+                openLightbox(btn.getAttribute('data-image-url'), btn.getAttribute('data-image-name'));
+            });
+
+            closeBtn?.addEventListener('click', function (event) {
+                event.stopPropagation();
+                closeLightbox();
+            });
+
+            overlay.addEventListener('click', function (event) {
+                if (event.target === overlay) closeLightbox();
+            });
+
+            img.addEventListener('click', function (event) {
+                event.stopPropagation();
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && !overlay.hidden) closeLightbox();
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTicketImageLightbox);
+        } else {
+            initTicketImageLightbox();
+        }
+    })();
+</script>
 
 @if (Model.CanCreateTask)
 {

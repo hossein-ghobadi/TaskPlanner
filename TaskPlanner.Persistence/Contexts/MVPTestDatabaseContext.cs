@@ -58,6 +58,7 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<FeatureCodeReview> FeatureCodeReviews { get; set; }
         public DbSet<ProjectTicket> ProjectTickets { get; set; }
         public DbSet<ProjectTicketMessage> ProjectTicketMessages { get; set; }
+        public DbSet<ProjectTicketMessageAttachment> ProjectTicketMessageAttachments { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         
         // Board entities (separate from TaskPlanner)
@@ -921,6 +922,15 @@ namespace TaskPlanner.Persistence.Contexts
             modelBuilder.Entity<ProjectTicketMessage>()
                 .Property(m => m.AuthorUserId)
                 .HasMaxLength(450);
+
+            modelBuilder.Entity<ProjectTicketMessageAttachment>()
+                .HasOne(a => a.Message)
+                .WithMany(m => m.Attachments)
+                .HasForeignKey(a => a.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProjectTicketMessageAttachment>()
+                .HasIndex(a => a.MessageId);
         }
         public void MarkAsModified<T>(T entity) where T : class
         {

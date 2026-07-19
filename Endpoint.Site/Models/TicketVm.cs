@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
@@ -45,6 +46,8 @@ namespace Endpoint.Site.Models
 
         [Required(ErrorMessage = "انتخاب فرد مورد سوال الزامی است")]
         public string AskedToUserId { get; set; } = "";
+
+        public List<IFormFile>? Images { get; set; }
 
         public List<SelectListItem> FeatureOptions { get; set; } = new();
         public List<SelectListItem> MemberOptions { get; set; } = new();
@@ -103,16 +106,26 @@ namespace Endpoint.Site.Models
         public string AuthorName { get; set; } = "";
         public string? AuthorUserId { get; set; }
         public DateTime CreatedAt { get; set; }
+        public List<TicketMessageAttachmentVm> Attachments { get; set; } = new();
+    }
+
+    public class TicketMessageAttachmentVm
+    {
+        public int Id { get; set; }
+        public string FileName { get; set; } = "";
+        public string FileUrl { get; set; } = "";
+        public string FileType { get; set; } = "";
     }
 
     public class TicketAddMessageVm
     {
         public int TicketId { get; set; }
 
-        [Required(ErrorMessage = "متن پیام الزامی است")]
         [StringLength(4000)]
-        public string Body { get; set; } = "";
+        public string? Body { get; set; }
 
         public TicketStatus? Status { get; set; }
+
+        public List<IFormFile>? Images { get; set; }
     }
 }

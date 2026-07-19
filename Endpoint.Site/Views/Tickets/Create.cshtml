@@ -14,7 +14,7 @@
             <small class="text-muted">پروژه: @ViewBag.ProjectName</small>
         </div>
         <div class="card-body">
-            <form asp-action="Create" method="post">
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
                 <input type="hidden" name="projectId" value="@ViewBag.ProjectId" />
                 <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
@@ -34,6 +34,14 @@
                     <label asp-for="Description" class="form-label">توضیحات</label>
                     <textarea asp-for="Description" class="form-control" rows="5" placeholder="جزئیات سوال..."></textarea>
                     <span asp-validation-for="Description" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Images" class="form-label">
+                        <i class="bi bi-image me-1"></i> عکس‌ها
+                    </label>
+                    <input asp-for="Images" type="file" class="form-control" accept="image/*" multiple />
+                    <small class="text-muted">می‌توانید چند تصویر انتخاب کنید.</small>
                 </div>
 
                 <div class="row g-3">

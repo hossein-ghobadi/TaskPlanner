@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using TaskPlanner.Application.Services.FileUpload;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Persistence.Contexts;
@@ -17,11 +18,16 @@ namespace Endpoint.Site.Controllers
     {
         private readonly MVPTestDatabaseContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IFileUploadService _fileUploadService;
 
-        public TicketsController(MVPTestDatabaseContext context, UserManager<User> userManager)
+        public TicketsController(
+            MVPTestDatabaseContext context,
+            UserManager<User> userManager,
+            IFileUploadService fileUploadService)
         {
             _context = context;
             _userManager = userManager;
+            _fileUploadService = fileUploadService;
         }
 
         public async Task<IActionResult> Index(
@@ -149,6 +155,7 @@ namespace Endpoint.Site.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RequestSizeLimit(50_000_000)]
         public async Task<IActionResult> Create(TicketCreateVm vm, int projectId)
         {
             if (!await HasProjectAccessAsync(projectId))
@@ -188,18 +195,24 @@ namespace Endpoint.Site.Controllers
                 ? vm.Description.Trim()
                 : vm.Title.Trim();
 
-            ticket.Messages.Add(new ProjectTicketMessage
+            var initialMessage = new ProjectTicketMessage
             {
                 AuthorUserId = userId!,
                 Kind = TicketMessageKind.Question,
                 Body = initialBody,
                 CreatedAt = DateTime.UtcNow
-            });
+            };
+            ticket.Messages.Add(initialMessage);
 
             _context.ProjectTickets.Add(ticket);
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = "تیکت ثبت شد.";
+            var imageError = await AttachImagesAsync(initialMessage.Id, vm.Images);
+            if (imageError != null)
+                TempData["Error"] = imageError;
+            else
+                TempData["Success"] = "تیکت ثبت شد.";
+
             return RedirectToAction(nameof(Details), new { id = ticket.Id });
         }
 
@@ -212,6 +225,8 @@ namespace Endpoint.Site.Controllers
                 .Include(t => t.CreatedByUser)
                 .Include(t => t.Messages)
                     .ThenInclude(m => m.AuthorUser)
+                .Include(t => t.Messages)
+                    .ThenInclude(m => m.Attachments)
                 .Include(t => t.Tasks)
                     .ThenInclude(task => task.AssignedUser)
                 .Include(t => t.Tasks)
@@ -255,6 +270,8 @@ namespace Endpoint.Site.Controllers
                         .Include(t => t.CreatedByUser)
                         .Include(t => t.Messages)
                             .ThenInclude(m => m.AuthorUser)
+                        .Include(t => t.Messages)
+                            .ThenInclude(m => m.Attachments)
                         .Include(t => t.Tasks)
                             .ThenInclude(task => task.AssignedUser)
                         .Include(t => t.Tasks)
@@ -324,7 +341,16 @@ namespace Endpoint.Site.Controllers
                         Body = m.Body,
                         AuthorName = DisplayName(m.AuthorUser),
                         AuthorUserId = m.AuthorUserId,
-                        CreatedAt = m.CreatedAt
+                        CreatedAt = m.CreatedAt,
+                        Attachments = (m.Attachments ?? Enumerable.Empty<ProjectTicketMessageAttachment>())
+                            .OrderBy(a => a.Id)
+                            .Select(a => new TicketMessageAttachmentVm
+                            {
+                                Id = a.Id,
+                                FileName = a.FileName,
+                                FileUrl = _fileUploadService.ToPublicUrl(a.FilePath),
+                                FileType = a.FileType
+                            }).ToList()
                     }).ToList(),
                 Tasks = ticket.Tasks.Select(t =>
                 {
@@ -345,6 +371,7 @@ namespace Endpoint.Site.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RequestSizeLimit(50_000_000)]
         public async Task<IActionResult> AddAnswer(TicketAddMessageVm vm)
         {
             var ticket = await _context.ProjectTickets
@@ -363,20 +390,22 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction(nameof(Details), new { id = ticket.Id });
             }
 
-            if (string.IsNullOrWhiteSpace(vm.Body))
+            var hasImages = HasImageFiles(vm.Images);
+            if (string.IsNullOrWhiteSpace(vm.Body) && !hasImages)
             {
-                TempData["Error"] = "متن پاسخ الزامی است.";
+                TempData["Error"] = "متن پاسخ یا حداقل یک عکس الزامی است.";
                 return RedirectToAction(nameof(Details), new { id = ticket.Id });
             }
 
-            _context.ProjectTicketMessages.Add(new ProjectTicketMessage
+            var message = new ProjectTicketMessage
             {
                 TicketId = ticket.Id,
                 AuthorUserId = userId!,
                 Kind = TicketMessageKind.Answer,
-                Body = vm.Body.Trim(),
+                Body = string.IsNullOrWhiteSpace(vm.Body) ? "" : vm.Body.Trim(),
                 CreatedAt = DateTime.UtcNow
-            });
+            };
+            _context.ProjectTicketMessages.Add(message);
 
             ticket.Status = vm.Status ?? TicketStatus.Answered;
             if (ticket.Status == TicketStatus.Open)
@@ -384,12 +413,19 @@ namespace Endpoint.Site.Controllers
             ticket.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            TempData["Success"] = "پاسخ ثبت شد.";
+
+            var imageError = await AttachImagesAsync(message.Id, vm.Images);
+            if (imageError != null)
+                TempData["Error"] = imageError;
+            else
+                TempData["Success"] = "پاسخ ثبت شد.";
+
             return RedirectToAction(nameof(Details), new { id = ticket.Id });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RequestSizeLimit(50_000_000)]
         public async Task<IActionResult> AddQuestion(TicketAddMessageVm vm)
         {
             var ticket = await _context.ProjectTickets
@@ -408,26 +444,34 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction(nameof(Details), new { id = ticket.Id });
             }
 
-            if (string.IsNullOrWhiteSpace(vm.Body))
+            var hasImages = HasImageFiles(vm.Images);
+            if (string.IsNullOrWhiteSpace(vm.Body) && !hasImages)
             {
-                TempData["Error"] = "متن سوال الزامی است.";
+                TempData["Error"] = "متن سوال یا حداقل یک عکس الزامی است.";
                 return RedirectToAction(nameof(Details), new { id = ticket.Id });
             }
 
-            _context.ProjectTicketMessages.Add(new ProjectTicketMessage
+            var message = new ProjectTicketMessage
             {
                 TicketId = ticket.Id,
                 AuthorUserId = userId!,
                 Kind = TicketMessageKind.Question,
-                Body = vm.Body.Trim(),
+                Body = string.IsNullOrWhiteSpace(vm.Body) ? "" : vm.Body.Trim(),
                 CreatedAt = DateTime.UtcNow
-            });
+            };
+            _context.ProjectTicketMessages.Add(message);
 
             ticket.Status = TicketStatus.Open;
             ticket.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            TempData["Success"] = "سوال ثبت شد.";
+
+            var imageError = await AttachImagesAsync(message.Id, vm.Images);
+            if (imageError != null)
+                TempData["Error"] = imageError;
+            else
+                TempData["Success"] = "سوال ثبت شد.";
+
             return RedirectToAction(nameof(Details), new { id = ticket.Id });
         }
 
@@ -606,6 +650,56 @@ namespace Endpoint.Site.Controllers
             }
 
             return result.OrderBy(u => u.DisplayName).ToList();
+        }
+
+        private static bool HasImageFiles(IEnumerable<IFormFile>? files)
+        {
+            return files != null && files.Any(f => f != null && f.Length > 0);
+        }
+
+        private async Task<string?> AttachImagesAsync(int messageId, IEnumerable<IFormFile>? files)
+        {
+            if (!HasImageFiles(files))
+                return null;
+
+            var errors = new List<string>();
+            foreach (var file in files!)
+            {
+                if (file == null || file.Length <= 0)
+                    continue;
+
+                var fileType = _fileUploadService.GetFileType(file.FileName);
+                if (!string.Equals(fileType, "Image", StringComparison.OrdinalIgnoreCase)
+                    && !(file.ContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ?? false))
+                {
+                    errors.Add($"{file.FileName}: فقط فایل تصویری مجاز است.");
+                    continue;
+                }
+
+                var uploadResult = await _fileUploadService.UploadFileAsync(file, "ticket-messages");
+                if (!uploadResult.Success)
+                {
+                    errors.Add($"{file.FileName}: {uploadResult.Error}");
+                    continue;
+                }
+
+                _context.ProjectTicketMessageAttachments.Add(new ProjectTicketMessageAttachment
+                {
+                    MessageId = messageId,
+                    FileName = file.FileName,
+                    FilePath = uploadResult.FilePath,
+                    FileType = "Image",
+                    FileSize = file.Length,
+                    MimeType = file.ContentType,
+                    UploadedAt = DateTime.UtcNow
+                });
+            }
+
+            if (errors.Count > 0)
+                return "خطا در آپلود عکس:\n" + string.Join("\n", errors);
+
+            await _context.SaveChangesAsync();
+            return null;
         }
 
         private async Task<bool> HasProjectAccessAsync(int projectId)
