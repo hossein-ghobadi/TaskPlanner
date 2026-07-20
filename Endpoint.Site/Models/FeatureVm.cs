@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
@@ -149,6 +150,38 @@ namespace Endpoint.Site.Models
         public DateTime CreatedAt { get; set; }
     }
 
+    public class FeatureImplementationCommentItemVm
+    {
+        public int Id { get; set; }
+        public int FeatureId { get; set; }
+        public string AuthorName { get; set; } = "";
+        public string Body { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+        public string CreatedAtDisplay { get; set; } = "";
+        public bool CanDelete { get; set; }
+        public List<FeatureImplementationCommentAttachmentVm> Attachments { get; set; } = new();
+    }
+
+    public class FeatureImplementationCommentAttachmentVm
+    {
+        public int Id { get; set; }
+        public string FileName { get; set; } = "";
+        public string FilePath { get; set; } = "";
+        public string FileType { get; set; } = "";
+        public long FileSize { get; set; }
+        public string? MimeType { get; set; }
+    }
+
+    public class FeatureImplementationCommentCreateVm
+    {
+        public int FeatureId { get; set; }
+
+        [StringLength(4000)]
+        public string? Body { get; set; }
+
+        public List<IFormFile>? Attachments { get; set; }
+    }
+
     public class FeatureTaskItemVm
     {
         public int Id { get; set; }
@@ -184,6 +217,7 @@ namespace Endpoint.Site.Models
         public List<FeatureBusinessRuleItemVm> BusinessRules { get; set; } = new();
         public List<FeatureTaskItemVm> Tasks { get; set; } = new();
         public List<FeatureCodeReviewItemVm> CodeReviews { get; set; } = new();
+        public List<FeatureImplementationCommentItemVm> ImplementationComments { get; set; } = new();
     }
 
     public class FeatureMemberOptionVm

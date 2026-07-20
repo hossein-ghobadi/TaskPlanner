@@ -1,8 +1,10 @@
 @model Endpoint.Site.Models.FeatureDetailsVm
 @using TaskPlanner.Domain.Entities.TaskPlanner
+@using DNTPersianUtils.Core
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = Model.Name;
+    const bool showPageStatesAndApiSection = false;
 }
 
 <div class="w-100">
@@ -146,6 +148,69 @@
             </div>
         </div>
 
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">
+                        <i class="bi bi-journal-text text-secondary me-1"></i> تغییرات حین پیاده‌سازی
+                    </span>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addImplementationCommentModal">
+                        <i class="bi bi-plus"></i> ثبت یادداشت
+                    </button>
+                </div>
+                <div class="card-body" id="implementationCommentsCardBody">
+                    <p class="text-muted mb-0 @(Model.ImplementationComments.Count == 0 ? "" : "d-none")" id="implementationCommentsEmpty">
+                        هنوز تغییری در حین پیاده‌سازی ثبت نشده است.
+                    </p>
+                    <div class="@(Model.ImplementationComments.Count == 0 ? "d-none" : "")" id="implementationCommentsList">
+                        @foreach (var comment in Model.ImplementationComments)
+                        {
+                            <div class="border rounded p-3 mb-2 implementation-comment-item" data-id="@comment.Id">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                                    <div>
+                                        <strong class="item-author">@comment.AuthorName</strong>
+                                        <span class="text-muted small ms-2 item-date">@comment.CreatedAtDisplay</span>
+                                    </div>
+                                    @if (comment.CanDelete)
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline-danger btn-sm py-0 px-1"
+                                                title="حذف"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteImplementationCommentModal"
+                                                data-id="@comment.Id">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(comment.Body))
+                                {
+                                    <div class="item-body mb-0">@comment.Body</div>
+                                }
+                                @if (comment.Attachments.Count > 0)
+                                {
+                                    <div class="item-attachments mt-2 d-flex flex-wrap gap-2">
+                                        @foreach (var att in comment.Attachments)
+                                        {
+                                            <button type="button"
+                                                    class="btn p-0 border-0 implementation-comment-image-thumb"
+                                                    data-image-url="@att.FilePath"
+                                                    data-image-name="@att.FileName"
+                                                    title="نمایش تصویر">
+                                                <img src="@att.FilePath" alt="@att.FileName" class="rounded border" style="max-height: 160px; max-width: 240px; object-fit: cover; cursor: zoom-in;" />
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (showPageStatesAndApiSection)
+        {
         <div class="col-12">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -369,6 +434,7 @@
                 </div>
             </div>
         </div>
+        }
 
         <div class="@(Model.CanManageCodeReview ? "col-lg-7" : "col-lg-12")">
             <div class="card shadow-sm border-0 h-100">
@@ -670,12 +736,171 @@
     </div>
 </div>
 
-@{
+<!-- یادداشت پیاده‌سازی: افزودن -->
+<style>
+    #implementationCommentPreviews {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 8px;
+    }
+    #implementationCommentPreviews .file-preview-item {
+        position: relative;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    #implementationCommentPreviews .file-preview-item img {
+        max-width: 120px;
+        max-height: 120px;
+        border-radius: 10px;
+        border: 1px solid #dee2e6;
+        display: block;
+    }
+    #implementationCommentPreviews .remove-btn {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        background: rgba(220, 38, 38, 0.9);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        line-height: 1;
+        font-size: 14px;
+        cursor: pointer;
+    }
+</style>
+<div class="modal fade" id="addImplementationCommentModal" tabindex="-1" aria-labelledby="addImplementationCommentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <form asp-action="AddImplementationComment" method="post" enctype="multipart/form-data" data-ajax-spec="add-implementation-comment">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="FeatureId" value="@Model.Id" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addImplementationCommentModalLabel">
+                        <i class="bi bi-plus-circle me-1"></i> ثبت تغییر یا یادداشت
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label" for="implementationCommentBody">متن یادداشت</label>
+                    <textarea class="form-control mb-3" name="Body" id="implementationCommentBody" rows="4" maxlength="4000" placeholder="مثلاً: فیلد مبلغ از API حذف شد. می‌توانید Ctrl+V را برای چسباندن تصویر از کلیپ‌بورد هم بزنید."></textarea>
+                    <div class="mb-0">
+                        <label class="form-label mb-1" for="implementationCommentImages">پیوست تصویر</label>
+                        <input type="file" class="form-control form-control-sm" name="Attachments" id="implementationCommentImages" accept="image/*" multiple />
+                        <div id="implementationCommentPreviews"></div>
+                        <div class="form-text">انتخاب فایل یا چسباندن مستقیم تصویر با Ctrl+V در کادر بالا — حداکثر ۱۰ مگابایت برای هر فایل</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i> ثبت
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- یادداشت پیاده‌سازی: حذف -->
+<div class="modal fade" id="deleteImplementationCommentModal" tabindex="-1" aria-labelledby="deleteImplementationCommentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="DeleteImplementationComment" method="post" data-ajax-spec="delete-implementation-comment">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="deleteImplementationCommentId" />
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteImplementationCommentModalLabel">
+                        <i class="bi bi-trash me-1"></i> حذف یادداشت
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">آیا از حذف این یادداشت مطمئن هستید؟</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger">حذف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="implementationCommentImageLightbox" class="implementation-comment-image-lightbox" hidden>
+    <button type="button" class="implementation-comment-image-lightbox-close" aria-label="بستن">&times;</button>
+    <img id="implementationCommentImageLightboxImg" src="" alt="" />
+    <div id="implementationCommentImageLightboxCaption" class="implementation-comment-image-lightbox-caption"></div>
+</div>
+
+<style>
+    .implementation-comment-image-thumb {
+        background: transparent;
+        line-height: 0;
+    }
+    .implementation-comment-image-thumb:focus {
+        outline: 2px solid #0d6efd;
+        outline-offset: 2px;
+    }
+    .implementation-comment-image-lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background: rgba(0, 0, 0, 0.85);
+        cursor: zoom-out;
+    }
+    .implementation-comment-image-lightbox[hidden] {
+        display: none !important;
+    }
+    .implementation-comment-image-lightbox img {
+        max-width: min(96vw, 1200px);
+        max-height: 85vh;
+        object-fit: contain;
+        border-radius: .5rem;
+        box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.4);
+        cursor: default;
+    }
+    .implementation-comment-image-lightbox-caption {
+        color: #fff;
+        font-size: .875rem;
+        margin-top: .75rem;
+        text-align: center;
+        max-width: 90vw;
+        word-break: break-word;
+    }
+    .implementation-comment-image-lightbox-close {
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        color: #111;
+        font-size: 1.75rem;
+        line-height: 1;
+        cursor: pointer;
+        z-index: 2001;
+    }
+    .implementation-comment-image-lightbox-close:hover {
+        background: #fff;
+    }
+</style>
+
+@if (showPageStatesAndApiSection)
+{
     var pageStateExisting = Model.PageStates.Select(p => p.StateType).ToHashSet();
     var pageStateAvailable = Enum.GetValues<FeaturePageStateType>()
         .Where(t => !pageStateExisting.Contains(t))
         .ToList();
-}
 
 @if (Model.CanManagePageStatesAndApi)
 {
@@ -1090,6 +1315,7 @@
         </div>
     </div>
 </div>
+}
 
 <script>
     (function () {
@@ -1339,6 +1565,104 @@
             document.getElementById('deleteBusinessRuleDescription').textContent = btn.getAttribute('data-description') || '';
         });
 
+        document.getElementById('deleteImplementationCommentModal')?.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            document.getElementById('deleteImplementationCommentId').value = btn.getAttribute('data-id') || '';
+        });
+
+        document.getElementById('addImplementationCommentModal')?.addEventListener('shown.bs.modal', function () {
+            document.getElementById('implementationCommentBody')?.focus();
+        });
+
+        document.getElementById('addImplementationCommentModal')?.addEventListener('hidden.bs.modal', function () {
+            var form = document.querySelector('#addImplementationCommentModal form');
+            if (form) form.reset();
+            clearImplementationCommentAttachments();
+        });
+
+        document.getElementById('implementationCommentImages')?.addEventListener('change', function () {
+            refreshImplementationCommentPreviews();
+        });
+
+        document.getElementById('implementationCommentPreviews')?.addEventListener('click', function (event) {
+            var btn = event.target.closest('.remove-btn');
+            if (!btn) return;
+            var index = Number(btn.getAttribute('data-index'));
+            if (!Number.isNaN(index)) removeImplementationCommentFile(index);
+        });
+
+        document.getElementById('implementationCommentBody')?.addEventListener('paste', function (event) {
+            if (!event.clipboardData || !event.clipboardData.items) return;
+
+            var handled = false;
+            for (var i = 0; i < event.clipboardData.items.length; i++) {
+                var item = event.clipboardData.items[i];
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    var file = item.getAsFile();
+                    if (file) {
+                        if (!file.name) {
+                            var ext = (file.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+                            file = new File([file], 'clipboard-' + Date.now() + '.' + ext, { type: file.type });
+                        }
+                        addImplementationCommentFile(file);
+                        handled = true;
+                    }
+                }
+            }
+
+            if (handled) event.preventDefault();
+        });
+
+        (function initImplementationCommentImageLightbox() {
+            var overlay = document.getElementById('implementationCommentImageLightbox');
+            var img = document.getElementById('implementationCommentImageLightboxImg');
+            var caption = document.getElementById('implementationCommentImageLightboxCaption');
+            var closeBtn = overlay && overlay.querySelector('.implementation-comment-image-lightbox-close');
+            if (!overlay || !img) return;
+
+            function openLightbox(url, name) {
+                if (!url) return;
+                img.src = url;
+                img.alt = name || '';
+                if (caption) caption.textContent = name || '';
+                overlay.hidden = false;
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeLightbox() {
+                overlay.hidden = true;
+                img.src = '';
+                img.alt = '';
+                if (caption) caption.textContent = '';
+                document.body.style.overflow = '';
+            }
+
+            document.addEventListener('click', function (event) {
+                var btn = event.target.closest('.implementation-comment-image-thumb');
+                if (!btn) return;
+                event.preventDefault();
+                openLightbox(btn.getAttribute('data-image-url'), btn.getAttribute('data-image-name'));
+            });
+
+            closeBtn?.addEventListener('click', function (event) {
+                event.stopPropagation();
+                closeLightbox();
+            });
+
+            overlay.addEventListener('click', function (event) {
+                if (event.target === overlay) closeLightbox();
+            });
+
+            img.addEventListener('click', function (event) {
+                event.stopPropagation();
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && !overlay.hidden) closeLightbox();
+            });
+        })();
+
         document.getElementById('editPageStateModal')?.addEventListener('show.bs.modal', function (event) {
             var btn = event.relatedTarget;
             if (!btn) return;
@@ -1454,6 +1778,105 @@
             return li;
         }
 
+        function buildImplementationCommentAttachmentsHtml(attachments) {
+            if (!attachments || attachments.length === 0) return '';
+            var html = '<div class="item-attachments mt-2 d-flex flex-wrap gap-2">';
+            attachments.forEach(function (att) {
+                if (att.fileType === 'Image') {
+                    html += '<button type="button" class="btn p-0 border-0 implementation-comment-image-thumb" ' +
+                        'data-image-url="' + escapeHtml(att.filePath) + '" data-image-name="' + escapeHtml(att.fileName) + '" title="نمایش تصویر">' +
+                        '<img src="' + escapeHtml(att.filePath) + '" alt="' + escapeHtml(att.fileName) + '" class="rounded border" style="max-height: 160px; max-width: 240px; object-fit: cover; cursor: zoom-in;" />' +
+                        '</button>';
+                }
+            });
+            html += '</div>';
+            return html;
+        }
+
+        function buildImplementationCommentItem(item) {
+            var div = document.createElement('div');
+            div.className = 'border rounded p-3 mb-2 implementation-comment-item';
+            div.setAttribute('data-id', item.id);
+            var deleteBtn = item.canDelete
+                ? '<button type="button" class="btn btn-outline-danger btn-sm py-0 px-1" title="حذف" data-bs-toggle="modal" data-bs-target="#deleteImplementationCommentModal" data-id="' + item.id + '"><i class="bi bi-trash"></i></button>'
+                : '';
+            var bodyHtml = item.body
+                ? '<div class="item-body mb-0">' + escapeHtml(item.body) + '</div>'
+                : '';
+            div.innerHTML =
+                '<div class="d-flex justify-content-between align-items-start gap-2 mb-1">' +
+                    '<div><strong class="item-author">' + escapeHtml(item.authorName) + '</strong>' +
+                    '<span class="text-muted small ms-2 item-date">' + escapeHtml(item.createdAt) + '</span></div>' +
+                    deleteBtn +
+                '</div>' +
+                bodyHtml +
+                buildImplementationCommentAttachmentsHtml(item.attachments);
+            return div;
+        }
+
+        function syncImplementationCommentsEmpty() {
+            var list = document.getElementById('implementationCommentsList');
+            var empty = document.getElementById('implementationCommentsEmpty');
+            var hasItems = list && list.querySelectorAll('.implementation-comment-item').length > 0;
+            if (list) list.classList.toggle('d-none', !hasItems);
+            if (empty) empty.classList.toggle('d-none', hasItems);
+        }
+
+        function refreshImplementationCommentPreviews() {
+            var fileInput = document.getElementById('implementationCommentImages');
+            var previewContainer = document.getElementById('implementationCommentPreviews');
+            if (!fileInput || !previewContainer) return;
+
+            previewContainer.querySelectorAll('img[data-object-url]').forEach(function (img) {
+                URL.revokeObjectURL(img.getAttribute('data-object-url'));
+            });
+            previewContainer.innerHTML = '';
+
+            Array.from(fileInput.files).forEach(function (file, index) {
+                if (!file.type || !file.type.startsWith('image/')) return;
+                var url = URL.createObjectURL(file);
+                var wrapper = document.createElement('div');
+                wrapper.className = 'file-preview-item';
+                wrapper.innerHTML =
+                    '<button type="button" class="btn p-0 border-0 implementation-comment-image-thumb" data-image-url="' + url + '" data-image-name="' + escapeHtml(file.name) + '" title="نمایش تصویر">' +
+                    '<img src="' + url + '" alt="' + escapeHtml(file.name) + '" data-object-url="' + url + '" style="cursor: zoom-in;" />' +
+                    '</button>' +
+                    '<button type="button" class="remove-btn" data-index="' + index + '" aria-label="حذف">&times;</button>';
+                previewContainer.appendChild(wrapper);
+            });
+        }
+
+        function addImplementationCommentFile(file) {
+            var fileInput = document.getElementById('implementationCommentImages');
+            if (!fileInput || !file) return;
+
+            var dataTransfer = new DataTransfer();
+            Array.from(fileInput.files).forEach(function (existing) {
+                dataTransfer.items.add(existing);
+            });
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+            refreshImplementationCommentPreviews();
+        }
+
+        function removeImplementationCommentFile(index) {
+            var fileInput = document.getElementById('implementationCommentImages');
+            if (!fileInput) return;
+
+            var dataTransfer = new DataTransfer();
+            Array.from(fileInput.files).forEach(function (file, i) {
+                if (i !== index) dataTransfer.items.add(file);
+            });
+            fileInput.files = dataTransfer.files;
+            refreshImplementationCommentPreviews();
+        }
+
+        function clearImplementationCommentAttachments() {
+            var fileInput = document.getElementById('implementationCommentImages');
+            if (fileInput) fileInput.value = '';
+            refreshImplementationCommentPreviews();
+        }
+
         function buildPageStateRow(item) {
             var tr = document.createElement('tr');
             tr.setAttribute('data-id', item.id);
@@ -1549,6 +1972,15 @@
             } else if (action === 'delete-business-rule' && data) {
                 document.querySelector('#businessRulesList li[data-id="' + data.id + '"]')?.remove();
                 syncListEmpty(document.getElementById('businessRulesList'), document.getElementById('businessRulesEmpty'));
+            } else if (action === 'add-implementation-comment' && data) {
+                var commentsList = document.getElementById('implementationCommentsList');
+                commentsList.insertBefore(buildImplementationCommentItem(data), commentsList.firstChild);
+                syncImplementationCommentsEmpty();
+                form.reset();
+                clearImplementationCommentAttachments();
+            } else if (action === 'delete-implementation-comment' && data) {
+                document.querySelector('#implementationCommentsList .implementation-comment-item[data-id="' + data.id + '"]')?.remove();
+                syncImplementationCommentsEmpty();
             } else if (action === 'add-page-state' && data) {
                 document.getElementById('pageStatesList').appendChild(buildPageStateRow(data));
                 syncPageStatesEmpty();
@@ -1576,7 +2008,16 @@
         document.querySelectorAll('form[data-ajax-spec]').forEach(function (form) {
             form.addEventListener('submit', async function (e) {
                 e.preventDefault();
-                if (!form.checkValidity()) {
+
+                var action = form.getAttribute('data-ajax-spec');
+                if (action === 'add-implementation-comment') {
+                    var body = (document.getElementById('implementationCommentBody')?.value || '').trim();
+                    var files = document.getElementById('implementationCommentImages')?.files;
+                    if (!body && (!files || files.length === 0)) {
+                        showSpecAlert('متن یادداشت یا حداقل یک تصویر الزامی است.', true);
+                        return;
+                    }
+                } else if (!form.checkValidity()) {
                     form.reportValidity();
                     return;
                 }
@@ -1601,7 +2042,13 @@
                     }
 
                     handleSpecSuccess(form.getAttribute('data-ajax-spec'), result.data, form);
-                    hideModal(form);
+                    var isAddModal = action.startsWith('add-') && form.closest('.modal');
+                    if (!isAddModal) {
+                        hideModal(form);
+                    } else {
+                        var firstField = form.querySelector('input:not([type="hidden"]):not([type="file"]), textarea, select');
+                        if (firstField) firstField.focus();
+                    }
                     showSpecAlert(result.message || 'عملیات با موفقیت انجام شد.', false);
                 } catch (err) {
                     showSpecAlert(err.message || 'خطا در انجام عملیات', true);
@@ -2070,7 +2517,8 @@
                     }
 
                     appendFeatureTaskRow(createResult);
-                    bootstrap.Modal.getInstance(document.getElementById('featureTaskModal'))?.hide();
+                    resetFeatureTaskForm();
+                    setTimeout(function () { document.getElementById('featureTaskTitle')?.focus(); }, 0);
                 }
             } catch (err) {
                 alert(err.message || 'خطا در ذخیره کار');

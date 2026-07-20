@@ -56,6 +56,8 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<FeatureApiContract> FeatureApiContracts { get; set; }
         public DbSet<FeatureBusinessRule> FeatureBusinessRules { get; set; }
         public DbSet<FeatureCodeReview> FeatureCodeReviews { get; set; }
+        public DbSet<FeatureImplementationComment> FeatureImplementationComments { get; set; }
+        public DbSet<FeatureImplementationCommentAttachment> FeatureImplementationCommentAttachments { get; set; }
         public DbSet<ProjectTicket> ProjectTickets { get; set; }
         public DbSet<ProjectTicketMessage> ProjectTicketMessages { get; set; }
         public DbSet<ProjectTicketMessageAttachment> ProjectTicketMessageAttachments { get; set; }
@@ -843,6 +845,27 @@ namespace TaskPlanner.Persistence.Contexts
 
             modelBuilder.Entity<FeatureCodeReview>()
                 .HasIndex(x => x.FeatureId);
+
+            modelBuilder.Entity<FeatureImplementationComment>()
+                .HasOne(x => x.Feature)
+                .WithMany(f => f.ImplementationComments)
+                .HasForeignKey(x => x.FeatureId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<FeatureImplementationComment>()
+                .HasOne(x => x.AuthorUser)
+                .WithMany()
+                .HasForeignKey(x => x.AuthorUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<FeatureImplementationComment>()
+                .HasIndex(x => x.FeatureId);
+
+            modelBuilder.Entity<FeatureImplementationCommentAttachment>()
+                .HasOne(x => x.Comment)
+                .WithMany(c => c.Attachments)
+                .HasForeignKey(x => x.CommentId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<TaskItem>()
                 .HasOne(t => t.Feature)

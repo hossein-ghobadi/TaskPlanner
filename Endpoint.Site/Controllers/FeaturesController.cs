@@ -1,10 +1,12 @@
 using System.Security.Claims;
+using DNTPersianUtils.Core;
 using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using TaskPlanner.Application.Services.FileUpload;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Persistence.Contexts;
@@ -17,11 +19,16 @@ namespace Endpoint.Site.Controllers
     {
         private readonly MVPTestDatabaseContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IFileUploadService _fileUploadService;
 
-        public FeaturesController(MVPTestDatabaseContext context, UserManager<User> userManager)
+        public FeaturesController(
+            MVPTestDatabaseContext context,
+            UserManager<User> userManager,
+            IFileUploadService fileUploadService)
         {
             _context = context;
             _userManager = userManager;
+            _fileUploadService = fileUploadService;
         }
 
         public async Task<IActionResult> Index(int? projectId, int? id)
@@ -178,6 +185,8 @@ namespace Endpoint.Site.Controllers
 
             var vm = MapDetails(
                 feature,
+                currentUserId: userId,
+                isCreator: isCreator,
                 canManageCodeReview: isReviewer || isCreator,
                 canChangeCodeReviewer: isCreator,
                 canManageFeatureSpec: isCreator,
@@ -411,6 +420,120 @@ namespace Endpoint.Site.Controllers
             await _context.SaveChangesAsync();
 
             return SpecSuccess("قانون کسب‌وکار حذف شد.", featureId, new { id = deletedId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddImplementationComment(FeatureImplementationCommentCreateVm vm)
+        {
+            var feature = await _context.ProjectFeatures
+                .FirstOrDefaultAsync(f => f.Id == vm.FeatureId);
+            if (feature == null)
+                return SpecError("فیچر یافت نشد.", vm.FeatureId, 404);
+
+            if (!await HasProjectAccessAsync(feature.ProjectId))
+                return SpecError("دسترسی ندارید.", vm.FeatureId, 403);
+
+            var files = vm.Attachments?
+                .Where(f => f != null && f.Length > 0)
+                .ToList() ?? new List<IFormFile>();
+
+            if (string.IsNullOrWhiteSpace(vm.Body) && files.Count == 0)
+                return SpecError("متن یادداشت یا حداقل یک تصویر الزامی است.", vm.FeatureId);
+
+            var userId = CurrentUserId();
+            if (string.IsNullOrEmpty(userId))
+                return SpecError("کاربر احراز هویت نشده است.", vm.FeatureId, 401);
+
+            var author = await _context.Users.AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            var entity = new FeatureImplementationComment
+            {
+                FeatureId = feature.Id,
+                AuthorUserId = userId,
+                Body = string.IsNullOrWhiteSpace(vm.Body) ? "" : vm.Body.Trim(),
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.FeatureImplementationComments.Add(entity);
+            feature.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            var uploadedAttachments = new List<FeatureImplementationCommentAttachment>();
+            if (files.Count > 0)
+            {
+                var uploadErrors = new List<string>();
+                foreach (var file in files)
+                {
+                    var fileType = _fileUploadService.GetFileType(file.FileName);
+                    if (!string.Equals(fileType, "Image", StringComparison.OrdinalIgnoreCase)
+                        && !(file.ContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ?? false))
+                    {
+                        uploadErrors.Add($"{file.FileName}: فقط فایل تصویری مجاز است.");
+                        continue;
+                    }
+
+                    var uploadResult = await _fileUploadService.UploadFileAsync(file, "feature-implementation-comments");
+                    if (!uploadResult.Success)
+                    {
+                        uploadErrors.Add($"{file.FileName}: {uploadResult.Error}");
+                        continue;
+                    }
+
+                    var attachment = new FeatureImplementationCommentAttachment
+                    {
+                        CommentId = entity.Id,
+                        FileName = file.FileName,
+                        FilePath = uploadResult.FilePath,
+                        FileType = "Image",
+                        FileSize = file.Length,
+                        MimeType = file.ContentType,
+                        UploadedAt = DateTime.UtcNow
+                    };
+                    _context.FeatureImplementationCommentAttachments.Add(attachment);
+                    uploadedAttachments.Add(attachment);
+                }
+
+                if (uploadErrors.Count > 0 && uploadedAttachments.Count == 0 && string.IsNullOrWhiteSpace(entity.Body))
+                {
+                    _context.FeatureImplementationComments.Remove(entity);
+                    await _context.SaveChangesAsync();
+                    return SpecError(string.Join("\n", uploadErrors), feature.Id);
+                }
+
+                if (uploadedAttachments.Count > 0)
+                    await _context.SaveChangesAsync();
+            }
+
+            return SpecSuccess("یادداشت ثبت شد.", feature.Id, MapImplementationCommentResponse(entity, author, uploadedAttachments, canDelete: true));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteImplementationComment(int id)
+        {
+            var comment = await _context.FeatureImplementationComments
+                .Include(c => c.Feature)
+                .Include(c => c.Attachments)
+                .FirstOrDefaultAsync(c => c.Id == id);
+            if (comment == null)
+                return SpecError("یادداشت یافت نشد.", 0, 404);
+
+            if (!await HasProjectAccessAsync(comment.Feature.ProjectId))
+                return SpecError("دسترسی ندارید.", comment.FeatureId, 403);
+
+            var userId = CurrentUserId();
+            var isCreator = await IsProjectCreatorAsync(comment.Feature.ProjectId);
+            if (!isCreator && !string.Equals(comment.AuthorUserId, userId, StringComparison.Ordinal))
+                return SpecError("فقط نویسنده یا سازنده پروژه می‌تواند این یادداشت را حذف کند.", comment.FeatureId, 403);
+
+            var featureId = comment.FeatureId;
+            var deletedId = comment.Id;
+            _context.FeatureImplementationComments.Remove(comment);
+            comment.Feature.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return SpecSuccess("یادداشت حذف شد.", featureId, new { id = deletedId });
         }
 
         [HttpPost]
@@ -875,6 +998,10 @@ namespace Endpoint.Site.Controllers
                 .Include(f => f.PageStates)
                 .Include(f => f.ApiContracts)
                 .Include(f => f.BusinessRules)
+                .Include(f => f.ImplementationComments)
+                    .ThenInclude(c => c.AuthorUser)
+                .Include(f => f.ImplementationComments)
+                    .ThenInclude(c => c.Attachments)
                 .Include(f => f.CodeReviews)
                     .ThenInclude(r => r.ReviewerUser)
                 .Include(f => f.CodeReviews)
@@ -890,6 +1017,8 @@ namespace Endpoint.Site.Controllers
 
         private FeatureDetailsVm MapDetails(
             ProjectFeature feature,
+            string? currentUserId,
+            bool isCreator,
             bool canManageCodeReview,
             bool canChangeCodeReviewer,
             bool canManageFeatureSpec,
@@ -954,9 +1083,64 @@ namespace Endpoint.Site.Controllers
                     Score = r.Score,
                     Comment = r.Comment,
                     CreatedAt = r.CreatedAt
+                }).ToList(),
+                ImplementationComments = feature.ImplementationComments
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Select(c => new FeatureImplementationCommentItemVm
+                    {
+                        Id = c.Id,
+                        FeatureId = feature.Id,
+                        AuthorName = DisplayName(c.AuthorUser),
+                        Body = c.Body,
+                        CreatedAt = c.CreatedAt,
+                        CreatedAtDisplay = FormatPersianDateTime(c.CreatedAt),
+                        CanDelete = isCreator || string.Equals(c.AuthorUserId, currentUserId, StringComparison.Ordinal),
+                        Attachments = c.Attachments
+                            .OrderBy(a => a.UploadedAt)
+                            .Select(a => MapImplementationAttachment(a))
+                            .ToList()
+                    }).ToList()
+            };
+        }
+
+        private object MapImplementationCommentResponse(
+            FeatureImplementationComment comment,
+            User? author,
+            IEnumerable<FeatureImplementationCommentAttachment> attachments,
+            bool canDelete)
+        {
+            return new
+            {
+                id = comment.Id,
+                authorName = DisplayName(author),
+                body = comment.Body,
+                createdAt = FormatPersianDateTime(comment.CreatedAt),
+                canDelete,
+                attachments = attachments.Select(a => new
+                {
+                    id = a.Id,
+                    fileName = a.FileName,
+                    filePath = _fileUploadService.ToPublicUrl(a.FilePath),
+                    fileType = a.FileType,
+                    fileSize = a.FileSize,
+                    mimeType = a.MimeType
                 }).ToList()
             };
         }
+
+        private FeatureImplementationCommentAttachmentVm MapImplementationAttachment(FeatureImplementationCommentAttachment attachment) =>
+            new()
+            {
+                Id = attachment.Id,
+                FileName = attachment.FileName,
+                FilePath = _fileUploadService.ToPublicUrl(attachment.FilePath),
+                FileType = attachment.FileType,
+                FileSize = attachment.FileSize,
+                MimeType = attachment.MimeType
+            };
+
+        private static string FormatPersianDateTime(DateTime utcDateTime) =>
+            utcDateTime.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers();
 
         private static FeatureApiContractItemVm MapApiItem(FeatureApiContract x) => new()
         {

@@ -39,6 +39,7 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public ICollection<FeatureApiContract> ApiContracts { get; set; } = new List<FeatureApiContract>();
         public ICollection<FeatureBusinessRule> BusinessRules { get; set; } = new List<FeatureBusinessRule>();
         public ICollection<FeatureCodeReview> CodeReviews { get; set; } = new List<FeatureCodeReview>();
+        public ICollection<FeatureImplementationComment> ImplementationComments { get; set; } = new List<FeatureImplementationComment>();
         public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
         public ICollection<ProjectTicket> Tickets { get; set; } = new List<ProjectTicket>();
     }

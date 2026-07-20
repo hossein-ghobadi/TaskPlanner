@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskPlanner.Persistence.Contexts;
 
@@ -11,9 +12,11 @@ using TaskPlanner.Persistence.Contexts;
 namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 {
     [DbContext(typeof(MVPTestDatabaseContext))]
-    partial class MVPTestDatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260720134112_add-featureImplementationComments")]
+    partial class addfeatureImplementationComments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -666,49 +669,6 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.HasIndex("FeatureId");
 
                     b.ToTable("FeatureImplementationComments");
-                });
-
-            modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.FeatureImplementationCommentAttachment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CommentId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("FilePath")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<long>("FileSize")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("FileType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("MimeType")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("UploadedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CommentId");
-
-                    b.ToTable("FeatureImplementationCommentAttachments");
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.FeaturePageState", b =>
@@ -2735,17 +2695,6 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.Navigation("Feature");
                 });
 
-            modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.FeatureImplementationCommentAttachment", b =>
-                {
-                    b.HasOne("TaskPlanner.Domain.Entities.TaskPlanner.FeatureImplementationComment", "Comment")
-                        .WithMany("Attachments")
-                        .HasForeignKey("CommentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Comment");
-                });
-
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.FeaturePageState", b =>
                 {
                     b.HasOne("TaskPlanner.Domain.Entities.TaskPlanner.ProjectFeature", "Feature")
@@ -3353,11 +3302,6 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                 });
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.Boards.BoardTaskComment", b =>
-                {
-                    b.Navigation("Attachments");
-                });
-
-            modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.FeatureImplementationComment", b =>
                 {
                     b.Navigation("Attachments");
                 });
