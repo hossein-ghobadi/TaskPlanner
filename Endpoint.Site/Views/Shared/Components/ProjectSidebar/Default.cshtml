@@ -34,10 +34,18 @@
         <a class="project-nav-link @(Model.ActiveNav == "features" ? "active" : null)" href="/Features/Index?projectId=@Model.ProjectId">
             <i class="bi bi-puzzle"></i>
             <span>فیچرها</span>
+            @if (Model.FeaturesCount.HasValue)
+            {
+                <span class="project-nav-meta">@Model.FeaturesCount</span>
+            }
         </a>
         <a class="project-nav-link @(Model.ActiveNav == "tickets" ? "active" : null)" href="/Tickets/Index?projectId=@Model.ProjectId">
             <i class="bi bi-ticket-detailed"></i>
             <span>تیکت‌ها</span>
+            @if (Model.TicketsCount.HasValue)
+            {
+                <span class="project-nav-meta">@Model.TicketsCount</span>
+            }
         </a>
         <a class="project-nav-link @(Model.ActiveNav == "notes" ? "active" : null)" href="/ProjectNotes/Index?projectId=@Model.ProjectId">
             <i class="bi bi-sticky"></i>

@@ -8,6 +8,8 @@ namespace Endpoint.Site.Models
         public string ActiveNav { get; set; } = "";
 
         public int? TotalTasks { get; set; }
+        public int? FeaturesCount { get; set; }
+        public int? TicketsCount { get; set; }
         public int? NotesCount { get; set; }
         public int? ImagesCount { get; set; }
         public int? PendingInvitesCount { get; set; }

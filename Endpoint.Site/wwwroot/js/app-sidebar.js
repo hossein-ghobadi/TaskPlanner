@@ -16,7 +16,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        icon.className = collapsed ? 'bi bi-chevron-double-left' : 'bi bi-chevron-double-right';
+        icon.className = collapsed
+            ? 'bi bi-layout-sidebar-inset'
+            : 'bi bi-layout-sidebar-inset-reverse';
     };
 
     const setCollapsed = (collapsed) => {

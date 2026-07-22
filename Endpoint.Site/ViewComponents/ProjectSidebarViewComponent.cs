@@ -3,6 +3,7 @@ using Endpoint.Site.Helpers;
 using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Persistence.Contexts;
 
 namespace Endpoint.Site.ViewComponents
@@ -47,20 +48,42 @@ namespace Endpoint.Site.ViewComponents
             var path = ViewContext.HttpContext.Request.Path.Value ?? "";
             var onDetails = path.Contains("/Projects/Details", StringComparison.OrdinalIgnoreCase);
 
+            var totalTasks = await _context.TaskItems.AsNoTracking()
+                .CountAsync(t => t.ProjectId == projectId
+                    && (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug));
+            var notesCount = await _context.ProjectNotes.AsNoTracking()
+                .CountAsync(n => n.ProjectId == projectId);
+            var imagesCount = await _context.ProjectImageGalleries.AsNoTracking()
+                .CountAsync(img => img.ProjectId == projectId);
+            var featuresCount = await _context.ProjectFeatures.AsNoTracking()
+                .CountAsync(f => f.ProjectId == projectId);
+            var ticketsCount = await _context.ProjectTickets.AsNoTracking()
+                .CountAsync(t => t.ProjectId == projectId);
+            var membersCount = await _context.ProjectMembers.AsNoTracking()
+                .CountAsync(m => m.ProjectId == projectId);
+            var creatorInMembers = await _context.ProjectMembers.AsNoTracking()
+                .AnyAsync(m => m.ProjectId == projectId && m.UserId == creatorId);
+            var memberCount = membersCount + (creatorInMembers ? 0 : 1);
+            int? pendingInvitesCount = null;
+            if (isCreator)
+            {
+                pendingInvitesCount = await _context.ProjectInvitations.AsNoTracking()
+                    .CountAsync(i => i.ProjectId == projectId && i.Status == InvitationStatus.Pending);
+            }
+
             var vm = new ProjectSidebarVm
             {
                 ProjectId = projectId,
                 IsCreator = isCreator,
                 OnProjectDetailsPage = onDetails,
                 ActiveNav = DetectActiveNav(path),
-                TotalTasks = ViewContext.ViewBag.SidebarTotalTasks as int?
-                    ?? ViewContext.ViewBag.TotalTasks as int?,
-                NotesCount = ViewContext.ViewBag.NotesCount as int?
-                    ?? ViewContext.ViewBag.SidebarNotesCount as int?,
-                ImagesCount = ViewContext.ViewBag.ImagesCount as int?
-                    ?? ViewContext.ViewBag.SidebarImagesCount as int?,
-                PendingInvitesCount = ViewContext.ViewBag.SidebarPendingInvites as int?,
-                MemberCount = ViewContext.ViewBag.SidebarMemberCount as int?
+                TotalTasks = totalTasks,
+                FeaturesCount = featuresCount,
+                TicketsCount = ticketsCount,
+                NotesCount = notesCount,
+                ImagesCount = imagesCount,
+                PendingInvitesCount = pendingInvitesCount,
+                MemberCount = memberCount
             };
 
             return View(vm);

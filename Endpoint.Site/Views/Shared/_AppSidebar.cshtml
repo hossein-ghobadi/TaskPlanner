@@ -11,13 +11,6 @@
 }
 
 <aside class="app-sidebar" data-app-sidebar>
-    <button type="button"
-            class="app-sidebar-toggle d-none d-lg-inline-flex"
-            data-app-sidebar-toggle
-            aria-expanded="true"
-            aria-label="جمع کردن سایدبار">
-        <i class="bi bi-chevron-double-right" aria-hidden="true"></i>
-    </button>
     <form id="app-sidebar-logout-form" method="post" action="/account/logout" class="app-sidebar-logout-form-hidden m-0">
         <input name="__RequestVerificationToken" type="hidden" value="@ViewBag.AntiforgeryToken" />
     </form>
@@ -34,10 +27,18 @@
 
     <div class="app-sidebar-user">
         <div class="app-sidebar-user-avatar"><i class="bi bi-person-fill"></i></div>
-        <div>
+        <div class="app-sidebar-user-text">
             <div class="app-sidebar-user-name">@(User.Identity?.Name ?? "کاربر")</div>
             <div class="app-sidebar-user-meta">خوش آمدید</div>
         </div>
+        <button type="button"
+                class="app-sidebar-toggle d-none d-lg-inline-flex"
+                data-app-sidebar-toggle
+                aria-expanded="true"
+                aria-label="جمع کردن سایدبار"
+                title="جمع کردن منوی اصلی">
+            <i class="bi bi-layout-sidebar-inset-reverse" aria-hidden="true"></i>
+        </button>
     </div>
 
     <nav class="app-sidebar-nav" aria-label="ناوبری اصلی">

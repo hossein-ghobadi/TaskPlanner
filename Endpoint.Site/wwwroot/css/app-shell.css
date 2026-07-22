@@ -178,54 +178,69 @@ body.mobile-menu-open .app-mobile-backdrop {
     transition: width 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+/* دکمه داخل هدر سایدبار — دیگر روی لبه و پشت سایدبار پروژه نمی‌افتد */
 .app-sidebar-toggle {
-    position: absolute;
-    left: -12px;
-    top: 50%;
-    transform: translateY(-50%);
+    flex-shrink: 0;
     margin: 0;
-    width: 28px;
-    height: 86px;
-    border-radius: 999px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
     border: 1px solid #d1d5db;
-    background: #fff;
-    color: #374151;
+    background: #f8fafc;
+    color: #334155;
     align-items: center;
     justify-content: center;
-    font-size: 1.05rem;
-    transition: background-color 0.15s ease, color 0.15s ease;
-    z-index: 1040;
+    font-size: 1.2rem;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     padding: 0;
     cursor: pointer;
+    touch-action: manipulation;
 }
 
 .app-sidebar-toggle:hover {
-    background: #f3f4f6;
-    color: #1f2937;
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #94a3b8;
 }
 
 .app-sidebar-toggle:focus-visible {
     outline: 2px solid #93c5fd;
-    outline-offset: 1px;
+    outline-offset: 2px;
 }
 
+/* حالت جمع‌شده: نوار باریک ثابت در راست، فقط دکمه باز کردن */
 .app-shell.app-sidebar-collapsed .app-sidebar {
-    width: 0;
-    min-width: 0;
-    border-inline-end: 0;
-    overflow: visible;
-    background: transparent;
-    box-shadow: none;
+    width: 56px;
+    min-width: 56px;
+    overflow: hidden;
+    background: #fff;
+    border-inline-end: 1px solid #dee2e6;
+    box-shadow: -2px 0 12px rgba(15, 23, 42, 0.06);
+    pointer-events: auto;
 }
 
-.app-shell.app-sidebar-collapsed .app-sidebar-user,
 .app-shell.app-sidebar-collapsed .app-sidebar-nav,
-.app-shell.app-sidebar-collapsed .app-sidebar-footer {
+.app-shell.app-sidebar-collapsed .app-sidebar-footer,
+.app-shell.app-sidebar-collapsed .app-sidebar-mobile-header,
+.app-shell.app-sidebar-collapsed .app-sidebar-user-avatar,
+.app-shell.app-sidebar-collapsed .app-sidebar-user-text {
     display: none !important;
 }
 
+.app-shell.app-sidebar-collapsed .app-sidebar-user {
+    padding: 0.75rem 0;
+    border-bottom: 0;
+    justify-content: center;
+}
+
 .app-shell.app-sidebar-collapsed .app-sidebar-toggle {
-    border-color: #cbd5e1;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border-color: #64748b;
+    background: #f1f5f9;
+    color: #0f172a;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
 }
 
 .app-sidebar-brand {
@@ -254,7 +269,7 @@ body.mobile-menu-open .app-mobile-backdrop {
     flex-shrink: 0;
 }
 
-.app-sidebar-user > div {
+.app-sidebar-user-text {
     min-width: 0;
     flex: 1;
 }
@@ -566,12 +581,13 @@ body.mobile-menu-open .app-mobile-backdrop {
     }
 
     .app-shell.app-sidebar-collapsed .app-sidebar {
-        width: 0 !important;
-        min-width: 0 !important;
-        border-inline-end: 0 !important;
-        overflow: visible !important;
-        background: transparent !important;
-        box-shadow: none !important;
+        width: 56px !important;
+        min-width: 56px !important;
+        border-inline-end: 1px solid #dee2e6 !important;
+        overflow: hidden !important;
+        background: #fff !important;
+        box-shadow: -2px 0 12px rgba(15, 23, 42, 0.06) !important;
+        pointer-events: auto !important;
     }
 
     body.mobile-menu-open {
