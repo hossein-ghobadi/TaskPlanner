@@ -1622,28 +1622,36 @@
     .message-actions {
         margin-top: 8px;
     }
-    .reply-inline-link {
-        color: #2563eb;
+    .reply-inline-link,
+    .attachment-file-link {
+        color: #2563eb !important;
         text-decoration: none;
         font-size: 0.8rem;
         font-weight: 600;
     }
-    .reply-inline-link:hover {
-        color: #1d4ed8;
+    .reply-inline-link:hover,
+    .attachment-file-link:hover {
+        color: #1d4ed8 !important;
         text-decoration: underline;
     }
-
-        .message-actions a {
-            color: inherit;
-            opacity: 0.7;
-            transition: opacity 0.2s;
-            text-decoration: none;
-            font-size: 0.85rem;
-        }
-
-            .message-actions a:hover {
-                opacity: 1;
-            }
+    .message-text a {
+        color: #2563eb;
+        text-decoration: underline;
+        word-break: break-all;
+    }
+    .attachment-actions,
+    .message-actions {
+        flex-wrap: wrap;
+    }
+    .message-actions a {
+        opacity: 1;
+        transition: opacity 0.2s, color 0.2s;
+        text-decoration: none;
+        font-size: 0.8rem;
+    }
+    .message-actions a:hover {
+        opacity: 1;
+    }
 
     .chat-input-area {
         padding: 14px 16px;
@@ -6544,6 +6552,41 @@
                 setTimeout(() => targetEl.classList.remove('target-highlight'), 1800);
             }
 
+            function escapeChatHtml(value) {
+                return String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function normalizeChatAttachmentUrl(rawUrl) {
+                const value = String(rawUrl || '').trim();
+                if (!value) return '';
+                if (/^(https?:|blob:|data:)/i.test(value)) return value;
+                return value.startsWith('/') ? value : `/${value}`;
+            }
+
+            /** لینک‌های http(s) داخل متن را برای همه کاربران قابل کلیک می‌کند */
+            function linkifyChatText(text) {
+                const source = String(text || '');
+                if (!source) return '';
+                const urlPattern = /(https?:\/\/[^\s<]+)/gi;
+                let result = '';
+                let lastIndex = 0;
+                let match;
+                while ((match = urlPattern.exec(source)) !== null) {
+                    result += escapeChatHtml(source.slice(lastIndex, match.index));
+                    const url = match[0].replace(/[.,);!?]+$/g, '');
+                    const trailing = match[0].slice(url.length);
+                    result += `<a href="${escapeChatHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeChatHtml(url)}</a>${escapeChatHtml(trailing)}`;
+                    lastIndex = match.index + match[0].length;
+                }
+                result += escapeChatHtml(source.slice(lastIndex));
+                return result;
+            }
+
             function createCommentElement(comment, commentsById) {
                 const div = document.createElement('div');
                 div.className = `chat-message ${comment.isCurrentUser ? 'own' : 'other'}`;
@@ -6591,32 +6634,37 @@
                 let attachmentsHtml = '';
                 if (comment.attachments && comment.attachments.length > 0) {
                     attachmentsHtml = comment.attachments.map(att => {
-                        // استفاده از filePath به جای url
-                        const fileUrl = att.filePath || att.url || '';
-                        const fileName = att.fileName || 'فایل';
-                        const fileType = att.fileType || att.mimeType || '';
+                        // لینک فایل برای همه کاربران (نه فقط ارسال‌کننده)
+                        const fileUrl = normalizeChatAttachmentUrl(att.filePath || att.FilePath || att.url || att.Url || '');
+                        const fileName = att.fileName || att.FileName || 'فایل';
+                        const safeFileName = escapeChatHtml(fileName);
+                        const fileType = String(att.fileType || att.FileType || att.mimeType || att.MimeType || '');
                         const encodedTarget = encodeURIComponent(`فایل: ${fileName}`);
+                        const openFileLink = fileUrl
+                            ? `<a href="${escapeChatHtml(fileUrl)}" target="_blank" rel="noopener noreferrer" class="attachment-file-link">باز کردن فایل</a>`
+                            : '';
                         const replyLink = `<a href="#" class="reply-inline-link js-reply-action" data-comment-id="${comment.id}" data-user="${encodedUser}" data-message="${encodedMessage}" data-target="${encodedTarget}">پاسخ به این فایل</a>`;
+                        const actionsHtml = `<div class="attachment-actions">${openFileLink}${replyLink}</div>`;
 
-                        if (fileType === 'Image' || fileType.startsWith('image/')) {
+                        if (/^image/i.test(fileType) || fileType === 'Image') {
                             return `
                                 <div class="attachment-item">
-                                    <img src="${fileUrl}" alt="${fileName}" style="max-width:200px; display:block; border-radius:8px;" />
-                                    <div class="attachment-actions">${replyLink}</div>
+                                    ${fileUrl ? `<a href="${escapeChatHtml(fileUrl)}" target="_blank" rel="noopener noreferrer"><img src="${escapeChatHtml(fileUrl)}" alt="${safeFileName}" style="max-width:200px; display:block; border-radius:8px;" /></a>` : `<span class="text-muted">${safeFileName}</span>`}
+                                    ${actionsHtml}
                                 </div>
                             `;
-                        } else if (fileType === 'Audio' || fileType.startsWith('audio/')) {
+                        } else if (/^audio/i.test(fileType) || fileType === 'Audio') {
                             return `
                                 <div class="attachment-item">
-                                    <audio controls src="${fileUrl}" style="width:100%;"></audio>
-                                    <div class="attachment-actions">${replyLink}</div>
+                                    ${fileUrl ? `<audio controls src="${escapeChatHtml(fileUrl)}" style="width:100%;"></audio>` : ''}
+                                    ${actionsHtml}
                                 </div>
                             `;
                         } else {
                             return `
                                 <div class="attachment-item">
-                                    <a href="${fileUrl}" target="_blank" style="display:inline-block;">📎 ${fileName}</a>
-                                    <div class="attachment-actions">${replyLink}</div>
+                                    ${fileUrl ? `<a href="${escapeChatHtml(fileUrl)}" target="_blank" rel="noopener noreferrer" class="attachment-file-link">📎 ${safeFileName}</a>` : `<span>📎 ${safeFileName}</span>`}
+                                    ${actionsHtml}
                                 </div>
                             `;
                         }
@@ -6633,11 +6681,11 @@
                 div.innerHTML = `
                     <div class="message-card">
                         <div class="message-header">
-                            <div class="message-user">${comment.userName}</div>
+                            <div class="message-user">${escapeChatHtml(comment.userName || 'کاربر')}</div>
                             <div class="message-time">${date}</div>
                         </div>
                         ${replyReferenceHtml}
-                        ${cleanMessage ? `<div class="message-text">${cleanMessage}</div>` : ''}
+                        ${cleanMessage ? `<div class="message-text">${linkifyChatText(cleanMessage)}</div>` : ''}
                         ${attachmentsHtml ? `<div class="attachment-list">${attachmentsHtml}</div>` : ''}
                         ${(textReplyLink || deleteLink) ? `<div class="message-actions">${textReplyLink}${deleteLink}</div>` : ''}
                     </div>

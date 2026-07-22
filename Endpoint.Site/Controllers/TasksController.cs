@@ -3150,41 +3150,56 @@ namespace Endpoint.Site.Controllers
                 return Forbid();
 
             var comments = await _context.TaskComments
-                .Include(c => c.Attachments)
+                .AsNoTracking()
                 .Where(c => c.TaskId == taskId && !c.IsDeleted)
                 .OrderBy(c => c.CreatedAt)
-                .Select(c => new TaskCommentVm
+                .Select(c => new
                 {
-                    Id = c.Id,
-                    Message = c.Message,
-                    UserId = c.UserId,
-                    UserName = c.UserName,
+                    c.Id,
+                    c.Message,
+                    c.UserId,
+                    c.UserName,
                     CreatedAt = c.CreatedAt.AddHours(3.5),
-                    UpdatedAt = c.UpdatedAt,
-                    IsEdited = c.IsEdited,
+                    c.UpdatedAt,
+                    c.IsEdited,
                     IsCurrentUser = c.UserId == userId,
-                    Attachments = c.Attachments.Select(a => new TaskCommentAttachment
+                    Attachments = c.Attachments.Select(a => new
                     {
-                        Id = a.Id,
-                        FileName = a.FileName,
-                        FilePath = a.FilePath,
-                        FileType = a.FileType,
-                        FileSize = a.FileSize,
-                        MimeType = a.MimeType,
-                        UploadedAt = a.UploadedAt
+                        a.Id,
+                        a.FileName,
+                        a.FilePath,
+                        a.FileType,
+                        a.FileSize,
+                        a.MimeType,
+                        a.UploadedAt
                     }).ToList()
                 })
                 .ToListAsync();
 
-            foreach (var comment in comments)
+            // لینک عمومی فایل برای همه اعضای پروژه (نه فقط ارسال‌کننده)
+            var payload = comments.Select(c => new
             {
-                foreach (var attachment in comment.Attachments)
+                c.Id,
+                c.Message,
+                c.UserId,
+                c.UserName,
+                c.CreatedAt,
+                c.UpdatedAt,
+                c.IsEdited,
+                c.IsCurrentUser,
+                Attachments = c.Attachments.Select(a => new
                 {
-                    attachment.FilePath = _fileUploadService.ToPublicUrl(attachment.FilePath);
-                }
-            }
+                    a.Id,
+                    a.FileName,
+                    FilePath = _fileUploadService.ToPublicUrl(a.FilePath),
+                    a.FileType,
+                    a.FileSize,
+                    a.MimeType,
+                    a.UploadedAt
+                }).ToList()
+            });
 
-            return Json(comments);
+            return Json(payload);
         }
 
         // 💬 ارسال کامنت جدید (Ajax)
