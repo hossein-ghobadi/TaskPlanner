@@ -12,7 +12,14 @@ namespace TaskPlanner.Application.Services.TaskPlanner
         private readonly ILogger<DocumentUploader> _logger;
         private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
-        private const string UploadUrl = "https://shidatis.com/api/upload/file"; // URL مخصوص اسناد
+        // endpoint اصلی اسناد روی shidatis.com فعلاً 500 می‌دهد؛ چند مسیر جایگزین امتحان می‌شود
+        private static readonly string[] UploadUrls =
+        {
+            "https://shidatis.com/api/upload/file",
+            "https://shidatis.com/api/upload/image",
+            "https://shidatis.ir/api/upload/file",
+            "https://shidatis.ir/api/upload/image"
+        };
 
         public DocumentUploader(IHttpClientFactory httpClientFactory, ILogger<DocumentUploader> logger)
         {
@@ -22,66 +29,129 @@ namespace TaskPlanner.Application.Services.TaskPlanner
 
         public async Task<string> UploadAsync(IFormFile file, string folder, CancellationToken ct = default)
         {
-            if (file == null || file.Length == 0) 
+            if (file == null || file.Length == 0)
                 throw new ArgumentException("Empty file");
 
             using var ms = new MemoryStream();
             await file.CopyToAsync(ms, ct);
             var bytes = ms.ToArray();
 
+            var mime = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+            var safeName = GetSafeFileName(file.FileName);
+            var errors = new List<string>();
+
             using var client = _httpClientFactory.CreateClient();
             client.DefaultRequestHeaders.ExpectContinue = false;
             client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+            client.Timeout = TimeSpan.FromMinutes(2);
 
-            using var form = new MultipartFormDataContent();
-            var mime = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
-
-            var part = new ByteArrayContent(bytes);
-            part.Headers.ContentType = new MediaTypeHeaderValue(mime);
-            var safeName = Path.GetFileName(string.IsNullOrWhiteSpace(file.FileName) ? "upload.bin" : file.FileName);
-            part.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+            foreach (var uploadUrl in UploadUrls)
             {
-                Name = "\"file\"",
-                FileName = $"\"{safeName}\""
-            };
-            form.Add(part);
+                try
+                {
+                    using var form = new MultipartFormDataContent();
+                    var part = new ByteArrayContent(bytes);
+                    part.Headers.ContentType = new MediaTypeHeaderValue(mime);
+                    part.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+                    {
+                        Name = "\"file\"",
+                        FileName = $"\"{safeName}\""
+                    };
+                    form.Add(part);
 
-            using var req = new HttpRequestMessage(HttpMethod.Post, UploadUrl)
+                    // بعضی APIها پوشه را هم می‌خواهند
+                    if (!string.IsNullOrWhiteSpace(folder))
+                    {
+                        form.Add(new StringContent(folder), "folder");
+                    }
+
+                    var res = await client.PostAsync(uploadUrl, form, ct);
+                    var body = await res.Content.ReadAsStringAsync(ct);
+
+                    _logger.LogInformation("Document upload via {Url}: {StatusCode} - {Body}",
+                        uploadUrl, res.StatusCode, body);
+
+                    if (!res.IsSuccessStatusCode)
+                    {
+                        errors.Add($"{uploadUrl} => {(int)res.StatusCode}");
+                        continue;
+                    }
+
+                    var parsed = JsonSerializer.Deserialize<UploadResponse>(body, _jsonOptions);
+                    var url = parsed?.data;
+                    if (string.IsNullOrWhiteSpace(url))
+                    {
+                        errors.Add($"{uploadUrl} => empty data");
+                        continue;
+                    }
+
+                    _logger.LogInformation("✅ آپلود سند موفق از {Url}: {FileUrl}", uploadUrl, url);
+                    return url;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Document upload failed via {Url}", uploadUrl);
+                    errors.Add($"{uploadUrl} => {ex.Message}");
+                }
+            }
+
+            try
             {
-                Content = form,
-                Version = new Version(1, 1),
-                VersionPolicy = HttpVersionPolicy.RequestVersionOrLower
-            };
+                var localUrl = await SaveLocalFallbackAsync(bytes, folder, safeName, ct);
+                _logger.LogWarning(
+                    "Remote document upload failed; saved locally at {LocalUrl}. Errors: {Errors}",
+                    localUrl,
+                    string.Join(" | ", errors));
+                return localUrl;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Local document fallback also failed");
+                throw new InvalidOperationException(
+                    "آپلود فایل ناموفق بود. " + string.Join(" | ", errors), ex);
+            }
+        }
 
-            var res = await client.PostAsync(UploadUrl, form, ct);
-            var body = await res.Content.ReadAsStringAsync(ct);
-            
-            _logger.LogInformation("Response: {StatusCode} - {Body}", res.StatusCode, body);
-            
-            if (!res.IsSuccessStatusCode)
-                throw new InvalidOperationException($"Upload failed ({(int)res.StatusCode}): {body}");
-                
-            var parsed = JsonSerializer.Deserialize<UploadResponse>(body, _jsonOptions)
-                         ?? throw new InvalidOperationException("Invalid response (null)");
-            if (string.IsNullOrWhiteSpace(parsed.data))
-                throw new InvalidOperationException("Invalid response (data empty)");
+        private static async Task<string> SaveLocalFallbackAsync(byte[] bytes, string folder, string safeName, CancellationToken ct)
+        {
+            var safeFolder = string.IsNullOrWhiteSpace(folder)
+                ? "documents"
+                : string.Concat(folder.Where(c => char.IsLetterOrDigit(c) || c == '-' || c == '_'));
+            if (string.IsNullOrWhiteSpace(safeFolder))
+                safeFolder = "documents";
 
-            _logger.LogInformation("✅ آپلود موفق: {Url}", parsed.data);
-            return parsed.data;
+            var webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", safeFolder);
+            Directory.CreateDirectory(webRoot);
+
+            var localName = $"{Guid.NewGuid():N}{Path.GetExtension(safeName)}";
+            var localPath = Path.Combine(webRoot, localName);
+            await File.WriteAllBytesAsync(localPath, bytes, ct);
+
+            // مسیر نسبی اپ — در ToPublicUrl دست‌نخورده می‌ماند
+            return $"/uploads/{safeFolder}/{localName}";
         }
 
         private static string GetSafeFileName(string? fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName))
-                return "document.pdf";
+                return $"document_{DateTime.UtcNow:yyyyMMdd_HHmmss}.bin";
 
             var extension = Path.GetExtension(fileName);
+            if (string.IsNullOrWhiteSpace(extension))
+                extension = ".bin";
+
+            // نام فارسی/غیر ASCII باعث خطای بعضی APIهای آپلود می‌شود
             if (ContainsNonAscii(fileName))
             {
-                return $"document_{DateTime.Now:yyyyMMdd_HHmmss}{extension}";
+                return $"document_{DateTime.UtcNow:yyyyMMdd_HHmmss}{extension.ToLowerInvariant()}";
             }
 
-            return fileName;
+            var baseName = Path.GetFileNameWithoutExtension(fileName);
+            var cleaned = new string(baseName.Where(c => char.IsLetterOrDigit(c) || c == '-' || c == '_').ToArray());
+            if (string.IsNullOrWhiteSpace(cleaned))
+                cleaned = "document";
+
+            return $"{cleaned}{extension.ToLowerInvariant()}";
         }
 
         private static bool ContainsNonAscii(string input)

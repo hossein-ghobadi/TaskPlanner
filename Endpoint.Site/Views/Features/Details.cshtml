@@ -189,16 +189,40 @@
                                 }
                                 @if (comment.Attachments.Count > 0)
                                 {
-                                    <div class="item-attachments mt-2 d-flex flex-wrap gap-2">
+                                    <div class="item-attachments mt-2 d-flex flex-wrap gap-2 align-items-start">
                                         @foreach (var att in comment.Attachments)
                                         {
-                                            <button type="button"
-                                                    class="btn p-0 border-0 implementation-comment-image-thumb"
-                                                    data-image-url="@att.FilePath"
-                                                    data-image-name="@att.FileName"
-                                                    title="نمایش تصویر">
-                                                <img src="@att.FilePath" alt="@att.FileName" class="rounded border" style="max-height: 160px; max-width: 240px; object-fit: cover; cursor: zoom-in;" />
-                                            </button>
+                                            var isImage = string.Equals(att.FileType, "Image", StringComparison.OrdinalIgnoreCase)
+                                                || (att.MimeType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ?? false);
+                                            if (isImage)
+                                            {
+                                                <button type="button"
+                                                        class="btn p-0 border-0 implementation-comment-image-thumb"
+                                                        data-image-url="@att.FilePath"
+                                                        data-image-name="@att.FileName"
+                                                        title="نمایش تصویر">
+                                                    <img src="@att.FilePath" alt="@att.FileName" class="rounded border" style="max-height: 160px; max-width: 240px; object-fit: cover; cursor: zoom-in;" />
+                                                </button>
+                                            }
+                                            else if (string.Equals(att.FileType, "Audio", StringComparison.OrdinalIgnoreCase)
+                                                || (att.MimeType?.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) ?? false))
+                                            {
+                                                <div class="implementation-comment-file-chip">
+                                                    <audio controls preload="metadata" src="@att.FilePath" style="max-width: 260px;"></audio>
+                                                    <a href="@att.FilePath" target="_blank" rel="noopener noreferrer" class="small d-inline-block mt-1">
+                                                        <i class="bi bi-download"></i> @att.FileName
+                                                    </a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <a href="@att.FilePath"
+                                                   target="_blank"
+                                                   rel="noopener noreferrer"
+                                                   class="implementation-comment-file-chip btn btn-outline-secondary btn-sm text-start">
+                                                    <i class="bi bi-paperclip me-1"></i>@att.FileName
+                                                </a>
+                                            }
                                         }
                                     </div>
                                 }
@@ -756,6 +780,29 @@
         border: 1px solid #dee2e6;
         display: block;
     }
+    #implementationCommentPreviews .file-preview-doc {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 160px;
+        max-width: 240px;
+        padding: 10px 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        background: #f8fafc;
+        font-size: 0.82rem;
+        color: #334155;
+    }
+    #implementationCommentPreviews .file-preview-doc i {
+        font-size: 1.25rem;
+        color: #2563eb;
+        flex-shrink: 0;
+    }
+    #implementationCommentPreviews .file-preview-doc span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
     #implementationCommentPreviews .remove-btn {
         position: absolute;
         top: 4px;
@@ -769,6 +816,9 @@
         line-height: 1;
         font-size: 14px;
         cursor: pointer;
+    }
+    .implementation-comment-file-chip {
+        max-width: 100%;
     }
 </style>
 <div class="modal fade" id="addImplementationCommentModal" tabindex="-1" aria-labelledby="addImplementationCommentModalLabel" aria-hidden="true">
@@ -787,10 +837,15 @@
                     <label class="form-label" for="implementationCommentBody">متن یادداشت</label>
                     <textarea class="form-control mb-3" name="Body" id="implementationCommentBody" rows="4" maxlength="4000" placeholder="مثلاً: فیلد مبلغ از API حذف شد. می‌توانید Ctrl+V را برای چسباندن تصویر از کلیپ‌بورد هم بزنید."></textarea>
                     <div class="mb-0">
-                        <label class="form-label mb-1" for="implementationCommentImages">پیوست تصویر</label>
-                        <input type="file" class="form-control form-control-sm" name="Attachments" id="implementationCommentImages" accept="image/*" multiple />
+                        <label class="form-label mb-1" for="implementationCommentFiles">پیوست فایل</label>
+                        <input type="file"
+                               class="form-control form-control-sm"
+                               name="Attachments"
+                               id="implementationCommentFiles"
+                               accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
+                               multiple />
                         <div id="implementationCommentPreviews"></div>
-                        <div class="form-text">انتخاب فایل یا چسباندن مستقیم تصویر با Ctrl+V در کادر بالا — حداکثر ۱۰ مگابایت برای هر فایل</div>
+                        <div class="form-text">تصویر، صوت، PDF، Word، Excel، متن یا فشرده — یا چسباندن تصویر با Ctrl+V — حداکثر ۱۰ مگابایت برای هر فایل</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1581,7 +1636,7 @@
             clearImplementationCommentAttachments();
         });
 
-        document.getElementById('implementationCommentImages')?.addEventListener('change', function () {
+        document.getElementById('implementationCommentFiles')?.addEventListener('change', function () {
             refreshImplementationCommentPreviews();
         });
 
@@ -1780,13 +1835,29 @@
 
         function buildImplementationCommentAttachmentsHtml(attachments) {
             if (!attachments || attachments.length === 0) return '';
-            var html = '<div class="item-attachments mt-2 d-flex flex-wrap gap-2">';
+            var html = '<div class="item-attachments mt-2 d-flex flex-wrap gap-2 align-items-start">';
             attachments.forEach(function (att) {
-                if (att.fileType === 'Image') {
+                var fileType = String(att.fileType || '').toLowerCase();
+                var mimeType = String(att.mimeType || '').toLowerCase();
+                var fileName = escapeHtml(att.fileName || 'فایل');
+                var filePath = escapeHtml(att.filePath || '');
+                var isImage = fileType === 'image' || mimeType.indexOf('image/') === 0;
+                var isAudio = fileType === 'audio' || mimeType.indexOf('audio/') === 0;
+
+                if (isImage) {
                     html += '<button type="button" class="btn p-0 border-0 implementation-comment-image-thumb" ' +
-                        'data-image-url="' + escapeHtml(att.filePath) + '" data-image-name="' + escapeHtml(att.fileName) + '" title="نمایش تصویر">' +
-                        '<img src="' + escapeHtml(att.filePath) + '" alt="' + escapeHtml(att.fileName) + '" class="rounded border" style="max-height: 160px; max-width: 240px; object-fit: cover; cursor: zoom-in;" />' +
+                        'data-image-url="' + filePath + '" data-image-name="' + fileName + '" title="نمایش تصویر">' +
+                        '<img src="' + filePath + '" alt="' + fileName + '" class="rounded border" style="max-height: 160px; max-width: 240px; object-fit: cover; cursor: zoom-in;" />' +
                         '</button>';
+                } else if (isAudio) {
+                    html += '<div class="implementation-comment-file-chip">' +
+                        '<audio controls preload="metadata" src="' + filePath + '" style="max-width: 260px;"></audio>' +
+                        '<a href="' + filePath + '" target="_blank" rel="noopener noreferrer" class="small d-inline-block mt-1">' +
+                        '<i class="bi bi-download"></i> ' + fileName + '</a></div>';
+                } else {
+                    html += '<a href="' + filePath + '" target="_blank" rel="noopener noreferrer" ' +
+                        'class="implementation-comment-file-chip btn btn-outline-secondary btn-sm text-start">' +
+                        '<i class="bi bi-paperclip me-1"></i>' + fileName + '</a>';
                 }
             });
             html += '</div>';
@@ -1822,8 +1893,19 @@
             if (empty) empty.classList.toggle('d-none', hasItems);
         }
 
+        function getImplementationCommentFileIcon(file) {
+            var name = (file.name || '').toLowerCase();
+            var type = (file.type || '').toLowerCase();
+            if (type.indexOf('audio/') === 0 || /\.(mp3|wav|ogg|m4a|webm|aac)$/.test(name)) return 'bi-mic';
+            if (/\.(pdf)$/.test(name)) return 'bi-file-earmark-pdf';
+            if (/\.(doc|docx)$/.test(name)) return 'bi-file-earmark-word';
+            if (/\.(xls|xlsx)$/.test(name)) return 'bi-file-earmark-excel';
+            if (/\.(zip|rar)$/.test(name)) return 'bi-file-earmark-zip';
+            return 'bi-paperclip';
+        }
+
         function refreshImplementationCommentPreviews() {
-            var fileInput = document.getElementById('implementationCommentImages');
+            var fileInput = document.getElementById('implementationCommentFiles');
             var previewContainer = document.getElementById('implementationCommentPreviews');
             if (!fileInput || !previewContainer) return;
 
@@ -1833,21 +1915,29 @@
             previewContainer.innerHTML = '';
 
             Array.from(fileInput.files).forEach(function (file, index) {
-                if (!file.type || !file.type.startsWith('image/')) return;
-                var url = URL.createObjectURL(file);
                 var wrapper = document.createElement('div');
                 wrapper.className = 'file-preview-item';
-                wrapper.innerHTML =
-                    '<button type="button" class="btn p-0 border-0 implementation-comment-image-thumb" data-image-url="' + url + '" data-image-name="' + escapeHtml(file.name) + '" title="نمایش تصویر">' +
-                    '<img src="' + url + '" alt="' + escapeHtml(file.name) + '" data-object-url="' + url + '" style="cursor: zoom-in;" />' +
-                    '</button>' +
-                    '<button type="button" class="remove-btn" data-index="' + index + '" aria-label="حذف">&times;</button>';
+                if (file.type && file.type.startsWith('image/')) {
+                    var url = URL.createObjectURL(file);
+                    wrapper.innerHTML =
+                        '<button type="button" class="btn p-0 border-0 implementation-comment-image-thumb" data-image-url="' + url + '" data-image-name="' + escapeHtml(file.name) + '" title="نمایش تصویر">' +
+                        '<img src="' + url + '" alt="' + escapeHtml(file.name) + '" data-object-url="' + url + '" style="cursor: zoom-in;" />' +
+                        '</button>' +
+                        '<button type="button" class="remove-btn" data-index="' + index + '" aria-label="حذف">&times;</button>';
+                } else {
+                    wrapper.innerHTML =
+                        '<div class="file-preview-doc">' +
+                        '<i class="bi ' + getImplementationCommentFileIcon(file) + '"></i>' +
+                        '<span title="' + escapeHtml(file.name) + '">' + escapeHtml(file.name) + '</span>' +
+                        '</div>' +
+                        '<button type="button" class="remove-btn" data-index="' + index + '" aria-label="حذف">&times;</button>';
+                }
                 previewContainer.appendChild(wrapper);
             });
         }
 
         function addImplementationCommentFile(file) {
-            var fileInput = document.getElementById('implementationCommentImages');
+            var fileInput = document.getElementById('implementationCommentFiles');
             if (!fileInput || !file) return;
 
             var dataTransfer = new DataTransfer();
@@ -1860,7 +1950,7 @@
         }
 
         function removeImplementationCommentFile(index) {
-            var fileInput = document.getElementById('implementationCommentImages');
+            var fileInput = document.getElementById('implementationCommentFiles');
             if (!fileInput) return;
 
             var dataTransfer = new DataTransfer();
@@ -1872,7 +1962,7 @@
         }
 
         function clearImplementationCommentAttachments() {
-            var fileInput = document.getElementById('implementationCommentImages');
+            var fileInput = document.getElementById('implementationCommentFiles');
             if (fileInput) fileInput.value = '';
             refreshImplementationCommentPreviews();
         }
@@ -2012,9 +2102,9 @@
                 var action = form.getAttribute('data-ajax-spec');
                 if (action === 'add-implementation-comment') {
                     var body = (document.getElementById('implementationCommentBody')?.value || '').trim();
-                    var files = document.getElementById('implementationCommentImages')?.files;
+                    var files = document.getElementById('implementationCommentFiles')?.files;
                     if (!body && (!files || files.length === 0)) {
-                        showSpecAlert('متن یادداشت یا حداقل یک تصویر الزامی است.', true);
+                        showSpecAlert('متن یادداشت یا حداقل یک فایل پیوست الزامی است.', true);
                         return;
                     }
                 } else if (!form.checkValidity()) {

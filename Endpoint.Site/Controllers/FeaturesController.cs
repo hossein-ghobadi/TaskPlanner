@@ -439,7 +439,7 @@ namespace Endpoint.Site.Controllers
                 .ToList() ?? new List<IFormFile>();
 
             if (string.IsNullOrWhiteSpace(vm.Body) && files.Count == 0)
-                return SpecError("متن یادداشت یا حداقل یک تصویر الزامی است.", vm.FeatureId);
+                return SpecError("متن یادداشت یا حداقل یک فایل پیوست الزامی است.", vm.FeatureId);
 
             var userId = CurrentUserId();
             if (string.IsNullOrEmpty(userId))
@@ -466,11 +466,10 @@ namespace Endpoint.Site.Controllers
                 foreach (var file in files)
                 {
                     var fileType = _fileUploadService.GetFileType(file.FileName);
-                    if (!string.Equals(fileType, "Image", StringComparison.OrdinalIgnoreCase)
-                        && !(file.ContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ?? false))
+                    if (string.Equals(fileType, "Other", StringComparison.OrdinalIgnoreCase)
+                        && (file.ContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ?? false))
                     {
-                        uploadErrors.Add($"{file.FileName}: فقط فایل تصویری مجاز است.");
-                        continue;
+                        fileType = "Image";
                     }
 
                     var uploadResult = await _fileUploadService.UploadFileAsync(file, "feature-implementation-comments");
@@ -485,7 +484,7 @@ namespace Endpoint.Site.Controllers
                         CommentId = entity.Id,
                         FileName = file.FileName,
                         FilePath = uploadResult.FilePath,
-                        FileType = "Image",
+                        FileType = fileType,
                         FileSize = file.Length,
                         MimeType = file.ContentType,
                         UploadedAt = DateTime.UtcNow
@@ -494,15 +493,29 @@ namespace Endpoint.Site.Controllers
                     uploadedAttachments.Add(attachment);
                 }
 
-                if (uploadErrors.Count > 0 && uploadedAttachments.Count == 0 && string.IsNullOrWhiteSpace(entity.Body))
+                if (uploadErrors.Count > 0 && uploadedAttachments.Count == 0)
                 {
-                    _context.FeatureImplementationComments.Remove(entity);
-                    await _context.SaveChangesAsync();
-                    return SpecError(string.Join("\n", uploadErrors), feature.Id);
+                    if (string.IsNullOrWhiteSpace(entity.Body))
+                    {
+                        _context.FeatureImplementationComments.Remove(entity);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    return SpecError(
+                        "خطا در آپلود فایل:\n" + string.Join("\n", uploadErrors),
+                        feature.Id);
                 }
 
                 if (uploadedAttachments.Count > 0)
                     await _context.SaveChangesAsync();
+
+                if (uploadErrors.Count > 0)
+                {
+                    return SpecSuccess(
+                        "یادداشت ثبت شد، اما بعضی فایل‌ها آپلود نشدند:\n" + string.Join("\n", uploadErrors),
+                        feature.Id,
+                        MapImplementationCommentResponse(entity, author, uploadedAttachments, canDelete: true));
+                }
             }
 
             return SpecSuccess("یادداشت ثبت شد.", feature.Id, MapImplementationCommentResponse(entity, author, uploadedAttachments, canDelete: true));
