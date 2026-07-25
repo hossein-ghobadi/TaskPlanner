@@ -234,6 +234,53 @@
     overflow-x: auto;
     padding-bottom: 0.65rem;
     }
+    .board-view-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    }
+    .backlog-panel {
+    display: none;
+    margin-top: 0.5rem;
+    padding: 0.75rem 0.5rem 1rem;
+    }
+    .backlog-panel.is-visible {
+    display: block;
+    }
+    .backlog-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+    padding: 0.65rem 0.85rem;
+    background: #e9eaec;
+    border-radius: 10px;
+    }
+    .backlog-panel-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    }
+    .backlog-tasks {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.85rem;
+    align-content: start;
+    max-height: calc(100vh - 240px);
+    overflow-y: auto;
+    padding: 0.15rem 0.1rem 0.5rem;
+    }
+    .backlog-tasks .task-card {
+    margin: 0;
+    }
+    .backlog-tasks .empty-message {
+    grid-column: 1 / -1;
+    }
     .kanban-column {
     width: 280px;
     max-width: 280px;
@@ -2474,9 +2521,16 @@
                 <i class="bi bi-x"></i> بستن فیلترها
             </button>
         </div>
-        <div class="mt-2">
+        <div class="mt-2 board-view-toggle-row">
             <button type="button" class="btn btn-sm btn-outline-secondary" id="showToolbarBtn" onclick="toggleToolbar()">
                 <i class="bi bi-funnel"></i> نمایش فیلترها
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="showBacklogBtn" onclick="showBacklogView()">
+                <i class="bi bi-inbox"></i> بک لاگ
+                <span class="badge bg-primary ms-1" id="backlogToggleBadge">@backLog.Count.ToString().ToPersianNumbers()</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="showBoardBtn" onclick="showBoardView()" style="display: none;">
+                <i class="bi bi-kanban"></i> نمایش تخته
             </button>
         </div>
     </div>
@@ -2486,178 +2540,6 @@
        
 
         <div class="kanban-board" id="board" data-sprint-id="@Model.SprintId">
-
-
-            <div class="kanban-column"
-             style="width: 250px; flex-shrink: 0;"
-             ondragover="onDragOverColumn(event)"
-             ondragenter="onDragEnter(event)"
-             ondragleave="onDragLeave(event)">
-
-                <div class="column-header"
-                     draggable="false"
-                     ondragstart="onColumnDragStart(event)"
-                     ondragend="onColumnDragEnd(event)">
-                    <div class="d-flex align-items-center gap-2">
-
-                        <span>بک لاگ</span>
-                        <span class="badge bg-primary">
-                        @{
-
-
-
-                            var count0 = backLog.Count();
-
-                        }
-                        @count0.ToString().ToPersianNumbers()
-                                </span>
-                </div>
-                </div>
-
-                <div class="column-tasks" id="tasks-backlog" data-status-id="" ondrop="onDropIssue(event, null)" ondragover="onDragOverColumn(event)" ondragleave="onDragLeave(event)">
-
-                    @if (backLog.Any())
-                    {
-                        foreach (var issue in backLog)
-                        {
-                            var dueDate = issue.DueDate;
-                            var now = DateTime.UtcNow;
-                            var dueSoonFlag = dueDate.HasValue && dueDate.Value >= now && dueDate.Value <= now.AddDays(3);
-                                    <div class="task-card"
-                                         draggable="true"
-                                         ondragstart="onDragIssue(event, @issue.Id)"
-                                         onclick="handleCardClick(event, @issue.Id)"
-                                         data-issue-id="@issue.Id"
-                                         data-title="@issue.Title"
-                                         data-assignee="@((issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص"))"
-                                         data-assignee-id="@(issue.AssignedUserId ?? "unassigned")"
-                                         data-key="@issue.IssueKey"
-                                         data-due="@dueDate?.ToString("o")"
-                                         data-due-soon="@dueSoonFlag.ToString().ToLower()">
-
-                                        <div class="task-card-header">
-                                            <div class="task-actions">
-                                                <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
-
-                                            </div>
-                                        </div>
-
-                                        <div class="task-title">
-
-                                            <a href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@issue.Id); return false;">@issue.Title</a>
-                                        </div>
-
-                                @if (!string.IsNullOrWhiteSpace(issue.Description))
-                                {
-                                                <div class="task-description">@(issue.Description.Length > 100 ? issue.Description.Substring(0, 100) + "..." : issue.Description)</div>
-                                }
-                                        <div class="task-footer">
-                                    @if (!string.IsNullOrWhiteSpace(issue.AssignedUserId))
-                                    {
-                                                    <span class="task-badge badge-assigned">
-                                                        <i class="bi bi-person"></i>
-                                            @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "اختصاص داده شده")
-                                                    </span>
-                                    }
-                                            <small>@issue.CreatedAt.ToShortPersianDateString().ToPersianNumbers()</small>
-                                        </div>
-
-                                        <!-- دکمه‌های عملیات -->
-                                        <div class="d-flex gap-2 mt-2" onclick="event.stopPropagation();">
-
-                                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="addTaskToSprint(@issue.Id)" title="حذف کار">
-                                                <i class="bi bi-plus-circle-fill"></i>
-                                            </button>
-                                        </div>
-
-                                @if (issue.ChildIssues != null && issue.ChildIssues.Any())
-                                {
-                                                <div class="subtasks-container mt-2" id="subtasks-@issue.Id" style="display: none; border-top: 1px solid #dee2e6; padding-top: 8px;">
-                                        @foreach (var subtask in issue.ChildIssues.OrderBy(c => c.CreatedAt))
-                                        {
-                                                            <div class="subtask-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded" style="font-size: 0.85rem;">
-                                                                <div class="d-flex align-items-center gap-2 flex-grow-1">
-                                                                    <span class="issue-type-icon" style="font-size: 0.9rem;">@subtask.IssueTypeIcon</span>
-                                                                    <div class="flex-grow-1">
-                                                                        <div class="fw-bold">@subtask.Title</div>
-                                                        @if (!string.IsNullOrEmpty(subtask.Description))
-                                                        {
-                                                                                <small class="text-muted">@(subtask.Description.Length > 50 ? subtask.Description.Substring(0, 50) + "..." : subtask.Description)</small>
-                                                        }
-                                                                    </div>
-                                                                </div>
-                                                @if (Model.Status == SprintStatus.Active)
-                                                {
-                                                                        <div class="dropdown">
-                                                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle p-0 px-1"
-                                                                                    type="button"
-                                                                                    id="subtaskMenu-@subtask.Id"
-                                                                                    data-bs-toggle="dropdown"
-                                                                                    aria-expanded="false"
-                                                                                    onclick="event.stopPropagation(); event.preventDefault();"
-                                                                                    title="عملیات بیشتر"
-                                                                                    style="font-size: 0.7rem;">
-                                                                                <i class="bi bi-three-dots-vertical"></i>
-                                                                            </button>
-                                                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="subtaskMenu-@subtask.Id">
-                                                                                <li>
-                                                                                    <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@subtask.Id);">
-                                                                                        <i class="bi bi-pencil-square text-primary me-2"></i>ویرایش کار
-                                                                                    </a>
-                                                                                </li>
-                                                                                <li>
-
-                                                                                    <a class="dropdown-item" href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@issue.Id); return false;">@issue.Title</a>
-                                                                                </li>
-                                                            @{
-                                                                var subtaskStatus = Model.Statuses.FirstOrDefault(s => s.Id == subtask.StatusId);
-                                                                var subtaskIsFinal = subtaskStatus != null && subtaskStatus.IsFinal;
-                                                            }
-                                                            @if (finalStatus != null && !subtaskIsFinal)
-                                                            {
-                                                                                        <li>
-                                                                                            <a class="dropdown-item complete-task-btn" href="#" onclick="event.stopPropagation(); event.preventDefault(); completeTask(@subtask.Id);">
-                                                                                                <i class="bi bi-check-lg text-success me-2"></i>خاتمه کار
-                                                                                            </a>
-                                                                                        </li>
-                                                            }
-                                                                                <li><hr class="dropdown-divider"></li>
-                                                                                <li>
-                                                                                    <a class="dropdown-item text-danger" href="#" onclick="event.stopPropagation(); event.preventDefault(); deleteTask(@subtask.Id, '@subtask.Title');">
-                                                                                        <i class="bi bi-trash me-2"></i>حذف کار
-                                                                                    </a>
-                                                                                </li>
-                                                                            </ul>
-                                                                        </div>
-                                                }
-                                                else
-                                                {
-                                                                        <a href="/Tasks/Details/@subtask.Id" class="btn btn-sm btn-outline-info p-0 px-1"
-                                                                           onclick="event.stopPropagation();"
-                                                                           title="جزئیات"
-                                                                           style="font-size: 0.7rem;">
-                                                                            <i class="bi bi-eye"></i>
-                                                                        </a>
-                                                }
-                                                            </div>
-                                        }
-                                                </div>
-                                }
-                                    </div>
-                        }
-                    }
-                    else
-                    {
-                            <div class="empty-message text-muted text-center small p-4" role="status">
-                                <span class="column-empty-msg-inner">
-                                    <i class="bi bi-inbox" aria-hidden="true"></i>
-                                    <span>هیچ آیتمی وجود ندارد</span>
-                                </span>
-                            </div>
-                    }
-                </div>
-                <!-- دکمه افزودن کار -->
-            </div> 
 
 
                 @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
@@ -2952,6 +2834,81 @@
                     </div>
                 }
             </div>
+    </div>
+
+    <div class="backlog-panel" id="backlogPanel" aria-hidden="true">
+        <div class="backlog-panel-header">
+            <h3>
+                <i class="bi bi-inbox"></i>
+                بک لاگ
+                <span class="badge bg-primary" id="backlogCountBadge">@backLog.Count.ToString().ToPersianNumbers()</span>
+            </h3>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showBoardView()">
+                <i class="bi bi-kanban"></i> بازگشت به تخته
+            </button>
+        </div>
+        <div class="backlog-tasks" id="tasks-backlog">
+            @if (backLog.Any())
+            {
+                foreach (var issue in backLog)
+                {
+                    var dueDate = issue.DueDate;
+                    var now = DateTime.UtcNow;
+                    var dueSoonFlag = dueDate.HasValue && dueDate.Value >= now && dueDate.Value <= now.AddDays(3);
+                    <div class="task-card"
+                         onclick="handleCardClick(event, @issue.Id)"
+                         data-issue-id="@issue.Id"
+                         data-title="@issue.Title"
+                         data-assignee="@((issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص"))"
+                         data-assignee-id="@(issue.AssignedUserId ?? "unassigned")"
+                         data-key="@issue.IssueKey"
+                         data-due="@dueDate?.ToString("o")"
+                         data-due-soon="@dueSoonFlag.ToString().ToLower()">
+
+                        <div class="task-card-header">
+                            <div class="task-actions">
+                                <span class="issue-type-icon" title="@issue.IssueTypeName">@issue.IssueTypeIcon</span>
+                            </div>
+                        </div>
+
+                        <div class="task-title">
+                            <a href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@issue.Id); return false;">@issue.Title</a>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(issue.Description))
+                        {
+                            <div class="task-description">@(issue.Description.Length > 100 ? issue.Description.Substring(0, 100) + "..." : issue.Description)</div>
+                        }
+                        <div class="task-footer">
+                            @if (!string.IsNullOrWhiteSpace(issue.AssignedUserId))
+                            {
+                                <span class="task-badge badge-assigned">
+                                    <i class="bi bi-person"></i>
+                                    @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "اختصاص داده شده")
+                                </span>
+                            }
+                            <small>@issue.CreatedAt.ToShortPersianDateString().ToPersianNumbers()</small>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-2" onclick="event.stopPropagation();">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addTaskToSprint(@issue.Id)" title="افزودن به اسپرینت">
+                                <i class="bi bi-plus-circle-fill"></i>
+                                افزودن به اسپرینت
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="empty-message text-muted text-center small p-4" role="status">
+                    <span class="column-empty-msg-inner">
+                        <i class="bi bi-inbox" aria-hidden="true"></i>
+                        <span>هیچ آیتمی در بک لاگ وجود ندارد</span>
+                    </span>
+                </div>
+            }
+        </div>
     </div>
 </div>
 
@@ -3637,7 +3594,8 @@
                 const key = (card.dataset.key || '').toLowerCase();
 
                 const matchesText = !text || title.includes(text) || assigneeName.includes(text) || key.includes(text);
-                const matchesStatus = status === 'all' || card.dataset.statusId === status;
+                const inBacklog = !!card.closest('#tasks-backlog');
+                const matchesStatus = inBacklog || status === 'all' || card.dataset.statusId === status;
                 const matchesAssignee = assignee === 'all' || 
                     (assignee === 'unassigned' && assigneeId === 'unassigned') ||
                     (assignee !== 'unassigned' && assigneeId === assignee);
@@ -5076,6 +5034,55 @@
                     badge.textContent = count;
                 }
             });
+
+            const backlogBody = document.getElementById('tasks-backlog');
+            const backlogCount = countVisibleTaskCards(backlogBody);
+            const backlogCountBadge = document.getElementById('backlogCountBadge');
+            const backlogToggleBadge = document.getElementById('backlogToggleBadge');
+            if (backlogCountBadge) {
+                backlogCountBadge.textContent = backlogCount;
+            }
+            if (backlogToggleBadge) {
+                backlogToggleBadge.textContent = backlogCount;
+            }
+        }
+
+        function setBoardViewMode(mode) {
+            const boardColumns = document.getElementById('boardColumns');
+            const backlogPanel = document.getElementById('backlogPanel');
+            const showBacklogBtn = document.getElementById('showBacklogBtn');
+            const showBoardBtn = document.getElementById('showBoardBtn');
+            const isBacklog = mode === 'backlog';
+
+            if (boardColumns) {
+                boardColumns.style.display = isBacklog ? 'none' : '';
+            }
+            if (backlogPanel) {
+                backlogPanel.classList.toggle('is-visible', isBacklog);
+                backlogPanel.setAttribute('aria-hidden', isBacklog ? 'false' : 'true');
+            }
+            if (showBacklogBtn) {
+                showBacklogBtn.style.display = isBacklog ? 'none' : '';
+            }
+            if (showBoardBtn) {
+                showBoardBtn.style.display = isBacklog ? '' : 'none';
+            }
+
+            try {
+                const state = loadBoardState() || {};
+                state.viewMode = isBacklog ? 'backlog' : 'board';
+                sessionStorage.setItem(BOARD_STATE_KEY, JSON.stringify(state));
+            } catch (_) { /* ignore */ }
+        }
+
+        function showBacklogView() {
+            setBoardViewMode('backlog');
+            applyBoardFilters();
+        }
+
+        function showBoardView() {
+            setBoardViewMode('board');
+            applyBoardFilters();
         }
 
         function updateTaskCardFromEdit(formData) {
@@ -5928,6 +5935,11 @@
             if (savedState) {
                 restoreBoardFiltersFromState(savedState);
             }
+            if (savedState?.viewMode === 'backlog') {
+                setBoardViewMode('backlog');
+            } else {
+                setBoardViewMode('board');
+            }
             applyBoardFilters();
             refreshEmptyColumnStyles();
 
@@ -6406,6 +6418,9 @@
                 }
             }
         }
+
+        window.showBacklogView = showBacklogView;
+        window.showBoardView = showBoardView;
 
         // بارگذاری پس‌زمینه ذخیره شده
         document.addEventListener('DOMContentLoaded', function () {
