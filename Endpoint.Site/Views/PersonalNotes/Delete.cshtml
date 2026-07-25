@@ -1,8 +1,10 @@
 @model PersonalNote
+@using DNTPersianUtils.Core
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     var noteColor = !string.IsNullOrEmpty(Model.Color) ? Model.Color : "#3b82f6";
     var listUrl = Url.Action("Index", "PersonalNotes", new { folderId = Model.FolderId })!;
+    var createdAtPersian = Model.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers();
 }
 
 <div class="delete-note-container">
@@ -38,7 +40,7 @@
                 <div class="author-name">یادداشت شخصی</div>
                 <div class="post-time">
                     <i class="bi bi-clock"></i>
-                    <span>@Model.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</span>
+                    <span>@createdAtPersian</span>
                 </div>
                 @if (Model.IsPinned)
                 {

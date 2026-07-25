@@ -1,5 +1,6 @@
 @model IEnumerable<PersonalNote>
 @using System.Globalization
+@using DNTPersianUtils.Core
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
@@ -306,8 +307,7 @@ else
 
     public string FormatTehranPersianDateTime(DateTime dateTime)
     {
-        var culture = new CultureInfo("fa-IR");
-        return ToTehranTime(dateTime).ToString("yyyy/MM/dd HH:mm", culture);
+        return ToTehranTime(dateTime).ToShortPersianDateTimeString().ToPersianNumbers();
     }
 
     public string GetTimeAgo(DateTime dateTime)

@@ -455,6 +455,47 @@
         word-break: break-word;
     }
 
+    .team-chat-message-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-top: 0.35rem;
+    }
+
+    .team-chat-message-actions .btn {
+        line-height: 1;
+        font-size: 0.95rem;
+        opacity: 0.75;
+    }
+
+    .team-chat-message-actions .btn:hover {
+        opacity: 1;
+    }
+
+    .team-chat-edit-box {
+        margin-top: 0.15rem;
+    }
+
+    .team-chat-edit-box textarea {
+        width: 100%;
+        min-height: 2.5rem;
+        overflow: hidden;
+        resize: none;
+        border: 1px solid #b7c4d4;
+        border-radius: 8px;
+        padding: 0.45rem 0.55rem;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        background: #fff;
+        box-sizing: border-box;
+    }
+
+    .team-chat-edit-actions {
+        display: flex;
+        gap: 0.35rem;
+        margin-top: 0.35rem;
+    }
+
     .chat-reply-preview {
         border-right: 3px solid #3390ec;
         background: rgba(51, 144, 236, 0.12);
@@ -1132,6 +1173,14 @@
         messageInputEl.style.height = `${Math.min(messageInputEl.scrollHeight, 140)}px`;
     }
 
+    function resizeChatEditTextarea(textarea) {
+        if (!textarea) {
+            return;
+        }
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+
     let connection = null;
     let activeGroupId = null;
     let activeGroupMeta = null;
@@ -1189,14 +1238,7 @@
             if (!payload || payload.groupId !== activeGroupId) {
                 return;
             }
-            const el = document.getElementById(`project-chat-message-${payload.id}`);
-            if (!el) {
-                return;
-            }
-            const textEl = el.querySelector('.team-chat-message-text');
-            if (textEl) {
-                textEl.textContent = payload.message || '';
-            }
+            applyMessageTextUpdate(payload.id, payload.message || '');
         });
 
         await connection.start();
@@ -1305,9 +1347,18 @@
         const dateText = new Date(message.createdAt).toLocaleString('fa-IR');
         const attachmentsHtml = renderMessageAttachments(message.attachments || [], mine && !isExternal);
         const replyHtml = renderReplyPreview(message);
-        const replyActionBtn = isExternal ? '' : `<button type="button" class="btn btn-sm btn-link p-0 mt-1 reply-chat-message-btn" data-message-id="${message.id}" data-message-user="${escapeHtml(message.userName)}" data-message-text="${escapeHtml(message.message || '')}" title="پاسخ"><i class="bi bi-reply"></i> پاسخ</button>`;
+        const isReadOnlyGroup = !!(activeGroupMeta && activeGroupMeta.isReadOnly);
+        const replyActionBtn = isExternal || isReadOnlyGroup
+            ? ''
+            : `<button type="button" class="btn btn-sm btn-link p-0 reply-chat-message-btn" data-message-id="${message.id}" data-message-user="${escapeHtml(message.userName)}" data-message-text="${escapeHtml(message.message || '')}" title="پاسخ" aria-label="پاسخ"><i class="bi bi-reply"></i></button>`;
+        const editMessageBtn = mine && !isExternal && !isReadOnlyGroup
+            ? `<button type="button" class="btn btn-sm btn-link p-0 edit-chat-message-btn" data-message-id="${message.id}" title="ویرایش" aria-label="ویرایش"><i class="bi bi-pencil"></i></button>`
+            : '';
         const deleteMessageBtn = mine && !isExternal
-            ? `<button type="button" class="btn btn-sm btn-link text-danger p-0 mt-1 ms-2 delete-chat-message-btn" data-message-id="${message.id}" title="حذف پیام"><i class="bi bi-trash"></i> حذف</button>`
+            ? `<button type="button" class="btn btn-sm btn-link text-danger p-0 delete-chat-message-btn" data-message-id="${message.id}" title="حذف" aria-label="حذف"><i class="bi bi-trash"></i></button>`
+            : '';
+        const actionsHtml = (replyActionBtn || editMessageBtn || deleteMessageBtn)
+            ? `<div class="team-chat-message-actions">${replyActionBtn}${editMessageBtn}${deleteMessageBtn}</div>`
             : '';
         const sourceBadge = isExternal ? '<span class="badge bg-light text-dark border ms-1">بله</span>' : '';
         const senderMetaHtml = renderBaleSenderMeta(message, isExternal);
@@ -1338,11 +1389,165 @@
                     ${replyHtml}
                     ${message.message ? `<div class="team-chat-message-text">${escapeHtml(message.message)}</div>` : ''}
                     ${attachmentsHtml}
-                    <div>${replyActionBtn}${deleteMessageBtn}</div>
+                    ${actionsHtml}
                 </div>
             </div>`;
         messagesEl.insertAdjacentHTML('beforeend', html);
         messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function applyMessageTextUpdate(messageId, newText) {
+        const el = document.getElementById(`project-chat-message-${messageId}`);
+        if (!el) {
+            return;
+        }
+
+        const bubble = el.querySelector('.team-chat-bubble');
+        if (!bubble) {
+            return;
+        }
+
+        bubble.querySelector('.team-chat-edit-box')?.remove();
+        bubble.querySelector('.team-chat-message-actions')?.classList.remove('d-none');
+
+        let textEl = bubble.querySelector('.team-chat-message-text');
+        if (newText) {
+            if (!textEl) {
+                textEl = document.createElement('div');
+                textEl.className = 'team-chat-message-text';
+                const attachments = bubble.querySelector('.mt-2');
+                const actions = bubble.querySelector('.team-chat-message-actions');
+                if (attachments) {
+                    bubble.insertBefore(textEl, attachments);
+                } else if (actions) {
+                    bubble.insertBefore(textEl, actions);
+                } else {
+                    bubble.appendChild(textEl);
+                }
+            }
+            textEl.textContent = newText;
+            textEl.classList.remove('d-none');
+        } else if (textEl) {
+            textEl.remove();
+        }
+
+        const replyBtn = bubble.querySelector('.reply-chat-message-btn');
+        if (replyBtn) {
+            replyBtn.dataset.messageText = newText || '';
+        }
+    }
+
+    function startEditMessage(messageId) {
+        const el = document.getElementById(`project-chat-message-${messageId}`);
+        if (!el) {
+            return;
+        }
+
+        const bubble = el.querySelector('.team-chat-bubble');
+        if (!bubble || bubble.querySelector('.team-chat-edit-box')) {
+            return;
+        }
+
+        document.querySelectorAll('.team-chat-edit-box').forEach((box) => {
+            const id = Number(box.dataset.messageId);
+            if (!Number.isNaN(id)) {
+                cancelEditMessage(id);
+            }
+        });
+
+        const textEl = bubble.querySelector('.team-chat-message-text');
+        const currentText = textEl ? textEl.textContent : '';
+        if (textEl) {
+            textEl.classList.add('d-none');
+        }
+
+        const actions = bubble.querySelector('.team-chat-message-actions');
+        if (actions) {
+            actions.classList.add('d-none');
+        }
+
+        const editBox = document.createElement('div');
+        editBox.className = 'team-chat-edit-box';
+        editBox.dataset.messageId = String(messageId);
+        editBox.innerHTML = `
+            <textarea class="team-chat-edit-input" maxlength="4000"></textarea>
+            <div class="team-chat-edit-actions">
+                <button type="button" class="btn btn-sm btn-primary save-edit-chat-message-btn" data-message-id="${messageId}" title="ذخیره" aria-label="ذخیره"><i class="bi bi-check-lg"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary cancel-edit-chat-message-btn" data-message-id="${messageId}" title="انصراف" aria-label="انصراف"><i class="bi bi-x-lg"></i></button>
+            </div>`;
+
+        if (actions) {
+            bubble.insertBefore(editBox, actions);
+        } else {
+            bubble.appendChild(editBox);
+        }
+
+        const textarea = editBox.querySelector('textarea');
+        if (textarea) {
+            textarea.value = currentText;
+            resizeChatEditTextarea(textarea);
+            textarea.addEventListener('input', () => resizeChatEditTextarea(textarea));
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        }
+    }
+
+    function cancelEditMessage(messageId) {
+        const el = document.getElementById(`project-chat-message-${messageId}`);
+        if (!el) {
+            return;
+        }
+
+        const bubble = el.querySelector('.team-chat-bubble');
+        if (!bubble) {
+            return;
+        }
+
+        bubble.querySelector('.team-chat-edit-box')?.remove();
+        bubble.querySelector('.team-chat-message-text')?.classList.remove('d-none');
+        bubble.querySelector('.team-chat-message-actions')?.classList.remove('d-none');
+    }
+
+    async function saveEditMessage(messageId) {
+        const el = document.getElementById(`project-chat-message-${messageId}`);
+        if (!el) {
+            return;
+        }
+
+        const textarea = el.querySelector('.team-chat-edit-input');
+        if (!textarea) {
+            return;
+        }
+
+        const newText = (textarea.value || '').trim();
+        const hasAttachments = !!el.querySelector('[data-attachment-item-id]');
+        if (!newText && !hasAttachments) {
+            showAlert('پیام نمی‌تواند خالی باشد', 'error');
+            return;
+        }
+
+        const body = new URLSearchParams();
+        body.append('MessageId', String(messageId));
+        body.append('Message', newText);
+
+        const response = await fetch('/ProjectTeamChats/EditMessage', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                'RequestVerificationToken': token
+            },
+            body: body.toString()
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            showAlert(errorText || 'خطا در ویرایش پیام', 'error');
+            return;
+        }
+
+        const result = await response.json();
+        const updatedText = result?.message?.message ?? newText;
+        applyMessageTextUpdate(messageId, updatedText);
     }
 
     function renderBaleSenderAvatar(message) {
@@ -1882,6 +2087,33 @@
                     return;
                 }
                 await deleteMessage(messageId);
+            }
+            return;
+        }
+
+        const editMessageBtn = event.target.closest('.edit-chat-message-btn');
+        if (editMessageBtn) {
+            const messageId = Number(editMessageBtn.dataset.messageId);
+            if (!Number.isNaN(messageId)) {
+                startEditMessage(messageId);
+            }
+            return;
+        }
+
+        const saveEditBtn = event.target.closest('.save-edit-chat-message-btn');
+        if (saveEditBtn) {
+            const messageId = Number(saveEditBtn.dataset.messageId);
+            if (!Number.isNaN(messageId)) {
+                await saveEditMessage(messageId);
+            }
+            return;
+        }
+
+        const cancelEditBtn = event.target.closest('.cancel-edit-chat-message-btn');
+        if (cancelEditBtn) {
+            const messageId = Number(cancelEditBtn.dataset.messageId);
+            if (!Number.isNaN(messageId)) {
+                cancelEditMessage(messageId);
             }
             return;
         }

@@ -1,10 +1,13 @@
 @model PersonalNote
+@using DNTPersianUtils.Core
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     ViewData["UseFluidLayout"] = true;
     var noteColor = !string.IsNullOrEmpty(Model.Color) ? Model.Color : "#3b82f6";
     var requestToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+    var createdAtPersian = Model.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers();
+    var updatedAtPersian = Model.UpdatedAt?.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers();
 }
 
 <div class="note-detail-container">
@@ -47,13 +50,13 @@
                 <div class="author-name">یادداشت شخصی</div>
                 <div class="post-time">
                     <i class="bi bi-clock"></i>
-                    <span>@Model.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</span>
+                    <span>@createdAtPersian</span>
                 </div>
-                @if (Model.UpdatedAt.HasValue)
+                @if (!string.IsNullOrEmpty(updatedAtPersian))
                 {
                     <div class="post-updated">
                         <i class="bi bi-pencil-square"></i>
-                        <span>ویرایش شده در: @Model.UpdatedAt.Value.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</span>
+                        <span>ویرایش شده در: @updatedAtPersian</span>
                     </div>
                 }
             </div>

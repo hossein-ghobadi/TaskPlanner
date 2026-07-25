@@ -28,6 +28,15 @@ namespace Endpoint.Site.Models
         public List<IFormFile>? Attachments { get; set; }
     }
 
+    public class ProjectChatEditMessageVm
+    {
+        [Required]
+        public int MessageId { get; set; }
+
+        [StringLength(4000)]
+        public string? Message { get; set; }
+    }
+
     public class ProjectChatAddMembersVm
     {
         [Required]

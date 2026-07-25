@@ -562,6 +562,79 @@ namespace Endpoint.Site.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditMessage([FromForm] ProjectChatEditMessageVm vm)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized();
+            }
+
+            var message = await _context.ProjectChatMessages
+                .Include(m => m.ProjectChatGroup)
+                .Include(m => m.Attachments)
+                .FirstOrDefaultAsync(m => m.Id == vm.MessageId);
+
+            if (message == null || message.IsDeleted)
+            {
+                return NotFound();
+            }
+
+            if (message.ExternalProvider != null)
+            {
+                return BadRequest("پیام‌های دریافتی از بله قابل ویرایش از این بخش نیستند.");
+            }
+
+            if (message.UserId != userId)
+            {
+                return Forbid();
+            }
+
+            var isBaleSynced = await _context.ProjectBaleGroupLinks
+                .AnyAsync(l => l.ProjectChatGroupId == message.ProjectChatGroupId && l.IsEnabled);
+            if (isBaleSynced)
+            {
+                return BadRequest("گروه همگام با بله فقط خواندنی است.");
+            }
+
+            var trimmed = (vm.Message ?? string.Empty).Trim();
+            if (trimmed.Length > 4000)
+            {
+                return BadRequest("طول پیام بیش از حد مجاز است.");
+            }
+
+            var hasAttachments = message.Attachments.Any();
+            if (string.IsNullOrWhiteSpace(trimmed) && !hasAttachments)
+            {
+                return BadRequest("پیام نمی‌تواند خالی باشد.");
+            }
+
+            message.Message = trimmed;
+            message.ProjectChatGroup.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            var result = new ProjectChatMessageVm
+            {
+                Id = message.Id,
+                GroupId = message.ProjectChatGroupId,
+                UserId = message.UserId,
+                UserName = message.UserName,
+                Message = message.Message,
+                ReplyToMessageId = message.ReplyToMessageId,
+                CreatedAt = message.CreatedAt,
+                IsCurrentUser = true,
+                IsExternal = false
+            };
+
+            await _hubContext.Clients
+                .Group(ProjectChatHub.GetSignalRGroupName(message.ProjectChatGroupId))
+                .SendAsync("projectGroupMessageUpdated", result);
+
+            return Json(new { success = true, message = result });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteMessage(int messageId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
