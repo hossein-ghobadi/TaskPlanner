@@ -1637,7 +1637,11 @@
         });
 
         document.getElementById('implementationCommentFiles')?.addEventListener('change', function () {
-            refreshImplementationCommentPreviews();
+            // با هر انتخاب جدید، فایل‌های قبلی را حفظ و فایل‌های جدید را اضافه کن
+            Array.from(this.files || []).forEach(function (file) {
+                addImplementationCommentFile(file, true);
+            });
+            syncImplementationCommentFilesInput();
         });
 
         document.getElementById('implementationCommentPreviews')?.addEventListener('click', function (event) {
@@ -1904,17 +1908,34 @@
             return 'bi-paperclip';
         }
 
-        function refreshImplementationCommentPreviews() {
+        var implementationCommentPendingFiles = [];
+
+        function isSameImplementationCommentFile(a, b) {
+            return a.name === b.name && a.size === b.size && a.lastModified === b.lastModified;
+        }
+
+        function syncImplementationCommentFilesInput() {
             var fileInput = document.getElementById('implementationCommentFiles');
+            if (!fileInput) return;
+
+            var dataTransfer = new DataTransfer();
+            implementationCommentPendingFiles.forEach(function (file) {
+                dataTransfer.items.add(file);
+            });
+            fileInput.files = dataTransfer.files;
+            refreshImplementationCommentPreviews();
+        }
+
+        function refreshImplementationCommentPreviews() {
             var previewContainer = document.getElementById('implementationCommentPreviews');
-            if (!fileInput || !previewContainer) return;
+            if (!previewContainer) return;
 
             previewContainer.querySelectorAll('img[data-object-url]').forEach(function (img) {
                 URL.revokeObjectURL(img.getAttribute('data-object-url'));
             });
             previewContainer.innerHTML = '';
 
-            Array.from(fileInput.files).forEach(function (file, index) {
+            implementationCommentPendingFiles.forEach(function (file, index) {
                 var wrapper = document.createElement('div');
                 wrapper.className = 'file-preview-item';
                 if (file.type && file.type.startsWith('image/')) {
@@ -1936,32 +1957,29 @@
             });
         }
 
-        function addImplementationCommentFile(file) {
-            var fileInput = document.getElementById('implementationCommentFiles');
-            if (!fileInput || !file) return;
+        function addImplementationCommentFile(file, skipSync) {
+            if (!file) return;
 
-            var dataTransfer = new DataTransfer();
-            Array.from(fileInput.files).forEach(function (existing) {
-                dataTransfer.items.add(existing);
+            var exists = implementationCommentPendingFiles.some(function (existing) {
+                return isSameImplementationCommentFile(existing, file);
             });
-            dataTransfer.items.add(file);
-            fileInput.files = dataTransfer.files;
-            refreshImplementationCommentPreviews();
+            if (!exists) {
+                implementationCommentPendingFiles.push(file);
+            }
+
+            if (!skipSync) {
+                syncImplementationCommentFilesInput();
+            }
         }
 
         function removeImplementationCommentFile(index) {
-            var fileInput = document.getElementById('implementationCommentFiles');
-            if (!fileInput) return;
-
-            var dataTransfer = new DataTransfer();
-            Array.from(fileInput.files).forEach(function (file, i) {
-                if (i !== index) dataTransfer.items.add(file);
-            });
-            fileInput.files = dataTransfer.files;
-            refreshImplementationCommentPreviews();
+            if (index < 0 || index >= implementationCommentPendingFiles.length) return;
+            implementationCommentPendingFiles.splice(index, 1);
+            syncImplementationCommentFilesInput();
         }
 
         function clearImplementationCommentAttachments() {
+            implementationCommentPendingFiles = [];
             var fileInput = document.getElementById('implementationCommentFiles');
             if (fileInput) fileInput.value = '';
             refreshImplementationCommentPreviews();
