@@ -523,6 +523,123 @@ namespace Endpoint.Site.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditImplementationComment(FeatureImplementationCommentEditVm vm)
+        {
+            var comment = await _context.FeatureImplementationComments
+                .Include(c => c.Feature)
+                .Include(c => c.Attachments)
+                .Include(c => c.AuthorUser)
+                .FirstOrDefaultAsync(c => c.Id == vm.Id);
+            if (comment == null)
+                return SpecError("یادداشت یافت نشد.", vm.FeatureId, 404);
+
+            if (comment.FeatureId != vm.FeatureId)
+                return SpecError("یادداشت متعلق به این فیچر نیست.", vm.FeatureId, 400);
+
+            if (!await HasProjectAccessAsync(comment.Feature.ProjectId))
+                return SpecError("دسترسی ندارید.", comment.FeatureId, 403);
+
+            var userId = CurrentUserId();
+            var isCreator = await IsProjectCreatorAsync(comment.Feature.ProjectId);
+            if (!isCreator && !string.Equals(comment.AuthorUserId, userId, StringComparison.Ordinal))
+                return SpecError("فقط نویسنده یا سازنده پروژه می‌تواند این یادداشت را ویرایش کند.", comment.FeatureId, 403);
+
+            var removeIds = (vm.RemoveAttachmentIds ?? new List<int>())
+                .Where(id => id > 0)
+                .Distinct()
+                .ToHashSet();
+
+            var toRemove = comment.Attachments
+                .Where(a => removeIds.Contains(a.Id))
+                .ToList();
+
+            var newFiles = vm.Attachments?
+                .Where(f => f != null && f.Length > 0)
+                .ToList() ?? new List<IFormFile>();
+
+            var remainingCount = comment.Attachments.Count - toRemove.Count;
+            var body = string.IsNullOrWhiteSpace(vm.Body) ? "" : vm.Body.Trim();
+
+            if (string.IsNullOrWhiteSpace(body) && remainingCount == 0 && newFiles.Count == 0)
+                return SpecError("متن یادداشت یا حداقل یک فایل پیوست الزامی است.", comment.FeatureId);
+
+            comment.Body = body;
+            comment.Feature.UpdatedAt = DateTime.UtcNow;
+
+            foreach (var attachment in toRemove)
+            {
+                _fileUploadService.DeleteFile(attachment.FilePath);
+                _context.FeatureImplementationCommentAttachments.Remove(attachment);
+            }
+
+            var uploadErrors = new List<string>();
+            var uploadedAttachments = new List<FeatureImplementationCommentAttachment>();
+            foreach (var file in newFiles)
+            {
+                var fileType = _fileUploadService.GetFileType(file.FileName);
+                if (string.Equals(fileType, "Other", StringComparison.OrdinalIgnoreCase)
+                    && (file.ContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) ?? false))
+                {
+                    fileType = "Image";
+                }
+
+                var uploadResult = await _fileUploadService.UploadFileAsync(file, "feature-implementation-comments");
+                if (!uploadResult.Success)
+                {
+                    uploadErrors.Add($"{file.FileName}: {uploadResult.Error}");
+                    continue;
+                }
+
+                var attachment = new FeatureImplementationCommentAttachment
+                {
+                    CommentId = comment.Id,
+                    FileName = file.FileName,
+                    FilePath = uploadResult.FilePath,
+                    FileType = fileType,
+                    FileSize = file.Length,
+                    MimeType = file.ContentType,
+                    UploadedAt = DateTime.UtcNow
+                };
+                _context.FeatureImplementationCommentAttachments.Add(attachment);
+                uploadedAttachments.Add(attachment);
+            }
+
+            if (uploadErrors.Count > 0 && uploadedAttachments.Count == 0 && newFiles.Count > 0
+                && string.IsNullOrWhiteSpace(body) && remainingCount == 0)
+            {
+                return SpecError(
+                    "خطا در آپلود فایل:\n" + string.Join("\n", uploadErrors),
+                    comment.FeatureId);
+            }
+
+            await _context.SaveChangesAsync();
+
+            // reload attachments after save for accurate response
+            var allAttachments = await _context.FeatureImplementationCommentAttachments
+                .AsNoTracking()
+                .Where(a => a.CommentId == comment.Id)
+                .OrderBy(a => a.UploadedAt)
+                .ToListAsync();
+
+            var response = MapImplementationCommentResponse(
+                comment,
+                comment.AuthorUser,
+                allAttachments,
+                canDelete: true);
+
+            if (uploadErrors.Count > 0)
+            {
+                return SpecSuccess(
+                    "یادداشت ویرایش شد، اما بعضی فایل‌ها آپلود نشدند:\n" + string.Join("\n", uploadErrors),
+                    comment.FeatureId,
+                    response);
+            }
+
+            return SpecSuccess("یادداشت ویرایش شد.", comment.FeatureId, response);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteImplementationComment(int id)
         {
             var comment = await _context.FeatureImplementationComments
@@ -542,6 +659,8 @@ namespace Endpoint.Site.Controllers
 
             var featureId = comment.FeatureId;
             var deletedId = comment.Id;
+            foreach (var attachment in comment.Attachments)
+                _fileUploadService.DeleteFile(attachment.FilePath);
             _context.FeatureImplementationComments.Remove(comment);
             comment.Feature.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();

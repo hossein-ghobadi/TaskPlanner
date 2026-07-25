@@ -182,6 +182,20 @@ namespace Endpoint.Site.Models
         public List<IFormFile>? Attachments { get; set; }
     }
 
+    public class FeatureImplementationCommentEditVm
+    {
+        public int Id { get; set; }
+
+        public int FeatureId { get; set; }
+
+        [StringLength(4000)]
+        public string? Body { get; set; }
+
+        public List<IFormFile>? Attachments { get; set; }
+
+        public List<int>? RemoveAttachmentIds { get; set; }
+    }
+
     public class FeatureTaskItemVm
     {
         public int Id { get; set; }

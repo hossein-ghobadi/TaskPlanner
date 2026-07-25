@@ -173,14 +173,24 @@
                                     </div>
                                     @if (comment.CanDelete)
                                     {
-                                        <button type="button"
-                                                class="btn btn-outline-danger btn-sm py-0 px-1"
-                                                title="حذف"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#deleteImplementationCommentModal"
-                                                data-id="@comment.Id">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
+                                        <div class="btn-group btn-group-sm flex-shrink-0">
+                                            <button type="button"
+                                                    class="btn btn-outline-secondary py-0 px-1"
+                                                    title="ویرایش"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#editImplementationCommentModal"
+                                                    data-id="@comment.Id">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-outline-danger py-0 px-1"
+                                                    title="حذف"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteImplementationCommentModal"
+                                                    data-id="@comment.Id">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
                                     }
                                 </div>
                                 @if (!string.IsNullOrWhiteSpace(comment.Body))
@@ -762,25 +772,33 @@
 
 <!-- یادداشت پیاده‌سازی: افزودن -->
 <style>
-    #implementationCommentPreviews {
+    #implementationCommentPreviews,
+    #editImplementationCommentPreviews,
+    #editImplementationCommentExistingAttachments {
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
         margin-top: 8px;
     }
-    #implementationCommentPreviews .file-preview-item {
+    #implementationCommentPreviews .file-preview-item,
+    #editImplementationCommentPreviews .file-preview-item,
+    #editImplementationCommentExistingAttachments .file-preview-item {
         position: relative;
         border-radius: 10px;
         overflow: hidden;
     }
-    #implementationCommentPreviews .file-preview-item img {
+    #implementationCommentPreviews .file-preview-item img,
+    #editImplementationCommentPreviews .file-preview-item img,
+    #editImplementationCommentExistingAttachments .file-preview-item img {
         max-width: 120px;
         max-height: 120px;
         border-radius: 10px;
         border: 1px solid #dee2e6;
         display: block;
     }
-    #implementationCommentPreviews .file-preview-doc {
+    #implementationCommentPreviews .file-preview-doc,
+    #editImplementationCommentPreviews .file-preview-doc,
+    #editImplementationCommentExistingAttachments .file-preview-doc {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -793,17 +811,23 @@
         font-size: 0.82rem;
         color: #334155;
     }
-    #implementationCommentPreviews .file-preview-doc i {
+    #implementationCommentPreviews .file-preview-doc i,
+    #editImplementationCommentPreviews .file-preview-doc i,
+    #editImplementationCommentExistingAttachments .file-preview-doc i {
         font-size: 1.25rem;
         color: #2563eb;
         flex-shrink: 0;
     }
-    #implementationCommentPreviews .file-preview-doc span {
+    #implementationCommentPreviews .file-preview-doc span,
+    #editImplementationCommentPreviews .file-preview-doc span,
+    #editImplementationCommentExistingAttachments .file-preview-doc span {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
-    #implementationCommentPreviews .remove-btn {
+    #implementationCommentPreviews .remove-btn,
+    #editImplementationCommentPreviews .remove-btn,
+    #editImplementationCommentExistingAttachments .remove-btn {
         position: absolute;
         top: 4px;
         right: 4px;
@@ -852,6 +876,51 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-plus-circle me-1"></i> ثبت
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- یادداشت پیاده‌سازی: ویرایش -->
+<div class="modal fade" id="editImplementationCommentModal" tabindex="-1" aria-labelledby="editImplementationCommentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <form asp-action="EditImplementationComment" method="post" enctype="multipart/form-data" data-ajax-spec="edit-implementation-comment">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" id="editImplementationCommentId" />
+                <input type="hidden" name="FeatureId" value="@Model.Id" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editImplementationCommentModalLabel">
+                        <i class="bi bi-pencil me-1"></i> ویرایش یادداشت
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label" for="editImplementationCommentBody">متن یادداشت</label>
+                    <textarea class="form-control mb-3" name="Body" id="editImplementationCommentBody" rows="4" maxlength="4000" placeholder="متن یادداشت. می‌توانید Ctrl+V را برای چسباندن تصویر از کلیپ‌بورد هم بزنید."></textarea>
+                    <div class="mb-3">
+                        <label class="form-label mb-1">پیوست‌های فعلی</label>
+                        <div id="editImplementationCommentExistingAttachments" class="d-flex flex-wrap gap-2"></div>
+                        <div id="editImplementationCommentExistingEmpty" class="form-text d-none">پیوستی وجود ندارد.</div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label mb-1" for="editImplementationCommentFiles">افزودن فایل جدید</label>
+                        <input type="file"
+                               class="form-control form-control-sm"
+                               name="Attachments"
+                               id="editImplementationCommentFiles"
+                               accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
+                               multiple />
+                        <div id="editImplementationCommentPreviews"></div>
+                        <div class="form-text">تصویر، صوت، PDF، Word، Excel، متن یا فشرده — یا چسباندن تصویر با Ctrl+V — حداکثر ۱۰ مگابایت برای هر فایل</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> ذخیره تغییرات
                     </button>
                 </div>
             </form>
@@ -1394,6 +1463,28 @@
             </text>
         }
 
+        var implementationCommentsById = {};
+        @foreach (var comment in Model.ImplementationComments)
+        {
+            <text>
+            implementationCommentsById[@comment.Id] = {
+                id: @comment.Id,
+                body: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(comment.Body ?? "")),
+                authorName: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(comment.AuthorName ?? "")),
+                createdAt: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(comment.CreatedAtDisplay ?? "")),
+                canDelete: @(comment.CanDelete ? "true" : "false"),
+                attachments: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(comment.Attachments.Select(a => new {
+                    id = a.Id,
+                    fileName = a.FileName,
+                    filePath = a.FilePath,
+                    fileType = a.FileType,
+                    fileSize = a.FileSize,
+                    mimeType = a.MimeType
+                })))
+            };
+            </text>
+        }
+
         var fieldTypeOptions = ['string', 'int', 'long', 'decimal', 'bool', 'DateTime', 'Guid', 'object', 'array'];
 
         function createFieldRow(container, field) {
@@ -1636,6 +1727,224 @@
             clearImplementationCommentAttachments();
         });
 
+        var editImplementationCommentPendingFiles = [];
+        var editImplementationCommentExisting = [];
+        var editImplementationCommentRemoveIds = [];
+
+        function getAttachmentFileIcon(fileName, fileType, mimeType) {
+            var name = String(fileName || '').toLowerCase();
+            var type = String(fileType || '').toLowerCase();
+            var mime = String(mimeType || '').toLowerCase();
+            if (type === 'audio' || mime.indexOf('audio/') === 0 || /\.(mp3|wav|ogg|m4a|webm|aac)$/.test(name)) return 'bi-mic';
+            if (type === 'image' || mime.indexOf('image/') === 0) return 'bi-image';
+            if (/\.(pdf)$/.test(name)) return 'bi-file-earmark-pdf';
+            if (/\.(doc|docx)$/.test(name)) return 'bi-file-earmark-word';
+            if (/\.(xls|xlsx)$/.test(name)) return 'bi-file-earmark-excel';
+            if (/\.(zip|rar)$/.test(name)) return 'bi-file-earmark-zip';
+            return 'bi-paperclip';
+        }
+
+        function refreshEditImplementationCommentExisting() {
+            var container = document.getElementById('editImplementationCommentExistingAttachments');
+            var emptyEl = document.getElementById('editImplementationCommentExistingEmpty');
+            if (!container) return;
+            container.innerHTML = '';
+
+            var visible = editImplementationCommentExisting.filter(function (att) {
+                return editImplementationCommentRemoveIds.indexOf(att.id) === -1;
+            });
+
+            if (emptyEl) emptyEl.classList.toggle('d-none', visible.length > 0);
+
+            visible.forEach(function (att) {
+                var fileType = String(att.fileType || '').toLowerCase();
+                var mimeType = String(att.mimeType || '').toLowerCase();
+                var isImage = fileType === 'image' || mimeType.indexOf('image/') === 0;
+                var wrapper = document.createElement('div');
+                wrapper.className = 'file-preview-item';
+                wrapper.setAttribute('data-attachment-id', att.id);
+                if (isImage) {
+                    wrapper.innerHTML =
+                        '<button type="button" class="btn p-0 border-0 implementation-comment-image-thumb" data-image-url="' + escapeHtml(att.filePath) + '" data-image-name="' + escapeHtml(att.fileName) + '" title="نمایش تصویر">' +
+                        '<img src="' + escapeHtml(att.filePath) + '" alt="' + escapeHtml(att.fileName) + '" />' +
+                        '</button>' +
+                        '<button type="button" class="remove-btn" data-existing-id="' + att.id + '" aria-label="حذف">&times;</button>';
+                } else {
+                    wrapper.innerHTML =
+                        '<div class="file-preview-doc">' +
+                        '<i class="bi ' + getAttachmentFileIcon(att.fileName, att.fileType, att.mimeType) + '"></i>' +
+                        '<span title="' + escapeHtml(att.fileName) + '">' + escapeHtml(att.fileName) + '</span>' +
+                        '</div>' +
+                        '<button type="button" class="remove-btn" data-existing-id="' + att.id + '" aria-label="حذف">&times;</button>';
+                }
+                container.appendChild(wrapper);
+            });
+        }
+
+        function syncEditImplementationCommentRemoveInputs() {
+            var form = document.querySelector('#editImplementationCommentModal form');
+            if (!form) return;
+            form.querySelectorAll('input[name="RemoveAttachmentIds"]').forEach(function (el) { el.remove(); });
+            editImplementationCommentRemoveIds.forEach(function (id) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'RemoveAttachmentIds';
+                input.value = String(id);
+                form.appendChild(input);
+            });
+        }
+
+        function syncEditImplementationCommentFilesInput() {
+            var fileInput = document.getElementById('editImplementationCommentFiles');
+            if (!fileInput) return;
+            var dataTransfer = new DataTransfer();
+            editImplementationCommentPendingFiles.forEach(function (file) {
+                dataTransfer.items.add(file);
+            });
+            fileInput.files = dataTransfer.files;
+            refreshEditImplementationCommentPreviews();
+        }
+
+        function refreshEditImplementationCommentPreviews() {
+            var previewContainer = document.getElementById('editImplementationCommentPreviews');
+            if (!previewContainer) return;
+            previewContainer.querySelectorAll('img[data-object-url]').forEach(function (img) {
+                URL.revokeObjectURL(img.getAttribute('data-object-url'));
+            });
+            previewContainer.innerHTML = '';
+            editImplementationCommentPendingFiles.forEach(function (file, index) {
+                var wrapper = document.createElement('div');
+                wrapper.className = 'file-preview-item';
+                if (file.type && file.type.startsWith('image/')) {
+                    var url = URL.createObjectURL(file);
+                    wrapper.innerHTML =
+                        '<button type="button" class="btn p-0 border-0 implementation-comment-image-thumb" data-image-url="' + url + '" data-image-name="' + escapeHtml(file.name) + '" title="نمایش تصویر">' +
+                        '<img src="' + url + '" alt="' + escapeHtml(file.name) + '" data-object-url="' + url + '" style="cursor: zoom-in;" />' +
+                        '</button>' +
+                        '<button type="button" class="remove-btn" data-index="' + index + '" aria-label="حذف">&times;</button>';
+                } else {
+                    wrapper.innerHTML =
+                        '<div class="file-preview-doc">' +
+                        '<i class="bi ' + getImplementationCommentFileIcon(file) + '"></i>' +
+                        '<span title="' + escapeHtml(file.name) + '">' + escapeHtml(file.name) + '</span>' +
+                        '</div>' +
+                        '<button type="button" class="remove-btn" data-index="' + index + '" aria-label="حذف">&times;</button>';
+                }
+                previewContainer.appendChild(wrapper);
+            });
+        }
+
+        function addEditImplementationCommentFile(file, skipSync) {
+            if (!file) return;
+            var exists = editImplementationCommentPendingFiles.some(function (existing) {
+                return isSameImplementationCommentFile(existing, file);
+            });
+            if (!exists) editImplementationCommentPendingFiles.push(file);
+            if (!skipSync) syncEditImplementationCommentFilesInput();
+        }
+
+        function removeEditImplementationCommentFile(index) {
+            if (index < 0 || index >= editImplementationCommentPendingFiles.length) return;
+            editImplementationCommentPendingFiles.splice(index, 1);
+            syncEditImplementationCommentFilesInput();
+        }
+
+        function clearEditImplementationCommentAttachments() {
+            editImplementationCommentPendingFiles = [];
+            editImplementationCommentExisting = [];
+            editImplementationCommentRemoveIds = [];
+            var fileInput = document.getElementById('editImplementationCommentFiles');
+            if (fileInput) fileInput.value = '';
+            refreshEditImplementationCommentPreviews();
+            refreshEditImplementationCommentExisting();
+            syncEditImplementationCommentRemoveInputs();
+        }
+
+        document.getElementById('editImplementationCommentModal')?.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            var id = Number(btn.getAttribute('data-id'));
+            var comment = implementationCommentsById[id];
+            if (!comment) return;
+
+            document.getElementById('editImplementationCommentId').value = String(comment.id);
+            document.getElementById('editImplementationCommentBody').value = comment.body || '';
+            editImplementationCommentPendingFiles = [];
+            editImplementationCommentRemoveIds = [];
+            editImplementationCommentExisting = (comment.attachments || []).map(function (a) {
+                return {
+                    id: a.id,
+                    fileName: a.fileName,
+                    filePath: a.filePath,
+                    fileType: a.fileType,
+                    fileSize: a.fileSize,
+                    mimeType: a.mimeType
+                };
+            });
+            syncEditImplementationCommentFilesInput();
+            refreshEditImplementationCommentExisting();
+            syncEditImplementationCommentRemoveInputs();
+        });
+
+        document.getElementById('editImplementationCommentModal')?.addEventListener('shown.bs.modal', function () {
+            document.getElementById('editImplementationCommentBody')?.focus();
+        });
+
+        document.getElementById('editImplementationCommentModal')?.addEventListener('hidden.bs.modal', function () {
+            var form = document.querySelector('#editImplementationCommentModal form');
+            if (form) {
+                form.reset();
+                form.querySelectorAll('input[name="RemoveAttachmentIds"]').forEach(function (el) { el.remove(); });
+            }
+            clearEditImplementationCommentAttachments();
+        });
+
+        document.getElementById('editImplementationCommentFiles')?.addEventListener('change', function () {
+            Array.from(this.files || []).forEach(function (file) {
+                addEditImplementationCommentFile(file, true);
+            });
+            syncEditImplementationCommentFilesInput();
+        });
+
+        document.getElementById('editImplementationCommentPreviews')?.addEventListener('click', function (event) {
+            var btn = event.target.closest('.remove-btn');
+            if (!btn) return;
+            var index = Number(btn.getAttribute('data-index'));
+            if (!Number.isNaN(index)) removeEditImplementationCommentFile(index);
+        });
+
+        document.getElementById('editImplementationCommentExistingAttachments')?.addEventListener('click', function (event) {
+            var btn = event.target.closest('.remove-btn');
+            if (!btn) return;
+            var id = Number(btn.getAttribute('data-existing-id'));
+            if (Number.isNaN(id)) return;
+            if (editImplementationCommentRemoveIds.indexOf(id) === -1) {
+                editImplementationCommentRemoveIds.push(id);
+            }
+            refreshEditImplementationCommentExisting();
+            syncEditImplementationCommentRemoveInputs();
+        });
+
+        document.getElementById('editImplementationCommentBody')?.addEventListener('paste', function (event) {
+            if (!event.clipboardData || !event.clipboardData.items) return;
+            var handled = false;
+            for (var i = 0; i < event.clipboardData.items.length; i++) {
+                var item = event.clipboardData.items[i];
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    var file = item.getAsFile();
+                    if (file) {
+                        if (!file.name) {
+                            var ext = (file.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+                            file = new File([file], 'clipboard-' + Date.now() + '.' + ext, { type: file.type });
+                        }
+                        addEditImplementationCommentFile(file);
+                        handled = true;
+                    }
+                }
+            }
+            if (handled) event.preventDefault();
+        });
+
         document.getElementById('implementationCommentFiles')?.addEventListener('change', function () {
             // با هر انتخاب جدید، فایل‌های قبلی را حفظ و فایل‌های جدید را اضافه کن
             Array.from(this.files || []).forEach(function (file) {
@@ -1872,8 +2181,11 @@
             var div = document.createElement('div');
             div.className = 'border rounded p-3 mb-2 implementation-comment-item';
             div.setAttribute('data-id', item.id);
-            var deleteBtn = item.canDelete
-                ? '<button type="button" class="btn btn-outline-danger btn-sm py-0 px-1" title="حذف" data-bs-toggle="modal" data-bs-target="#deleteImplementationCommentModal" data-id="' + item.id + '"><i class="bi bi-trash"></i></button>'
+            var actionsHtml = item.canDelete
+                ? '<div class="btn-group btn-group-sm flex-shrink-0">' +
+                  '<button type="button" class="btn btn-outline-secondary py-0 px-1" title="ویرایش" data-bs-toggle="modal" data-bs-target="#editImplementationCommentModal" data-id="' + item.id + '"><i class="bi bi-pencil"></i></button>' +
+                  '<button type="button" class="btn btn-outline-danger py-0 px-1" title="حذف" data-bs-toggle="modal" data-bs-target="#deleteImplementationCommentModal" data-id="' + item.id + '"><i class="bi bi-trash"></i></button>' +
+                  '</div>'
                 : '';
             var bodyHtml = item.body
                 ? '<div class="item-body mb-0">' + escapeHtml(item.body) + '</div>'
@@ -1882,11 +2194,32 @@
                 '<div class="d-flex justify-content-between align-items-start gap-2 mb-1">' +
                     '<div><strong class="item-author">' + escapeHtml(item.authorName) + '</strong>' +
                     '<span class="text-muted small ms-2 item-date">' + escapeHtml(item.createdAt) + '</span></div>' +
-                    deleteBtn +
+                    actionsHtml +
                 '</div>' +
                 bodyHtml +
                 buildImplementationCommentAttachmentsHtml(item.attachments);
             return div;
+        }
+
+        function upsertImplementationCommentCache(item) {
+            if (!item || !item.id) return;
+            implementationCommentsById[item.id] = {
+                id: item.id,
+                body: item.body || '',
+                authorName: item.authorName || '',
+                createdAt: item.createdAt || '',
+                canDelete: !!item.canDelete,
+                attachments: (item.attachments || []).map(function (a) {
+                    return {
+                        id: a.id,
+                        fileName: a.fileName,
+                        filePath: a.filePath,
+                        fileType: a.fileType,
+                        fileSize: a.fileSize,
+                        mimeType: a.mimeType
+                    };
+                })
+            };
         }
 
         function syncImplementationCommentsEmpty() {
@@ -2083,11 +2416,24 @@
             } else if (action === 'add-implementation-comment' && data) {
                 var commentsList = document.getElementById('implementationCommentsList');
                 commentsList.insertBefore(buildImplementationCommentItem(data), commentsList.firstChild);
+                upsertImplementationCommentCache(data);
                 syncImplementationCommentsEmpty();
                 form.reset();
                 clearImplementationCommentAttachments();
+            } else if (action === 'edit-implementation-comment' && data) {
+                var existingItem = document.querySelector('#implementationCommentsList .implementation-comment-item[data-id="' + data.id + '"]');
+                var updatedItem = buildImplementationCommentItem(data);
+                if (existingItem) existingItem.replaceWith(updatedItem);
+                else {
+                    var list = document.getElementById('implementationCommentsList');
+                    if (list) list.insertBefore(updatedItem, list.firstChild);
+                }
+                upsertImplementationCommentCache(data);
+                syncImplementationCommentsEmpty();
+                clearEditImplementationCommentAttachments();
             } else if (action === 'delete-implementation-comment' && data) {
                 document.querySelector('#implementationCommentsList .implementation-comment-item[data-id="' + data.id + '"]')?.remove();
+                delete implementationCommentsById[data.id];
                 syncImplementationCommentsEmpty();
             } else if (action === 'add-page-state' && data) {
                 document.getElementById('pageStatesList').appendChild(buildPageStateRow(data));
@@ -2122,6 +2468,16 @@
                     var body = (document.getElementById('implementationCommentBody')?.value || '').trim();
                     var files = document.getElementById('implementationCommentFiles')?.files;
                     if (!body && (!files || files.length === 0)) {
+                        showSpecAlert('متن یادداشت یا حداقل یک فایل پیوست الزامی است.', true);
+                        return;
+                    }
+                } else if (action === 'edit-implementation-comment') {
+                    var editBody = (document.getElementById('editImplementationCommentBody')?.value || '').trim();
+                    var editFiles = document.getElementById('editImplementationCommentFiles')?.files;
+                    var remainingExisting = editImplementationCommentExisting.filter(function (att) {
+                        return editImplementationCommentRemoveIds.indexOf(att.id) === -1;
+                    }).length;
+                    if (!editBody && remainingExisting === 0 && (!editFiles || editFiles.length === 0)) {
                         showSpecAlert('متن یادداشت یا حداقل یک فایل پیوست الزامی است.', true);
                         return;
                     }
