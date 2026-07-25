@@ -6,20 +6,18 @@ using System.Linq;
 
 namespace TaskPlanner.Application.Services.TaskPlanner
 {
+    /// <summary>
+    /// هم‌تراز با Wang.DocumentUploader — آپلود سند فقط به باکت shidatis.
+    /// مثل ImageUploader این پروژه، type=projectmanaging برای مسیریابی باکت لازم است.
+    /// </summary>
     public class DocumentUploader : IDocumentUploader
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<DocumentUploader> _logger;
         private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
-        // endpoint اصلی اسناد روی shidatis.com فعلاً 500 می‌دهد؛ چند مسیر جایگزین امتحان می‌شود
-        private static readonly string[] UploadUrls =
-        {
-            "https://shidatis.com/api/upload/file",
-            "https://shidatis.com/api/upload/image",
-            "https://shidatis.ir/api/upload/file",
-            "https://shidatis.ir/api/upload/image"
-        };
+        // همان الگوی Wang + type مخصوص این پروژه (مثل ImageUploader)
+        private const string UploadUrl = "https://shidatis.com/api/upload/file?type=projectmanaging";
 
         public DocumentUploader(IHttpClientFactory httpClientFactory, ILogger<DocumentUploader> logger)
         {
@@ -36,122 +34,60 @@ namespace TaskPlanner.Application.Services.TaskPlanner
             await file.CopyToAsync(ms, ct);
             var bytes = ms.ToArray();
 
-            var mime = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
-            var safeName = GetSafeFileName(file.FileName);
-            var errors = new List<string>();
-
             using var client = _httpClientFactory.CreateClient();
             client.DefaultRequestHeaders.ExpectContinue = false;
             client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
-            client.Timeout = TimeSpan.FromMinutes(2);
 
-            foreach (var uploadUrl in UploadUrls)
+            using var form = new MultipartFormDataContent();
+            var mime = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+
+            var part = new ByteArrayContent(bytes);
+            part.Headers.ContentType = new MediaTypeHeaderValue(mime);
+            // مثل Wang: نام فایل اصلی (بدون فیلد folder اضافه)
+            var safeName = Path.GetFileName(string.IsNullOrWhiteSpace(file.FileName) ? "upload.bin" : file.FileName);
+            if (ContainsNonAscii(safeName))
             {
-                try
-                {
-                    using var form = new MultipartFormDataContent();
-                    var part = new ByteArrayContent(bytes);
-                    part.Headers.ContentType = new MediaTypeHeaderValue(mime);
-                    part.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
-                    {
-                        Name = "\"file\"",
-                        FileName = $"\"{safeName}\""
-                    };
-                    form.Add(part);
-
-                    // بعضی APIها پوشه را هم می‌خواهند
-                    if (!string.IsNullOrWhiteSpace(folder))
-                    {
-                        form.Add(new StringContent(folder), "folder");
-                    }
-
-                    var res = await client.PostAsync(uploadUrl, form, ct);
-                    var body = await res.Content.ReadAsStringAsync(ct);
-
-                    _logger.LogInformation("Document upload via {Url}: {StatusCode} - {Body}",
-                        uploadUrl, res.StatusCode, body);
-
-                    if (!res.IsSuccessStatusCode)
-                    {
-                        errors.Add($"{uploadUrl} => {(int)res.StatusCode}");
-                        continue;
-                    }
-
-                    var parsed = JsonSerializer.Deserialize<UploadResponse>(body, _jsonOptions);
-                    var url = parsed?.data;
-                    if (string.IsNullOrWhiteSpace(url))
-                    {
-                        errors.Add($"{uploadUrl} => empty data");
-                        continue;
-                    }
-
-                    _logger.LogInformation("✅ آپلود سند موفق از {Url}: {FileUrl}", uploadUrl, url);
-                    return url;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Document upload failed via {Url}", uploadUrl);
-                    errors.Add($"{uploadUrl} => {ex.Message}");
-                }
+                safeName = GetSafeFileName(safeName);
             }
 
-            try
+            part.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
             {
-                var localUrl = await SaveLocalFallbackAsync(bytes, folder, safeName, ct);
-                _logger.LogWarning(
-                    "Remote document upload failed; saved locally at {LocalUrl}. Errors: {Errors}",
-                    localUrl,
-                    string.Join(" | ", errors));
-                return localUrl;
-            }
-            catch (Exception ex)
+                Name = "\"file\"",
+                FileName = $"\"{safeName}\""
+            };
+            form.Add(part);
+
+            using var req = new HttpRequestMessage(HttpMethod.Post, UploadUrl)
             {
-                _logger.LogError(ex, "Local document fallback also failed");
-                throw new InvalidOperationException(
-                    "آپلود فایل ناموفق بود. " + string.Join(" | ", errors), ex);
-            }
-        }
+                Content = form,
+                Version = new Version(1, 1),
+                VersionPolicy = HttpVersionPolicy.RequestVersionOrLower
+            };
 
-        private static async Task<string> SaveLocalFallbackAsync(byte[] bytes, string folder, string safeName, CancellationToken ct)
-        {
-            var safeFolder = string.IsNullOrWhiteSpace(folder)
-                ? "documents"
-                : string.Concat(folder.Where(c => char.IsLetterOrDigit(c) || c == '-' || c == '_'));
-            if (string.IsNullOrWhiteSpace(safeFolder))
-                safeFolder = "documents";
+            var res = await client.PostAsync(UploadUrl, form, ct);
+            var body = await res.Content.ReadAsStringAsync(ct);
 
-            var webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", safeFolder);
-            Directory.CreateDirectory(webRoot);
+            _logger.LogInformation("Document upload Response: {StatusCode} - {Body}", res.StatusCode, body);
 
-            var localName = $"{Guid.NewGuid():N}{Path.GetExtension(safeName)}";
-            var localPath = Path.Combine(webRoot, localName);
-            await File.WriteAllBytesAsync(localPath, bytes, ct);
+            if (!res.IsSuccessStatusCode)
+                throw new InvalidOperationException($"Upload failed ({(int)res.StatusCode}): {body}");
 
-            // مسیر نسبی اپ — در ToPublicUrl دست‌نخورده می‌ماند
-            return $"/uploads/{safeFolder}/{localName}";
+            var parsed = JsonSerializer.Deserialize<UploadResponse>(body, _jsonOptions)
+                         ?? throw new InvalidOperationException("Invalid response (null)");
+            if (string.IsNullOrWhiteSpace(parsed.data))
+                throw new InvalidOperationException("Invalid response (data empty)");
+
+            _logger.LogInformation("✅ آپلود سند موفق: {Url}", parsed.data);
+            return parsed.data;
         }
 
         private static string GetSafeFileName(string? fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName))
-                return $"document_{DateTime.UtcNow:yyyyMMdd_HHmmss}.bin";
+                return "document.pdf";
 
             var extension = Path.GetExtension(fileName);
-            if (string.IsNullOrWhiteSpace(extension))
-                extension = ".bin";
-
-            // نام فارسی/غیر ASCII باعث خطای بعضی APIهای آپلود می‌شود
-            if (ContainsNonAscii(fileName))
-            {
-                return $"document_{DateTime.UtcNow:yyyyMMdd_HHmmss}{extension.ToLowerInvariant()}";
-            }
-
-            var baseName = Path.GetFileNameWithoutExtension(fileName);
-            var cleaned = new string(baseName.Where(c => char.IsLetterOrDigit(c) || c == '-' || c == '_').ToArray());
-            if (string.IsNullOrWhiteSpace(cleaned))
-                cleaned = "document";
-
-            return $"{cleaned}{extension.ToLowerInvariant()}";
+            return $"document_{DateTime.Now:yyyyMMdd_HHmmss}{extension}";
         }
 
         private static bool ContainsNonAscii(string input)

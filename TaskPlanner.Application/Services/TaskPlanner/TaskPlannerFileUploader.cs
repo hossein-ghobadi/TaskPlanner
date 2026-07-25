@@ -12,7 +12,7 @@ namespace TaskPlanner.Application.Services.TaskPlanner
         private readonly ILogger<TaskPlannerFileUploader> _logger;
         private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
 
-        private const string UploadUrl = "https://shidatis.ir/api/upload/file";
+        private const string UploadUrl = "https://shidatis.ir/api/upload/file?type=projectmanaging";
 
         public TaskPlannerFileUploader(IHttpClientFactory httpClientFactory, ILogger<TaskPlannerFileUploader> logger)
         {
@@ -20,7 +20,6 @@ namespace TaskPlanner.Application.Services.TaskPlanner
             _logger = logger;
         }
 
-       
         public async Task<string> UploadAsync(IFormFile file, string? _, CancellationToken ct = default)
         {
             if (file == null || file.Length == 0) 

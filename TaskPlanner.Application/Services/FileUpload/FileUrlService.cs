@@ -93,19 +93,12 @@ namespace TaskPlanner.Application.Services.FileUpload
                 return relative;
             }
 
-            // آپلود محلی روی خود اپ (wwwroot/uploads) — به CDN نچسبان
-            var normalizedRelative = relative.TrimStart('/');
-            if (normalizedRelative.StartsWith("uploads/", StringComparison.OrdinalIgnoreCase))
-            {
-                return "/" + normalizedRelative;
-            }
-
             if (string.IsNullOrEmpty(_baseUrl))
             {
                 return relative.StartsWith('/') ? relative : "/" + relative;
             }
 
-            return $"{_baseUrl}/{normalizedRelative}";
+            return $"{_baseUrl}/{relative.TrimStart('/')}";
         }
 
         private static string NormalizeBase(string? value)

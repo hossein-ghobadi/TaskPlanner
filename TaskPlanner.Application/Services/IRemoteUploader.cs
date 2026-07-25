@@ -71,9 +71,9 @@ namespace TaskPlanner.Application.Services
                 Version = new Version(1, 1),
                 VersionPolicy = HttpVersionPolicy.RequestVersionOrLower
             };
-            client.BaseAddress = new Uri("https://tabloradin.com"); // همیشه با http/https شروع بشه
+            client.BaseAddress = new Uri("https://shidatis.com"); // همیشه با http/https شروع بشه
 
-            var res = await client.PostAsync("/api/image-upload?type=TryOn", form, ct);
+            var res = await client.PostAsync("/api/upload/image?type=projectmanaging", form, ct);
             var body = await res.Content.ReadAsStringAsync(ct);
             if (!res.IsSuccessStatusCode)
                 throw new InvalidOperationException($"Upload failed ({(int)res.StatusCode}): {body}");
