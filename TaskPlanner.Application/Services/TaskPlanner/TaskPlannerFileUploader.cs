@@ -11,9 +11,7 @@ namespace TaskPlanner.Application.Services.TaskPlanner
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<TaskPlannerFileUploader> _logger;
         private static readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web);
-
         private const string UploadUrl = "https://shidatis.ir/api/upload/file?type=projectmanaging";
-
         public TaskPlannerFileUploader(IHttpClientFactory httpClientFactory, ILogger<TaskPlannerFileUploader> logger)
         {
             _httpClientFactory = httpClientFactory;

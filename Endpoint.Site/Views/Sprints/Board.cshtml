@@ -277,9 +277,64 @@
     }
     .backlog-tasks .task-card {
     margin: 0;
+    position: relative;
+    transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .backlog-tasks .task-card.backlog-selected {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
     }
     .backlog-tasks .empty-message {
     grid-column: 1 / -1;
+    }
+    .backlog-panel-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    }
+    .backlog-bulk-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.85rem;
+    padding: 0.65rem 0.85rem;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    }
+    .backlog-bulk-bar .backlog-bulk-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    }
+    .backlog-bulk-bar .backlog-select-all {
+    margin: 0;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+    }
+    .backlog-bulk-bar .backlog-selected-count {
+    color: #495057;
+    font-size: 0.85rem;
+    }
+    .backlog-card-checkbox-wrap {
+    position: absolute;
+    top: 0.55rem;
+    right: 0.55rem;
+    z-index: 2;
+    }
+    .backlog-card-checkbox-wrap .form-check-input {
+    width: 1.15rem;
+    height: 1.15rem;
+    cursor: pointer;
+    margin: 0;
     }
     .kanban-column {
     width: 280px;
@@ -2843,10 +2898,28 @@
                 بک لاگ
                 <span class="badge bg-primary" id="backlogCountBadge">@backLog.Count.ToString().ToPersianNumbers()</span>
             </h3>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showBoardView()">
-                <i class="bi bi-kanban"></i> بازگشت به تخته
-            </button>
+            <div class="backlog-panel-header-actions">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showBoardView()">
+                    <i class="bi bi-kanban"></i> بازگشت به تخته
+                </button>
+            </div>
         </div>
+        @if (backLog.Any() && Model.Status == SprintStatus.Active)
+        {
+            <div class="backlog-bulk-bar" id="backlogBulkBar">
+                <div class="backlog-bulk-left">
+                    <label class="backlog-select-all">
+                        <input type="checkbox" class="form-check-input" id="backlogSelectAll" />
+                        <span>انتخاب همه</span>
+                    </label>
+                    <span class="backlog-selected-count" id="backlogSelectedCount">۰ مورد انتخاب شده</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-primary" id="backlogBulkAddBtn" disabled onclick="addSelectedTasksToSprint()">
+                    <i class="bi bi-plus-circle-fill"></i>
+                    افزودن انتخاب‌شده‌ها به اسپرینت
+                </button>
+            </div>
+        }
         <div class="backlog-tasks" id="tasks-backlog">
             @if (backLog.Any())
             {
@@ -2864,6 +2937,16 @@
                          data-key="@issue.IssueKey"
                          data-due="@dueDate?.ToString("o")"
                          data-due-soon="@dueSoonFlag.ToString().ToLower()">
+
+                        <div class="backlog-card-checkbox-wrap" onclick="event.stopPropagation();">
+                            @if (Model.Status == SprintStatus.Active)
+                            {
+                                <input type="checkbox"
+                                       class="form-check-input backlog-task-checkbox"
+                                       value="@issue.Id"
+                                       aria-label="انتخاب کار" />
+                            }
+                        </div>
 
                         <div class="task-card-header">
                             <div class="task-actions">
@@ -2888,13 +2971,6 @@
                                 </span>
                             }
                             <small>@issue.CreatedAt.ToShortPersianDateString().ToPersianNumbers()</small>
-                        </div>
-
-                        <div class="d-flex gap-2 mt-2" onclick="event.stopPropagation();">
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addTaskToSprint(@issue.Id)" title="افزودن به اسپرینت">
-                                <i class="bi bi-plus-circle-fill"></i>
-                                افزودن به اسپرینت
-                            </button>
                         </div>
                     </div>
                 }
@@ -3618,6 +3694,9 @@
             updateIssueCounts();
             refreshEmptyColumnStyles();
             persistBoardFilters();
+            if (typeof updateBacklogSelectionUI === 'function') {
+                updateBacklogSelectionUI();
+            }
         }
 
         function scrollToStatusColumn(statusId) {
@@ -6063,6 +6142,11 @@
                 // غیرفعال کردن کارت در حال اضافه شدن
                 const taskItem = $(`.available-task-item[data-task-id="${taskId}"]`);
                 taskItem.css('opacity', '0.5').css('pointer-events', 'none');
+                const backlogCard = document.querySelector(`#tasks-backlog .task-card[data-issue-id="${taskId}"]`);
+                if (backlogCard) {
+                    backlogCard.style.opacity = '0.5';
+                    backlogCard.style.pointerEvents = 'none';
+                }
                 
                 $.ajax({
                     url: '/Sprints/AddTaskToSprint',
@@ -6077,17 +6161,173 @@
                             showNotification('کار با موفقیت به اسپرینت اضافه شد', 'success');
                             selectedTaskId = null;
                             $('.available-task-item').removeClass('selected');
-                            loadAvailableTasks();
+                            if (typeof loadAvailableTasks === 'function') {
+                                loadAvailableTasks();
+                            }
                             setTimeout(() => reloadBoard(), 1000);
                         } else {
                             showNotification('خطا: ' + response.message, 'error');
                             taskItem.css('opacity', '1').css('pointer-events', 'auto');
+                            if (backlogCard) {
+                                backlogCard.style.opacity = '1';
+                                backlogCard.style.pointerEvents = '';
+                            }
                         }
                     },
                     error: function() {
                         addingTaskInProgress = false;
                         showNotification('خطا در ارتباط با سرور', 'error');
                         taskItem.css('opacity', '1').css('pointer-events', 'auto');
+                        if (backlogCard) {
+                            backlogCard.style.opacity = '1';
+                            backlogCard.style.pointerEvents = '';
+                        }
+                    }
+                });
+            }
+
+            function getVisibleBacklogCheckboxes() {
+                return Array.from(document.querySelectorAll('#tasks-backlog .task-card:not(.filtered-out) .backlog-task-checkbox'));
+            }
+
+            function getSelectedBacklogTaskIds() {
+                return getVisibleBacklogCheckboxes()
+                    .filter(cb => cb.checked)
+                    .map(cb => parseInt(cb.value, 10))
+                    .filter(id => !Number.isNaN(id));
+            }
+
+            function updateBacklogSelectionUI() {
+                const checkboxes = getVisibleBacklogCheckboxes();
+                const selectedIds = getSelectedBacklogTaskIds();
+                const selectAll = document.getElementById('backlogSelectAll');
+                const countEl = document.getElementById('backlogSelectedCount');
+                const bulkBtn = document.getElementById('backlogBulkAddBtn');
+
+                document.querySelectorAll('#tasks-backlog .task-card').forEach(card => {
+                    const cb = card.querySelector('.backlog-task-checkbox');
+                    card.classList.toggle('backlog-selected', !!(cb && cb.checked));
+                });
+
+                if (countEl) {
+                    countEl.textContent = `${toPersianDigits(String(selectedIds.length))} مورد انتخاب شده`;
+                }
+                if (bulkBtn) {
+                    bulkBtn.disabled = selectedIds.length === 0 || addingTaskInProgress;
+                }
+                if (selectAll) {
+                    selectAll.checked = checkboxes.length > 0 && selectedIds.length === checkboxes.length;
+                    selectAll.indeterminate = selectedIds.length > 0 && selectedIds.length < checkboxes.length;
+                }
+            }
+
+            function registerBacklogBulkSelection() {
+                const backlogRoot = document.getElementById('tasks-backlog');
+                const selectAll = document.getElementById('backlogSelectAll');
+                if (!backlogRoot) return;
+
+                backlogRoot.addEventListener('change', function (e) {
+                    const cb = e.target.closest('.backlog-task-checkbox');
+                    if (!cb) return;
+                    updateBacklogSelectionUI();
+                });
+
+                if (selectAll) {
+                    selectAll.addEventListener('change', function () {
+                        const checked = selectAll.checked;
+                        getVisibleBacklogCheckboxes().forEach(cb => {
+                            cb.checked = checked;
+                        });
+                        updateBacklogSelectionUI();
+                    });
+                }
+
+                updateBacklogSelectionUI();
+            }
+
+            let bulkAddingInProgress = false;
+
+            function addSelectedTasksToSprint() {
+                if (addingTaskInProgress || bulkAddingInProgress) {
+                    return;
+                }
+
+                const taskIds = getSelectedBacklogTaskIds();
+                if (taskIds.length === 0) {
+                    showNotification('ابتدا حداقل یک کار را انتخاب کنید', 'error');
+                    return;
+                }
+
+                bulkAddingInProgress = true;
+                addingTaskInProgress = true;
+                updateBacklogSelectionUI();
+
+                const bulkBtn = document.getElementById('backlogBulkAddBtn');
+                if (bulkBtn) {
+                    bulkBtn.disabled = true;
+                    bulkBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>در حال افزودن...';
+                }
+
+                taskIds.forEach(id => {
+                    const card = document.querySelector(`#tasks-backlog .task-card[data-issue-id="${id}"]`);
+                    if (card) {
+                        card.style.opacity = '0.5';
+                        card.style.pointerEvents = 'none';
+                    }
+                });
+
+                $.ajax({
+                    url: '/Sprints/AddTasksToSprint',
+                    type: 'POST',
+                    traditional: true,
+                    data: { sprintId: sprintId, taskIds: taskIds },
+                    headers: {
+                        'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        bulkAddingInProgress = false;
+                        addingTaskInProgress = false;
+                        if (response.success) {
+                            showNotification(response.message || 'کارها با موفقیت به اسپرینت اضافه شدند', 'success');
+                            if (typeof loadAvailableTasks === 'function') {
+                                loadAvailableTasks();
+                            }
+                            try {
+                                const state = loadBoardState() || {};
+                                state.viewMode = 'board';
+                                sessionStorage.setItem(BOARD_STATE_KEY, JSON.stringify(state));
+                            } catch (_) { /* ignore */ }
+                            setTimeout(() => reloadBoard(), 800);
+                        } else {
+                            showNotification('خطا: ' + (response.message || 'افزودن انجام نشد'), 'error');
+                            taskIds.forEach(id => {
+                                const card = document.querySelector(`#tasks-backlog .task-card[data-issue-id="${id}"]`);
+                                if (card) {
+                                    card.style.opacity = '1';
+                                    card.style.pointerEvents = '';
+                                }
+                            });
+                            if (bulkBtn) {
+                                bulkBtn.innerHTML = '<i class="bi bi-plus-circle-fill"></i> افزودن انتخاب‌شده‌ها به اسپرینت';
+                            }
+                            updateBacklogSelectionUI();
+                        }
+                    },
+                    error: function () {
+                        bulkAddingInProgress = false;
+                        addingTaskInProgress = false;
+                        showNotification('خطا در ارتباط با سرور', 'error');
+                        taskIds.forEach(id => {
+                            const card = document.querySelector(`#tasks-backlog .task-card[data-issue-id="${id}"]`);
+                            if (card) {
+                                card.style.opacity = '1';
+                                card.style.pointerEvents = '';
+                            }
+                        });
+                        if (bulkBtn) {
+                            bulkBtn.innerHTML = '<i class="bi bi-plus-circle-fill"></i> افزودن انتخاب‌شده‌ها به اسپرینت';
+                        }
+                        updateBacklogSelectionUI();
                     }
                 });
             }
@@ -6142,7 +6382,10 @@
 
             $(document).ready(function() {
                 loadAvailableTasks();
+                registerBacklogBulkSelection();
             });
+
+            window.addSelectedTasksToSprint = addSelectedTasksToSprint;
 
 
 
@@ -7179,6 +7422,7 @@
             window.submitStatus = submitStatus;
             window.submitSubtask = submitSubtask;
             window.addTaskToSprint = addTaskToSprint;
+            window.addSelectedTasksToSprint = typeof addSelectedTasksToSprint === 'function' ? addSelectedTasksToSprint : window.addSelectedTasksToSprint;
             window.completeSprint = completeSprint;
             window.clearReplyContext = clearReplyContext;
             window.toggleRecording = toggleRecording;

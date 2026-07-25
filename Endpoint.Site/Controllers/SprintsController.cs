@@ -939,6 +939,130 @@ namespace Endpoint.Site.Controllers
             });
         }
 
+        // 📌 اضافه کردن دسته‌ای تسک‌ها به اسپرینت
+        [HttpPost]
+        public async Task<IActionResult> AddTasksToSprint(int sprintId, [FromForm] List<int> taskIds)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (taskIds == null || taskIds.Count == 0)
+            {
+                return Json(new { success = false, message = "هیچ کاری انتخاب نشده است." });
+            }
+
+            taskIds = taskIds.Distinct().ToList();
+
+            var sprint = await _context.Sprints
+                .Include(s => s.Project)
+                .FirstOrDefaultAsync(s => s.Id == sprintId);
+
+            if (sprint == null)
+            {
+                return Json(new { success = false, message = "اسپرینت یافت نشد." });
+            }
+
+            if (sprint.Status != SprintStatus.Active)
+            {
+                return Json(new { success = false, message = "فقط اسپرینت فعال می‌تواند تسک داشته باشد." });
+            }
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == sprint.ProjectId &&
+                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+
+            if (!hasAccess)
+            {
+                return Json(new { success = false, message = "شما به این اسپرینت دسترسی ندارید." });
+            }
+
+            var todoColumn = await _context.WorkflowStatuses
+                .Where(ws => ws.SprintId == sprintId && ws.Type == WorkflowType.Todo)
+                .OrderBy(ws => ws.IsDefault ? 0 : 1)
+                .ThenBy(ws => ws.Order)
+                .FirstOrDefaultAsync();
+
+            if (todoColumn == null)
+            {
+                todoColumn = await _context.WorkflowStatuses
+                    .Where(ws => ws.SprintId == sprintId)
+                    .OrderBy(ws => ws.IsDefault ? 0 : 1)
+                    .ThenBy(ws => ws.Order)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (todoColumn == null)
+            {
+                return Json(new { success = false, message = "هیچ ستون وضعیتی برای این اسپرینت تعریف نشده است." });
+            }
+
+            var tasks = await _context.TaskItems
+                .Include(t => t.ProjectIssueType)
+                .Where(t => taskIds.Contains(t.Id))
+                .ToListAsync();
+
+            var existingTaskIds = await _context.SprintTasks
+                .Where(st => st.SprintId == sprintId && taskIds.Contains(st.TaskId))
+                .Select(st => st.TaskId)
+                .ToListAsync();
+
+            var addedCount = 0;
+            var skippedCount = 0;
+            var now = DateTime.UtcNow;
+
+            foreach (var taskId in taskIds)
+            {
+                var task = tasks.FirstOrDefault(t => t.Id == taskId);
+                if (task == null || !task.CanAddToSprint || !IsSprintBoardVisibleTask(task) || task.IsCompleted || existingTaskIds.Contains(taskId))
+                {
+                    skippedCount++;
+                    continue;
+                }
+
+                task.StatusId = todoColumn.Id;
+                task.WorkflowStatusId = todoColumn.Id;
+                task.SprintId = sprintId;
+                task.IsCompleted = todoColumn.IsFinal;
+                task.UpdatedAt = now;
+
+                _context.SprintTasks.Add(new SprintTask
+                {
+                    SprintId = sprintId,
+                    TaskId = taskId,
+                    AddedAt = now,
+                    AddedByUserId = userId,
+                    Status = SprintTaskStatus.Pending,
+                    SprintPriority = (int)TaskPriority.Medium
+                });
+
+                addedCount++;
+            }
+
+            if (addedCount == 0)
+            {
+                return Json(new
+                {
+                    success = false,
+                    message = skippedCount > 0
+                        ? "هیچ‌کدام از کارهای انتخاب‌شده قابل افزودن به اسپرینت نبودند."
+                        : "هیچ کاری اضافه نشد."
+                });
+            }
+
+            await _context.SaveChangesAsync();
+
+            var message = skippedCount > 0
+                ? $"{addedCount} کار به اسپرینت اضافه شد و {skippedCount} مورد رد شد."
+                : $"{addedCount} کار با موفقیت به اسپرینت اضافه شد.";
+
+            return Json(new
+            {
+                success = true,
+                message,
+                addedCount,
+                skippedCount
+            });
+        }
+
         // 📌 حذف تسک از اسپرینت
         [HttpPost]
         public async Task<IActionResult> RemoveTaskFromSprint(int sprintId, int taskId)
