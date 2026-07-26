@@ -206,6 +206,7 @@ namespace Endpoint.Site.Models
         public string? AssignedUserName { get; set; }
         public bool InSprint { get; set; }
         public string? SprintName { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 
     public class FeatureDetailsVm

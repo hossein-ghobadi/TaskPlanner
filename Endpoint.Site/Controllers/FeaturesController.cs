@@ -1192,7 +1192,9 @@ namespace Endpoint.Site.Controllers
                     FeatureId = feature.Id,
                     Description = x.Description
                 }).ToList(),
-                Tasks = feature.Tasks.Select(t =>
+                Tasks = feature.Tasks
+                    .OrderByDescending(t => t.CreatedAt)
+                    .Select(t =>
                 {
                     var sprintTask = t.SprintTasks?.OrderByDescending(st => st.AddedAt).FirstOrDefault();
                     return new FeatureTaskItemVm
@@ -1204,9 +1206,10 @@ namespace Endpoint.Site.Controllers
                         IsCompleted = t.IsCompleted,
                         AssignedUserName = DisplayName(t.AssignedUser),
                         InSprint = sprintTask != null,
-                        SprintName = sprintTask?.Sprint?.Name
+                        SprintName = sprintTask?.Sprint?.Name,
+                        CreatedAt = t.CreatedAt
                     };
-                }).OrderBy(t => t.Title).ToList(),
+                }).ToList(),
                 CodeReviews = feature.CodeReviews.OrderByDescending(r => r.CreatedAt).Select(r => new FeatureCodeReviewItemVm
                 {
                     Id = r.Id,

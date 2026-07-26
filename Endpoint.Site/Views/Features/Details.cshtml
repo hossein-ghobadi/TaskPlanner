@@ -474,9 +474,17 @@
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <span class="fw-bold"><i class="bi bi-list-task me-1"></i> تسک‌های فیچر</span>
-                    <button type="button" class="btn btn-sm btn-success" onclick="openFeatureCreateTask()">
-                        <i class="bi bi-plus"></i> تسک جدید
-                    </button>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="featureTasksSortToggle"
+                                title="مرتب‌سازی بر اساس تاریخ ایجاد"
+                                data-sort="desc">
+                            <i class="bi bi-sort-down"></i>
+                            <span class="feature-tasks-sort-label">جدیدتر</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-success" onclick="openFeatureCreateTask()">
+                            <i class="bi bi-plus"></i> تسک جدید
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-0" id="featureTasksCardBody">
                     @if (Model.Tasks.Count == 0)
@@ -513,7 +521,7 @@
                                 <tbody id="featureTasksTableBody">
                                     @foreach (var t in Model.Tasks)
                                     {
-                                        <tr>
+                                        <tr data-task-id="@t.Id" data-created-at="@((long)(t.CreatedAt.ToUniversalTime() - DateTime.UnixEpoch).TotalMilliseconds)">
                                             <td><code>@(t.IssueKey ?? "—")</code></td>
                                             <td>
                                                 @t.Title
@@ -2797,6 +2805,49 @@
             }
         };
 
+        function getFeatureTasksSortDir() {
+            var btn = document.getElementById('featureTasksSortToggle');
+            return (btn && btn.getAttribute('data-sort') === 'asc') ? 'asc' : 'desc';
+        }
+
+        function updateFeatureTasksSortButton() {
+            var btn = document.getElementById('featureTasksSortToggle');
+            if (!btn) return;
+            var dir = getFeatureTasksSortDir();
+            var icon = btn.querySelector('i');
+            var label = btn.querySelector('.feature-tasks-sort-label');
+            if (dir === 'asc') {
+                if (icon) icon.className = 'bi bi-sort-up';
+                if (label) label.textContent = 'قدیمی‌تر';
+                btn.title = 'مرتب‌سازی: قدیمی‌تر — کلیک برای جدیدتر';
+            } else {
+                if (icon) icon.className = 'bi bi-sort-down';
+                if (label) label.textContent = 'جدیدتر اول';
+                btn.title = 'مرتب‌سازی: جدیدتر — کلیک برای قدیمی‌تر';
+            }
+        }
+
+        function sortFeatureTasksTable() {
+            var body = document.getElementById('featureTasksTableBody');
+            if (!body) return;
+            var dir = getFeatureTasksSortDir();
+            var rows = Array.from(body.querySelectorAll('tr'));
+            rows.sort(function (a, b) {
+                var aMs = parseInt(a.getAttribute('data-created-at') || '0', 10);
+                var bMs = parseInt(b.getAttribute('data-created-at') || '0', 10);
+                return dir === 'asc' ? (aMs - bMs) : (bMs - aMs);
+            });
+            rows.forEach(function (row) { body.appendChild(row); });
+        }
+
+        document.getElementById('featureTasksSortToggle')?.addEventListener('click', function () {
+            var next = getFeatureTasksSortDir() === 'desc' ? 'asc' : 'desc';
+            this.setAttribute('data-sort', next);
+            updateFeatureTasksSortButton();
+            sortFeatureTasksTable();
+        });
+        updateFeatureTasksSortButton();
+
         window.openFeatureDeleteTask = function (taskId, title) {
             document.getElementById('featureDeleteTaskId').value = taskId;
             document.getElementById('featureDeleteTaskTitle').textContent = title || '';
@@ -2816,16 +2867,21 @@
                 ? '<span class="badge bg-info text-dark">' + escapeHtml(task.sprintName || 'اسپرینت') + '</span>'
                 : '<span class="text-muted">خارج از اسپرینت</span>';
             var completedBadge = task.isCompleted ? ' <span class="badge bg-success ms-1">انجام‌شده</span>' : '';
+            var createdAtMs = task.createdAtMs
+                || (task.createdAt ? Date.parse(task.createdAt) : Date.now());
+            if (Number.isNaN(createdAtMs)) createdAtMs = Date.now();
 
             var tr = document.createElement('tr');
             tr.setAttribute('data-task-id', task.taskId);
+            tr.setAttribute('data-created-at', String(createdAtMs));
             tr.innerHTML =
                 '<td><code>' + escapeHtml(task.issueKey || '—') + '</code></td>' +
                 '<td>' + escapeHtml(task.title || '') + completedBadge + '</td>' +
                 '<td>' + escapeHtml(task.assignedUserName || '—') + '</td>' +
                 '<td>' + sprintHtml + '</td>' +
                 '<td class="text-end">' + buildTaskActionsHtml(task.taskId, task.title) + '</td>';
-            body.prepend(tr);
+            body.appendChild(tr);
+            sortFeatureTasksTable();
         }
 
         function updateFeatureTaskRow(taskId, data) {
