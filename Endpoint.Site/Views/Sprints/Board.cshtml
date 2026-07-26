@@ -1714,6 +1714,73 @@
         border-radius: 10px;
         padding: 7px 9px;
     }
+    .board-chat-image-thumb {
+        background: transparent;
+        border: 0;
+        padding: 0;
+        line-height: 0;
+        cursor: zoom-in;
+        display: inline-block;
+    }
+    .board-chat-image-thumb:focus {
+        outline: 2px solid #0d6efd;
+        outline-offset: 2px;
+    }
+    .board-chat-image-thumb img {
+        max-width: 200px;
+        display: block;
+        border-radius: 8px;
+        cursor: zoom-in;
+    }
+    .board-task-image-lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background: rgba(0, 0, 0, 0.85);
+        cursor: zoom-out;
+    }
+    .board-task-image-lightbox[hidden] {
+        display: none !important;
+    }
+    .board-task-image-lightbox img {
+        max-width: min(96vw, 1200px);
+        max-height: 85vh;
+        object-fit: contain;
+        border-radius: .5rem;
+        box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.4);
+        cursor: default;
+    }
+    .board-task-image-lightbox-caption {
+        color: #fff;
+        font-size: .875rem;
+        margin-top: .75rem;
+        text-align: center;
+        max-width: 90vw;
+        word-break: break-word;
+    }
+    .board-task-image-lightbox-close {
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        color: #111;
+        font-size: 1.75rem;
+        line-height: 1;
+        cursor: pointer;
+        z-index: 2001;
+    }
+    .board-task-image-lightbox-close:hover {
+        background: #fff;
+    }
     .attachment-actions,
     .message-actions {
         display: flex;
@@ -3141,7 +3208,7 @@
                                             <div class="chat-input-wrapper">
                                                 <textarea id="messageInput"
                                                           class="chat-input"
-                                                          placeholder="توضیح پیوست را بنویسید..."
+                                                          placeholder="توضیح پیوست را بنویسید... (Ctrl+V برای چسباندن تصویر)"
                                                           rows="1"></textarea>
                                                 <button type="button" id="sendBtn" class="chat-send-btn">
                                                     <i class="bi bi-send"></i>
@@ -3262,6 +3329,12 @@
             </div>
         </div>
     </div>
+</div>
+
+<div id="boardTaskImageLightbox" class="board-task-image-lightbox" hidden>
+    <button type="button" class="board-task-image-lightbox-close" aria-label="بستن">&times;</button>
+    <img id="boardTaskImageLightboxImg" src="" alt="" />
+    <div id="boardTaskImageLightboxCaption" class="board-task-image-lightbox-caption"></div>
 </div>
 }
 
@@ -6907,7 +6980,11 @@
                         if (/^image/i.test(fileType) || fileType === 'Image') {
                             return `
                                 <div class="attachment-item">
-                                    ${fileUrl ? `<a href="${escapeChatHtml(fileUrl)}" target="_blank" rel="noopener noreferrer"><img src="${escapeChatHtml(fileUrl)}" alt="${safeFileName}" style="max-width:200px; display:block; border-radius:8px;" /></a>` : `<span class="text-muted">${safeFileName}</span>`}
+                                    ${fileUrl
+                                        ? `<button type="button" class="board-chat-image-thumb" data-image-url="${escapeChatHtml(fileUrl)}" data-image-name="${safeFileName}" title="نمایش بزرگ">
+                                                <img src="${escapeChatHtml(fileUrl)}" alt="${safeFileName}" />
+                                           </button>`
+                                        : `<span class="text-muted">${safeFileName}</span>`}
                                     ${actionsHtml}
                                 </div>
                             `;
@@ -7020,7 +7097,7 @@
 
                 if (replyInput) replyInput.value = '';
                 if (replyBox) replyBox.classList.remove('active');
-                if (messageInput) messageInput.placeholder = 'توضیح پیوست را بنویسید...';
+                if (messageInput) messageInput.placeholder = 'توضیح پیوست را بنویسید... (Ctrl+V برای چسباندن تصویر)';
             }
 
             // نمایش فایل‌های انتخاب‌شده (فقط غیر تصویری)
@@ -7391,10 +7468,78 @@
 
             const messageInputEl = document.getElementById('messageInput');
             if (messageInputEl) {
-                messageInputEl.addEventListener('paste', () => {
-                    // اختیاری: پاست کردن فایل‌ها
+                messageInputEl.addEventListener('paste', (event) => {
+                    if (!event.clipboardData || !event.clipboardData.items) return;
+
+                    let handled = false;
+                    const items = event.clipboardData.items;
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i];
+                        if (item.kind !== 'file') continue;
+                        let file = item.getAsFile();
+                        if (!file) continue;
+                        if (!file.name || file.name === 'image.png' || file.name === 'blob') {
+                            const ext = (file.type.split('/')[1] || 'png').replace('jpeg', 'jpg') || 'bin';
+                            file = new File([file], `clipboard-${Date.now()}-${i}.${ext}`, {
+                                type: file.type || 'application/octet-stream'
+                            });
+                        }
+                        addFileToInput(file);
+                        handled = true;
+                    }
+
+                    if (handled) event.preventDefault();
                 });
             }
+
+            (function initBoardTaskImageLightbox() {
+                const overlay = document.getElementById('boardTaskImageLightbox');
+                const img = document.getElementById('boardTaskImageLightboxImg');
+                const caption = document.getElementById('boardTaskImageLightboxCaption');
+                const closeBtn = overlay && overlay.querySelector('.board-task-image-lightbox-close');
+                if (!overlay || !img) return;
+
+                function openLightbox(url, name) {
+                    if (!url) return;
+                    img.src = url;
+                    img.alt = name || '';
+                    if (caption) caption.textContent = name || '';
+                    overlay.hidden = false;
+                    document.body.style.overflow = 'hidden';
+                }
+
+                function closeLightbox() {
+                    overlay.hidden = true;
+                    img.src = '';
+                    img.alt = '';
+                    if (caption) caption.textContent = '';
+                    document.body.style.overflow = '';
+                }
+
+                document.addEventListener('click', (event) => {
+                    const btn = event.target.closest('.board-chat-image-thumb');
+                    if (!btn) return;
+                    event.preventDefault();
+                    openLightbox(btn.getAttribute('data-image-url'), btn.getAttribute('data-image-name'));
+                });
+
+                closeBtn?.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    closeLightbox();
+                });
+
+                overlay.addEventListener('click', (event) => {
+                    if (event.target === overlay) closeLightbox();
+                });
+
+                img.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                });
+
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Escape' && !overlay.hidden) closeLightbox();
+                });
+            })();
 
             // مقداردهی‌های اولیه و دوره‌ای
             document.addEventListener('DOMContentLoaded', () => {

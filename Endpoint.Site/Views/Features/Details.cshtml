@@ -1,10 +1,12 @@
 @model Endpoint.Site.Models.FeatureDetailsVm
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @using DNTPersianUtils.Core
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     Layout = "/Views/Shared/_Layout.cshtml";
     ViewData["Title"] = Model.Name;
     const bool showPageStatesAndApiSection = false;
+    var featureTaskAntiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
 }
 
 <div class="w-100">
@@ -2015,7 +2017,7 @@
             }
 
             document.addEventListener('click', function (event) {
-                var btn = event.target.closest('.implementation-comment-image-thumb');
+                var btn = event.target.closest('.implementation-comment-image-thumb, .feature-task-chat-image-thumb');
                 if (!btn) return;
                 event.preventDefault();
                 openLightbox(btn.getAttribute('data-image-url'), btn.getAttribute('data-image-name'));
@@ -2563,6 +2565,240 @@
         padding-top: 1rem;
         border-top: 1px solid #eee;
     }
+
+    #featureTaskModal .feature-task-chat {
+        margin-top: 1rem;
+        background: #fff;
+        border-radius: 16px;
+        border: 1px solid #dbe7ff;
+        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        min-height: 360px;
+        max-height: 520px;
+    }
+    #featureTaskModal .feature-task-chat-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        padding: 14px 18px;
+        color: #fff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    #featureTaskModal .feature-task-chat-header h5 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    #featureTaskModal .feature-task-chat-count {
+        background: rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    #featureTaskModal .feature-task-chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px;
+        background: #f8fbff;
+        min-height: 180px;
+    }
+    #featureTaskModal .feature-task-chat-empty {
+        text-align: center;
+        padding: 40px 16px;
+        color: #9ca3af;
+        font-size: 0.92rem;
+    }
+    #featureTaskModal .feature-task-chat-message {
+        display: flex;
+        margin-bottom: 0.75rem;
+    }
+    #featureTaskModal .feature-task-chat-message.own { justify-content: flex-end; }
+    #featureTaskModal .feature-task-chat-message.other { justify-content: flex-start; }
+    #featureTaskModal .feature-task-chat-card {
+        width: min(100%, 460px);
+        border-radius: 14px;
+        border: 1px solid #dbe6ff;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(2, 6, 23, 0.06);
+        padding: 10px 12px;
+    }
+    #featureTaskModal .feature-task-chat-message.own .feature-task-chat-card {
+        border-color: #bfdbfe;
+        background: #f8fbff;
+    }
+    #featureTaskModal .feature-task-chat-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-bottom: 0.35rem;
+    }
+    #featureTaskModal .feature-task-chat-meta-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    #featureTaskModal .feature-task-chat-delete {
+        border: 1px solid #fecaca;
+        background: #fff1f2;
+        color: #dc2626;
+        border-radius: 999px;
+        padding: 0.1rem 0.45rem;
+        font-size: 0.72rem;
+        cursor: pointer;
+    }
+    #featureTaskModal .feature-task-chat-user-badge {
+        display: inline-flex;
+        font-size: 0.72rem;
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #3730a3;
+        margin-inline-start: 0.35rem;
+    }
+    #featureTaskModal .feature-task-chat-text {
+        font-size: 0.92rem;
+        color: #1f2937;
+        margin-bottom: 0.35rem;
+        white-space: pre-wrap;
+    }
+    #featureTaskModal .feature-task-chat-attachments {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+    #featureTaskModal .feature-task-chat-attachment {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.85rem;
+    }
+    #featureTaskModal .feature-task-chat-attachment a {
+        color: #2563eb;
+        text-decoration: none;
+        word-break: break-all;
+    }
+    #featureTaskModal .feature-task-chat-attachment a:hover { text-decoration: underline; }
+    #featureTaskModal .feature-task-chat-attachment img {
+        max-width: 220px;
+        max-height: 160px;
+        border-radius: 10px;
+        display: block;
+        cursor: zoom-in;
+    }
+    #featureTaskModal .feature-task-chat-image-thumb {
+        background: transparent;
+        border: 0;
+        padding: 0;
+        line-height: 0;
+        cursor: zoom-in;
+    }
+    #featureTaskModal .feature-task-chat-image-thumb:focus {
+        outline: 2px solid #0d6efd;
+        outline-offset: 2px;
+    }
+    #featureTaskModal .feature-task-chat-attachment audio { width: min(100%, 280px); }
+    #featureTaskModal .feature-task-chat-input {
+        padding: 14px 16px;
+        background: #fff;
+        border-top: 1px solid #e6eefc;
+    }
+    #featureTaskModal .feature-task-chat-input-row {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+    }
+    #featureTaskModal .feature-task-chat-input-row textarea {
+        flex: 1;
+        border: 1px solid #dbe4f0;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 0.9rem;
+        resize: none;
+        min-height: 44px;
+        max-height: 120px;
+    }
+    #featureTaskModal .feature-task-chat-input-row textarea:focus {
+        outline: none;
+        border-color: #3b82f6;
+    }
+    #featureTaskModal .feature-task-chat-send {
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        color: #fff;
+        padding: 10px 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+    #featureTaskModal .feature-task-chat-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+        align-items: center;
+    }
+    #featureTaskModal .feature-task-chat-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #dbe4f0;
+        background: #f8fbff;
+        color: #1e40af;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 0.82rem;
+        cursor: pointer;
+        margin: 0;
+    }
+    #featureTaskModal .feature-task-chat-action.recording {
+        background: #fee2e2;
+        border-color: #fecaca;
+        color: #b91c1c;
+    }
+    #featureTaskModal .feature-task-file-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    #featureTaskModal .feature-task-file-preview-item {
+        background: #f3f4f6;
+        padding: 10px 15px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.85rem;
+    }
+    #featureTaskModal .feature-task-file-preview-item img {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+    #featureTaskModal .feature-task-file-preview-item button {
+        border: none;
+        background: transparent;
+        color: #dc3545;
+        cursor: pointer;
+    }
+    #featureTaskModal .feature-task-chat-note {
+        margin-top: 8px;
+        font-size: 0.82rem;
+        color: #6b7280;
+    }
+    #featureTaskModal .feature-task-chat-note.error { color: #dc2626; }
 </style>
 
 <div class="modal fade" id="featureTaskModal" tabindex="-1" aria-labelledby="featureTaskModalLabel" aria-hidden="true">
@@ -2595,10 +2831,48 @@
                                 <label for="featureTaskDescription" class="form-label">توضیحات</label>
                                 <textarea class="form-control" id="featureTaskDescription" rows="5" placeholder="توضیحات کار را وارد کنید"></textarea>
                             </div>
-                            <div class="mb-0">
+                            <div class="mb-3">
                                 <label class="form-label">سطح کار</label>
                                 <div class="form-control bg-light" id="featureTaskEffortDisplay">تعیین نشده</div>
                                 <small class="text-muted">برای تغییر، از ستون اطلاعات استفاده کنید.</small>
+                            </div>
+
+                            <div class="feature-task-chat mt-3" id="featureTaskChatSection" style="display: none;">
+                                <div class="feature-task-chat-header">
+                                    <h5>
+                                        <i class="bi bi-paperclip"></i>
+                                        پیوست
+                                    </h5>
+                                    <span class="feature-task-chat-count" id="featureTaskCommentCount">0</span>
+                                </div>
+                                <div class="feature-task-chat-messages" id="featureTaskChatBox">
+                                    <div class="feature-task-chat-empty">هنوز پیوستی ثبت نشده است.</div>
+                                </div>
+                                <div class="feature-task-chat-input">
+                                    <div class="feature-task-chat-input-row">
+                                        <textarea id="featureTaskMessageInput" placeholder="توضیح پیوست را بنویسید... (Ctrl+V برای چسباندن تصویر)" rows="1"></textarea>
+                                        <button type="button" class="feature-task-chat-send" id="featureTaskSendBtn">
+                                            <i class="bi bi-send"></i>
+                                            افزودن
+                                        </button>
+                                    </div>
+                                    <div class="feature-task-chat-actions">
+                                        <label class="feature-task-chat-action">
+                                            <i class="bi bi-paperclip"></i>
+                                            فایل
+                                            <input type="file" id="featureTaskFileInput" multiple accept="image/*,audio/*,.pdf,.doc,.docx,.txt" style="display: none;" />
+                                        </label>
+                                        <button type="button" class="feature-task-chat-action" id="featureTaskRecordBtn">
+                                            <span id="featureTaskRecordIcon"><i class="bi bi-mic"></i></span>
+                                            <span id="featureTaskRecordText">ضبط ویس</span>
+                                        </button>
+                                        <span id="featureTaskRecordTimer" class="feature-task-chat-action" style="background: transparent; border: none; cursor: default;"></span>
+                                    </div>
+                                    <div id="featureTaskSelectedFiles" class="feature-task-file-preview"></div>
+                                    <div id="featureTaskAudioPreview" class="feature-task-file-preview"></div>
+                                    <div id="featureTaskChatNote" class="feature-task-chat-note"></div>
+                                    <input type="hidden" name="__RequestVerificationToken" value="@featureTaskAntiforgeryToken" id="featureTaskAntiForgery" />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2721,6 +2995,27 @@
             return btn.outerHTML;
         }
 
+        function resetFeatureTaskAttachments() {
+            var box = document.getElementById('featureTaskChatBox');
+            var count = document.getElementById('featureTaskCommentCount');
+            var messageInput = document.getElementById('featureTaskMessageInput');
+            var fileInput = document.getElementById('featureTaskFileInput');
+            var selectedFiles = document.getElementById('featureTaskSelectedFiles');
+            var audioPreview = document.getElementById('featureTaskAudioPreview');
+            var note = document.getElementById('featureTaskChatNote');
+            if (box) box.innerHTML = '<div class="feature-task-chat-empty">هنوز پیوستی ثبت نشده است.</div>';
+            if (count) count.textContent = '0';
+            if (messageInput) messageInput.value = '';
+            if (fileInput) fileInput.value = '';
+            if (selectedFiles) selectedFiles.innerHTML = '';
+            if (audioPreview) audioPreview.innerHTML = '';
+            if (note) {
+                note.textContent = '';
+                note.classList.remove('error');
+            }
+            stopFeatureTaskRecording(true);
+        }
+
         function resetFeatureTaskForm() {
             document.getElementById('featureTaskId').value = '';
             document.getElementById('featureTaskTitle').value = '';
@@ -2735,6 +3030,7 @@
             if (effortSelect) effortSelect.value = '';
             if (effortDisplay) effortDisplay.textContent = 'تعیین نشده';
             originalFeatureTask = null;
+            resetFeatureTaskAttachments();
         }
 
         function setFeatureTaskModalMode(mode) {
@@ -2743,11 +3039,13 @@
             var iconEl = document.getElementById('featureTaskModalIcon');
             var submitText = document.getElementById('featureTaskSubmitText');
             var submitBtn = document.getElementById('featureTaskSubmitBtn');
+            var chatSection = document.getElementById('featureTaskChatSection');
             if (mode === 'edit') {
                 if (titleEl) titleEl.textContent = 'جزئیات و ویرایش کار';
                 if (iconEl) iconEl.className = 'bi bi-pencil-square me-2';
                 if (submitText) submitText.textContent = 'ذخیره تغییرات';
                 if (submitBtn) submitBtn.querySelector('i')?.setAttribute('class', 'bi bi-check-lg me-1');
+                if (chatSection) chatSection.style.display = '';
             } else {
                 if (titleEl) titleEl.textContent = 'افزودن کار جدید';
                 if (iconEl) iconEl.className = 'bi bi-plus-circle me-2';
@@ -2756,6 +3054,7 @@
                     var icon = submitBtn.querySelector('i');
                     if (icon) icon.className = 'bi bi-plus-lg me-1';
                 }
+                if (chatSection) chatSection.style.display = 'none';
             }
         }
 
@@ -2799,11 +3098,388 @@
                 var effort = mapStoryPointsToEffortLevel(taskData.storyPoints);
                 if (effortSelect) effortSelect.value = effort;
                 if (effortDisplay) effortDisplay.textContent = effortLabels[effort] || 'تعیین نشده';
+                loadFeatureTaskChat(taskId);
             } catch (err) {
                 alert(err.message || 'خطا در بارگذاری کار');
                 bootstrap.Modal.getInstance(document.getElementById('featureTaskModal'))?.hide();
             }
         };
+
+        var featureTaskMediaRecorder = null;
+        var featureTaskAudioChunks = [];
+        var featureTaskRecordingStream = null;
+        var featureTaskTimerInterval = null;
+        var featureTaskRecordingStartTime = null;
+        var featureTaskAntiForgeryToken = document.getElementById('featureTaskAntiForgery')?.value || '@featureTaskAntiforgeryToken';
+
+        function normalizeFeatureAttachmentUrl(rawUrl) {
+            if (!rawUrl) return '';
+            var value = String(rawUrl).trim();
+            if (!value) return '';
+            if (/^https?:\/\//i.test(value) || value.startsWith('blob:') || value.startsWith('data:')) return value;
+            return value.startsWith('/') ? value : '/' + value;
+        }
+
+        function isFeatureImageAttachment(att) {
+            var fileType = String(att?.fileType || att?.mimeType || '').toLowerCase();
+            var fileName = String(att?.fileName || '').toLowerCase();
+            return fileType.includes('image') || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fileName);
+        }
+
+        function isFeatureAudioAttachment(att) {
+            var fileType = String(att?.fileType || att?.mimeType || '').toLowerCase();
+            var fileName = String(att?.fileName || '').toLowerCase();
+            return fileType.includes('audio') || /\.(mp3|wav|ogg|m4a|webm|aac)$/i.test(fileName);
+        }
+
+        function formatFeatureChatDateTime(value) {
+            if (!value) return '';
+            var parsed = new Date(value);
+            if (Number.isNaN(parsed.getTime())) return escapeHtml(String(value));
+            return new Intl.DateTimeFormat('fa-IR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(parsed);
+        }
+
+        function setFeatureTaskChatNote(text, isError) {
+            var note = document.getElementById('featureTaskChatNote');
+            if (!note) return;
+            note.textContent = text || '';
+            note.classList.toggle('error', !!isError);
+        }
+
+        function renderFeatureTaskChat(comments) {
+            var boxEl = document.getElementById('featureTaskChatBox');
+            var countEl = document.getElementById('featureTaskCommentCount');
+            if (!boxEl) return;
+
+            var items = Array.isArray(comments) ? comments : [];
+            if (countEl) countEl.textContent = String(items.length);
+
+            if (items.length === 0) {
+                boxEl.innerHTML = '<div class="feature-task-chat-empty">هنوز پیوستی ثبت نشده است.</div>';
+                return;
+            }
+
+            boxEl.innerHTML = items.map(function (comment) {
+                var userName = escapeHtml(comment.userName || 'کاربر');
+                var createdAt = formatFeatureChatDateTime(comment.createdAt);
+                var messageText = escapeHtml(comment.message || '');
+                var commentId = Number(comment.id || 0);
+                var canDelete = Boolean(comment.isCurrentUser);
+                var sideClass = canDelete ? 'own' : 'other';
+                var userBadge = canDelete ? '<span class="feature-task-chat-user-badge">شما</span>' : '';
+                var attachments = Array.isArray(comment.attachments) ? comment.attachments : [];
+                var attachmentsHtml = attachments.map(function (att) {
+                    var fileName = escapeHtml(att.fileName || 'فایل');
+                    var fileUrl = normalizeFeatureAttachmentUrl(att.filePath || att.url || '');
+                    if (isFeatureImageAttachment(att)) {
+                        var safeUrl = escapeHtml(fileUrl);
+                        return '<div class="feature-task-chat-attachment"><i class="bi bi-image"></i>' +
+                            '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">' + fileName + '</a></div>' +
+                            '<div class="feature-task-chat-attachment">' +
+                            '<button type="button" class="feature-task-chat-image-thumb" data-image-url="' + safeUrl + '" data-image-name="' + fileName + '" title="نمایش بزرگ">' +
+                            '<img src="' + safeUrl + '" alt="' + fileName + '" onerror="this.style.display=\'none\';" />' +
+                            '</button></div>';
+                    }
+                    if (isFeatureAudioAttachment(att)) {
+                        return '<div class="feature-task-chat-attachment"><i class="bi bi-mic"></i>' +
+                            '<a href="' + fileUrl + '" target="_blank" rel="noopener noreferrer">' + fileName + '</a></div>' +
+                            '<div class="feature-task-chat-attachment"><audio controls src="' + fileUrl + '"></audio></div>';
+                    }
+                    return '<div class="feature-task-chat-attachment"><i class="bi bi-paperclip"></i>' +
+                        '<a href="' + fileUrl + '" target="_blank" rel="noopener noreferrer">' + fileName + '</a></div>';
+                }).join('');
+
+                return '<div class="feature-task-chat-message ' + sideClass + '">' +
+                    '<div class="feature-task-chat-card">' +
+                    '<div class="feature-task-chat-meta"><span>' + userName + userBadge + '</span>' +
+                    '<span class="feature-task-chat-meta-right"><span>' + createdAt + '</span>' +
+                    (canDelete && commentId
+                        ? '<button type="button" class="feature-task-chat-delete" data-comment-id="' + commentId + '">حذف</button>'
+                        : '') +
+                    '</span></div>' +
+                    (messageText ? '<div class="feature-task-chat-text">' + messageText + '</div>' : '') +
+                    (attachmentsHtml ? '<div class="feature-task-chat-attachments">' + attachmentsHtml + '</div>' : '') +
+                    '</div></div>';
+            }).join('');
+
+            boxEl.scrollTop = boxEl.scrollHeight;
+        }
+
+        async function loadFeatureTaskChat(taskId) {
+            var boxEl = document.getElementById('featureTaskChatBox');
+            if (!boxEl || !taskId) return;
+            boxEl.innerHTML = '<div class="feature-task-chat-empty">در حال بارگذاری...</div>';
+            try {
+                var response = await fetch('/Tasks/GetComments?taskId=' + taskId, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) throw new Error('خطا در دریافت پیوست‌ها');
+                var comments = await response.json();
+                renderFeatureTaskChat(comments);
+            } catch (err) {
+                boxEl.innerHTML = '<div class="feature-task-chat-empty">' + escapeHtml(err.message || 'خطا در دریافت پیوست‌ها') + '</div>';
+                var countEl = document.getElementById('featureTaskCommentCount');
+                if (countEl) countEl.textContent = '0';
+            }
+        }
+
+        function showFeatureTaskSelectedFiles() {
+            var fileInput = document.getElementById('featureTaskFileInput');
+            var selectedFilesDiv = document.getElementById('featureTaskSelectedFiles');
+            if (!fileInput || !selectedFilesDiv) return;
+            selectedFilesDiv.innerHTML = '';
+            Array.from(fileInput.files || []).forEach(function (file) {
+                var wrapper = document.createElement('div');
+                wrapper.className = 'feature-task-file-preview-item';
+                if (file.type && file.type.startsWith('image/')) {
+                    var img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    wrapper.appendChild(img);
+                } else {
+                    var icon = document.createElement('span');
+                    icon.textContent = '📎';
+                    wrapper.appendChild(icon);
+                }
+                var nameSpan = document.createElement('span');
+                nameSpan.textContent = file.name;
+                nameSpan.style.flex = '1';
+                wrapper.appendChild(nameSpan);
+                var removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.textContent = '✕';
+                removeBtn.addEventListener('click', function () {
+                    removeFeatureTaskSelectedFile(file.name);
+                });
+                wrapper.appendChild(removeBtn);
+                selectedFilesDiv.appendChild(wrapper);
+            });
+            syncFeatureTaskAudioPreview();
+        }
+
+        function removeFeatureTaskSelectedFile(fileName) {
+            var fileInput = document.getElementById('featureTaskFileInput');
+            if (!fileInput) return;
+            var dt = new DataTransfer();
+            Array.from(fileInput.files || []).forEach(function (f) {
+                if (f.name !== fileName) dt.items.add(f);
+            });
+            fileInput.files = dt.files;
+            showFeatureTaskSelectedFiles();
+        }
+
+        function syncFeatureTaskAudioPreview() {
+            var fileInput = document.getElementById('featureTaskFileInput');
+            var preview = document.getElementById('featureTaskAudioPreview');
+            if (!fileInput || !preview) return;
+            var hasAudio = Array.from(fileInput.files || []).some(function (f) {
+                return (f.type || '').startsWith('audio/');
+            });
+            if (!hasAudio) preview.innerHTML = '';
+        }
+
+        function addFeatureTaskFileToInput(file) {
+            var fileInput = document.getElementById('featureTaskFileInput');
+            if (!fileInput) return;
+            var dt = new DataTransfer();
+            Array.from(fileInput.files || []).forEach(function (f) { dt.items.add(f); });
+            dt.items.add(file);
+            fileInput.files = dt.files;
+            showFeatureTaskSelectedFiles();
+        }
+
+        function stopFeatureTaskRecording(silent) {
+            if (featureTaskMediaRecorder && featureTaskMediaRecorder.state === 'recording') {
+                featureTaskMediaRecorder.stop();
+            }
+            if (featureTaskTimerInterval) {
+                clearInterval(featureTaskTimerInterval);
+                featureTaskTimerInterval = null;
+            }
+            var recordBtn = document.getElementById('featureTaskRecordBtn');
+            var recordText = document.getElementById('featureTaskRecordText');
+            var recordTimer = document.getElementById('featureTaskRecordTimer');
+            if (recordBtn) recordBtn.classList.remove('recording');
+            if (recordText) recordText.textContent = 'ضبط ویس';
+            if (recordTimer) recordTimer.textContent = '';
+            if (featureTaskRecordingStream) {
+                featureTaskRecordingStream.getTracks().forEach(function (t) { t.stop(); });
+                featureTaskRecordingStream = null;
+            }
+            if (silent) {
+                featureTaskMediaRecorder = null;
+                featureTaskAudioChunks = [];
+            }
+        }
+
+        async function toggleFeatureTaskRecording() {
+            var recordBtn = document.getElementById('featureTaskRecordBtn');
+            var recordText = document.getElementById('featureTaskRecordText');
+            var recordTimer = document.getElementById('featureTaskRecordTimer');
+            var audioPreview = document.getElementById('featureTaskAudioPreview');
+            if (!recordBtn || !recordText || !recordTimer) return;
+
+            if (featureTaskMediaRecorder && featureTaskMediaRecorder.state === 'recording') {
+                stopFeatureTaskRecording(false);
+                return;
+            }
+
+            try {
+                featureTaskRecordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                var mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
+                    : (MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/wav');
+                featureTaskAudioChunks = [];
+                featureTaskMediaRecorder = new MediaRecorder(featureTaskRecordingStream, { mimeType: mimeType });
+                featureTaskMediaRecorder.ondataavailable = function (e) {
+                    if (e.data && e.data.size > 0) featureTaskAudioChunks.push(e.data);
+                };
+                featureTaskMediaRecorder.onstop = function () {
+                    if (featureTaskAudioChunks.length === 0) {
+                        setFeatureTaskChatNote('فایل صوتی خالی است.', true);
+                        return;
+                    }
+                    var blob = new Blob(featureTaskAudioChunks, { type: mimeType });
+                    var url = URL.createObjectURL(blob);
+                    if (audioPreview) {
+                        audioPreview.innerHTML = '';
+                        var audioEl = document.createElement('audio');
+                        audioEl.controls = true;
+                        audioEl.src = url;
+                        audioPreview.appendChild(audioEl);
+                    }
+                    var extension = mimeType === 'audio/mp4' ? 'm4a' : 'webm';
+                    var file = new File([blob], 'voice_' + Date.now() + '.' + extension, { type: mimeType });
+                    addFeatureTaskFileToInput(file);
+                    if (featureTaskRecordingStream) {
+                        featureTaskRecordingStream.getTracks().forEach(function (t) { t.stop(); });
+                        featureTaskRecordingStream = null;
+                    }
+                };
+                featureTaskMediaRecorder.start(100);
+                featureTaskRecordingStartTime = Date.now();
+                recordBtn.classList.add('recording');
+                recordText.textContent = 'توقف';
+                featureTaskTimerInterval = setInterval(function () {
+                    var elapsed = Math.floor((Date.now() - featureTaskRecordingStartTime) / 1000);
+                    var m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+                    var s = String(elapsed % 60).padStart(2, '0');
+                    recordTimer.textContent = m + ':' + s;
+                }, 1000);
+            } catch (err) {
+                setFeatureTaskChatNote('خطا در دسترسی به میکروفن: ' + (err.message || ''), true);
+            }
+        }
+
+        async function sendFeatureTaskChat() {
+            var taskId = parseInt(document.getElementById('featureTaskId')?.value || '0', 10);
+            var messageInput = document.getElementById('featureTaskMessageInput');
+            var fileInput = document.getElementById('featureTaskFileInput');
+            var sendBtn = document.getElementById('featureTaskSendBtn');
+            if (!taskId) {
+                setFeatureTaskChatNote('ابتدا کار را ذخیره کنید، سپس پیوست اضافه کنید.', true);
+                return;
+            }
+            if (!messageInput || !fileInput || !sendBtn) return;
+
+            var message = (messageInput.value || '').trim();
+            var files = Array.from(fileInput.files || []);
+            if (!message && files.length === 0) {
+                setFeatureTaskChatNote('حداقل یک پیام یا پیوست وارد کنید.', true);
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('TaskId', String(taskId));
+            formData.append('Message', message);
+            formData.append('__RequestVerificationToken', featureTaskAntiForgeryToken);
+            files.forEach(function (file) { formData.append('Attachments', file); });
+
+            try {
+                sendBtn.disabled = true;
+                setFeatureTaskChatNote('در حال ارسال...');
+                var response = await fetch('/Tasks/PostComment', {
+                    method: 'POST',
+                    headers: { RequestVerificationToken: featureTaskAntiForgeryToken },
+                    body: formData
+                });
+                if (!response.ok) {
+                    var rawError = await response.text();
+                    throw new Error(rawError || ('HTTP ' + response.status));
+                }
+                messageInput.value = '';
+                fileInput.value = '';
+                document.getElementById('featureTaskSelectedFiles').innerHTML = '';
+                document.getElementById('featureTaskAudioPreview').innerHTML = '';
+                setFeatureTaskChatNote('');
+                await loadFeatureTaskChat(taskId);
+            } catch (err) {
+                setFeatureTaskChatNote(err.message ? ('ارسال انجام نشد: ' + err.message) : 'ارسال انجام نشد.', true);
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        async function deleteFeatureTaskComment(commentId) {
+            if (!commentId || !confirm('این پیام/پیوست حذف شود؟')) return;
+            var taskId = parseInt(document.getElementById('featureTaskId')?.value || '0', 10);
+            var formData = new FormData();
+            formData.append('commentId', String(commentId));
+            formData.append('__RequestVerificationToken', featureTaskAntiForgeryToken);
+            try {
+                setFeatureTaskChatNote('در حال حذف...');
+                var response = await fetch('/Tasks/DeleteComment', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) {
+                    var rawError = await response.text();
+                    throw new Error(rawError || ('HTTP ' + response.status));
+                }
+                setFeatureTaskChatNote('');
+                if (taskId) await loadFeatureTaskChat(taskId);
+            } catch (err) {
+                setFeatureTaskChatNote(err.message ? ('حذف انجام نشد: ' + err.message) : 'حذف انجام نشد.', true);
+            }
+        }
+
+        document.getElementById('featureTaskFileInput')?.addEventListener('change', showFeatureTaskSelectedFiles);
+        document.getElementById('featureTaskSendBtn')?.addEventListener('click', sendFeatureTaskChat);
+        document.getElementById('featureTaskRecordBtn')?.addEventListener('click', toggleFeatureTaskRecording);
+        document.getElementById('featureTaskMessageInput')?.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendFeatureTaskChat();
+            }
+        });
+        document.getElementById('featureTaskMessageInput')?.addEventListener('paste', function (event) {
+            if (!event.clipboardData || !event.clipboardData.items) return;
+            var handled = false;
+            for (var i = 0; i < event.clipboardData.items.length; i++) {
+                var item = event.clipboardData.items[i];
+                if (item.kind !== 'file') continue;
+                var file = item.getAsFile();
+                if (!file) continue;
+                if (!file.name || file.name === 'image.png' || file.name === 'blob') {
+                    var ext = (file.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+                    if (!ext || ext === 'plain') ext = 'bin';
+                    file = new File([file], 'clipboard-' + Date.now() + '-' + i + '.' + ext, { type: file.type || 'application/octet-stream' });
+                }
+                addFeatureTaskFileToInput(file);
+                handled = true;
+            }
+            if (handled) event.preventDefault();
+        });
+        document.getElementById('featureTaskChatBox')?.addEventListener('click', function (event) {
+            var btn = event.target.closest('.feature-task-chat-delete');
+            if (!btn) return;
+            var commentId = parseInt(btn.getAttribute('data-comment-id') || '0', 10);
+            if (commentId) deleteFeatureTaskComment(commentId);
+        });
 
         function getFeatureTasksSortDir() {
             var btn = document.getElementById('featureTasksSortToggle');
@@ -3037,8 +3713,13 @@
                     }
 
                     appendFeatureTaskRow(createResult);
-                    resetFeatureTaskForm();
-                    setTimeout(function () { document.getElementById('featureTaskTitle')?.focus(); }, 0);
+                    setFeatureTaskModalMode('edit');
+                    document.getElementById('featureTaskId').value = createResult.taskId || '';
+                    resetFeatureTaskAttachments();
+                    if (createResult.taskId) {
+                        loadFeatureTaskChat(createResult.taskId);
+                    }
+                    setFeatureTaskChatNote('کار ایجاد شد. می‌توانید پیوست اضافه کنید.');
                 }
             } catch (err) {
                 alert(err.message || 'خطا در ذخیره کار');
