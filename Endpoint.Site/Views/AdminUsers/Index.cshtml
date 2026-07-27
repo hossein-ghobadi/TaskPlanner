@@ -99,6 +99,7 @@
                                 <th>ایمیل</th>
                                 <th>تلفن</th>
                                 <th>نقش‌ها</th>
+                                <th>پروژه‌ها</th>
                                 <th>وضعیت</th>
                                 <th>تاریخ ثبت</th>
                                 <th>عملیات</th>
@@ -154,6 +155,23 @@
                                                 <i class="bi bi-plus-lg me-1"></i>
                                                 افزودن نقش
                                             </button>
+                                        </div>
+                                    </td>
+                                    <td class="projects-cell">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge @(user.ProjectCount > 0 ? "bg-primary" : "bg-secondary") project-count-badge">
+                                                @user.ProjectCount
+                                            </span>
+                                            @if (user.ProjectCount > 0)
+                                            {
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-secondary view-projects-btn"
+                                                        data-user-id="@user.Id"
+                                                        data-user-name="@(string.IsNullOrWhiteSpace(user.FullName) ? user.UserName : user.FullName)"
+                                                        title="مشاهده پروژه‌ها">
+                                                    <i class="bi bi-folder2-open"></i>
+                                                </button>
+                                            }
                                         </div>
                                     </td>
                                     <td>
@@ -245,6 +263,32 @@
                     }
                 </div>
             }
+        </div>
+    </div>
+</div>
+
+<!-- مودال لیست پروژه‌های کاربر -->
+<div class="modal fade" id="userProjectsModal" tabindex="-1" aria-labelledby="userProjectsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userProjectsModalLabel">
+                    <i class="bi bi-folder2-open me-2"></i>
+                    پروژه‌های <span id="userProjectsModalUserName"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+            </div>
+            <div class="modal-body" id="userProjectsModalBody">
+                <div class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">در حال بارگذاری...</span>
+                    </div>
+                    <div class="mt-2">در حال بارگذاری پروژه‌ها...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">بستن</button>
+            </div>
         </div>
     </div>
 </div>
@@ -432,6 +476,138 @@
                     });
                 });
             }
+
+            const userProjectsModalEl = document.getElementById('userProjectsModal');
+            const userProjectsModalBody = document.getElementById('userProjectsModalBody');
+            const userProjectsModalUserName = document.getElementById('userProjectsModalUserName');
+            const userProjectsModal = userProjectsModalEl ? new bootstrap.Modal(userProjectsModalEl) : null;
+
+            function toPersianDigits(value) {
+                return String(value)
+                    .replace(/0/g, '۰')
+                    .replace(/1/g, '۱')
+                    .replace(/2/g, '۲')
+                    .replace(/3/g, '۳')
+                    .replace(/4/g, '۴')
+                    .replace(/5/g, '۵')
+                    .replace(/6/g, '۶')
+                    .replace(/7/g, '۷')
+                    .replace(/8/g, '۸')
+                    .replace(/9/g, '۹');
+            }
+
+            function formatProjectDate(dateValue) {
+                if (!dateValue) {
+                    return '-';
+                }
+
+                const date = new Date(dateValue);
+                if (Number.isNaN(date.getTime())) {
+                    return '-';
+                }
+
+                return toPersianDigits(date.toLocaleDateString('fa-IR'));
+            }
+
+            function renderUserProjects(projects) {
+                if (!projects || projects.length === 0) {
+                    userProjectsModalBody.innerHTML = `
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-folder-x display-6 d-block mb-2"></i>
+                            پروژه‌ای برای این کاربر ثبت نشده است.
+                        </div>`;
+                    return;
+                }
+
+                const rows = projects.map(project => `
+                    <tr>
+                        <td>${project.name}</td>
+                        <td>${formatProjectDate(project.createdAt)}</td>
+                        <td class="text-center">
+                            <a href="/Projects/Details/${project.id}"
+                               class="btn btn-sm btn-outline-primary"
+                               title="مشاهده پروژه">
+                                <i class="bi bi-box-arrow-up-left"></i>
+                            </a>
+                        </td>
+                    </tr>`).join('');
+
+                userProjectsModalBody.innerHTML = `
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>نام پروژه</th>
+                                    <th>تاریخ ایجاد</th>
+                                    <th class="text-center">عملیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>`;
+            }
+
+            async function openUserProjectsModal(userId, userName) {
+                if (!userProjectsModal || !userProjectsModalBody || !userProjectsModalUserName) {
+                    return;
+                }
+
+                userProjectsModalUserName.textContent = userName || '';
+                userProjectsModalBody.innerHTML = `
+                    <div class="text-center py-4 text-muted">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">در حال بارگذاری...</span>
+                        </div>
+                        <div class="mt-2">در حال بارگذاری پروژه‌ها...</div>
+                    </div>`;
+
+                userProjectsModal.show();
+
+                try {
+                    const response = await fetch(`@Url.Action("GetUserProjects")?id=${encodeURIComponent(userId)}`);
+                    const data = await parseJsonResponse(response);
+
+                    if (!data.success) {
+                        userProjectsModalBody.innerHTML = `
+                            <div class="alert alert-danger mb-0">
+                                ${data.message || 'خطا در دریافت لیست پروژه‌ها'}
+                            </div>`;
+                        return;
+                    }
+
+                    if (data.userName) {
+                        userProjectsModalUserName.textContent = data.userName;
+                    }
+
+                    renderUserProjects(data.projects);
+                } catch (error) {
+                    console.error('Error:', error);
+                    userProjectsModalBody.innerHTML = `
+                        <div class="alert alert-danger mb-0">
+                            خطا در دریافت لیست پروژه‌ها
+                        </div>`;
+                }
+            }
+
+            document.querySelectorAll('.view-projects-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    openUserProjectsModal(this.dataset.userId, this.dataset.userName);
+                });
+            });
+
+            document.querySelectorAll('.project-count-badge').forEach(badge => {
+                const row = badge.closest('tr');
+                const viewBtn = row?.querySelector('.view-projects-btn');
+                if (!viewBtn) {
+                    return;
+                }
+
+                badge.style.cursor = 'pointer';
+                badge.title = 'مشاهده پروژه‌ها';
+                badge.addEventListener('click', function () {
+                    openUserProjectsModal(viewBtn.dataset.userId, viewBtn.dataset.userName);
+                });
+            });
         });
     </script>
 }
@@ -526,9 +702,17 @@
     .table td:nth-child(1),
     .table td:nth-child(3),
     .table td:nth-child(4),
-    .table td:nth-child(7),
-    .table td:nth-child(8) {
+    .table td:nth-child(8),
+    .table td:nth-child(9) {
         white-space: nowrap;
+    }
+
+    .projects-cell {
+        min-width: 90px;
+    }
+
+    .project-count-badge {
+        min-width: 2rem;
     }
 
     .operations-cell,

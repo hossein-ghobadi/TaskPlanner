@@ -1,0 +1,258 @@
+@model LeaveFormVm
+@using Endpoint.Site.Models
+@using TaskPlanner.Application.Helpers
+@{
+    var isEdit = Model.Id.HasValue;
+    ViewData["Title"] = isEdit ? "ویرایش مرخصی" : "ثبت مرخصی";
+    ViewData["UseFluidLayout"] = true;
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var colleagues = ViewBag.Colleagues as IReadOnlyList<TaskPlanner.Application.Services.LeaveService.ColleagueSelectDto> ?? Array.Empty<TaskPlanner.Application.Services.LeaveService.ColleagueSelectDto>();
+    var leaveTypes = ViewBag.LeaveTypes as IReadOnlyList<TaskPlanner.Application.Services.LeaveService.LeaveTypeDto> ?? Array.Empty<TaskPlanner.Application.Services.LeaveService.LeaveTypeDto>();
+}
+
+<div class="container-fluid px-0" style="max-width: 720px;">
+    <div class="mb-4">
+        <a href="@Url.Action("Index")" class="text-decoration-none"><i class="bi bi-arrow-right me-1"></i> بازگشت به لیست</a>
+        <h2 class="fw-bold mt-2">
+            <i class="bi bi-calendar-plus me-2"></i>
+            @(isEdit ? "ویرایش مرخصی" : "ثبت مرخصی برای همکار")
+        </h2>
+        <p class="text-muted">فقط مرخصی‌های ثبت‌شده توسط شما در لیست و آمار نمایش داده می‌شوند.</p>
+        @if (!colleagues.Any())
+        {
+            <p class="text-warning small mb-0">
+                <i class="bi bi-info-circle me-1"></i>
+                هنوز همکاری ندارید. از بخش <a href="/Invitations/MyInvitations">دعوت‌ها</a> یا پروژه‌ها همکار اضافه کنید.
+            </p>
+        }
+        @if (!leaveTypes.Any())
+        {
+            <p class="text-danger small mb-0 mt-1">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                نوع مرخصی در سیستم تعریف نشده. صفحه را یک‌بار رفرش کنید.
+            </p>
+        }
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                @Html.AntiForgeryToken()
+                @if (Model.Id.HasValue)
+                {
+                    <input type="hidden" name="Id" value="@Model.Id" />
+                }
+
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                <div class="mb-3">
+                    <label asp-for="UserId" class="form-label"></label>
+                    <select asp-for="UserId" class="form-select" required>
+                        <option value="">انتخاب همکار...</option>
+                        @foreach (var c in colleagues)
+                        {
+                            if (Model.UserId == c.Id)
+                            {
+                                <option value="@c.Id" selected>@c.DisplayName</option>
+                            }
+                            else
+                            {
+                                <option value="@c.Id">@c.DisplayName</option>
+                            }
+                        }
+                    </select>
+                    <span asp-validation-for="UserId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="LeaveTypeId" class="form-label"></label>
+                    <select asp-for="LeaveTypeId" class="form-select" id="leaveTypeSelect" required>
+                        <option value="">انتخاب نوع...</option>
+                        @foreach (var t in leaveTypes)
+                        {
+                            if (Model.LeaveTypeId == t.Id)
+                            {
+                                <option value="@t.Id" data-hourly="@t.IsHourlyAllowed" selected>@t.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@t.Id" data-hourly="@t.IsHourlyAllowed">@t.Name</option>
+                            }
+                        }
+                    </select>
+                    <span asp-validation-for="LeaveTypeId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3" id="hourlyToggleWrap" style="display:none;">
+                    <div class="form-check">
+                        <input asp-for="IsHourly" class="form-check-input" type="checkbox" id="isHourlyCheck" />
+                        <label asp-for="IsHourly" class="form-check-label"></label>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="StartPersian" class="form-label"></label>
+                        <input asp-for="StartPersian" class="form-control leave-start-input" autocomplete="off"
+                               value="@PersianDateTimeHelper.ToLatinDigits(Model.StartPersian ?? "")" />
+                        <input asp-for="StartTimePersian" type="text" class="form-control leave-start-time mt-2" autocomplete="off"
+                               placeholder="10:30" inputmode="numeric"
+                               value="@PersianDateTimeHelper.ToLatinDigits(Model.StartTimePersian ?? "")" style="display:none" />
+                        <span asp-validation-for="StartPersian" class="text-danger"></span>
+                        <span asp-validation-for="StartTimePersian" class="text-danger"></span>
+                        <div class="form-text" id="startHint">فرمت: 1404/05/01</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="EndPersian" class="form-label"></label>
+                        <input asp-for="EndPersian" class="form-control leave-end-input" autocomplete="off"
+                               value="@PersianDateTimeHelper.ToLatinDigits(Model.EndPersian ?? "")" />
+                        <input asp-for="EndTimePersian" type="text" class="form-control leave-end-time mt-2" autocomplete="off"
+                               placeholder="12:30" inputmode="numeric"
+                               value="@PersianDateTimeHelper.ToLatinDigits(Model.EndTimePersian ?? "")" style="display:none" />
+                        <span asp-validation-for="EndPersian" class="text-danger"></span>
+                        <span asp-validation-for="EndTimePersian" class="text-danger"></span>
+                        <div class="form-text" id="endHint">فرمت: 1404/05/03</div>
+                    </div>
+                </div>
+
+                <div class="mb-3" id="durationDaysWrap">
+                    <label asp-for="DurationDays" class="form-label"></label>
+                    <input asp-for="DurationDays" class="form-control" type="number" min="1" step="1" id="durationDaysInput" />
+                    <span asp-validation-for="DurationDays" class="text-danger"></span>
+                    <div class="form-text" id="durationDaysHint">
+                        روزهای مؤثر مرخصی (بدون تعطیلات رسمی). بازه تقویمی: —
+                    </div>
+                </div>
+
+                <div class="mb-3 mt-3">
+                    <label asp-for="Note" class="form-label"></label>
+                    <textarea asp-for="Note" class="form-control" rows="3"></textarea>
+                    <span asp-validation-for="Note" class="text-danger"></span>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>
+                        @(isEdit ? "ذخیره تغییرات" : "ثبت مرخصی")
+                    </button>
+                    <a href="@Url.Action("Index")" class="btn btn-outline-secondary">انصراف</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_DatePickerAssets")
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var leaveTypeSelect = document.getElementById('leaveTypeSelect');
+            var hourlyWrap = document.getElementById('hourlyToggleWrap');
+            var isHourlyCheck = document.getElementById('isHourlyCheck');
+            var startHint = document.getElementById('startHint');
+            var endHint = document.getElementById('endHint');
+            var startInput = document.querySelector('.leave-start-input');
+            var endInput = document.querySelector('.leave-end-input');
+            var startTimeInput = document.querySelector('.leave-start-time');
+            var endTimeInput = document.querySelector('.leave-end-time');
+            var durationDaysWrap = document.getElementById('durationDaysWrap');
+            var durationDaysInput = document.getElementById('durationDaysInput');
+            var durationDaysHint = document.getElementById('durationDaysHint');
+
+            function toLatinDigits(value) {
+                if (!value) return value;
+                return value
+                    .replace(/[۰-۹]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 1728); })
+                    .replace(/[٠-٩]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 1632); });
+            }
+
+            function parseJalali(value) {
+                if (!value || typeof persianDate === 'undefined') return null;
+                var normalized = toLatinDigits(value.trim());
+                var parts = normalized.split(/[\s/]+/);
+                if (parts.length < 3) return null;
+                var y = parseInt(parts[0], 10);
+                var m = parseInt(parts[1], 10);
+                var d = parseInt(parts[2], 10);
+                if (!y || !m || !d) return null;
+                try { return new persianDate([y, m, d]); } catch (e) { return null; }
+            }
+
+            function updateCalendarDaysHint() {
+                if (!durationDaysHint || isHourlyCheck.checked) return;
+                var start = parseJalali(startInput && startInput.value);
+                var end = parseJalali(endInput && endInput.value);
+                if (!start || !end) {
+                    durationDaysHint.textContent = 'روزهای مؤثر مرخصی (بدون تعطیلات رسمی). بازه تقویمی: —';
+                    return;
+                }
+                var calendarDays = end.diff(start, 'days') + 1;
+                if (calendarDays < 1) calendarDays = 1;
+                durationDaysHint.textContent =
+                    'روزهای مؤثر مرخصی (بدون تعطیلات رسمی). بازه تقویمی: ' + calendarDays + ' روز';
+                if (durationDaysInput && !durationDaysInput.value && calendarDays > 0) {
+                    durationDaysInput.value = calendarDays;
+                }
+            }
+
+            function getSelectedHourlyAllowed() {
+                var opt = leaveTypeSelect.options[leaveTypeSelect.selectedIndex];
+                return opt && (opt.getAttribute('data-hourly') === 'True' || opt.getAttribute('data-hourly') === 'true');
+            }
+
+            function updateHourlyUi() {
+                var allowed = getSelectedHourlyAllowed();
+                hourlyWrap.style.display = allowed ? 'block' : 'none';
+                if (!allowed) isHourlyCheck.checked = false;
+                var hourly = isHourlyCheck.checked;
+                durationDaysWrap.style.display = hourly ? 'none' : 'block';
+                if (hourly && durationDaysInput) durationDaysInput.value = '';
+                if (startTimeInput) startTimeInput.style.display = hourly ? 'block' : 'none';
+                if (endTimeInput) endTimeInput.style.display = hourly ? 'block' : 'none';
+                if (startInput && startInput.value) startInput.value = toLatinDigits(startInput.value);
+                if (endInput && endInput.value) endInput.value = toLatinDigits(endInput.value);
+                if (startTimeInput && startTimeInput.value) startTimeInput.value = toLatinDigits(startTimeInput.value);
+                if (endTimeInput && endTimeInput.value) endTimeInput.value = toLatinDigits(endTimeInput.value);
+                startHint.textContent = hourly ? 'تاریخ: 1404/05/01 — ساعت: 10:30' : 'فرمت: 1404/05/01';
+                endHint.textContent = hourly ? 'تاریخ: 1404/05/01 — ساعت: 12:30' : 'فرمت: 1404/05/03';
+                initPickers();
+                updateCalendarDaysHint();
+            }
+
+            function initPickers() {
+                if (startInput && startInput.classList.contains('pwt-datepicker-input-element')) {
+                    try { $(startInput).pDatepicker('destroy'); } catch (e) { }
+                }
+                if (endInput && endInput.classList.contains('pwt-datepicker-input-element')) {
+                    try { $(endInput).pDatepicker('destroy'); } catch (e) { }
+                }
+
+                var baseOpts = {
+                    format: 'YYYY/MM/DD',
+                    autoClose: true,
+                    initialValueType: 'persian',
+                    persianDigit: true,
+                    calendar: { persian: { locale: 'fa', leapYearMode: 'astronomical' } },
+                    navigator: { scroll: { enabled: false } },
+                    timePicker: { enabled: false },
+                    onSelect: function () { updateCalendarDaysHint(); }
+                };
+
+                $(startInput).pDatepicker($.extend({}, baseOpts, {
+                    initialValue: !!(startInput && startInput.value && startInput.value.trim())
+                }));
+
+                $(endInput).pDatepicker($.extend({}, baseOpts, {
+                    initialValue: !!(endInput && endInput.value && endInput.value.trim())
+                }));
+            }
+
+            leaveTypeSelect.addEventListener('change', updateHourlyUi);
+            isHourlyCheck.addEventListener('change', updateHourlyUi);
+            if (startInput) startInput.addEventListener('change', updateCalendarDaysHint);
+            if (endInput) endInput.addEventListener('change', updateCalendarDaysHint);
+            updateHourlyUi();
+        })();
+    </script>
+}

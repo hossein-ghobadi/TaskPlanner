@@ -12,6 +12,7 @@ using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Notifications;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Domain.Entities.Boards;
+using TaskPlanner.Domain.Entities.Leaves;
 using TaskPlanner.Application.Interfaces.Contexts;
 
 
@@ -80,6 +81,9 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<LeadInvitation> LeadInvitations { get; set; }
         public DbSet<LeadSession> LeadSessions { get; set; }
         public DbSet<LeadNote> LeadNotes { get; set; }
+
+        public DbSet<LeaveType> LeaveTypes { get; set; }
+        public DbSet<LeaveRecord> LeaveRecords { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -954,6 +958,61 @@ namespace TaskPlanner.Persistence.Contexts
 
             modelBuilder.Entity<ProjectTicketMessageAttachment>()
                 .HasIndex(a => a.MessageId);
+
+            modelBuilder.Entity<LeaveType>()
+                .Property(t => t.Id)
+                .ValueGeneratedNever();
+
+            modelBuilder.Entity<LeaveType>()
+                .Property(t => t.Name)
+                .HasMaxLength(100);
+
+            modelBuilder.Entity<LeaveType>()
+                .Property(t => t.Color)
+                .HasMaxLength(20);
+
+            modelBuilder.Entity<LeaveType>()
+                .HasData(LeaveTypeDefaults.CreateSeedTypes());
+
+            modelBuilder.Entity<LeaveRecord>()
+                .HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<LeaveRecord>()
+                .HasOne(r => r.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(r => r.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<LeaveRecord>()
+                .HasOne(r => r.LeaveType)
+                .WithMany(t => t.LeaveRecords)
+                .HasForeignKey(r => r.LeaveTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<LeaveRecord>()
+                .Property(r => r.UserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<LeaveRecord>()
+                .Property(r => r.CreatedByUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<LeaveRecord>()
+                .Property(r => r.UpdatedByUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<LeaveRecord>()
+                .Property(r => r.Note)
+                .HasMaxLength(1000);
+
+            modelBuilder.Entity<LeaveRecord>()
+                .HasIndex(r => new { r.CreatedByUserId, r.StartAt });
+
+            modelBuilder.Entity<LeaveRecord>()
+                .HasIndex(r => new { r.UserId, r.StartAt });
         }
         public void MarkAsModified<T>(T entity) where T : class
         {

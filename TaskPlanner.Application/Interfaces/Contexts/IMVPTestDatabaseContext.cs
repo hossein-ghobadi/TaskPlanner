@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Notifications;
 using TaskPlanner.Domain.Entities.Boards;
+using TaskPlanner.Domain.Entities.Leaves;
 
 namespace TaskPlanner.Application.Interfaces.Contexts
 {
@@ -66,6 +67,9 @@ namespace TaskPlanner.Application.Interfaces.Contexts
         DbSet<LeadInvitation> LeadInvitations { get; set; }
         DbSet<LeadSession> LeadSessions { get; set; }
         DbSet<LeadNote> LeadNotes { get; set; }
+
+        DbSet<LeaveType> LeaveTypes { get; set; }
+        DbSet<LeaveRecord> LeaveRecords { get; set; }
 
         void MarkAsModified<T>(T entity) where T : class;
         void MarkPropertyAsModified<T, TProperty>(T entity, Expression<Func<T, TProperty>> property) where T : class;

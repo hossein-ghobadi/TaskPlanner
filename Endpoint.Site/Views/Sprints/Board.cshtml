@@ -650,6 +650,8 @@
     border: 1px solid #e9ecef;
     border-radius: 12px;
     padding: 1rem;
+    min-width: 0;
+    max-width: 100%;
     }
     .edit-task-side-card .small-title {
     font-size: 0.8rem;
@@ -1548,6 +1550,8 @@
         display: flex;
         flex-direction: column;
         height: 640px;
+        min-width: 0;
+        max-width: 100%;
     }
 
     .chat-header {
@@ -1580,14 +1584,18 @@
     .chat-messages {
         flex: 1;
         overflow-y: auto;
+        overflow-x: hidden;
         padding: 16px;
         background: #f8fbff;
+        min-width: 0;
     }
 
     .chat-message {
         margin-bottom: 20px;
         animation: fadeInUp 0.3s ease;
         scroll-margin-top: 110px;
+        min-width: 0;
+        max-width: 100%;
     }
     .chat-message.target-highlight {
         outline: 2px solid #60a5fa;
@@ -1641,11 +1649,15 @@
 
     .message-card {
         width: min(100%, 460px);
+        max-width: 100%;
+        min-width: 0;
         border-radius: 14px;
         border: 1px solid #dbe6ff;
         background: #ffffff;
         box-shadow: 0 2px 8px rgba(2, 6, 23, 0.06);
         padding: 10px 12px;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
     .chat-message.own .message-card {
         border-color: #bfdbfe;
@@ -1673,6 +1685,9 @@
         line-height: 1.65;
         color: #0f172a;
         white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        max-width: 100%;
     }
     .reply-reference {
         width: 100%;
@@ -1683,6 +1698,9 @@
         background: #eff6ff;
         font-size: 0.8rem;
         color: #1e3a8a;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        min-width: 0;
     }
     .reply-reference.clickable {
         cursor: pointer;
@@ -1713,6 +1731,9 @@
         background: #f8fafc;
         border-radius: 10px;
         padding: 7px 9px;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
     .board-chat-image-thumb {
         background: transparent;

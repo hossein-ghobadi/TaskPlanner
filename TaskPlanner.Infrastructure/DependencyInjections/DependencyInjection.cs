@@ -20,6 +20,7 @@ using TaskPlanner.Application.Services.TaskPlanner;
 using TaskPlanner.Application.Services.ProjectService;
 using TaskPlanner.Application.Services.NotificationService;
 using TaskPlanner.Application.Services.LeadService;
+using TaskPlanner.Application.Services.LeaveService;
 using TaskPlanner.Application.Services.DashboardService;
 using TaskPlanner.Application.Services.Bale;
 using TaskPlanner.Application.Services.SMS;
@@ -51,6 +52,8 @@ namespace TaskPlanner.Infrastructure.DependencyInjections
             services.AddScoped<IProjectCommandService, ProjectCommandService>();
 
             services.AddScoped<ILeadService, LeadService>();
+
+            services.AddScoped<ILeaveService, LeaveService>();
 
             services.AddScoped<IDashboardService, DashboardService>();
 

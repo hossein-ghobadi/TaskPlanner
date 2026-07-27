@@ -2605,9 +2605,11 @@
     #featureTaskModal .feature-task-chat-messages {
         flex: 1;
         overflow-y: auto;
+        overflow-x: hidden;
         padding: 14px;
         background: #f8fbff;
         min-height: 180px;
+        min-width: 0;
     }
     #featureTaskModal .feature-task-chat-empty {
         text-align: center;
@@ -2618,16 +2620,22 @@
     #featureTaskModal .feature-task-chat-message {
         display: flex;
         margin-bottom: 0.75rem;
+        min-width: 0;
+        max-width: 100%;
     }
     #featureTaskModal .feature-task-chat-message.own { justify-content: flex-end; }
     #featureTaskModal .feature-task-chat-message.other { justify-content: flex-start; }
     #featureTaskModal .feature-task-chat-card {
         width: min(100%, 460px);
+        max-width: 100%;
+        min-width: 0;
         border-radius: 14px;
         border: 1px solid #dbe6ff;
         background: #fff;
         box-shadow: 0 2px 8px rgba(2, 6, 23, 0.06);
         padding: 10px 12px;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
     #featureTaskModal .feature-task-chat-message.own .feature-task-chat-card {
         border-color: #bfdbfe;
@@ -2669,6 +2677,9 @@
         color: #1f2937;
         margin-bottom: 0.35rem;
         white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        max-width: 100%;
     }
     #featureTaskModal .feature-task-chat-attachments {
         display: flex;

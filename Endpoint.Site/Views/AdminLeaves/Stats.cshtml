@@ -1,0 +1,174 @@
+@model TaskPlanner.Application.Services.LeaveService.LeaveStatsDto
+@using Endpoint.Site.Models
+@using DNTPersianUtils.Core
+@{
+    ViewData["Title"] = "آمار مرخصی";
+    ViewData["UseFluidLayout"] = true;
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var filter = ViewBag.Filter as LeaveStatsFilterVm ?? new LeaveStatsFilterVm();
+}
+
+<div class="container-fluid px-0">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h2 class="fw-bold mb-0"><i class="bi bi-bar-chart me-2"></i>آمار مرخصی‌های ثبت‌شده توسط من</h2>
+        <a class="btn btn-outline-secondary" href="@Url.Action("Index")"><i class="bi bi-arrow-right me-1"></i> بازگشت</a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">از تاریخ</label>
+                    <input type="text" name="FromPersian" class="form-control persian-date-filter" value="@(string.IsNullOrWhiteSpace(filter.FromPersian) ? null : filter.FromPersian.ToPersianNumbers())" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">تا تاریخ</label>
+                    <input type="text" name="ToPersian" class="form-control persian-date-filter" value="@(string.IsNullOrWhiteSpace(filter.ToPersian) ? null : filter.ToPersian.ToPersianNumbers())" />
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter me-1"></i>اعمال بازه</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">مجموع روز مرخصی</div>
+                    <div class="fs-3 fw-bold">@Model.TotalDays.ToString("0.#").ToPersianNumbers() روز</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">مجموع ساعات (معادل کار)</div>
+                    <div class="fs-3 fw-bold">@Model.TotalHours.ToString("0.#").ToPersianNumbers() ساعت</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="text-muted small">تعداد ثبت</div>
+                    <div class="fs-3 fw-bold">@Model.TotalRecords.ToString().ToPersianNumbers()</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header fw-semibold">به تفکیک نوع مرخصی</div>
+                <div class="card-body">
+                    @if (Model.ByType.Any())
+                    {
+                        <div class="leave-type-chart-wrap mx-auto mb-3">
+                            <canvas id="leaveTypeChart"></canvas>
+                        </div>
+                        <div class="table-responsive mt-3">
+                            <table class="table table-sm">
+                                <thead><tr><th>نوع</th><th>تعداد</th><th>روز</th><th>ساعت</th></tr></thead>
+                                <tbody>
+                                    @foreach (var item in Model.ByType)
+                                    {
+                                        <tr>
+                                            <td><span class="badge" style="background:@item.Color">@item.LeaveTypeName</span></td>
+                                            <td>@item.Count.ToString().ToPersianNumbers()</td>
+                                            <td>@item.TotalDays.ToString("0.#").ToPersianNumbers()</td>
+                                            <td>@item.TotalHours.ToString("0.#").ToPersianNumbers()</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">داده‌ای در این بازه نیست.</p>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header fw-semibold">به تفکیک همکار</div>
+                <div class="card-body">
+                    @if (Model.ByColleague.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead><tr><th>همکار</th><th>تعداد</th><th>روز</th><th>ساعت</th></tr></thead>
+                                <tbody>
+                                    @foreach (var item in Model.ByColleague)
+                                    {
+                                        <tr>
+                                            <td>@item.ColleagueName</td>
+                                            <td>@item.Count.ToString().ToPersianNumbers()</td>
+                                            <td>@item.TotalDays.ToString("0.#").ToPersianNumbers()</td>
+                                            <td>@item.TotalHours.ToString("0.#").ToPersianNumbers()</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">داده‌ای در این بازه نیست.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .leave-type-chart-wrap {
+        max-width: 200px;
+        height: 200px;
+    }
+</style>
+
+@section Scripts {
+    @await Html.PartialAsync("_DatePickerAssets")
+    <script src="~/lib/chart.js/dist/chart.umd.min.js"></script>
+    <script>
+        $('.persian-date-filter').pDatepicker({
+            format: 'YYYY/MM/DD',
+            autoClose: true,
+            initialValue: false,
+            persianDigit: true,
+            calendar: { persian: { locale: 'fa' } },
+            navigator: { scroll: { enabled: false } }
+        });
+
+        @if (Model.ByType.Any())
+        {
+            <text>
+            (function () {
+                var labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ByType.Select(x => x.LeaveTypeName)));
+                var data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ByType.Select(x => x.TotalHours)));
+                var colors = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ByType.Select(x => x.Color)));
+                var ctx = document.getElementById('leaveTypeChart');
+                if (ctx) {
+                    new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: labels,
+                            datasets: [{ data: data, backgroundColor: colors }]
+                        },
+                        options: {
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: 'bottom' } }
+                        }
+                    });
+                }
+            })();
+            </text>
+        }
+    </script>
+}

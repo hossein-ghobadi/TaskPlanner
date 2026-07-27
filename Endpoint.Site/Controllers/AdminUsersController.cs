@@ -64,9 +64,19 @@ namespace Endpoint.Site.Controllers
                 })
                 .ToListAsync();
 
+            var userIds = users.Select(u => u.Id).ToList();
+
+            var projectCounts = await _dbContext.ProjectMembers
+                .Where(pm => userIds.Contains(pm.UserId))
+                .GroupBy(pm => pm.UserId)
+                .Select(g => new { UserId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.UserId, x => x.Count);
+
             // دریافت نقش‌های کاربران
             foreach (var userVm in users)
             {
+                userVm.ProjectCount = projectCounts.GetValueOrDefault(userVm.Id, 0);
+
                 var user = await _userManager.FindByIdAsync(userVm.Id);
                 if (user != null)
                 {
@@ -365,6 +375,41 @@ namespace Endpoint.Site.Controllers
 
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
             return Json(new { success = false, message = $"خطا در حذف نقش: {errors}" });
+        }
+
+        // GET: لیست پروژه‌های کاربر
+        [HttpGet]
+        public async Task<IActionResult> GetUserProjects(string id)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                return Json(new { success = false, message = "شناسه کاربر نامعتبر است" });
+            }
+
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                return Json(new { success = false, message = "کاربر یافت نشد" });
+            }
+
+            var projects = await (
+                from pm in _dbContext.ProjectMembers
+                join p in _dbContext.Projects on pm.ProjectId equals p.Id
+                where pm.UserId == id
+                orderby p.CreatedAt descending
+                select new UserProjectItemVm
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    CreatedAt = p.CreatedAt
+                }).ToListAsync();
+
+            return Json(new
+            {
+                success = true,
+                userName = user.FullName ?? user.UserName ?? "",
+                projects
+            });
         }
 
         // POST: تعریف نقش جدید

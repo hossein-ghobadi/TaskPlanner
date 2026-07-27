@@ -13,6 +13,7 @@ namespace Endpoint.Site.Models
         public DateTime InsertTime { get; set; }
         public bool EmailConfirmed { get; set; }
         public List<string> Roles { get; set; } = new List<string>();
+        public int ProjectCount { get; set; }
     }
 }
 

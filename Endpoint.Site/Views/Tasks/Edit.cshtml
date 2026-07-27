@@ -226,6 +226,8 @@
     .chat-message {
         display: flex;
         margin-bottom: 0.7rem;
+        min-width: 0;
+        max-width: 100%;
     }
 
     .chat-message:last-child {
@@ -237,11 +239,15 @@
 
     .chat-message-card {
         width: min(100%, 620px);
+        max-width: 100%;
+        min-width: 0;
         border: 1px solid #e5e7eb;
         border-radius: 12px;
         background: #fff;
         padding: 0.7rem 0.8rem;
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     .chat-message.own .chat-message-card {
@@ -313,6 +319,9 @@
         color: #1f2937;
         margin-bottom: 0.35rem;
         white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        max-width: 100%;
     }
 
     .chat-attachments {

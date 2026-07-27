@@ -1,0 +1,203 @@
+@model IEnumerable<LeaveRecordListVm>
+@using Endpoint.Site.Models
+@using DNTPersianUtils.Core
+@using TaskPlanner.Application.Helpers
+@{
+    ViewData["Title"] = "مرخصی همکاران";
+    ViewData["UseFluidLayout"] = true;
+    Layout = "/Views/Shared/_Layout.cshtml";
+    var filter = ViewBag.Filter as LeaveIndexFilterVm ?? new LeaveIndexFilterVm();
+    var colleagues = ViewBag.Colleagues as IReadOnlyList<TaskPlanner.Application.Services.LeaveService.ColleagueSelectDto> ?? Array.Empty<TaskPlanner.Application.Services.LeaveService.ColleagueSelectDto>();
+    var leaveTypes = ViewBag.LeaveTypes as IReadOnlyList<TaskPlanner.Application.Services.LeaveService.LeaveTypeDto> ?? Array.Empty<TaskPlanner.Application.Services.LeaveService.LeaveTypeDto>();
+    var currentPage = ViewBag.CurrentPage as int? ?? 1;
+    var totalPages = ViewBag.TotalPages as int? ?? 1;
+    var totalCount = ViewBag.TotalCount as int? ?? 0;
+}
+
+<div class="container-fluid px-0">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-calendar2-week me-2"></i>
+            مرخصی‌های ثبت‌شده توسط من
+        </h2>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-primary" href="@Url.Action("Calendar")">
+                <i class="bi bi-calendar3 me-1"></i> تقویم
+            </a>
+            <a class="btn btn-outline-secondary" href="@Url.Action("Stats")">
+                <i class="bi bi-bar-chart me-1"></i> آمار
+            </a>
+            <a class="btn btn-primary" href="@Url.Action("Create")">
+                <i class="bi bi-plus-lg me-1"></i> ثبت مرخصی
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="bi bi-exclamation-circle me-2"></i>@TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">همکار</label>
+                    <select name="UserId" class="form-select">
+                        <option value="">همه</option>
+                        @foreach (var c in colleagues)
+                        {
+                            if (filter.UserId == c.Id)
+                            {
+                                <option value="@c.Id" selected>@c.DisplayName</option>
+                            }
+                            else
+                            {
+                                <option value="@c.Id">@c.DisplayName</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">نوع مرخصی</label>
+                    <select name="LeaveTypeId" class="form-select">
+                        <option value="">همه</option>
+                        @foreach (var t in leaveTypes)
+                        {
+                            if (filter.LeaveTypeId == t.Id)
+                            {
+                                <option value="@t.Id" selected>@t.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@t.Id">@t.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">از تاریخ</label>
+                    <input type="text" name="FromPersian" class="form-control persian-date-filter" value="@(string.IsNullOrWhiteSpace(filter.FromPersian) ? null : filter.FromPersian.ToPersianNumbers())" placeholder="۱۴۰۴/۰۱/۰۱" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">تا تاریخ</label>
+                    <input type="text" name="ToPersian" class="form-control persian-date-filter" value="@(string.IsNullOrWhiteSpace(filter.ToPersian) ? null : filter.ToPersian.ToPersianNumbers())" placeholder="۱۴۰۴/۱۲/۲۹" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">یادداشت</label>
+                    <input type="text" name="SearchNote" class="form-control" value="@filter.SearchNote" />
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="text-muted mb-3">تعداد: <strong>@totalCount.ToString().ToPersianNumbers()</strong></div>
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>همکار</th>
+                                <th>نوع</th>
+                                <th>از</th>
+                                <th>تا</th>
+                                <th>روز</th>
+                                <th>مدت (ساعت)</th>
+                                <th>یادداشت</th>
+                                <th>ثبت</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model)
+                            {
+                                var isHourlyLeave = !item.DurationDays.HasValue;
+                                <tr>
+                                    <td>@item.ColleagueName</td>
+                                    <td>
+                                        <span class="badge" style="background-color:@item.LeaveTypeColor">@item.LeaveTypeName</span>
+                                    </td>
+                                    <td>@FormatLeaveMoment(item.StartAt, isHourlyLeave)</td>
+                                    <td>@FormatLeaveMoment(item.EndAt, isHourlyLeave)</td>
+                                    <td>@(item.DurationDays.HasValue ? item.DurationDays.Value.ToString().ToPersianNumbers() : "—")</td>
+                                    <td>@item.DurationHours.ToString("0.#").ToPersianNumbers()</td>
+                                    <td class="text-muted small">@(item.Note ?? "—")</td>
+                                    <td class="small text-muted">@IranDateTimeHelper.FormatLeaveDate(IranDateTimeHelper.FromUtcToIran(item.CreatedAt)).ToPersianNumbers()</td>
+                                    <td class="text-end">
+                                        <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Edit", new { id = item.Id })"><i class="bi bi-pencil"></i></a>
+                                        <form method="post" action="@Url.Action("Delete")" class="d-inline" onsubmit="return confirm('حذف این مرخصی؟');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@item.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (totalPages > 1)
+                {
+                    <nav class="mt-3">
+                        <ul class="pagination justify-content-center">
+                            @for (var p = 1; p <= totalPages; p++)
+                            {
+                                <li class="page-item @(p == currentPage ? "active" : "")">
+                                    <a class="page-link" href="@Url.Action("Index", new { UserId = filter.UserId, LeaveTypeId = filter.LeaveTypeId, FromPersian = filter.FromPersian, ToPersian = filter.ToPersian, SearchNote = filter.SearchNote, Page = p })">@p.ToString().ToPersianNumbers()</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            }
+            else
+            {
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-calendar-x display-4 d-block mb-3"></i>
+                    هنوز مرخصی ثبت نکرده‌اید.
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@functions {
+    string FormatLeaveMoment(DateTime value, bool isHourly)
+    {
+        if (isHourly)
+            return IranDateTimeHelper.FormatLeaveDateTime(value).ToPersianNumbers();
+
+        return IranDateTimeHelper.FormatLeaveDate(value).ToPersianNumbers();
+    }
+}
+
+@section Scripts {
+    @await Html.PartialAsync("_DatePickerAssets")
+    <script>
+        $('.persian-date-filter').pDatepicker({
+            format: 'YYYY/MM/DD',
+            autoClose: true,
+            initialValue: false,
+            persianDigit: true,
+            calendar: { persian: { locale: 'fa' } },
+            navigator: { scroll: { enabled: false } }
+        });
+    </script>
+}
