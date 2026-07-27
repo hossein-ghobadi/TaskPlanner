@@ -168,16 +168,16 @@ namespace Endpoint.Site.Controllers
                 .OrderByDescending(i => i.CreatedAt)
                 .ToListAsync();
 
-            var leadInvitationsReceived = string.IsNullOrEmpty(phone)
-                ? new List<LeadInvitation>()
-                : await _context.LeadInvitations
-                    .Include(i => i.Lead)
+            var crmInvitationsReceived = string.IsNullOrEmpty(phone)
+                ? new List<CrmInvitation>()
+                : await _context.CrmInvitations
+                    .Include(i => i.Crm)
                     .Where(i => i.InviteePhone == phone)
                     .OrderByDescending(i => i.CreatedAt)
                     .ToListAsync();
 
-            var leadInvitationsSent = await _context.LeadInvitations
-                .Include(i => i.Lead)
+            var crmInvitationsSent = await _context.CrmInvitations
+                .Include(i => i.Crm)
                 .Where(i => i.InviterId == userId)
                 .OrderByDescending(i => i.CreatedAt)
                 .ToListAsync();
@@ -187,8 +187,8 @@ namespace Endpoint.Site.Controllers
                               .Concat(systemInvitations.Select(i => i.InviterId))
                               .Concat(sentProjectInvitations.Select(i => i.InviterId))
                               .Concat(sentSystemInvitations.Select(i => i.InviterId))
-                              .Concat(leadInvitationsReceived.Select(i => i.InviterId))
-                              .Concat(leadInvitationsSent.Select(i => i.InviterId))
+                              .Concat(crmInvitationsReceived.Select(i => i.InviterId))
+                              .Concat(crmInvitationsSent.Select(i => i.InviterId))
                               .Distinct()
                               .ToList();
 
@@ -196,12 +196,18 @@ namespace Endpoint.Site.Controllers
                               .Select(i => i.InviteeId)
                               .Concat(sentSystemInvitations.Where(i => !string.IsNullOrEmpty(i.InviteeId))
                                   .Select(i => i.InviteeId))
-                              .Concat(leadInvitationsSent.Where(i => !string.IsNullOrEmpty(i.InviteeId))
+                              .Concat(crmInvitationsSent.Where(i => !string.IsNullOrEmpty(i.InviteeId))
                                   .Select(i => i.InviteeId))
                               .Distinct()
                               .ToList();
 
-            var allUserIds = inviterIds.Concat(inviteeIds).Distinct().ToList();
+            var crmOwnerIds = crmInvitationsReceived.Select(i => i.Crm?.OwnerUserId)
+                              .Concat(crmInvitationsSent.Select(i => i.Crm?.OwnerUserId))
+                              .Where(id => !string.IsNullOrEmpty(id))
+                              .Select(id => id!)
+                              .ToList();
+
+            var allUserIds = inviterIds.Concat(inviteeIds).Concat(crmOwnerIds).Distinct().ToList();
 
             var users = await _userManager.Users
                 .Where(u => allUserIds.Contains(u.Id))
@@ -269,8 +275,8 @@ namespace Endpoint.Site.Controllers
                 UserInvitations = systemInvitations,
                 SentProjectInvitations = sentProjectInvitations,
                 SentSystemInvitations = sentSystemInvitations,
-                LeadInvitationsReceived = leadInvitationsReceived,
-                LeadInvitationsSent = leadInvitationsSent
+                CrmInvitationsReceived = crmInvitationsReceived,
+                CrmInvitationsSent = crmInvitationsSent
             };
 
             return View(model);

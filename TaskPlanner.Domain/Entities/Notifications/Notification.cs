@@ -28,7 +28,8 @@ namespace TaskPlanner.Domain.Entities.Notifications
         TaskOverdue = 3,
         ProjectInvitation = 4,
         CommentMention = 5,
-        LeadInvitation = 6
+        LeadInvitation = 6,
+        CrmInvitation = 7
     }
 }
 

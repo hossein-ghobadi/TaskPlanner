@@ -76,6 +76,9 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<ProjectImageGallery> ProjectImageGalleries { get; set; }
         public DbSet<ProjectImageGalleryFolder> ProjectImageGalleryFolders { get; set; }
 
+        public DbSet<Crm> Crms { get; set; }
+        public DbSet<CrmMember> CrmMembers { get; set; }
+        public DbSet<CrmInvitation> CrmInvitations { get; set; }
         public DbSet<Lead> Leads { get; set; }
         public DbSet<LeadMember> LeadMembers { get; set; }
         public DbSet<LeadInvitation> LeadInvitations { get; set; }
@@ -685,9 +688,73 @@ namespace TaskPlanner.Persistence.Contexts
             modelBuilder.Entity<ProjectImageGallery>()
                 .HasIndex(img => img.FolderId);
 
+            modelBuilder.Entity<Crm>()
+                .Property(c => c.OwnerUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<Crm>()
+                .Property(c => c.Name)
+                .HasMaxLength(200);
+
+            modelBuilder.Entity<Crm>()
+                .HasIndex(c => c.OwnerUserId);
+
+            modelBuilder.Entity<CrmMember>()
+                .HasOne(m => m.Crm)
+                .WithMany(c => c.Members)
+                .HasForeignKey(m => m.CrmId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CrmMember>()
+                .Property(m => m.UserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<CrmMember>()
+                .Property(m => m.AddedByUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<CrmMember>()
+                .HasIndex(m => new { m.CrmId, m.UserId })
+                .IsUnique();
+
+            modelBuilder.Entity<CrmMember>()
+                .HasIndex(m => m.UserId);
+
+            modelBuilder.Entity<CrmInvitation>()
+                .HasOne(i => i.Crm)
+                .WithMany(c => c.Invitations)
+                .HasForeignKey(i => i.CrmId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CrmInvitation>()
+                .Property(i => i.InviterId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<CrmInvitation>()
+                .Property(i => i.InviteeId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<CrmInvitation>()
+                .Property(i => i.InviteePhone)
+                .HasMaxLength(50);
+
+            modelBuilder.Entity<CrmInvitation>()
+                .HasIndex(i => new { i.CrmId, i.Status });
+
             modelBuilder.Entity<Lead>()
                 .Property(l => l.OwnerUserId)
                 .HasMaxLength(450);
+
+            modelBuilder.Entity<Lead>()
+                .Property(l => l.CreatedByUserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<Lead>()
+                .HasOne(l => l.Crm)
+                .WithMany(c => c.Leads)
+                .HasForeignKey(l => l.CrmId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired(false);
 
             modelBuilder.Entity<Lead>()
                 .HasOne(l => l.ConvertedProject)
@@ -697,6 +764,9 @@ namespace TaskPlanner.Persistence.Contexts
 
             modelBuilder.Entity<Lead>()
                 .HasIndex(l => l.OwnerUserId);
+
+            modelBuilder.Entity<Lead>()
+                .HasIndex(l => l.CrmId);
 
             modelBuilder.Entity<Lead>()
                 .HasIndex(l => l.Status);
@@ -958,10 +1028,6 @@ namespace TaskPlanner.Persistence.Contexts
 
             modelBuilder.Entity<ProjectTicketMessageAttachment>()
                 .HasIndex(a => a.MessageId);
-
-            modelBuilder.Entity<LeaveType>()
-                .Property(t => t.Id)
-                .ValueGeneratedNever();
 
             modelBuilder.Entity<LeaveType>()
                 .Property(t => t.Name)

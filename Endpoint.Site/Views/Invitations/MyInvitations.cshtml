@@ -317,15 +317,15 @@
 </div>
 
 <div class="card mb-4 shadow-sm">
-    <div class="card-header bg-light fw-bold">دعوت‌های لید (CRM)</div>
+            <div class="card-header bg-light fw-bold">دعوت‌های CRM</div>
     <div class="card-body p-0">
-        @if (Model.LeadInvitationsReceived.Any())
+        @if (Model.CrmInvitationsReceived.Any())
         {
             <div class="table-responsive">
                 <table class="table table-striped table-bordered mb-0 align-middle table-mobile-cards">
                     <thead class="table-light">
                         <tr>
-                            <th>لید</th>
+                            <th>CRM</th>
                             <th>دعوت‌کننده</th>
                             <th>شماره شما</th>
                             <th>تاریخ</th>
@@ -334,10 +334,18 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var inv in Model.LeadInvitationsReceived)
+                        @foreach (var inv in Model.CrmInvitationsReceived)
                         {
                             <tr>
-                                <td data-label="لید">@(inv.Lead?.Title ?? ("لید #" + inv.LeadId))</td>
+                                <td data-label="CRM">
+                                    @{
+                                        var ownerId = inv.Crm?.OwnerUserId;
+                                        var ownerName = ownerId != null && ViewBag.UserLookup != null && ViewBag.UserLookup.ContainsKey(ownerId)
+                                            ? ViewBag.UserLookup[ownerId]
+                                            : null;
+                                    }
+                                    @(ownerName ?? inv.Crm?.Name ?? ("#" + inv.CrmId))
+                                </td>
                                 <td data-label="دعوت‌کننده">
                                     @(ViewBag.UserLookup != null && ViewBag.UserLookup.ContainsKey(inv.InviterId)
                                         ? ViewBag.UserLookup[inv.InviterId]
@@ -362,7 +370,7 @@
                                 <td class="text-center" data-label="عملیات" data-actions>
                                     @if (inv.Status == InvitationStatus.Pending)
                                     {
-                                        <form asp-controller="Leads" asp-action="RespondLeadInvite" method="post" class="d-inline">
+                                        <form asp-controller="Crm" asp-action="RespondInvite" method="post" class="d-inline">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@inv.Id" />
                                             <button name="accept" value="true" type="submit" class="btn btn-success btn-sm">پذیرفتن</button>
@@ -378,7 +386,7 @@
         }
         else
         {
-            <p class="section-empty">دعوت لید CRM دریافت نکرده‌اید.</p>
+            <p class="section-empty">دعوت CRM دریافت نکرده‌اید.</p>
         }
     </div>
 </div>
@@ -493,7 +501,7 @@
 <div class="card mb-4 shadow-sm">
     <div class="card-header bg-light fw-bold">دعوت‌هایی که ارسال کرده‌اید</div>
     <div class="card-body p-0">
-        @if (Model.SentProjectInvitations.Any() || Model.SentSystemInvitations.Any() || Model.LeadInvitationsSent.Any())
+        @if (Model.SentProjectInvitations.Any() || Model.SentSystemInvitations.Any() || Model.CrmInvitationsSent.Any())
         {
             <div class="table-responsive">
                 <table class="table table-striped table-bordered mb-0 align-middle table-mobile-cards">
@@ -623,11 +631,19 @@
                                 </td>
                             </tr>
                         }
-                        @foreach (var inv in Model.LeadInvitationsSent)
+                        @foreach (var inv in Model.CrmInvitationsSent)
                         {
                             <tr>
-                                <td data-label="نوع دعوت"><span class="badge bg-info text-dark">لید CRM</span></td>
-                                <td data-label="پروژه">@(inv.Lead?.Title ?? ("لید #" + inv.LeadId))</td>
+                                <td data-label="نوع دعوت"><span class="badge bg-info text-dark">دعوت به CRM</span></td>
+                                <td data-label="پروژه">
+                                    @{
+                                        var sentOwnerId = inv.Crm?.OwnerUserId;
+                                        var sentOwnerName = sentOwnerId != null && ViewBag.UserLookup != null && ViewBag.UserLookup.ContainsKey(sentOwnerId)
+                                            ? ViewBag.UserLookup[sentOwnerId]
+                                            : null;
+                                    }
+                                    @(sentOwnerName ?? inv.Crm?.Name ?? ("#" + inv.CrmId))
+                                </td>
                                 <td data-label="شماره دعوت‌شونده">@inv.InviteePhone</td>
                                 <td data-label="نام دعوت‌شونده">
                                     @if (!string.IsNullOrEmpty(inv.InviteeId) && ViewBag.UserLookup != null && ViewBag.UserLookup.ContainsKey(inv.InviteeId))
@@ -657,10 +673,10 @@
                                 <td class="text-center" data-label="عملیات" data-actions>
                                     @if (inv.Status == InvitationStatus.Pending)
                                     {
-                                        <form asp-controller="Leads" asp-action="CancelLeadInvite" method="post" class="d-inline" onsubmit="return confirm('لغو این دعوت لید؟');">
+                                        <form asp-controller="Crm" asp-action="CancelInvite" method="post" class="d-inline" onsubmit="return confirm('لغو این دعوت CRM؟');">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="invitationId" value="@inv.Id" />
-                                            <input type="hidden" name="leadId" value="@inv.LeadId" />
+                                            <input type="hidden" name="crmId" value="@inv.CrmId" />
                                             <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> لغو</button>
                                         </form>
                                     }

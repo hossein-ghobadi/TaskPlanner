@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Security.Claims;
 using TaskPlanner.Application.Services.FileUpload;
 using TaskPlanner.Application.Services.LeadService;
+using TaskPlanner.Application.Services.CrmService;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Persistence.Contexts;
@@ -18,46 +19,70 @@ namespace Endpoint.Site.Controllers
     public class LeadsController : Controller
     {
         private readonly ILeadService _leadService;
+        private readonly ICrmService _crmService;
         private readonly UserManager<User> _userManager;
         private readonly MVPTestDatabaseContext _context;
         private readonly IFileUploadService _fileUploadService;
 
         public LeadsController(
             ILeadService leadService,
+            ICrmService crmService,
             UserManager<User> userManager,
             MVPTestDatabaseContext context,
             IFileUploadService fileUploadService)
         {
             _leadService = leadService;
+            _crmService = crmService;
             _userManager = userManager;
             _context = context;
             _fileUploadService = fileUploadService;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? crmId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var crms = await _crmService.GetAccessibleCrmsAsync(userId);
             var items = await _leadService.GetMyLeadsAsync(userId);
+
+            if (crmId is int selected && crms.Any(c => c.Id == selected))
+                items = items.Where(l => l.CrmId == selected).ToList();
+            else
+                crmId = null;
+
+            ViewBag.AvailableCrms = crms;
+            ViewBag.SelectedCrmId = crmId;
             return View(items);
         }
 
-        public IActionResult Create()
+        public async Task<IActionResult> Create(int? crmId)
         {
-            return View(new LeadFormVm());
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var crms = await _crmService.GetAccessibleCrmsAsync(userId);
+            var selected = crmId is int id && crms.Any(c => c.Id == id)
+                ? id
+                : (crms.FirstOrDefault(c => c.IsOwner) ?? crms.FirstOrDefault())?.Id;
+            return View(new LeadFormVm
+            {
+                CrmId = selected,
+                AvailableCrms = crms.ToList()
+            });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(LeadFormVm vm)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            vm.AvailableCrms = (await _crmService.GetAccessibleCrmsAsync(userId)).ToList();
+
             if (!ModelState.IsValid)
                 return View(vm);
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
             try
             {
                 await _leadService.CreateAsync(new CreateLeadDto
                 {
+                    CrmId = vm.CrmId,
                     Title = vm.Title,
                     CompanyName = vm.CompanyName,
                     ContactName = vm.ContactName,
@@ -87,18 +112,6 @@ namespace Endpoint.Site.Controllers
             if (lead == null)
                 return NotFound();
 
-            if (lead.IsOwner)
-            {
-                try
-                {
-                    ViewBag.CollaboratorChoices = await _leadService.GetAvailableCollaboratorsForLeadAsync(id, userId);
-                }
-                catch
-                {
-                    ViewBag.CollaboratorChoices = Array.Empty<TaskPlanner.Application.Services.ProjectService.UserSelectDto>();
-                }
-            }
-
             return View(lead);
         }
 
@@ -116,9 +129,9 @@ namespace Endpoint.Site.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            if (!lead.IsOwner)
+            if (!lead.CanEdit)
             {
-                TempData["Error"] = "فقط مالک لید می‌تواند آن را ویرایش کند.";
+                TempData["Error"] = "دسترسی ویرایش این لید را ندارید.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
@@ -149,8 +162,8 @@ namespace Endpoint.Site.Controllers
             if (lead.Status == LeadPipelineStatus.Converted)
                 return Content("<div class=\"alert alert-info mb-0\">لید تبدیل‌شده را نمی‌توان ویرایش کرد.</div>", "text/html; charset=utf-8");
 
-            if (!lead.IsOwner)
-                return Content("<div class=\"alert alert-warning mb-0\">فقط مالک لید می‌تواند ویرایش کند. شما به‌عنوان همکار فقط مشاهده دارید.</div>", "text/html; charset=utf-8");
+            if (!lead.CanEdit)
+                return Content("<div class=\"alert alert-warning mb-0\">دسترسی ویرایش این لید را ندارید.</div>", "text/html; charset=utf-8");
 
             var vm = new LeadFormVm
             {
@@ -258,103 +271,6 @@ namespace Endpoint.Site.Controllers
             }
 
             return RedirectToAction(nameof(Index));
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddLeadMember([FromForm] int leadId, [FromForm] string memberUserId)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            try
-            {
-                await _leadService.AddLeadMemberAsync(leadId, memberUserId, userId);
-                TempData["Success"] = "همکار به لید اضافه شد.";
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = ex.Message;
-            }
-
-            return RedirectToAction(nameof(Details), new { id = leadId });
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RemoveLeadMember([FromForm] int leadId, [FromForm] string memberUserId)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            try
-            {
-                await _leadService.RemoveLeadMemberAsync(leadId, memberUserId, userId);
-                TempData["Success"] = "همکار از لید حذف شد.";
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = ex.Message;
-            }
-
-            return RedirectToAction(nameof(Details), new { id = leadId });
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> InviteLeadByPhone([FromForm] int leadId, [FromForm] string phone)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            try
-            {
-                await _leadService.InviteUserToLeadAsync(leadId, phone ?? string.Empty, userId);
-                TempData["Success"] = "دعوت لید ارسال شد.";
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = ex.Message;
-            }
-
-            return RedirectToAction(nameof(Details), new { id = leadId });
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CancelLeadInvite([FromForm] int invitationId, [FromForm] int leadId)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            try
-            {
-                await _leadService.CancelLeadInvitationAsync(invitationId, userId);
-                TempData["Success"] = "دعوت لغو شد.";
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = ex.Message;
-            }
-
-            return RedirectToAction(nameof(Details), new { id = leadId });
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RespondLeadInvite(int id, bool accept)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null || string.IsNullOrWhiteSpace(user.Phone))
-            {
-                TempData["Error"] = "شماره موبایل حساب شما ثبت نشده است.";
-                return RedirectToAction("MyInvitations", "Invitations");
-            }
-
-            try
-            {
-                await _leadService.RespondToLeadInvitationAsync(id, userId, user.Phone, accept);
-                TempData["Success"] = accept ? "دعوت لید پذیرفته شد." : "دعوت لید رد شد.";
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = ex.Message;
-            }
-
-            return RedirectToAction("MyInvitations", "Invitations");
         }
 
         [HttpPost]

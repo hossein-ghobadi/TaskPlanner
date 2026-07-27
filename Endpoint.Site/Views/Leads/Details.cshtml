@@ -1,12 +1,10 @@
 @model TaskPlanner.Application.Services.LeadService.LeadDetailsDto
 @using TaskPlanner.Domain.Entities.TaskPlanner
-@using TaskPlanner.Application.Services.ProjectService
 @using DNTPersianUtils.Core
 @{
     ViewData["Title"] = Model.Title;
     ViewData["UseFluidLayout"] = true;
     Layout = "/Views/Shared/_Layout.cshtml";
-    var collaboratorChoices = ViewBag.CollaboratorChoices as IReadOnlyList<UserSelectDto> ?? Array.Empty<UserSelectDto>();
     var nextSession = Model.Sessions
         .Where(s => s.ScheduledAt >= DateTime.UtcNow)
         .OrderBy(s => s.ScheduledAt)
@@ -33,17 +31,21 @@
         <h1 class="boards-title mb-0">@Model.Title</h1>
         <div class="d-flex gap-2 flex-wrap align-items-center">
             <a class="btn btn-outline-secondary btn-sm" href="/Leads/Index">لیست لیدها</a>
-            @if (!Model.IsOwner)
+            @if (!Model.IsCrmOwner)
             {
-                <span class="badge bg-secondary">همکار (فقط مشاهده)</span>
+                <span class="badge bg-secondary">همکار CRM</span>
             }
-            @if (Model.IsOwner && Model.Status != LeadPipelineStatus.Converted)
+            @if (Model.CanEdit && Model.Status != LeadPipelineStatus.Converted)
             {
                 <a class="btn btn-outline-primary btn-sm" href="/Leads/Edit/@Model.Id">ویرایش</a>
             }
-            @if (Model.ConvertedProjectId is int pid)
+            @if (Model.CanOpenConvertedProject && Model.ConvertedProjectId is int pid)
             {
                 <a class="btn btn-primary btn-sm" href="/Projects/Details/@pid">رفتن به پروژه</a>
+            }
+            else if (Model.ConvertedProjectId.HasValue)
+            {
+                <span class="badge bg-light text-dark border">تبدیل‌شده به پروژه</span>
             }
         </div>
     </div>
@@ -93,7 +95,7 @@
     <div class="card border mt-3">
         <div class="card-header fw-bold">یادداشت‌های لید</div>
         <div class="card-body">
-            @if (Model.IsOwner)
+            @if (Model.CanEdit)
             {
                 <div class="d-flex justify-content-end">
                     <button type="button"
@@ -142,7 +144,7 @@
                                         data-note-created-at="@n.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()">
                                     جزئیات
                                 </button>
-                                @if (Model.IsOwner)
+                                @if (Model.CanEdit)
                                 {
                                     <button type="button"
                                             class="btn btn-sm btn-outline-secondary"
@@ -217,7 +219,7 @@
             }
             else
             {
-                <p class="text-muted small @(Model.IsOwner ? "mt-3" : "mt-0") mb-0">هنوز یادداشتی برای این لید ثبت نشده است.</p>
+                <p class="text-muted small @(Model.CanEdit ? "mt-3" : "mt-0") mb-0">هنوز یادداشتی برای این لید ثبت نشده است.</p>
             }
         </div>
     </div>
@@ -225,7 +227,7 @@
     <div class="card border mt-3">
         <div class="card-header fw-bold">جلسات لید</div>
         <div class="card-body">
-            @if (Model.IsOwner)
+            @if (Model.CanEdit)
             {
                 <form asp-controller="Leads" asp-action="AddSession" method="post" class="row g-2 align-items-end">
                     @Html.AntiForgeryToken()
@@ -276,7 +278,7 @@
                                     <div class="small text-muted">@s.Notes</div>
                                 }
                             </div>
-                            @if (Model.IsOwner)
+                            @if (Model.CanEdit)
                             {
                                 <div class="d-flex gap-1">
                                     <button type="button"
@@ -293,7 +295,7 @@
                                 </div>
                             }
                         </li>
-                        @if (Model.IsOwner)
+                        @if (Model.CanEdit)
                         {
                             <li class="list-group-item bg-light" id="session-edit-@s.Id" style="display: none;">
                                 <form asp-controller="Leads" asp-action="UpdateSession" method="post" class="row g-2 align-items-end lead-session-form">
@@ -340,90 +342,12 @@
             }
             else
             {
-                <p class="text-muted small @(Model.IsOwner ? "mt-3" : "mt-0") mb-0">هنوز جلسه‌ای برای این لید ثبت نشده است.</p>
+                <p class="text-muted small @(Model.CanEdit ? "mt-3" : "mt-0") mb-0">هنوز جلسه‌ای برای این لید ثبت نشده است.</p>
             }
         </div>
     </div>
 
-    @if (Model.IsOwner)
-    {
-        <div class="card border mt-3">
-            <div class="card-header fw-bold">همکاران روی لید (CRM)</div>
-            <div class="card-body">
-                <p class="small text-muted mb-3">از بین <strong>همکاران تأییدشده</strong> فرد را اضافه کنید، یا با <strong>شماره موبایل</strong> دعوت بفرستید (کاربر باید در سیستم ثبت‌نام کرده باشد). همکاران لید را در «لیدها» و دعوت‌ها می‌بینند.</p>
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-6">
-                        <form asp-controller="Leads" asp-action="AddLeadMember" method="post" class="d-flex flex-wrap gap-2 align-items-end">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="leadId" value="@Model.Id" />
-                            <div class="flex-grow-1" style="min-width: 200px;">
-                                <label class="form-label small mb-1">افزودن از همکاران</label>
-                                <select name="memberUserId" class="form-select form-select-sm" required>
-                                    <option value="">— انتخاب کنید —</option>
-                                    @foreach (var u in collaboratorChoices)
-                                    {
-                                        <option value="@u.Id">@u.DisplayName</option>
-                                    }
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-sm">افزودن</button>
-                        </form>
-                    </div>
-                    <div class="col-md-6">
-                        <form asp-controller="Leads" asp-action="InviteLeadByPhone" method="post" class="d-flex flex-wrap gap-2 align-items-end">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="leadId" value="@Model.Id" />
-                            <div class="flex-grow-1" style="min-width: 200px;">
-                                <label class="form-label small mb-1">دعوت با شماره موبایل</label>
-                                <input type="text" name="phone" class="form-control form-control-sm" placeholder="مثلاً 0912..." autocomplete="tel" required />
-                            </div>
-                            <button type="submit" class="btn btn-outline-primary btn-sm">ارسال دعوت</button>
-                        </form>
-                    </div>
-                </div>
-
-                @if (Model.Members.Any())
-                {
-                    <h6 class="mt-4 mb-2 text-muted small">همکاران فعلی</h6>
-                    <ul class="list-group list-group-flush border rounded">
-                        @foreach (var m in Model.Members)
-                        {
-                            <li class="list-group-item d-flex justify-content-between align-items-center py-2">
-                                <span>@m.DisplayName</span>
-                                <form asp-controller="Leads" asp-action="RemoveLeadMember" method="post" class="m-0" onsubmit="return confirm('این همکار از لید حذف شود؟');">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="leadId" value="@Model.Id" />
-                                    <input type="hidden" name="memberUserId" value="@m.UserId" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">حذف</button>
-                                </form>
-                            </li>
-                        }
-                    </ul>
-                }
-
-                @if (Model.PendingInvitations.Any())
-                {
-                    <h6 class="mt-3 mb-2 text-muted small">دعوت‌های در انتظار</h6>
-                    <ul class="list-group list-group-flush border rounded">
-                        @foreach (var inv in Model.PendingInvitations)
-                        {
-                            <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2 py-2">
-                                <span>@(inv.InviteeDisplayName ?? inv.InviteePhone)</span>
-                                <form asp-controller="Leads" asp-action="CancelLeadInvite" method="post" class="m-0">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="invitationId" value="@inv.Id" />
-                                    <input type="hidden" name="leadId" value="@Model.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary">لغو دعوت</button>
-                                </form>
-                            </li>
-                        }
-                    </ul>
-                }
-            </div>
-        </div>
-    }
-
-    @if (Model.IsOwner && Model.Status == LeadPipelineStatus.Qualified && Model.ConvertedProjectId == null)
+    @if (Model.CanEdit && Model.Status == LeadPipelineStatus.Qualified && Model.ConvertedProjectId == null)
     {
         <div class="card border-success mt-3">
             <div class="card-header bg-success text-white">تبدیل به پروژه</div>
@@ -445,10 +369,18 @@
     else if (Model.Status == LeadPipelineStatus.Converted && Model.ConvertedProjectId is int convId)
     {
         <div class="alert alert-info mt-3 mb-0">
-            این لید در @(Model.ConvertedAt.HasValue ? Model.ConvertedAt.Value.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers() : "—") به <a href="/Projects/Details/@convId">پروژه شماره @convId.ToString().ToPersianNumbers()</a> تبدیل شده است.
+            این لید در @(Model.ConvertedAt.HasValue ? Model.ConvertedAt.Value.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers() : "—") به پروژه شماره @convId.ToString().ToPersianNumbers() تبدیل شده است.
+            @if (Model.CanOpenConvertedProject)
+            {
+                <text> — <a href="/Projects/Details/@convId">مشاهده پروژه</a></text>
+            }
+            else
+            {
+                <text> (برای ورود به پروژه باید جداگانه عضو آن باشید)</text>
+            }
         </div>
     }
-    else if (Model.IsOwner && Model.ConvertedProjectId == null)
+    else if (Model.CanEdit && Model.ConvertedProjectId == null)
     {
         <div class="alert alert-light border mt-3 mb-0 small">
             برای فعال شدن دکمه تبدیل، در ویرایش لید وضعیت را به <strong>قطعیت</strong> (Qualified) تغییر دهید.
@@ -475,7 +407,7 @@
     </div>
 </div>
 
-@if (Model.IsOwner)
+@if (Model.CanEdit)
 {
     <div class="modal fade lead-note-modal" id="leadNoteModal" tabindex="-1" aria-labelledby="leadNoteModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">

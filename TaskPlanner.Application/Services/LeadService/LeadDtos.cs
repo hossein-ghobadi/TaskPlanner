@@ -13,8 +13,13 @@ namespace TaskPlanner.Application.Services.LeadService
         public DateTime? NextSessionAt { get; set; }
         public decimal? ProjectAmount { get; set; }
         public int? ConvertedProjectId { get; set; }
-        /// <summary>اگر false باشد، کاربر فقط به‌عنوان همکار به لید دسترسی دارد.</summary>
-        public bool IsOwner { get; set; }
+        public int CrmId { get; set; }
+        /// <summary>مالک فضای CRM.</summary>
+        public bool IsCrmOwner { get; set; }
+        /// <summary>عضو CRM می‌تواند لید را ویرایش کند.</summary>
+        public bool CanEdit { get; set; }
+        /// <summary>فقط اگر عضو پروژهٔ تبدیل‌شده باشد true است (عضویت CRM کافی نیست).</summary>
+        public bool CanOpenConvertedProject { get; set; }
     }
 
     public class LeadMemberSummaryDto
@@ -57,6 +62,7 @@ namespace TaskPlanner.Application.Services.LeadService
     public class LeadDetailsDto
     {
         public int Id { get; set; }
+        public int CrmId { get; set; }
         public string Title { get; set; } = null!;
         public string? CompanyName { get; set; }
         public string? ContactName { get; set; }
@@ -72,7 +78,10 @@ namespace TaskPlanner.Application.Services.LeadService
         public int? ConvertedProjectId { get; set; }
         public DateTime? ConvertedAt { get; set; }
         public string OwnerUserId { get; set; } = null!;
-        public bool IsOwner { get; set; }
+        public bool IsCrmOwner { get; set; }
+        public bool CanEdit { get; set; }
+        /// <summary>فقط اگر عضو پروژهٔ تبدیل‌شده باشد؛ عضویت CRM به‌تنهایی کافی نیست.</summary>
+        public bool CanOpenConvertedProject { get; set; }
         public List<LeadMemberSummaryDto> Members { get; set; } = new();
         public List<LeadPendingInviteDto> PendingInvitations { get; set; } = new();
         public List<LeadSessionDto> Sessions { get; set; } = new();
@@ -81,6 +90,7 @@ namespace TaskPlanner.Application.Services.LeadService
 
     public class CreateLeadDto
     {
+        public int? CrmId { get; set; }
         public string Title { get; set; } = null!;
         public string? CompanyName { get; set; }
         public string? ContactName { get; set; }

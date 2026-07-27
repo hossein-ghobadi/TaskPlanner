@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using TaskPlanner.Application.Services.CrmService;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 
 namespace Endpoint.Site.Models
@@ -6,6 +7,11 @@ namespace Endpoint.Site.Models
     public class LeadFormVm
     {
         public int? Id { get; set; }
+
+        [Display(Name = "CRM")]
+        public int? CrmId { get; set; }
+
+        public List<CrmSelectDto> AvailableCrms { get; set; } = new();
 
         [Required(ErrorMessage = "عنوان لید الزامی است")]
         [StringLength(200)]

@@ -16,6 +16,20 @@
         @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
 
+        @if (Model.AvailableCrms.Any())
+        {
+            <div class="mb-3">
+                <label asp-for="CrmId" class="form-label">ثبت در کدام CRM؟</label>
+                <select asp-for="CrmId" class="form-select" required>
+                    @foreach (var crm in Model.AvailableCrms)
+                    {
+                        <option value="@crm.Id">@crm.DisplayLabel</option>
+                    }
+                </select>
+                <div class="form-text">می‌توانید در CRM خودتان یا CRMهایی که به آن‌ها دعوت شده‌اید لید ثبت کنید.</div>
+            </div>
+        }
+
         <div class="mb-3">
             <label asp-for="Title" class="form-label"></label>
             <input asp-for="Title" class="form-control" />

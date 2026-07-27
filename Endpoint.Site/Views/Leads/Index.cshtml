@@ -1,5 +1,6 @@
 @model IReadOnlyList<TaskPlanner.Application.Services.LeadService.LeadListItemDto>
 @using TaskPlanner.Application.Services.LeadService
+@using TaskPlanner.Application.Services.CrmService
 @using TaskPlanner.Domain.Entities.TaskPlanner
 @using DNTPersianUtils.Core
 @{
@@ -8,6 +9,9 @@
     Layout = "/Views/Shared/_Layout.cshtml";
 
     var leads = (Model ?? Array.Empty<LeadListItemDto>()).ToList();
+    var availableCrms = ViewBag.AvailableCrms as IReadOnlyList<CrmSelectDto> ?? Array.Empty<CrmSelectDto>();
+    var selectedCrmId = ViewBag.SelectedCrmId as int?;
+    var crmNameById = availableCrms.ToDictionary(c => c.Id, c => c.DisplayLabel);
     var columnOrder = new[]
     {
         LeadPipelineStatus.New,
@@ -44,108 +48,64 @@
     string KanbanColClass(LeadPipelineStatus s) => "leads-kanban-col--neutral";
 }
 
-<style>
-    .leads-view-toggle .btn.active {
-        background: #4f46e5;
-        border-color: #4f46e5;
-        color: #fff;
-    }
-
-    .leads-kanban {
-        --leads-col-w: min(280px, 88vw);
-    }
-
-    .leads-kanban-col {
-        width: var(--leads-col-w);
-        min-width: var(--leads-col-w);
-        max-width: var(--leads-col-w);
-        display: flex;
-        flex-direction: column;
-        max-height: calc(100vh - 220px);
-        min-height: 200px;
-    }
-
-    .leads-kanban-col-header {
-        font-weight: 600;
-        font-size: 0.9rem;
-        padding: 0.55rem 0.65rem;
-        border-radius: 10px 10px 0 0;
-        border: 1px solid #e5e7eb;
-        border-bottom: none;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.35rem;
-    }
-
-    .leads-kanban-col--neutral .leads-kanban-col-header { background: #f3f4f6; color: #374151; }
-    .lead-status-pill { border: 1px solid transparent; }
-    .lead-status-pill--new { background: #f8fafc; color: #334155; border-color: #cbd5e1; }
-    .lead-status-pill--contacted { background: #e0f2fe; color: #075985; border-color: #7dd3fc; }
-    .lead-status-pill--quote { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
-    .lead-status-pill--qualified { background: #dcfce7; color: #166534; border-color: #86efac; }
-    .lead-status-pill--converted { background: #dbeafe; color: #1d4ed8; border-color: #60a5fa; }
-    .lead-status-pill--lost { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
-
-    .leads-kanban-col-body {
-        flex: 1;
-        overflow-y: auto;
-        padding: 0.5rem;
-        background: #f8fafc;
-        border: 1px solid #e5e7eb;
-        border-top: none;
-        border-radius: 0 0 10px 10px;
-    }
-
-    .leads-kanban-card {
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-        transition: box-shadow 0.15s ease, border-color 0.15s ease;
-    }
-
-    .leads-kanban-card:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-    }
-
-    .leads-kanban-card .card-body {
-        padding: 0.65rem 0.7rem;
-    }
-
-    .leads-kanban-card-title {
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: #1f2937;
-        line-height: 1.35;
-    }
-
-    .leads-kanban-card-meta {
-        font-size: 0.78rem;
-        color: #64748b;
-    }
-
-    .leads-kanban-empty-hint {
-        font-size: 0.8rem;
-        color: #94a3b8;
-        text-align: center;
-        padding: 1rem 0.35rem;
-    }
-</style>
+<link rel="stylesheet" href="~/css/leads-index.css" asp-append-version="true" />
 
 <div class="boards-page" id="leadsIndexRoot">
-    <div class="boards-head d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <h1 class="boards-title mb-0">لیدها</h1>
-        <div class="d-flex flex-wrap align-items-center gap-2">
-            <div class="btn-group leads-view-toggle" role="group" aria-label="نوع نما">
-                <button type="button" class="btn btn-sm btn-outline-secondary active" id="leadsViewBtnList" aria-pressed="true">
+    <div class="leads-toolbar">
+        <div class="leads-toolbar__title-block">
+            <h1 class="leads-toolbar__title">لیدها</h1>
+            <p class="leads-toolbar__meta">
+                @leads.Count.ToString().ToPersianNumbers() لید
+                @if (selectedCrmId is int sel && crmNameById.TryGetValue(sel, out var selectedLabel))
+                {
+                    <text>· @selectedLabel</text>
+                }
+                else if (availableCrms.Count > 1)
+                {
+                    <text>· همه فضاها</text>
+                }
+            </p>
+        </div>
+
+        <div class="leads-toolbar__actions">
+            @if (availableCrms.Any())
+            {
+                <form method="get" asp-action="Index" class="leads-toolbar__cluster mb-0">
+                    <i class="bi bi-funnel text-muted small ps-2"></i>
+                    <select id="crmFilter" name="crmId" class="leads-toolbar__select form-select form-select-sm" aria-label="فیلتر فضا" onchange="this.form.submit()">
+                        <option value="">همه</option>
+                        @foreach (var crm in availableCrms)
+                        {
+                            if (selectedCrmId == crm.Id)
+                            {
+                                <option value="@crm.Id" selected>@crm.DisplayLabel</option>
+                            }
+                            else
+                            {
+                                <option value="@crm.Id">@crm.DisplayLabel</option>
+                            }
+                        }
+                    </select>
+                </form>
+            }
+
+            <div class="leads-toolbar__cluster leads-view-toggle" role="group" aria-label="نوع نما">
+                <button type="button" class="btn active" id="leadsViewBtnList" aria-pressed="true">
                     <i class="bi bi-list-ul ms-1"></i>لیست
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="leadsViewBtnBoard" aria-pressed="false">
+                <button type="button" class="btn" id="leadsViewBtnBoard" aria-pressed="false">
                     <i class="bi bi-columns-gap ms-1"></i>تخته
                 </button>
             </div>
-            <a class="btn btn-primary btn-sm" href="/Leads/Create"><i class="bi bi-plus-lg ms-1"></i>لید جدید</a>
+
+            <a class="leads-toolbar__ghost" href="/Crm/Manage">
+                <i class="bi bi-people"></i>
+                <span>مدیریت CRM</span>
+            </a>
+            <a class="leads-toolbar__primary" href="@(selectedCrmId is int cid ? $"/Leads/Create?crmId={cid}" : "/Leads/Create")">
+                <i class="bi bi-plus-lg"></i>
+                <span>لید جدید</span>
+            </a>
         </div>
     </div>
 
@@ -170,6 +130,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>عنوان</th>
+                            <th>CRM</th>
                             <th>شرکت</th>
                             <th>وضعیت</th>
                             <th>جلسه پیش‌رو</th>
@@ -182,6 +143,7 @@
                         {
                             <tr>
                                 <td class="fw-semibold">@l.Title</td>
+                                <td class="small text-muted">@(crmNameById.TryGetValue(l.CrmId, out var crmLabel) ? crmLabel : "—")</td>
                                 <td>@(l.CompanyName ?? "—")</td>
                                 <td><span class="badge @StatusBadgeClass(l.Status)">@StatusLabel(l.Status)</span></td>
                                 @{
@@ -192,19 +154,19 @@
                                 <td class="text-end">
                                     <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
                                             <a class="btn btn-sm btn-outline-secondary" href="/Leads/Details/@l.Id">جزئیات</a>
-                                        @if (!l.IsOwner)
+                                        @if (!l.IsCrmOwner)
                                         {
                                             <span class="badge bg-light text-dark border">همکار</span>
                                         }
-                                        @if (l.IsOwner && l.Status != LeadPipelineStatus.Converted)
+                                        @if (l.CanEdit && l.Status != LeadPipelineStatus.Converted)
                                         {
                                             <button type="button" class="btn btn-sm btn-outline-secondary js-open-lead-edit" data-lead-id="@l.Id" title="ویرایش">ویرایش</button>
                                         }
-                                        @if (l.ConvertedProjectId is int pid)
+                                        @if (l.CanOpenConvertedProject && l.ConvertedProjectId is int pid)
                                         {
                                             <a class="btn btn-sm btn-outline-secondary" href="/Projects/Details/@pid">پروژه</a>
                                         }
-                                        @if (l.IsOwner)
+                                        @if (l.CanEdit)
                                         {
                                             <form asp-controller="Leads" asp-action="Delete" asp-route-id="@l.Id" method="post" class="d-inline"
                                                   onsubmit="return confirm('این لید برای همیشه حذف شود؟ پروژهٔ ساخته‌شده (در صورت وجود) حذف نمی‌شود.');">
@@ -245,7 +207,7 @@
                                     <div class="card-body">
                                         <div class="leads-kanban-card-title">@l.Title</div>
                                         <div class="leads-kanban-card-meta mb-2">
-                                            @(l.CompanyName ?? "—") · @l.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()
+                                            @(crmNameById.TryGetValue(l.CrmId, out var cardCrm) ? cardCrm : "CRM") · @(l.CompanyName ?? "—") · @l.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers()
                                             @{
                                                 var cardSessionAt = l.NextSessionAt ?? l.MeetingAt;
                                             }
@@ -256,19 +218,19 @@
                                         </div>
                                         <div class="d-flex flex-wrap gap-1 justify-content-end">
                                             <a class="btn btn-sm btn-outline-secondary py-0 px-2" href="/Leads/Details/@l.Id">جزئیات</a>
-                                            @if (!l.IsOwner)
+                                            @if (!l.IsCrmOwner)
                                             {
                                                 <span class="badge bg-light text-dark border py-1">همکار</span>
                                             }
-                                            @if (l.IsOwner && l.Status != LeadPipelineStatus.Converted)
+                                            @if (l.CanEdit && l.Status != LeadPipelineStatus.Converted)
                                             {
                                                 <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 js-open-lead-edit" data-lead-id="@l.Id">ویرایش</button>
                                             }
-                                            @if (l.ConvertedProjectId is int pid)
+                                            @if (l.CanOpenConvertedProject && l.ConvertedProjectId is int pid)
                                             {
                                                 <a class="btn btn-sm btn-outline-secondary py-0 px-2" href="/Projects/Details/@pid">پروژه</a>
                                             }
-                                            @if (l.IsOwner)
+                                            @if (l.CanEdit)
                                             {
                                                 <form asp-controller="Leads" asp-action="Delete" asp-route-id="@l.Id" method="post" class="d-inline"
                                                       onsubmit="return confirm('این لید برای همیشه حذف شود؟ پروژهٔ ساخته‌شده (در صورت وجود) حذف نمی‌شود.');">

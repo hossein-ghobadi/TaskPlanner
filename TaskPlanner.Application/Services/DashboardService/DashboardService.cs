@@ -33,15 +33,21 @@ namespace TaskPlanner.Application.Services.DashboardService
                 .Select(p => p.Id)
                 .ToListAsync(cancellationToken);
 
-            var ownedLeadIds = await _context.Leads.AsNoTracking()
-                .Where(l => l.OwnerUserId == userId)
-                .Select(l => l.Id)
+            var crmIds = await _context.Crms.AsNoTracking()
+                .Where(c => c.OwnerUserId == userId)
+                .Select(c => c.Id)
                 .ToListAsync(cancellationToken);
-            var memberLeadIds = await _context.LeadMembers.AsNoTracking()
+            var memberCrmIds = await _context.CrmMembers.AsNoTracking()
                 .Where(m => m.UserId == userId)
-                .Select(m => m.LeadId)
+                .Select(m => m.CrmId)
                 .ToListAsync(cancellationToken);
-            var leadIds = ownedLeadIds.Union(memberLeadIds).Distinct().ToList();
+            var accessibleCrmIds = crmIds.Union(memberCrmIds).Distinct().ToList();
+            var leadIds = accessibleCrmIds.Count == 0
+                ? new List<int>()
+                : await _context.Leads.AsNoTracking()
+                    .Where(l => l.CrmId != null && accessibleCrmIds.Contains(l.CrmId.Value))
+                    .Select(l => l.Id)
+                    .ToListAsync(cancellationToken);
 
             var boardIds = await _context.Boards.AsNoTracking()
                 .Where(b => b.CreatorUserId == userId || b.Members.Any(m => m.UserId == userId))

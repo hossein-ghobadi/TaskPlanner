@@ -181,6 +181,7 @@ namespace TaskPlanner.Application.Services.NotificationService
                 NotificationCreateType.ProjectInvitation => NotificationType.ProjectInvitation,
                 NotificationCreateType.CommentMention => NotificationType.CommentMention,
                 NotificationCreateType.LeadInvitation => NotificationType.LeadInvitation,
+                NotificationCreateType.CrmInvitation => NotificationType.CrmInvitation,
                 _ => NotificationType.General
             };
         }

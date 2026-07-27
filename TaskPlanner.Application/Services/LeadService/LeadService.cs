@@ -1,12 +1,9 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 using TaskPlanner.Application.Interfaces.Contexts;
+using TaskPlanner.Application.Services.CrmService;
 using TaskPlanner.Application.Services.FileUpload;
-using TaskPlanner.Application.Services.NotificationService;
 using TaskPlanner.Application.Services.ProjectService;
 using TaskPlanner.Domain.Entities.TaskPlanner;
-using TaskPlanner.Domain.Entities.Users;
 
 namespace TaskPlanner.Application.Services.LeadService
 {
@@ -14,46 +11,37 @@ namespace TaskPlanner.Application.Services.LeadService
     {
         private readonly IMVPTestDatabaseContext _context;
         private readonly IProjectCommandService _projectCommandService;
-        private readonly IProjectQueryService _projectQueryService;
-        private readonly UserManager<User> _userManager;
-        private readonly INotificationService _notificationService;
+        private readonly ICrmService _crmService;
         private readonly IFileUrlService _fileUrlService;
 
         public LeadService(
             IMVPTestDatabaseContext context,
             IProjectCommandService projectCommandService,
-            IProjectQueryService projectQueryService,
-            UserManager<User> userManager,
-            INotificationService notificationService,
+            ICrmService crmService,
             IFileUrlService fileUrlService)
         {
             _context = context;
             _projectCommandService = projectCommandService;
-            _projectQueryService = projectQueryService;
-            _userManager = userManager;
-            _notificationService = notificationService;
+            _crmService = crmService;
             _fileUrlService = fileUrlService;
         }
 
         public async Task<IReadOnlyList<LeadListItemDto>> GetMyLeadsAsync(string userId, CancellationToken cancellationToken = default)
         {
-            var ownedIds = await _context.Set<Lead>()
-                .Where(l => l.OwnerUserId == userId)
-                .Select(l => l.Id)
-                .ToListAsync(cancellationToken);
+            await _crmService.EnsureLegacyLeadsAssignedToCrmAsync(cancellationToken);
+            await _crmService.GetOrCreatePersonalCrmAsync(userId, cancellationToken);
 
-            var memberLeadIds = await _context.Set<LeadMember>()
-                .Where(m => m.UserId == userId)
-                .Select(m => m.LeadId)
-                .ToListAsync(cancellationToken);
-
-            var allIds = ownedIds.Union(memberLeadIds).Distinct().ToList();
-            if (!allIds.Any())
+            var crmIds = await _crmService.GetAccessibleCrmIdsAsync(userId, cancellationToken);
+            if (!crmIds.Any())
                 return Array.Empty<LeadListItemDto>();
 
-            return await _context.Set<Lead>()
+            var ownerLookup = await _context.Crms.AsNoTracking()
+                .Where(c => crmIds.Contains(c.Id))
+                .ToDictionaryAsync(c => c.Id, c => c.OwnerUserId, cancellationToken);
+
+            var leads = await _context.Set<Lead>()
                 .AsNoTracking()
-                .Where(l => allIds.Contains(l.Id))
+                .Where(l => l.CrmId != null && crmIds.Contains(l.CrmId.Value))
                 .OrderByDescending(l => l.UpdatedAt)
                 .Select(l => new LeadListItemDto
                 {
@@ -64,6 +52,7 @@ namespace TaskPlanner.Application.Services.LeadService
                     CreatedAt = l.CreatedAt,
                     MeetingAt = l.MeetingAt,
                     ProjectAmount = l.ProjectAmount,
+                    CrmId = l.CrmId!.Value,
                     NextSessionAt =
                         _context.Set<LeadSession>()
                             .Where(s => s.LeadId == l.Id && s.ScheduledAt >= DateTime.UtcNow)
@@ -77,42 +66,61 @@ namespace TaskPlanner.Application.Services.LeadService
                             .Select(s => (DateTime?)s.ScheduledAt)
                             .FirstOrDefault(),
                     ConvertedProjectId = l.ConvertedProjectId,
-                    IsOwner = l.OwnerUserId == userId
+                    CanEdit = true,
+                    IsCrmOwner = false
                 })
                 .ToListAsync(cancellationToken);
+
+            var convertedProjectIds = leads
+                .Where(l => l.ConvertedProjectId.HasValue)
+                .Select(l => l.ConvertedProjectId!.Value)
+                .Distinct()
+                .ToList();
+
+            HashSet<int> accessibleProjectIds = new();
+            if (convertedProjectIds.Count > 0)
+            {
+                var memberProjectIds = await _context.ProjectMembers.AsNoTracking()
+                    .Where(pm => pm.UserId == userId && pm.ProjectId != null && convertedProjectIds.Contains(pm.ProjectId.Value))
+                    .Select(pm => pm.ProjectId!.Value)
+                    .ToListAsync(cancellationToken);
+
+                var createdProjectIds = await _context.Projects.AsNoTracking()
+                    .Where(p => p.CreatorUserId == userId && convertedProjectIds.Contains(p.Id))
+                    .Select(p => p.Id)
+                    .ToListAsync(cancellationToken);
+
+                accessibleProjectIds = memberProjectIds.Union(createdProjectIds).ToHashSet();
+            }
+
+            foreach (var lead in leads)
+            {
+                lead.IsCrmOwner = ownerLookup.TryGetValue(lead.CrmId, out var ownerId) && ownerId == userId;
+                lead.CanOpenConvertedProject = lead.ConvertedProjectId.HasValue
+                    && accessibleProjectIds.Contains(lead.ConvertedProjectId.Value);
+            }
+
+            return leads;
         }
 
         public async Task<LeadDetailsDto?> GetDetailsAsync(int id, string userId, CancellationToken cancellationToken = default)
         {
+            await _crmService.EnsureLegacyLeadsAssignedToCrmAsync(cancellationToken);
+
             var lead = await _context.Set<Lead>().AsNoTracking()
                 .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
-            if (lead == null)
+            if (lead == null || lead.CrmId == null)
                 return null;
 
-            var isOwner = lead.OwnerUserId == userId;
-            var isMember = await _context.Set<LeadMember>()
-                .AnyAsync(m => m.LeadId == id && m.UserId == userId, cancellationToken);
-            if (!isOwner && !isMember)
+            var access = await _crmService.GetCrmAccessAsync(lead.CrmId.Value, userId, cancellationToken);
+            if (access == null)
                 return null;
 
-            var members = await _context.Set<LeadMember>()
-                .AsNoTracking()
-                .Where(m => m.LeadId == id)
-                .ToListAsync(cancellationToken);
+            var members = await _crmService.GetMembersAsync(lead.CrmId.Value, userId, cancellationToken);
+            var pendingInvites = access.CanManageMembers
+                ? await _crmService.GetPendingInvitationsAsync(lead.CrmId.Value, userId, cancellationToken)
+                : Array.Empty<CrmPendingInviteDto>();
 
-            var memberUserIds = members.Select(m => m.UserId).Distinct().ToList();
-            var nameLookup = await _userManager.Users
-                .Where(u => memberUserIds.Contains(u.Id))
-                .ToDictionaryAsync(
-                    u => u.Id,
-                    u => !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName! : (u.UserName ?? "کاربر"),
-                    cancellationToken);
-
-            var pendingInvites = await _context.Set<LeadInvitation>()
-                .AsNoTracking()
-                .Where(i => i.LeadId == id && i.Status == InvitationStatus.Pending)
-                .OrderByDescending(i => i.CreatedAt)
-                .ToListAsync(cancellationToken);
             var sessions = await _context.Set<LeadSession>()
                 .AsNoTracking()
                 .Where(s => s.LeadId == id)
@@ -125,14 +133,19 @@ namespace TaskPlanner.Application.Services.LeadService
                 .OrderByDescending(n => n.CreatedAt)
                 .ToListAsync(cancellationToken);
 
-            var invitePhones = pendingInvites.Select(i => i.InviteePhone).Distinct().ToList();
-            var usersByPhone = await _userManager.Users
-                .Where(u => u.Phone != null && invitePhones.Contains(u.Phone))
-                .ToDictionaryAsync(u => u.Phone!, u => !string.IsNullOrWhiteSpace(u.FullName) ? u.FullName! : (u.UserName ?? "کاربر"), cancellationToken);
+            var canOpenProject = false;
+            if (lead.ConvertedProjectId is int projectId)
+            {
+                canOpenProject = await _context.Projects.AsNoTracking()
+                        .AnyAsync(p => p.Id == projectId && p.CreatorUserId == userId, cancellationToken)
+                    || await _context.ProjectMembers.AsNoTracking()
+                        .AnyAsync(pm => pm.ProjectId == projectId && pm.UserId == userId, cancellationToken);
+            }
 
             var result = new LeadDetailsDto
             {
                 Id = lead.Id,
+                CrmId = lead.CrmId.Value,
                 Title = lead.Title,
                 CompanyName = lead.CompanyName,
                 ContactName = lead.ContactName,
@@ -148,17 +161,19 @@ namespace TaskPlanner.Application.Services.LeadService
                 ConvertedProjectId = lead.ConvertedProjectId,
                 ConvertedAt = lead.ConvertedAt,
                 OwnerUserId = lead.OwnerUserId,
-                IsOwner = isOwner,
+                IsCrmOwner = access.IsOwner,
+                CanEdit = access.CanEditLeads,
+                CanOpenConvertedProject = canOpenProject,
                 Members = members.Select(m => new LeadMemberSummaryDto
                 {
                     UserId = m.UserId,
-                    DisplayName = nameLookup.GetValueOrDefault(m.UserId, "کاربر")
+                    DisplayName = m.DisplayName
                 }).ToList(),
                 PendingInvitations = pendingInvites.Select(i => new LeadPendingInviteDto
                 {
                     Id = i.Id,
                     InviteePhone = i.InviteePhone,
-                    InviteeDisplayName = usersByPhone.TryGetValue(i.InviteePhone, out var dn) ? dn : null
+                    InviteeDisplayName = i.InviteeDisplayName
                 }).ToList(),
                 Sessions = sessions.Select(s => new LeadSessionDto
                 {
@@ -195,10 +210,24 @@ namespace TaskPlanner.Application.Services.LeadService
 
         public async Task<int> CreateAsync(CreateLeadDto dto, string ownerUserId, CancellationToken cancellationToken = default)
         {
+            Crm crm;
+            if (dto.CrmId is int crmId)
+            {
+                var access = await _crmService.GetCrmAccessAsync(crmId, ownerUserId, cancellationToken);
+                if (access == null || !access.CanEditLeads)
+                    throw new InvalidOperationException("دسترسی ایجاد لید در این CRM را ندارید.");
+                crm = await _context.Crms.FirstAsync(c => c.Id == crmId, cancellationToken);
+            }
+            else
+            {
+                crm = await _crmService.GetOrCreatePersonalCrmAsync(ownerUserId, cancellationToken);
+            }
+
             var status = NormalizeManualStatus(dto.Status);
             var now = DateTime.UtcNow;
             var lead = new Lead
             {
+                CrmId = crm.Id,
                 Title = dto.Title.Trim(),
                 CompanyName = string.IsNullOrWhiteSpace(dto.CompanyName) ? null : dto.CompanyName.Trim(),
                 ContactName = string.IsNullOrWhiteSpace(dto.ContactName) ? null : dto.ContactName.Trim(),
@@ -207,7 +236,8 @@ namespace TaskPlanner.Application.Services.LeadService
                 Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim(),
                 Source = string.IsNullOrWhiteSpace(dto.Source) ? null : dto.Source.Trim(),
                 Status = status,
-                OwnerUserId = ownerUserId,
+                OwnerUserId = crm.OwnerUserId,
+                CreatedByUserId = ownerUserId,
                 CreatedAt = now,
                 UpdatedAt = now,
                 MeetingAt = NormalizeMeetingAtToUtc(dto.MeetingAt),
@@ -222,10 +252,14 @@ namespace TaskPlanner.Application.Services.LeadService
         public async Task UpdateAsync(UpdateLeadDto dto, string ownerUserId, CancellationToken cancellationToken = default)
         {
             var lead = await _context.Set<Lead>()
-                .FirstOrDefaultAsync(l => l.Id == dto.Id && l.OwnerUserId == ownerUserId, cancellationToken);
-
+                .FirstOrDefaultAsync(l => l.Id == dto.Id, cancellationToken);
             if (lead == null)
                 throw new InvalidOperationException("لید یافت نشد.");
+
+            await EnsureLeadCrmAsync(lead, cancellationToken);
+            var access = await _crmService.GetCrmAccessAsync(RequireCrmId(lead), ownerUserId, cancellationToken);
+            if (access == null || !access.CanEditLeads)
+                throw new InvalidOperationException("دسترسی ویرایش این لید را ندارید.");
 
             if (lead.Status == LeadPipelineStatus.Converted)
                 throw new InvalidOperationException("لید تبدیل‌شده قابل ویرایش نیست.");
@@ -252,10 +286,14 @@ namespace TaskPlanner.Application.Services.LeadService
         public async Task<int> ConvertToProjectAsync(int leadId, string ownerUserId, string? projectNameOverride, CancellationToken cancellationToken = default)
         {
             var lead = await _context.Set<Lead>()
-                .FirstOrDefaultAsync(l => l.Id == leadId && l.OwnerUserId == ownerUserId, cancellationToken);
-
+                .FirstOrDefaultAsync(l => l.Id == leadId, cancellationToken);
             if (lead == null)
                 throw new InvalidOperationException("لید یافت نشد.");
+
+            await EnsureLeadCrmAsync(lead, cancellationToken);
+            var access = await _crmService.GetCrmAccessAsync(RequireCrmId(lead), ownerUserId, cancellationToken);
+            if (access == null || !access.CanEditLeads)
+                throw new InvalidOperationException("دسترسی تبدیل این لید را ندارید.");
 
             if (lead.ConvertedProjectId.HasValue)
                 throw new InvalidOperationException("این لید قبلاً به پروژه تبدیل شده است.");
@@ -269,6 +307,7 @@ namespace TaskPlanner.Application.Services.LeadService
 
             var description = BuildProjectDescriptionFromLead(lead);
 
+            // فقط کاربر تبدیل‌کننده عضو پروژه می‌شود؛ اعضای CRM خودکار عضو پروژه نمی‌شوند.
             var projectId = await _projectCommandService.CreateProjectAsync(
                 new CreateProjectDto
                 {
@@ -301,11 +340,13 @@ namespace TaskPlanner.Application.Services.LeadService
         {
             var lead = await _context.Set<Lead>()
                 .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
-
             if (lead == null)
                 throw new InvalidOperationException("لید یافت نشد.");
-            if (lead.OwnerUserId != ownerUserId)
-                throw new InvalidOperationException("فقط مالک لید می‌تواند آن را حذف کند.");
+
+            await EnsureLeadCrmAsync(lead, cancellationToken);
+            var access = await _crmService.GetCrmAccessAsync(RequireCrmId(lead), ownerUserId, cancellationToken);
+            if (access == null || !access.CanEditLeads)
+                throw new InvalidOperationException("دسترسی حذف این لید را ندارید.");
 
             _context.Set<Lead>().Remove(lead);
             await _context.SaveChangesAsync(cancellationToken);
@@ -313,181 +354,64 @@ namespace TaskPlanner.Application.Services.LeadService
 
         public async Task<IReadOnlyList<UserSelectDto>> GetAvailableCollaboratorsForLeadAsync(int leadId, string requesterUserId, CancellationToken cancellationToken = default)
         {
-            var lead = await _context.Set<Lead>().AsNoTracking()
+            var lead = await _context.Set<Lead>()
                 .FirstOrDefaultAsync(l => l.Id == leadId, cancellationToken);
-            if (lead == null || lead.OwnerUserId != requesterUserId)
-                throw new InvalidOperationException("لید یافت نشد یا دسترسی ندارید.");
+            if (lead == null)
+                throw new InvalidOperationException("لید یافت نشد.");
 
-            var existingMemberIds = await _context.Set<LeadMember>()
-                .Where(m => m.LeadId == leadId)
-                .Select(m => m.UserId)
-                .ToListAsync(cancellationToken);
-
-            var pool = await _projectQueryService.GetAvailableUsersForCreateAsync(requesterUserId);
-            return pool.Where(u => u.Id != lead.OwnerUserId && !existingMemberIds.Contains(u.Id)).ToList();
+            await EnsureLeadCrmAsync(lead, cancellationToken);
+            return await _crmService.GetAvailableCollaboratorsAsync(RequireCrmId(lead), requesterUserId, cancellationToken);
         }
 
         public async Task AddLeadMemberAsync(int leadId, string memberUserId, string requesterUserId, CancellationToken cancellationToken = default)
         {
             var lead = await _context.Set<Lead>()
                 .FirstOrDefaultAsync(l => l.Id == leadId, cancellationToken);
-            if (lead == null || lead.OwnerUserId != requesterUserId)
-                throw new InvalidOperationException("فقط مالک لید می‌تواند همکار اضافه کند.");
+            if (lead == null)
+                throw new InvalidOperationException("لید یافت نشد.");
 
-            if (string.Equals(memberUserId, lead.OwnerUserId, StringComparison.Ordinal))
-                throw new InvalidOperationException("مالک لید نیازی به افزودن خود به‌عنوان همکار ندارد.");
-
-            var exists = await _context.Set<LeadMember>()
-                .AnyAsync(m => m.LeadId == leadId && m.UserId == memberUserId, cancellationToken);
-            if (exists)
-                throw new InvalidOperationException("این کاربر از قبل همکار این لید است.");
-
-            _context.Set<LeadMember>().Add(new LeadMember
-            {
-                LeadId = leadId,
-                UserId = memberUserId,
-                AddedByUserId = requesterUserId,
-                CreatedAt = DateTime.UtcNow
-            });
-            lead.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync(cancellationToken);
+            await EnsureLeadCrmAsync(lead, cancellationToken);
+            await _crmService.AddMemberAsync(RequireCrmId(lead), memberUserId, requesterUserId, cancellationToken);
+            await TouchLeadAsync(leadId, cancellationToken);
         }
 
         public async Task RemoveLeadMemberAsync(int leadId, string memberUserId, string requesterUserId, CancellationToken cancellationToken = default)
         {
             var lead = await _context.Set<Lead>()
                 .FirstOrDefaultAsync(l => l.Id == leadId, cancellationToken);
-            if (lead == null || lead.OwnerUserId != requesterUserId)
-                throw new InvalidOperationException("فقط مالک لید می‌تواند همکار را حذف کند.");
+            if (lead == null)
+                throw new InvalidOperationException("لید یافت نشد.");
 
-            var row = await _context.Set<LeadMember>()
-                .FirstOrDefaultAsync(m => m.LeadId == leadId && m.UserId == memberUserId, cancellationToken);
-            if (row == null)
-                throw new InvalidOperationException("همکار در این لید یافت نشد.");
-
-            _context.Set<LeadMember>().Remove(row);
-            lead.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync(cancellationToken);
+            await EnsureLeadCrmAsync(lead, cancellationToken);
+            await _crmService.RemoveMemberAsync(RequireCrmId(lead), memberUserId, requesterUserId, cancellationToken);
+            await TouchLeadAsync(leadId, cancellationToken);
         }
 
         public async Task InviteUserToLeadAsync(int leadId, string phone, string inviterId, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrWhiteSpace(phone))
-                throw new ArgumentException("شماره تلفن وارد نشده است.", nameof(phone));
-            phone = phone.Trim();
+            var lead = await _context.Set<Lead>()
+                .FirstOrDefaultAsync(l => l.Id == leadId, cancellationToken);
+            if (lead == null)
+                throw new InvalidOperationException("لید یافت نشد.");
 
-            var lead = await _context.Set<Lead>().FirstOrDefaultAsync(l => l.Id == leadId, cancellationToken);
-            if (lead == null || lead.OwnerUserId != inviterId)
-                throw new InvalidOperationException("فقط مالک لید می‌تواند دعوت ارسال کند.");
-
-            var inviter = await _userManager.FindByIdAsync(inviterId);
-            if (inviter != null && !string.IsNullOrWhiteSpace(inviter.Phone) &&
-                string.Equals(inviter.Phone, phone, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("نمی‌توانید خودتان را دعوت کنید.");
-
-            var existsPending = await _context.Set<LeadInvitation>()
-                .AnyAsync(i => i.LeadId == leadId && i.InviteePhone == phone && i.Status == InvitationStatus.Pending, cancellationToken);
-            if (existsPending)
-                throw new InvalidOperationException("برای این شماره قبلاً دعوت در انتظار ارسال شده است.");
-
-            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Phone == phone, cancellationToken);
-            if (user == null)
-                throw new InvalidOperationException("کاربری با این شماره پیدا نشد.");
-
-            if (string.Equals(user.Id, lead.OwnerUserId, StringComparison.Ordinal))
-                throw new InvalidOperationException("مالک لید نیازی به دعوت ندارد.");
-
-            var isMember = await _context.Set<LeadMember>()
-                .AnyAsync(m => m.LeadId == leadId && m.UserId == user.Id, cancellationToken);
-            if (isMember)
-                throw new InvalidOperationException("این کاربر هم‌اکنون همکار این لید است.");
-
-            var invite = new LeadInvitation
-            {
-                LeadId = leadId,
-                InviterId = inviterId,
-                InviteePhone = phone,
-                InviteeId = user.Id,
-                Status = InvitationStatus.Pending,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.Set<LeadInvitation>().Add(invite);
-            lead.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync(cancellationToken);
-
-            await _notificationService.CreateNotificationAsync(new NotificationCreateRequest
-            {
-                UserId = user.Id,
-                Title = "دعوت به لید (CRM)",
-                Message = $"برای شما دعوتی به لید «{lead.Title}» ارسال شد.",
-                RelatedEntityId = invite.Id.ToString(),
-                RelatedEntityType = nameof(LeadInvitation),
-                Type = NotificationCreateType.LeadInvitation,
-                PayloadJson = JsonSerializer.Serialize(new { invitationId = invite.Id, leadId = leadId })
-            }, cancellationToken);
+            await EnsureLeadCrmAsync(lead, cancellationToken);
+            await _crmService.InviteByPhoneAsync(RequireCrmId(lead), phone, inviterId, cancellationToken);
+            await TouchLeadAsync(leadId, cancellationToken);
         }
 
         public async Task CancelLeadInvitationAsync(int invitationId, string inviterUserId, CancellationToken cancellationToken = default)
         {
-            var invite = await _context.Set<LeadInvitation>()
-                .FirstOrDefaultAsync(i => i.Id == invitationId, cancellationToken);
-            if (invite == null || invite.InviterId != inviterUserId)
-                throw new InvalidOperationException("دعوت یافت نشد.");
-            if (invite.Status != InvitationStatus.Pending)
-                throw new InvalidOperationException("فقط دعوت‌های در انتظار قابل لغو هستند.");
-
-            _context.Set<LeadInvitation>().Remove(invite);
-            var lead = await _context.Set<Lead>().FirstOrDefaultAsync(l => l.Id == invite.LeadId, cancellationToken);
-            if (lead != null)
-                lead.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync(cancellationToken);
+            await _crmService.CancelInvitationAsync(invitationId, inviterUserId, cancellationToken);
         }
 
         public async Task RespondToLeadInvitationAsync(int invitationId, string currentUserId, string currentUserPhone, bool accept, CancellationToken cancellationToken = default)
         {
-            var invite = await _context.Set<LeadInvitation>()
-                .Include(i => i.Lead)
-                .FirstOrDefaultAsync(i => i.Id == invitationId, cancellationToken);
-            if (invite == null)
-                throw new InvalidOperationException("دعوت یافت نشد.");
-
-            if (!string.Equals(invite.InviteePhone, currentUserPhone, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("شما مجاز به پاسخ به این دعوت نیستید.");
-
-            if (invite.Status != InvitationStatus.Pending)
-                throw new InvalidOperationException("این دعوت قبلاً پاسخ داده شده است.");
-
-            invite.Status = accept ? InvitationStatus.Accepted : InvitationStatus.Rejected;
-            invite.RespondedAt = DateTime.UtcNow;
-            if (string.IsNullOrEmpty(invite.InviteeId))
-                invite.InviteeId = currentUserId;
-
-            if (accept && invite.Lead != null)
-            {
-                var already = await _context.Set<LeadMember>()
-                    .AnyAsync(m => m.LeadId == invite.LeadId && m.UserId == currentUserId, cancellationToken);
-                if (!already)
-                {
-                    _context.Set<LeadMember>().Add(new LeadMember
-                    {
-                        LeadId = invite.LeadId,
-                        UserId = currentUserId,
-                        AddedByUserId = invite.InviterId,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                }
-                invite.Lead.UpdatedAt = DateTime.UtcNow;
-            }
-
-            await _context.SaveChangesAsync(cancellationToken);
+            await _crmService.RespondToInvitationAsync(invitationId, currentUserId, currentUserPhone, accept, cancellationToken);
         }
 
         public async Task AddSessionAsync(CreateLeadSessionDto dto, string requesterUserId, CancellationToken cancellationToken = default)
         {
-            var lead = await _context.Set<Lead>()
-                .FirstOrDefaultAsync(l => l.Id == dto.LeadId, cancellationToken);
-            if (lead == null || lead.OwnerUserId != requesterUserId)
-                throw new InvalidOperationException("فقط مالک لید می‌تواند جلسه ثبت کند.");
+            var lead = await RequireEditableLeadAsync(dto.LeadId, requesterUserId, cancellationToken);
 
             var scheduledUtc = NormalizeMeetingAtToUtc(dto.ScheduledAt) ?? throw new InvalidOperationException("زمان جلسه نامعتبر است.");
             _context.Set<LeadSession>().Add(new LeadSession
@@ -507,8 +431,10 @@ namespace TaskPlanner.Application.Services.LeadService
             var session = await _context.Set<LeadSession>()
                 .Include(s => s.Lead)
                 .FirstOrDefaultAsync(s => s.Id == dto.SessionId, cancellationToken);
-            if (session == null || session.Lead.OwnerUserId != requesterUserId)
-                throw new InvalidOperationException("فقط مالک لید می‌تواند جلسه را ویرایش کند.");
+            if (session == null)
+                throw new InvalidOperationException("جلسه یافت نشد.");
+
+            await RequireEditableLeadAsync(session.LeadId, requesterUserId, cancellationToken);
 
             var scheduledUtc = NormalizeMeetingAtToUtc(dto.ScheduledAt) ?? throw new InvalidOperationException("زمان جلسه نامعتبر است.");
             session.ScheduledAt = scheduledUtc;
@@ -522,8 +448,10 @@ namespace TaskPlanner.Application.Services.LeadService
             var session = await _context.Set<LeadSession>()
                 .Include(s => s.Lead)
                 .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken);
-            if (session == null || session.Lead.OwnerUserId != requesterUserId)
-                throw new InvalidOperationException("فقط مالک لید می‌تواند جلسه را حذف کند.");
+            if (session == null)
+                throw new InvalidOperationException("جلسه یافت نشد.");
+
+            await RequireEditableLeadAsync(session.LeadId, requesterUserId, cancellationToken);
 
             _context.Set<LeadSession>().Remove(session);
             session.Lead.UpdatedAt = DateTime.UtcNow;
@@ -532,9 +460,7 @@ namespace TaskPlanner.Application.Services.LeadService
 
         public async Task<int> AddNoteAsync(CreateLeadNoteDto dto, string requesterUserId, CancellationToken cancellationToken = default)
         {
-            var lead = await _context.Set<Lead>().FirstOrDefaultAsync(l => l.Id == dto.LeadId, cancellationToken);
-            if (lead == null || lead.OwnerUserId != requesterUserId)
-                throw new InvalidOperationException("فقط مالک لید می‌تواند یادداشت ثبت کند.");
+            var lead = await RequireEditableLeadAsync(dto.LeadId, requesterUserId, cancellationToken);
 
             if (string.IsNullOrWhiteSpace(dto.Title))
                 throw new InvalidOperationException("عنوان یادداشت الزامی است.");
@@ -560,8 +486,10 @@ namespace TaskPlanner.Application.Services.LeadService
             var note = await _context.ProjectNotes
                 .Include(n => n.Lead)
                 .FirstOrDefaultAsync(n => n.Id == dto.NoteId, cancellationToken);
-            if (note == null || note.Lead == null || note.Lead.OwnerUserId != requesterUserId)
-                throw new InvalidOperationException("فقط مالک لید می‌تواند یادداشت را ویرایش کند.");
+            if (note?.Lead == null)
+                throw new InvalidOperationException("یادداشت یافت نشد.");
+
+            await RequireEditableLeadAsync(note.Lead.Id, requesterUserId, cancellationToken);
 
             if (string.IsNullOrWhiteSpace(dto.Title))
                 throw new InvalidOperationException("عنوان یادداشت الزامی است.");
@@ -577,11 +505,69 @@ namespace TaskPlanner.Application.Services.LeadService
             var note = await _context.ProjectNotes
                 .Include(n => n.Lead)
                 .FirstOrDefaultAsync(n => n.Id == noteId, cancellationToken);
-            if (note == null || note.Lead == null || note.Lead.OwnerUserId != requesterUserId)
-                throw new InvalidOperationException("فقط مالک لید می‌تواند یادداشت را حذف کند.");
+            if (note?.Lead == null)
+                throw new InvalidOperationException("یادداشت یافت نشد.");
+
+            await RequireEditableLeadAsync(note.Lead.Id, requesterUserId, cancellationToken);
 
             _context.ProjectNotes.Remove(note);
             note.Lead.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        private async Task<Lead> RequireEditableLeadAsync(int leadId, string userId, CancellationToken cancellationToken)
+        {
+            var lead = await _context.Set<Lead>()
+                .FirstOrDefaultAsync(l => l.Id == leadId, cancellationToken);
+            if (lead == null)
+                throw new InvalidOperationException("لید یافت نشد.");
+
+            await EnsureLeadCrmAsync(lead, cancellationToken);
+            var access = await _crmService.GetCrmAccessAsync(RequireCrmId(lead), userId, cancellationToken);
+            if (access == null || !access.CanEditLeads)
+                throw new InvalidOperationException("دسترسی لازم برای این عملیات را ندارید.");
+
+            return lead;
+        }
+
+        private async Task TouchLeadAsync(int leadId, CancellationToken cancellationToken)
+        {
+            var lead = await _context.Set<Lead>().FirstOrDefaultAsync(l => l.Id == leadId, cancellationToken);
+            if (lead == null)
+                return;
+            lead.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        private static int RequireCrmId(Lead lead)
+        {
+            if (lead.CrmId is not int crmId)
+                throw new InvalidOperationException("این لید هنوز به CRM متصل نشده است.");
+            return crmId;
+        }
+
+        private async Task EnsureLeadCrmAsync(Lead lead, CancellationToken cancellationToken)
+        {
+            if (lead.CrmId != null)
+                return;
+
+            await _crmService.EnsureLegacyLeadsAssignedToCrmAsync(cancellationToken);
+
+            var crmId = await _context.Set<Lead>()
+                .AsNoTracking()
+                .Where(l => l.Id == lead.Id)
+                .Select(l => l.CrmId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (crmId != null)
+            {
+                lead.CrmId = crmId;
+                return;
+            }
+
+            var crm = await _crmService.GetOrCreatePersonalCrmAsync(lead.OwnerUserId, cancellationToken);
+            lead.CrmId = crm.Id;
+            lead.CreatedByUserId ??= lead.OwnerUserId;
             await _context.SaveChangesAsync(cancellationToken);
         }
 
@@ -617,7 +603,6 @@ namespace TaskPlanner.Application.Services.LeadService
             return status;
         }
 
-        /// <summary>ورودی فرم (معمولاً Kind=Unspecified به‌معنای زمان محلی) را به UTC ذخیره می‌کند.</summary>
         private static DateTime? NormalizeMeetingAtToUtc(DateTime? value)
         {
             if (!value.HasValue)

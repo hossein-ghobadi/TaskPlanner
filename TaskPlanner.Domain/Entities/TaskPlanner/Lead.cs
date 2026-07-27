@@ -6,6 +6,9 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
     {
         public int Id { get; set; }
 
+        public int? CrmId { get; set; }
+        public Crm? Crm { get; set; }
+
         [Required]
         [StringLength(200)]
         public string Title { get; set; } = null!;
@@ -29,9 +32,14 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
 
         public LeadPipelineStatus Status { get; set; } = LeadPipelineStatus.New;
 
+        /// <summary>مالک فضای CRM (هم‌تراز با Crm.OwnerUserId) — برای سازگاری و گزارش.</summary>
         [Required]
         [StringLength(450)]
         public string OwnerUserId { get; set; } = null!;
+
+        /// <summary>کاربری که این لید را ساخته است.</summary>
+        [StringLength(450)]
+        public string? CreatedByUserId { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

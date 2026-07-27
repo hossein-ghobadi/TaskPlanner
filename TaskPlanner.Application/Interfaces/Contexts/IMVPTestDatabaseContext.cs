@@ -62,6 +62,9 @@ namespace TaskPlanner.Application.Interfaces.Contexts
         DbSet<BoardTaskComment> BoardTaskComments { get; set; }
         DbSet<BoardTaskCommentAttachment> BoardTaskCommentAttachments { get; set; }
 
+        DbSet<Crm> Crms { get; set; }
+        DbSet<CrmMember> CrmMembers { get; set; }
+        DbSet<CrmInvitation> CrmInvitations { get; set; }
         DbSet<Lead> Leads { get; set; }
         DbSet<LeadMember> LeadMembers { get; set; }
         DbSet<LeadInvitation> LeadInvitations { get; set; }
