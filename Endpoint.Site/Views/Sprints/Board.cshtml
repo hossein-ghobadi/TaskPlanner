@@ -854,6 +854,15 @@
     .task-title a:hover {
     color: #0d6efd;
     }
+    /* جلوگیری از drag بومی لینک/دکمه تا درگ کارت از وسط/عنوان هم کار کند */
+    .task-card a,
+    .task-card button,
+    .task-card input,
+    .task-card label,
+    .task-card .dropdown {
+    -webkit-user-drag: none;
+    user-drag: none;
+    }
     .task-description {
     font-size: 0.85rem;
     color: #6c757d;
@@ -2822,8 +2831,7 @@
                                         </div>
 
                                         <div class="task-title">
-
-                                        <a href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@issue.Id); return false;">@issue.Title</a>
+                                        <a href="#" draggable="false" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@issue.Id); return false;">@issue.Title</a>
                                     </div>
                                         
                                         @if (!string.IsNullOrWhiteSpace(issue.Description))
@@ -3043,7 +3051,7 @@
                         </div>
 
                         <div class="task-title">
-                            <a href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@issue.Id); return false;">@issue.Title</a>
+                            <a href="#" draggable="false" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(@issue.Id); return false;">@issue.Title</a>
                         </div>
 
                         @if (!string.IsNullOrWhiteSpace(issue.Description))
@@ -3410,6 +3418,7 @@
         let draggedIssueId = null;
         let draggedCard = null;
         let isDragging = false;
+        let isDropProcessing = false;
         let mouseDownX = 0;
         let mouseDownY = 0;
         let isColumnDragging = false;
@@ -4248,7 +4257,7 @@
                     </div>
                 </div>
                 <div class="task-title">
-                    <a href="#" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(${task.id}); return false;">${safeTitle}</a>
+                    <a href="#" draggable="false" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(${task.id}); return false;">${safeTitle}</a>
                 </div>
                 <div class="task-meta">
                     <div>👤 ${escapeHtml(task.assigneeName || 'نامشخص')}</div>
@@ -4620,20 +4629,67 @@
         window.deleteStatus = deleteStatus;
 
         function onDragIssue(e, issueId) {
+            if (e.defaultPrevented) return;
+
+            const card = e.currentTarget?.classList?.contains('task-card')
+                ? e.currentTarget
+                : e.target?.closest?.('.task-card');
+            if (!card) return;
+
             isDragging = true;
-            draggedIssueId = issueId;
-            draggedCard = e.currentTarget;
+            draggedIssueId = issueId || parseInt(card.dataset.issueId, 10);
+            draggedCard = card;
             draggedCard.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', issueId);
+            if (e.dataTransfer) {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', String(draggedIssueId || ''));
+            }
             draggedCard.style.height = `${draggedCard.offsetHeight}px`;
         }
 
-        // اگر drag از روی لینک/دکمه داخل کارت شروع شود، مرورگر ممکن است خود element را drag کند
-        // و onDragIssue اجرا نشود؛ در نتیجه issueId خالی می‌شود و جابه‌جایی ظاهراً گیر می‌کند.
+        function resetDraggedCardStyles() {
+            if (draggedCard) {
+                draggedCard.classList.remove('dragging');
+                draggedCard.style.height = '';
+                draggedCard.style.opacity = '';
+                draggedCard.style.transform = '';
+                draggedCard.style.zIndex = '';
+                draggedCard.style.position = '';
+                draggedCard.style.transition = '';
+            }
+            document.querySelectorAll('.task-card.dragging').forEach(card => {
+                card.classList.remove('dragging');
+                card.style.height = '';
+                card.style.opacity = '';
+            });
+        }
+
+        // درگ از عنوان (لینک block تمام‌عرض) یا دکمه‌ها نباید drag بومی لینک را شروع کند
+        // و نباید کل drag کارت را با preventDefault قطع کند — قبلاً از وسط کارت «گیر» می‌کرد.
         document.addEventListener('dragstart', function (e) {
-            if (e.target.closest('.task-card a, .task-card button')) {
+            const card = e.target.closest?.('.task-card');
+            if (!card || card.draggable === false) return;
+
+            // کنترل‌های واقعی: درگ را شروع نکن تا کلیک/منو کار کند
+            if (e.target.closest('button, input, select, textarea, .dropdown-menu, .backlog-card-checkbox-wrap')) {
                 e.preventDefault();
+                return;
+            }
+
+            const issueId = parseInt(card.dataset.issueId, 10);
+            if (!issueId) return;
+
+            // اگر از روی لینک/فرزند شروع شده، state کارت را تضمین کن
+            if (draggedIssueId !== issueId || draggedCard !== card) {
+                isDragging = true;
+                draggedIssueId = issueId;
+                draggedCard = card;
+                card.classList.add('dragging');
+                if (e.dataTransfer) {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', String(issueId));
+                }
+                card.style.height = `${card.offsetHeight}px`;
             }
         }, true);
 
@@ -5029,6 +5085,8 @@
 
         async function onDropIssue(e, toStatusId) {
             e.preventDefault();
+            e.stopPropagation(); // جلوگیری از fire شدن دوبار روی column و column-tasks
+
             if (isColumnDragging) {
                 const columnElement = e.currentTarget.closest('.kanban-column');
                 highlightColumnTarget(columnElement, false);
@@ -5036,33 +5094,37 @@
                 return;
             }
 
+            if (isDropProcessing) return;
+
             const dropZone = getDropZoneElement(e.currentTarget);
             if (dropZone) {
                 highlightDropZone(dropZone, false);
             }
-            
-            const issueId = draggedIssueId || parseInt(e.dataTransfer.getData('text/plain'));
+
+            const issueId = draggedIssueId || parseInt(e.dataTransfer.getData('text/plain'), 10);
+            const card = draggedCard || document.querySelector(`.task-card[data-issue-id="${issueId}"]`);
             if (!issueId) return;
 
-            if (draggedCard) {
-                draggedCard.style.opacity = '0.5';
+            isDropProcessing = true;
+            if (card) {
+                card.style.opacity = '0.5';
             }
 
             try {
                 const isBacklogDrop = toStatusId === null || toStatusId === undefined || toStatusId === '';
                 if (isBacklogDrop) {
-                    await window.moveIssueToBacklog(issueId, draggedCard);
+                    await window.moveIssueToBacklog(issueId, card);
                     return;
                 }
 
                 const res = await fetch('/Tasks/MoveIssue', {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'Content-Type': 'application/json',
                         'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
                     },
-                    body: JSON.stringify({ 
-                        taskId: issueId, 
+                    body: JSON.stringify({
+                        taskId: issueId,
                         toStatusId: toStatusId,
                         reason: 'تماس از تخته کانبان'
                     })
@@ -5070,39 +5132,38 @@
 
                 if (!res.ok) {
                     const errorText = await res.text();
-                    alert('خطا: ' + errorText || 'خطا در انتقال وضعیت');
-                    if (draggedCard) {
-                        draggedCard.style.opacity = '1';
+                    alert('خطا: ' + (errorText || 'خطا در انتقال وضعیت'));
+                    if (card) {
+                        card.style.opacity = '1';
                     }
                     return;
                 }
 
                 const result = await res.json();
                 console.log('Success:', result);
-                updateCardCompletedState(draggedCard, result?.isCompleted);
+                updateCardCompletedState(card, result?.isCompleted);
 
-                if (draggedCard) {
-                    draggedCard.classList.remove('dragging');
-                    draggedCard.style.opacity = '1';
-                    
-                    const sourceColumn = draggedCard.closest('.column-tasks');
-                    
+                if (card) {
+                    card.classList.remove('dragging');
+                    card.style.opacity = '1';
+                    card.style.height = '';
+
+                    const sourceColumn = card.closest('.column-tasks');
+
                     if (dropZone) {
                         const emptyMessage = dropZone.querySelector('.empty-message');
                         if (emptyMessage) {
                             emptyMessage.remove();
                         }
-                        
-                        // قرار دادن کارت در ابتدای لیست (قبل از همه کارت‌های دیگر)
-                        const firstCard = dropZone.querySelector('.task-card:not(.dragging)');
-                        if (firstCard && firstCard !== draggedCard) {
-                            dropZone.insertBefore(draggedCard, firstCard);
+
+                        const firstCard = dropZone.querySelector(`.task-card:not([data-issue-id="${issueId}"])`);
+                        if (firstCard && firstCard !== card) {
+                            dropZone.insertBefore(card, firstCard);
                         } else {
-                            // اگر کارت دیگری وجود ندارد یا این کارت اولین است، از prepend استفاده کن
-                            dropZone.insertBefore(draggedCard, dropZone.firstChild);
+                            dropZone.insertBefore(card, dropZone.firstChild);
                         }
                     }
-                    
+
                     if (sourceColumn && sourceColumn !== dropZone) {
                         const sourceCards = sourceColumn.querySelectorAll('.task-card');
                         if (sourceCards.length === 0) {
@@ -5117,7 +5178,7 @@
                             }
                         }
                     }
-                    
+
                     updateIssueCounts();
                 } else {
                     reloadBoard();
@@ -5126,10 +5187,13 @@
             } catch (err) {
                 console.error('Error:', err);
                 alert('خطای شبکه: ' + err.message);
-                if (draggedCard) {
-                    draggedCard.style.opacity = '1';
+                if (card) {
+                    card.style.opacity = '1';
+                    card.classList.remove('dragging');
+                    card.style.height = '';
                 }
             } finally {
+                isDropProcessing = false;
                 draggedIssueId = null;
                 draggedCard = null;
             }
@@ -6024,6 +6088,13 @@
             mouseDownX = 0;
             mouseDownY = 0;
             resetDropZoneStyles();
+
+            // اگر drop در حال پردازش است، رفرنس کارت را پاک نکن (باعث reload و NetworkError می‌شد)
+            if (!isDropProcessing) {
+                resetDraggedCardStyles();
+                draggedIssueId = null;
+                draggedCard = null;
+            }
         });
 
         document.addEventListener('click', function(e) {
