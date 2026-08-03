@@ -665,9 +665,10 @@
     .edit-task-side-card .info-block:last-child {
     margin-bottom: 0;
     }
-    /* چک‌لیست داخل ستون اطلاعات و زیر "مسئول کار" */
+    /* چک‌لیست زیر توضیحات در ستون اصلی */
     #editTaskModal .checklist-card-board.checklist-board-floating {
-    margin-top: 0.75rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
     background: #fff !important;
     border: 1px solid #e8eaef;
     border-radius: 12px;
@@ -710,8 +711,15 @@
     #editTaskModal .subtask-input-row-board {
     display: grid;
     grid-template-columns: 1fr auto;
+    align-items: start;
     gap: 0.5rem;
     margin-bottom: 0.65rem;
+    }
+    #editTaskModal .subtask-input-row-board textarea {
+    min-height: 2.5rem;
+    max-height: 8rem;
+    resize: vertical;
+    line-height: 1.4;
     }
     #editTaskModal .subtask-list-board {
     list-style: none;
@@ -746,7 +754,7 @@
     cursor: pointer;
     }
     #editTaskModal .subtask-title-board {
-    white-space: normal;
+    white-space: pre-wrap;
     word-break: break-word;
     font-size: 0.88rem;
     line-height: 1.4;
@@ -768,6 +776,11 @@
     padding: 0.2rem 0.45rem;
     min-width: 0;
     flex: 1;
+    min-height: 2.4rem;
+    max-height: 8rem;
+    resize: vertical;
+    line-height: 1.4;
+    white-space: pre-wrap;
     }
     #editTaskModal .subtask-item-actions-board {
     display: inline-flex;
@@ -3204,6 +3217,23 @@
                                     <label for="editTaskDescription" class="form-label">توضیحات</label>
                                     <textarea class="form-control" id="editTaskDescription" rows="4" placeholder="توضیحات کار را وارد کنید"></textarea>
                                 </div>
+
+                                <div class="checklist-card-board checklist-board-floating" id="boardChecklistPanel" style="display:none;" aria-label="چک لیست کارک‌ها">
+                                    <div class="checklist-header-board">
+                                        <div class="checklist-title-board">
+                                            <i class="bi bi-list-check"></i>
+                                            چک لیست
+                                        </div>
+                                        <span class="checklist-progress-badge-board" id="boardSubtaskProgressBadge">0/0</span>
+                                    </div>
+                                    <div class="subtask-input-row-board">
+                                        <textarea id="boardInlineSubtaskTitle" class="form-control" rows="2" placeholder="عنوان کارک..." autocomplete="off"></textarea>
+                                        <button type="button" id="boardAddSubtaskBtn" class="btn btn-sm btn-primary">افزودن</button>
+                                    </div>
+                                    <ul id="boardInlineSubtasksList" class="subtask-list-board"></ul>
+                                    <div id="boardInlineSubtaskNote" class="text-muted small mt-1"></div>
+                                </div>
+
                                 <div class="mb-3">
                                     <label for="editTaskEffortLevelDisplay" class="form-label">سطح کار</label>
                                     <div class="form-control bg-light" id="editTaskEffortLevelDisplay">تعیین نشده</div>
@@ -3324,22 +3354,6 @@
                                         <option value="2">متوسط</option>
                                         <option value="3">پرزحمت</option>
                                     </select>
-
-                                    <div class="checklist-card-board checklist-board-floating" id="boardChecklistPanel" style="display:none;" aria-label="چک لیست کارک‌ها">
-                                        <div class="checklist-header-board">
-                                            <div class="checklist-title-board">
-                                                <i class="bi bi-list-check"></i>
-                                                چک لیست
-                                            </div>
-                                            <span class="checklist-progress-badge-board" id="boardSubtaskProgressBadge">0/0</span>
-                                        </div>
-                                        <div class="subtask-input-row-board">
-                                            <input type="text" id="boardInlineSubtaskTitle" class="form-control" placeholder="عنوان کارک..." autocomplete="off" />
-                                            <button type="button" id="boardAddSubtaskBtn" class="btn btn-sm btn-primary">افزودن</button>
-                                        </div>
-                                        <ul id="boardInlineSubtasksList" class="subtask-list-board"></ul>
-                                        <div id="boardInlineSubtaskNote" class="text-muted small mt-1"></div>
-                                    </div>
                                 </div>
 
                                 
@@ -5399,14 +5413,14 @@
             const currentTitle = titleSpan.textContent.trim();
             const completed = titleSpan.classList.contains('completed');
 
-            const input = document.createElement('input');
-            input.type = 'text';
+            const input = document.createElement('textarea');
             input.className = 'form-control form-control-sm subtask-edit-input-board';
             input.value = currentTitle;
             input.maxLength = 500;
+            input.rows = Math.min(6, Math.max(2, (currentTitle.match(/\n/g) || []).length + 2));
             titleSpan.replaceWith(input);
             input.focus();
-            input.select();
+            input.setSelectionRange(input.value.length, input.value.length);
 
             let saving = false;
             const restoreTitle = (text) => {
@@ -5449,7 +5463,7 @@
             };
 
             input.addEventListener('keydown', function (ev) {
-                if (ev.key === 'Enter') {
+                if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) {
                     ev.preventDefault();
                     commitEdit();
                 } else if (ev.key === 'Escape') {
@@ -5576,7 +5590,7 @@
                 if (boardSubtaskParentId) addBoardSubtask(boardSubtaskParentId);
             });
             input.addEventListener('keydown', function (ev) {
-                if (ev.key === 'Enter') {
+                if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) {
                     ev.preventDefault();
                     if (boardSubtaskParentId) addBoardSubtask(boardSubtaskParentId);
                 }

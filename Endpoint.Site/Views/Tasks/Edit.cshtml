@@ -471,8 +471,16 @@
     .subtask-input-row {
         display: grid;
         grid-template-columns: 1fr auto;
+        align-items: start;
         gap: 0.5rem;
         margin-bottom: 0.75rem;
+    }
+
+    .subtask-input-row textarea {
+        min-height: 2.5rem;
+        max-height: 8rem;
+        resize: vertical;
+        line-height: 1.4;
     }
 
     .subtask-list {
@@ -512,7 +520,7 @@
     }
 
     .subtask-title {
-        white-space: normal;
+        white-space: pre-wrap;
         word-break: break-word;
         font-size: 0.9rem;
         line-height: 1.45;
@@ -538,6 +546,11 @@
         padding: 0.2rem 0.45rem;
         min-width: 0;
         flex: 1;
+        min-height: 2.4rem;
+        max-height: 8rem;
+        resize: vertical;
+        line-height: 1.4;
+        white-space: pre-wrap;
     }
 
     .subtask-item-actions {
@@ -601,22 +614,22 @@
         text-align: center;
     }
 
-    /* حالت مودال: چک‌لیست به‌صورت عادی زیر "مسئول کار" نمایش داده می‌شود */
+    /* حالت مودال: چک‌لیست زیر توضیحات در ستون اصلی */
     .task-form-container.modal-mode .checklist-panel-corner--modal {
         margin-top: 1rem;
+        margin-bottom: 0;
     }
 
-    /* صفحه کامل ویرایش: چک لیست پایین، هم‌تراز سمت چپ (در RTL با flex-end) */
+    /* صفحه کامل ویرایش: چک لیست زیر توضیحات */
     .checklist-page-bottom-row {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 1.5rem;
-        margin-bottom: 0.5rem;
+        display: block;
+        margin-top: 0;
+        margin-bottom: 1rem;
     }
 
     .checklist-page-bottom-row .checklist-panel-corner--page {
         width: 100%;
-        max-width: 420px;
+        max-width: none;
     }
     
     @@media (max-width: 768px) {
@@ -710,6 +723,26 @@
                             </label>
                             <textarea asp-for="Description" class="form-control" rows="4"></textarea>
                         </div>
+
+                        @if (Model.IssueType == IssueType.Task)
+                        {
+                            <div class="form-card checklist-card checklist-panel-corner checklist-panel-corner--modal mt-3 mb-0" id="inlineSubtaskPanel">
+                                <div class="checklist-header">
+                                    <div class="checklist-title">
+                                        <i class="bi bi-list-check"></i>
+                                        چک لیست
+                                    </div>
+                                    <span class="checklist-progress-badge" id="inlineSubtaskProgressBadge">0/0</span>
+                                </div>
+                                <div class="subtask-input-row">
+                                    <textarea id="inlineSubtaskTitle" class="form-control" rows="2" placeholder="عنوان کارک..."></textarea>
+                                    <button type="button" id="addInlineSubtaskBtn" class="btn btn-modern btn-modern-warning">افزودن</button>
+                                </div>
+                                <ul id="inlineSubtasksList" class="subtask-list"></ul>
+                                <div id="inlineSubtaskNote" class="chat-note"></div>
+                            </div>
+                        }
+
                         <div class="mt-3">
                             <label class="form-label">
                                 <i class="bi bi-star"></i>
@@ -839,25 +872,6 @@
                             </select>
                             <span asp-validation-for="EffortLevel" class="text-danger small"></span>
                         </div>
-
-                        @if (Model.IssueType == IssueType.Task)
-                        {
-                            <div class="form-card checklist-card checklist-panel-corner checklist-panel-corner--modal mt-3 mb-0" id="inlineSubtaskPanel">
-                                <div class="checklist-header">
-                                    <div class="checklist-title">
-                                        <i class="bi bi-list-check"></i>
-                                        چک لیست
-                                    </div>
-                                    <span class="checklist-progress-badge" id="inlineSubtaskProgressBadge">0/0</span>
-                                </div>
-                                <div class="subtask-input-row">
-                                    <input type="text" id="inlineSubtaskTitle" class="form-control" placeholder="عنوان کارک..." />
-                                    <button type="button" id="addInlineSubtaskBtn" class="btn btn-modern btn-modern-warning">افزودن</button>
-                                </div>
-                                <ul id="inlineSubtasksList" class="subtask-list"></ul>
-                                <div id="inlineSubtaskNote" class="chat-note"></div>
-                            </div>
-                        }
                     </div>
                 </div>
             </div>
@@ -908,6 +922,27 @@
                     <textarea asp-for="Description" class="form-control" rows="4"></textarea>
                 </div>
             </div>
+
+            @if (Model.IssueType == IssueType.Task)
+            {
+            <div class="checklist-page-bottom-row">
+                <div class="form-card checklist-card checklist-panel-corner checklist-panel-corner--page" id="inlineSubtaskPanel">
+                    <div class="checklist-header">
+                        <div class="checklist-title">
+                            <i class="bi bi-list-check"></i>
+                            چک لیست
+                        </div>
+                        <span class="checklist-progress-badge" id="inlineSubtaskProgressBadge">0/0</span>
+                    </div>
+                    <div class="subtask-input-row">
+                        <textarea id="inlineSubtaskTitle" class="form-control" rows="2" placeholder="عنوان کارک..."></textarea>
+                        <button type="button" id="addInlineSubtaskBtn" class="btn btn-modern btn-modern-warning">افزودن</button>
+                    </div>
+                    <ul id="inlineSubtasksList" class="subtask-list"></ul>
+                    <div id="inlineSubtaskNote" class="chat-note"></div>
+                </div>
+            </div>
+            }
 
             <!-- جزئیات تکمیلی -->
             <div class="form-card">
@@ -990,27 +1025,6 @@
                     </div>
                 </div>
             </div>
-
-            @if (Model.IssueType == IssueType.Task)
-            {
-            <div class="checklist-page-bottom-row">
-                <div class="form-card checklist-card checklist-panel-corner checklist-panel-corner--page" id="inlineSubtaskPanel">
-                    <div class="checklist-header">
-                        <div class="checklist-title">
-                            <i class="bi bi-list-check"></i>
-                            چک لیست
-                        </div>
-                        <span class="checklist-progress-badge" id="inlineSubtaskProgressBadge">0/0</span>
-                    </div>
-                    <div class="subtask-input-row">
-                        <input type="text" id="inlineSubtaskTitle" class="form-control" placeholder="عنوان کارک..." />
-                        <button type="button" id="addInlineSubtaskBtn" class="btn btn-modern btn-modern-warning">افزودن</button>
-                    </div>
-                    <ul id="inlineSubtasksList" class="subtask-list"></ul>
-                    <div id="inlineSubtaskNote" class="chat-note"></div>
-                </div>
-            </div>
-            }
         }
 
         <!-- دکمه‌های عملیات -->
@@ -1445,14 +1459,14 @@
         const currentTitle = titleSpan.textContent.trim();
         const completed = titleSpan.classList.contains('completed');
 
-        const input = document.createElement('input');
-        input.type = 'text';
+        const input = document.createElement('textarea');
         input.className = 'form-control form-control-sm subtask-edit-input';
         input.value = currentTitle;
         input.maxLength = 500;
+        input.rows = Math.min(6, Math.max(2, (currentTitle.match(/\n/g) || []).length + 2));
         titleSpan.replaceWith(input);
         input.focus();
-        input.select();
+        input.setSelectionRange(input.value.length, input.value.length);
 
         let saving = false;
         const restoreTitle = (text) => {
@@ -1495,7 +1509,7 @@
         };
 
         input.addEventListener('keydown', function (ev) {
-            if (ev.key === 'Enter') {
+            if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) {
                 ev.preventDefault();
                 commitEdit();
             } else if (ev.key === 'Escape') {
@@ -1618,7 +1632,7 @@
 
         addBtn.addEventListener('click', () => addInlineSubtask(parentTaskId));
         input.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
+            if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
                 event.preventDefault();
                 addInlineSubtask(parentTaskId);
             }

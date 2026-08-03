@@ -2810,6 +2810,155 @@
         color: #6b7280;
     }
     #featureTaskModal .feature-task-chat-note.error { color: #dc2626; }
+
+    #featureTaskModal .feature-checklist-card {
+        margin: 0 0 1rem;
+        background: #fff;
+        border: 1px solid #e8eaef;
+        border-radius: 12px;
+        padding: 0.85rem 1rem;
+        direction: rtl;
+        text-align: right;
+    }
+    #featureTaskModal .feature-checklist-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    #featureTaskModal .feature-checklist-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #1f2937;
+    }
+    #featureTaskModal .feature-checklist-title i { color: #4b5563; }
+    #featureTaskModal .feature-checklist-progress {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 2.4rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: #4b5563;
+        color: #fff;
+    }
+    #featureTaskModal .feature-subtask-input-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: start;
+        gap: 0.5rem;
+        margin-bottom: 0.65rem;
+    }
+    #featureTaskModal .feature-subtask-input-row textarea {
+        min-height: 2.5rem;
+        max-height: 8rem;
+        resize: vertical;
+        line-height: 1.4;
+    }
+    #featureTaskModal .feature-subtask-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+    }
+    #featureTaskModal .feature-subtask-item {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.5rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #fff;
+        padding: 0.5rem 0.6rem;
+    }
+    #featureTaskModal .feature-subtask-item-main {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.45rem;
+        flex: 1;
+        min-width: 0;
+    }
+    #featureTaskModal .feature-subtask-item-main input[type="checkbox"] {
+        width: 1.05rem;
+        height: 1.05rem;
+        margin-top: 0.15rem;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+    #featureTaskModal .feature-subtask-title {
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 0.88rem;
+        line-height: 1.4;
+        flex: 1;
+        min-width: 0;
+    }
+    #featureTaskModal .feature-subtask-title.completed {
+        text-decoration: line-through;
+        color: #9ca3af;
+    }
+    #featureTaskModal .feature-subtask-title.editable { cursor: text; }
+    #featureTaskModal .feature-subtask-title.editable:hover { color: #2563eb; }
+    #featureTaskModal .feature-subtask-edit-input {
+        font-size: 0.88rem;
+        padding: 0.2rem 0.45rem;
+        min-width: 0;
+        flex: 1;
+        min-height: 2.4rem;
+        max-height: 8rem;
+        resize: vertical;
+        line-height: 1.4;
+        white-space: pre-wrap;
+    }
+    #featureTaskModal .feature-subtask-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex-shrink: 0;
+    }
+    #featureTaskModal .feature-subtask-edit-btn,
+    #featureTaskModal .feature-subtask-delete-btn {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.85rem;
+        height: 1.85rem;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        color: #fff;
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+    #featureTaskModal .feature-subtask-edit-btn { background: #3b82f6; }
+    #featureTaskModal .feature-subtask-edit-btn:hover { background: #2563eb; }
+    #featureTaskModal .feature-subtask-delete-btn { background: #ef4444; }
+    #featureTaskModal .feature-subtask-delete-btn:hover { background: #dc2626; }
+    #featureTaskModal .feature-subtask-empty {
+        border: 1px dashed #d1d5db;
+        border-radius: 10px;
+        padding: 0.55rem;
+        font-size: 0.82rem;
+        color: #6b7280;
+        background: #f9fafb;
+        text-align: center;
+    }
+    #featureTaskModal .feature-subtask-note {
+        margin-top: 0.35rem;
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
 </style>
 
 <div class="modal fade" id="featureTaskModal" tabindex="-1" aria-labelledby="featureTaskModalLabel" aria-hidden="true">
@@ -2842,6 +2991,23 @@
                                 <label for="featureTaskDescription" class="form-label">توضیحات</label>
                                 <textarea class="form-control" id="featureTaskDescription" rows="5" placeholder="توضیحات کار را وارد کنید"></textarea>
                             </div>
+
+                            <div class="feature-checklist-card" id="featureChecklistPanel" style="display:none;" aria-label="چک لیست کارک‌ها">
+                                <div class="feature-checklist-header">
+                                    <div class="feature-checklist-title">
+                                        <i class="bi bi-list-check"></i>
+                                        چک لیست
+                                    </div>
+                                    <span class="feature-checklist-progress" id="featureSubtaskProgressBadge">0/0</span>
+                                </div>
+                                <div class="feature-subtask-input-row">
+                                    <textarea id="featureInlineSubtaskTitle" class="form-control" rows="2" placeholder="عنوان کارک..."></textarea>
+                                    <button type="button" id="featureAddSubtaskBtn" class="btn btn-sm btn-primary">افزودن</button>
+                                </div>
+                                <ul id="featureInlineSubtasksList" class="feature-subtask-list"></ul>
+                                <div id="featureInlineSubtaskNote" class="feature-subtask-note"></div>
+                            </div>
+
                             <div class="mb-3">
                                 <label class="form-label">سطح کار</label>
                                 <div class="form-control bg-light" id="featureTaskEffortDisplay">تعیین نشده</div>
@@ -2993,6 +3159,283 @@
             return div.innerHTML;
         }
 
+        var featureSubtaskParentId = null;
+        var featureSubtaskUiBound = false;
+
+        function setFeatureChecklistVisible(show, parentId) {
+            var panel = document.getElementById('featureChecklistPanel');
+            if (!panel) return;
+            if (show && parentId) {
+                panel.style.display = '';
+                featureSubtaskParentId = parentId;
+                ensureFeatureSubtaskUiBound();
+                var note = document.getElementById('featureInlineSubtaskNote');
+                if (note) note.textContent = '';
+                loadFeatureSubtasks(parentId);
+            } else {
+                panel.style.display = 'none';
+                featureSubtaskParentId = null;
+                var listEl = document.getElementById('featureInlineSubtasksList');
+                if (listEl) listEl.innerHTML = '';
+                var badge = document.getElementById('featureSubtaskProgressBadge');
+                if (badge) badge.textContent = '0/0';
+                var titleInput = document.getElementById('featureInlineSubtaskTitle');
+                if (titleInput) titleInput.value = '';
+            }
+        }
+
+        function isFeatureTaskTypeForChecklist(issueType) {
+            var et = issueType != null ? parseInt(issueType, 10) : parseInt(defaultIssueTypeBase, 10);
+            return et === 3;
+        }
+
+        function renderFeatureSubtasks(items) {
+            var listEl = document.getElementById('featureInlineSubtasksList');
+            if (!listEl) return;
+            var subtasks = Array.isArray(items) ? items : [];
+            var badge = document.getElementById('featureSubtaskProgressBadge');
+            if (badge) {
+                var done = subtasks.filter(function (s) { return s.isCompleted; }).length;
+                badge.textContent = subtasks.length ? (done + '/' + subtasks.length) : '0/0';
+            }
+            if (subtasks.length === 0) {
+                listEl.innerHTML = '<li class="feature-subtask-empty">هنوز کارکی ثبت نشده است.</li>';
+                return;
+            }
+            listEl.innerHTML = subtasks.map(function (st) {
+                var id = Number(st.id || 0);
+                var title = escapeHtml(st.title || '');
+                var completed = !!st.isCompleted;
+                return '<li class="feature-subtask-item" data-subtask-id="' + id + '">' +
+                    '<div class="feature-subtask-item-main">' +
+                    '<input type="checkbox" class="feature-subtask-check" data-subtask-id="' + id + '"' + (completed ? ' checked' : '') + ' />' +
+                    '<span class="feature-subtask-title editable' + (completed ? ' completed' : '') + '" data-subtask-id="' + id + '" title="برای ویرایش کلیک کنید">' + title + '</span>' +
+                    '</div>' +
+                    '<div class="feature-subtask-actions">' +
+                    '<button type="button" class="feature-subtask-edit-btn" data-subtask-id="' + id + '" title="ویرایش" aria-label="ویرایش"><i class="bi bi-pencil"></i></button>' +
+                    '<button type="button" class="feature-subtask-delete-btn" data-subtask-id="' + id + '" title="حذف" aria-label="حذف"><i class="bi bi-trash"></i></button>' +
+                    '</div></li>';
+            }).join('');
+        }
+
+        function beginFeatureSubtaskEdit(subtaskId) {
+            var listEl = document.getElementById('featureInlineSubtasksList');
+            if (!listEl) return;
+            var li = listEl.querySelector('.feature-subtask-item[data-subtask-id="' + subtaskId + '"]');
+            if (!li || li.querySelector('.feature-subtask-edit-input')) return;
+            var titleSpan = li.querySelector('.feature-subtask-title');
+            if (!titleSpan) return;
+            var currentTitle = titleSpan.textContent.trim();
+            var completed = titleSpan.classList.contains('completed');
+
+            var input = document.createElement('textarea');
+            input.className = 'form-control form-control-sm feature-subtask-edit-input';
+            input.value = currentTitle;
+            input.maxLength = 500;
+            input.rows = Math.min(6, Math.max(2, (currentTitle.match(/\n/g) || []).length + 2));
+            titleSpan.replaceWith(input);
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+
+            var saving = false;
+            var restoreTitle = function (text) {
+                var span = document.createElement('span');
+                span.className = 'feature-subtask-title editable' + (completed ? ' completed' : '');
+                span.dataset.subtaskId = String(subtaskId);
+                span.title = 'برای ویرایش کلیک کنید';
+                span.textContent = text;
+                input.replaceWith(span);
+            };
+            var cancelEdit = function () {
+                if (saving) return;
+                restoreTitle(currentTitle);
+            };
+            var commitEdit = async function () {
+                if (saving) return;
+                var noteEl = document.getElementById('featureInlineSubtaskNote');
+                var newTitle = input.value.trim();
+                if (!newTitle) {
+                    if (noteEl) noteEl.textContent = 'عنوان کارک الزامی است.';
+                    input.focus();
+                    return;
+                }
+                if (newTitle === currentTitle) {
+                    cancelEdit();
+                    return;
+                }
+                saving = true;
+                try {
+                    if (noteEl) noteEl.textContent = 'در حال ذخیره...';
+                    await updateFeatureSubtask(subtaskId, newTitle);
+                    if (noteEl) noteEl.textContent = '';
+                } catch (error) {
+                    if (noteEl) noteEl.textContent = (error && error.message) || 'ویرایش کارک انجام نشد.';
+                    saving = false;
+                    restoreTitle(currentTitle);
+                }
+            };
+
+            input.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) {
+                    ev.preventDefault();
+                    commitEdit();
+                } else if (ev.key === 'Escape') {
+                    ev.preventDefault();
+                    cancelEdit();
+                }
+            });
+            input.addEventListener('blur', function () {
+                setTimeout(function () {
+                    if (document.activeElement === input) return;
+                    commitEdit();
+                }, 120);
+            });
+        }
+
+        async function updateFeatureSubtask(subtaskId, title) {
+            var response = await fetch('/Tasks/UpdateInlineSubtask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subtaskId: subtaskId, title: title })
+            });
+            if (!response.ok) {
+                var errText = await response.text();
+                throw new Error(errText || 'update_failed');
+            }
+            var result = await response.json();
+            if (!result.success) throw new Error(result.message || 'update_failed');
+            if (featureSubtaskParentId) await loadFeatureSubtasks(featureSubtaskParentId);
+        }
+
+        async function loadFeatureSubtasks(parentId) {
+            var listEl = document.getElementById('featureInlineSubtasksList');
+            if (!listEl) return;
+            try {
+                var response = await fetch('/Tasks/GetSubtasks?parentId=' + parentId, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) throw new Error('load_failed');
+                var data = await response.json();
+                renderFeatureSubtasks(data);
+            } catch {
+                listEl.innerHTML = '<li class="feature-subtask-empty">خطا در دریافت کارک‌ها.</li>';
+            }
+        }
+
+        async function addFeatureSubtask(parentId) {
+            var input = document.getElementById('featureInlineSubtaskTitle');
+            var noteEl = document.getElementById('featureInlineSubtaskNote');
+            if (!input) return;
+            var title = (input.value || '').trim();
+            if (!title) {
+                if (noteEl) noteEl.textContent = 'عنوان کارک الزامی است.';
+                return;
+            }
+            try {
+                if (noteEl) noteEl.textContent = 'در حال افزودن...';
+                var response = await fetch('/Tasks/AddInlineSubtask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ parentId: parentId, title: title })
+                });
+                if (!response.ok) {
+                    var err = await response.text();
+                    throw new Error(err || 'add_failed');
+                }
+                input.value = '';
+                if (noteEl) noteEl.textContent = '';
+                await loadFeatureSubtasks(parentId);
+            } catch (error) {
+                if (noteEl) noteEl.textContent = (error && error.message) || 'افزودن کارک انجام نشد.';
+            }
+        }
+
+        async function toggleFeatureSubtask(subtaskId) {
+            var noteEl = document.getElementById('featureInlineSubtaskNote');
+            try {
+                var response = await fetch('/Tasks/ToggleInlineSubtask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subtaskId: subtaskId })
+                });
+                if (!response.ok) {
+                    var err = await response.text();
+                    throw new Error(err || 'toggle_failed');
+                }
+                if (featureSubtaskParentId) await loadFeatureSubtasks(featureSubtaskParentId);
+            } catch (error) {
+                if (noteEl) noteEl.textContent = (error && error.message) || 'تغییر وضعیت کارک انجام نشد.';
+                if (featureSubtaskParentId) await loadFeatureSubtasks(featureSubtaskParentId);
+            }
+        }
+
+        async function deleteFeatureSubtask(subtaskId) {
+            var noteEl = document.getElementById('featureInlineSubtaskNote');
+            if (!confirm('این کارک حذف شود؟')) return;
+            try {
+                var response = await fetch('/Tasks/DeleteTask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ taskId: subtaskId })
+                });
+                if (!response.ok) {
+                    var err = await response.text();
+                    throw new Error(err || 'delete_failed');
+                }
+                if (featureSubtaskParentId) await loadFeatureSubtasks(featureSubtaskParentId);
+            } catch (error) {
+                if (noteEl) noteEl.textContent = (error && error.message) || 'حذف کارک انجام نشد.';
+            }
+        }
+
+        function ensureFeatureSubtaskUiBound() {
+            if (featureSubtaskUiBound) return;
+            var addBtn = document.getElementById('featureAddSubtaskBtn');
+            var input = document.getElementById('featureInlineSubtaskTitle');
+            var listEl = document.getElementById('featureInlineSubtasksList');
+            if (!addBtn || !input) return;
+            featureSubtaskUiBound = true;
+            addBtn.addEventListener('click', function () {
+                if (featureSubtaskParentId) addFeatureSubtask(featureSubtaskParentId);
+            });
+            input.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) {
+                    ev.preventDefault();
+                    if (featureSubtaskParentId) addFeatureSubtask(featureSubtaskParentId);
+                }
+            });
+            if (listEl && !listEl.dataset.delegationBound) {
+                listEl.dataset.delegationBound = '1';
+                listEl.addEventListener('change', function (e) {
+                    var t = e.target;
+                    if (t.classList && t.classList.contains('feature-subtask-check')) {
+                        var sid = parseInt(t.getAttribute('data-subtask-id'), 10);
+                        if (sid) toggleFeatureSubtask(sid);
+                    }
+                });
+                listEl.addEventListener('click', function (e) {
+                    var editBtn = e.target.closest('.feature-subtask-edit-btn');
+                    if (editBtn) {
+                        e.preventDefault();
+                        var sid = parseInt(editBtn.getAttribute('data-subtask-id'), 10);
+                        if (sid) beginFeatureSubtaskEdit(sid);
+                        return;
+                    }
+                    var titleEl = e.target.closest('.feature-subtask-title.editable');
+                    if (titleEl) {
+                        var sid2 = parseInt(titleEl.getAttribute('data-subtask-id'), 10);
+                        if (sid2) beginFeatureSubtaskEdit(sid2);
+                        return;
+                    }
+                    var btn = e.target.closest('.feature-subtask-delete-btn');
+                    if (btn) {
+                        var sid3 = parseInt(btn.getAttribute('data-subtask-id'), 10);
+                        if (sid3) deleteFeatureSubtask(sid3);
+                    }
+                });
+            }
+        }
+
         function buildTaskActionsHtml(taskId, title) {
             var btn = document.createElement('div');
             btn.className = 'btn-group btn-group-sm';
@@ -3042,6 +3485,7 @@
             if (effortDisplay) effortDisplay.textContent = 'تعیین نشده';
             originalFeatureTask = null;
             resetFeatureTaskAttachments();
+            setFeatureChecklistVisible(false);
         }
 
         function setFeatureTaskModalMode(mode) {
@@ -3066,6 +3510,7 @@
                     if (icon) icon.className = 'bi bi-plus-lg me-1';
                 }
                 if (chatSection) chatSection.style.display = 'none';
+                setFeatureChecklistVisible(false);
             }
         }
 
@@ -3110,6 +3555,11 @@
                 if (effortSelect) effortSelect.value = effort;
                 if (effortDisplay) effortDisplay.textContent = effortLabels[effort] || 'تعیین نشده';
                 loadFeatureTaskChat(taskId);
+                if (isFeatureTaskTypeForChecklist(taskData.issueType)) {
+                    setFeatureChecklistVisible(true, taskId);
+                } else {
+                    setFeatureChecklistVisible(false);
+                }
             } catch (err) {
                 alert(err.message || 'خطا در بارگذاری کار');
                 bootstrap.Modal.getInstance(document.getElementById('featureTaskModal'))?.hide();
@@ -3729,6 +4179,9 @@
                     resetFeatureTaskAttachments();
                     if (createResult.taskId) {
                         loadFeatureTaskChat(createResult.taskId);
+                        if (isFeatureTaskTypeForChecklist(document.getElementById('featureTaskIssueType').value)) {
+                            setFeatureChecklistVisible(true, createResult.taskId);
+                        }
                     }
                     setFeatureTaskChatNote('کار ایجاد شد. می‌توانید پیوست اضافه کنید.');
                 }
