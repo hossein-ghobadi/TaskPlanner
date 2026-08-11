@@ -44,19 +44,35 @@ namespace TaskPlanner.Application.Services.LeaveService
             CancellationToken cancellationToken = default)
         {
             var colleagueIds = await GetColleagueIdsAsync(adminUserId, cancellationToken);
-            if (colleagueIds.Count == 0)
-                return Array.Empty<ColleagueSelectDto>();
 
-            return await _userManager.Users
+            var colleagues = colleagueIds.Count == 0
+                ? new List<ColleagueSelectDto>()
+                : await _userManager.Users
+                    .AsNoTracking()
+                    .Where(u => colleagueIds.Contains(u.Id) && u.IsActive && !u.IsRemove)
+                    .OrderBy(u => u.FullName)
+                    .Select(u => new ColleagueSelectDto
+                    {
+                        Id = u.Id,
+                        DisplayName = string.IsNullOrWhiteSpace(u.FullName) ? u.UserName ?? u.Id : u.FullName
+                    })
+                    .ToListAsync(cancellationToken);
+
+            var self = await _userManager.Users
                 .AsNoTracking()
-                .Where(u => colleagueIds.Contains(u.Id) && u.IsActive && !u.IsRemove)
-                .OrderBy(u => u.FullName)
+                .Where(u => u.Id == adminUserId && u.IsActive && !u.IsRemove)
                 .Select(u => new ColleagueSelectDto
                 {
                     Id = u.Id,
-                    DisplayName = string.IsNullOrWhiteSpace(u.FullName) ? u.UserName ?? u.Id : u.FullName
+                    DisplayName = (string.IsNullOrWhiteSpace(u.FullName) ? u.UserName ?? u.Id : u.FullName) + " (خودم)"
                 })
-                .ToListAsync(cancellationToken);
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (self == null)
+                return colleagues;
+
+            colleagues.Insert(0, self);
+            return colleagues;
         }
 
         public async Task<LeaveRecordListResultDto> GetMyRecordsAsync(
@@ -455,9 +471,13 @@ namespace TaskPlanner.Application.Services.LeaveService
             string colleagueUserId,
             CancellationToken cancellationToken)
         {
-            var colleagueIds = await GetColleagueIdsAsync(adminUserId, cancellationToken);
-            if (!colleagueIds.Contains(colleagueUserId))
-                throw new InvalidOperationException("همکار انتخاب‌شده در لیست همکاران شما نیست.");
+            // اجازه ثبت مرخصی برای خود ادمین
+            if (colleagueUserId != adminUserId)
+            {
+                var colleagueIds = await GetColleagueIdsAsync(adminUserId, cancellationToken);
+                if (!colleagueIds.Contains(colleagueUserId))
+                    throw new InvalidOperationException("همکار انتخاب‌شده در لیست همکاران شما نیست.");
+            }
 
             var isActive = await _userManager.Users
                 .AnyAsync(u => u.Id == colleagueUserId && u.IsActive && !u.IsRemove, cancellationToken);
