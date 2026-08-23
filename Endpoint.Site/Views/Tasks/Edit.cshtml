@@ -1418,7 +1418,12 @@
         const listEl = document.getElementById('inlineSubtasksList');
         if (!listEl) return;
 
-        const subtasks = Array.isArray(items) ? items : [];
+        const subtasks = [...(Array.isArray(items) ? items : [])].sort((a, b) => {
+            const timeA = Date.parse(a?.createdAt || '') || 0;
+            const timeB = Date.parse(b?.createdAt || '') || 0;
+            if (timeB !== timeA) return timeB - timeA;
+            return Number(b?.id || 0) - Number(a?.id || 0);
+        });
         const badge = document.getElementById('inlineSubtaskProgressBadge');
         if (badge) {
             const done = subtasks.filter(s => s.isCompleted).length;

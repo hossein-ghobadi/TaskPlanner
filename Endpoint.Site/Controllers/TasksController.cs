@@ -2164,12 +2164,14 @@ namespace Endpoint.Site.Controllers
 
             var subtasks = await _context.TaskItems
                 .Where(t => t.ParentTaskId == parentId)
-                .OrderBy(t => t.CreatedAt)
+                .OrderByDescending(t => t.CreatedAt)
+                .ThenByDescending(t => t.Id)
                 .Select(t => new
                 {
                     id = t.Id,
                     title = t.Title,
-                    isCompleted = t.IsCompleted
+                    isCompleted = t.IsCompleted,
+                    createdAt = t.CreatedAt
                 })
                 .ToListAsync();
 

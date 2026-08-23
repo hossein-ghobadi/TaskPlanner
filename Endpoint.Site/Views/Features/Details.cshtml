@@ -3189,10 +3189,19 @@
             return et === 3;
         }
 
+        function sortSubtasksNewestFirst(items) {
+            return (Array.isArray(items) ? items.slice() : []).sort(function (a, b) {
+                var timeA = Date.parse((a && a.createdAt) || '') || 0;
+                var timeB = Date.parse((b && b.createdAt) || '') || 0;
+                if (timeB !== timeA) return timeB - timeA;
+                return Number((b && b.id) || 0) - Number((a && a.id) || 0);
+            });
+        }
+
         function renderFeatureSubtasks(items) {
             var listEl = document.getElementById('featureInlineSubtasksList');
             if (!listEl) return;
-            var subtasks = Array.isArray(items) ? items : [];
+            var subtasks = sortSubtasksNewestFirst(items);
             var badge = document.getElementById('featureSubtaskProgressBadge');
             if (badge) {
                 var done = subtasks.filter(function (s) { return s.isCompleted; }).length;

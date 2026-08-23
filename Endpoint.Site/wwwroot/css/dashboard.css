@@ -3,6 +3,12 @@
 .dashboard-overview-page {
     max-width: 1320px;
     margin-inline: auto;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+.dashboard-overview-page .row > [class*="col-"] {
+    min-width: 0;
 }
 
 .dashboard-overview-header .dashboard-breadcrumb {
@@ -56,6 +62,8 @@ a:hover .dash-stat-card {
     border-radius: 14px;
     padding: 1.15rem 1.25rem;
     box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    min-width: 0;
+    overflow: hidden;
 }
 
 .dash-panel--muted {
@@ -78,10 +86,37 @@ a:hover .dash-stat-card {
     padding: 0.45rem 0;
     border-bottom: 1px solid #f1f5f9;
     font-size: 0.9rem;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .dash-quick-list li:last-child {
     border-bottom: none;
+}
+
+.dash-quick-list li > *,
+.dash-quick-list a {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.dash-due-task-link {
+    width: 100%;
+    align-items: flex-start;
+}
+
+.dash-due-task-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.dash-due-task-project {
+    flex: 0 1 auto;
+    max-width: 42%;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .dash-meetings-table th {

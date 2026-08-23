@@ -211,6 +211,71 @@
     color: #fff;
     border-color: #0d6efd;
     }
+    .btn-toggle .board-filter-remove-icon {
+    display: none;
+    margin-inline-start: 0.25rem;
+    }
+    .btn-toggle.active .board-filter-remove-icon {
+    display: inline-block;
+    }
+    .board-search-wrap {
+    position: relative;
+    min-width: 200px;
+    flex: 1 1 200px;
+    }
+    .board-search-wrap .toolbar-input {
+    width: 100%;
+    padding-left: 2rem;
+    }
+    .board-search-clear {
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    line-height: 1;
+    cursor: pointer;
+    }
+    .board-search-clear:hover {
+    background: #f1f3f5;
+    color: #dc3545;
+    }
+    .board-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    }
+    .board-filter-chip-remove {
+    border: none;
+    background: rgba(255, 255, 255, 0.25);
+    color: inherit;
+    width: 1.15rem;
+    height: 1.15rem;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    cursor: pointer;
+    }
+    .board-filter-chip-remove:hover {
+    background: rgba(255, 255, 255, 0.45);
+    }
+    #showToolbarBtn.has-active-filters {
+    border-color: #0d6efd;
+    color: #0d6efd;
+    background: #e7f1ff;
+    }
     .board-layout {
     width: 100%;
     }
@@ -1173,6 +1238,11 @@
     flex-direction: column;
     align-items: stretch;
     gap: 0.5rem;
+    }
+    .board-search-wrap {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
     }
     .toolbar-input,
     .toolbar-select {
@@ -2657,7 +2727,12 @@
 
         <!-- فیلترها (اختیاری - می‌تواند مخفی شود) -->
         <div class="board-toolbar mt-3" id="boardToolbar" style="display: none;">
-            <input type="text" id="boardSearchInput" class="form-control toolbar-input" placeholder="جستجو..." style="min-width: 200px;">
+            <div class="board-search-wrap">
+                <input type="text" id="boardSearchInput" class="form-control toolbar-input" placeholder="جستجو..." autocomplete="off">
+                <button type="button" id="clearBoardSearchBtn" class="board-search-clear" title="حذف جستجو" aria-label="حذف جستجو">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
             <select id="statusFilterSelect" class="form-select toolbar-select" style="min-width: 150px;">
                 <option value="all">همه ستون‌ها</option>
                 @foreach (var status in Model.Statuses.OrderBy(s => s.Order))
@@ -2674,13 +2749,20 @@
                         <option value="@member.UserId">@(member.FullName ?? member.UserName)</option>
                     }
                 </select>
-                <span id="selectedAssigneeBadge" class="badge bg-primary d-none" style="font-size: 0.85rem;">
-                    <i class="bi bi-funnel-fill"></i> 
+                <span id="selectedAssigneeBadge" class="badge bg-primary d-none board-filter-chip" style="font-size: 0.85rem;">
+                    <i class="bi bi-funnel-fill"></i>
                     <span id="selectedAssigneeName"></span>
+                    <button type="button" class="board-filter-chip-remove" onclick="clearAssigneeFilter()" title="حذف فیلتر فرد" aria-label="حذف فیلتر فرد">
+                        <i class="bi bi-x"></i>
+                    </button>
                 </span>
             </div>
             <button type="button" id="dueSoonToggle" class="btn btn-toggle">
                 <i class="bi bi-alarm"></i> موعد نزدیک
+                <i class="bi bi-x board-filter-remove-icon"></i>
+            </button>
+            <button type="button" id="clearBoardFiltersBtn" class="btn btn-sm btn-outline-danger" onclick="clearBoardFilters()" style="display: none;">
+                <i class="bi bi-x-circle"></i> حذف فیلترها
             </button>
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleToolbar()">
                 <i class="bi bi-x"></i> بستن فیلترها
@@ -2689,6 +2771,7 @@
         <div class="mt-2 board-view-toggle-row">
             <button type="button" class="btn btn-sm btn-outline-secondary" id="showToolbarBtn" onclick="toggleToolbar()">
                 <i class="bi bi-funnel"></i> نمایش فیلترها
+                <span id="activeFiltersBadge" class="badge bg-primary ms-1 d-none">۰</span>
             </button>
             <button type="button" class="btn btn-sm btn-outline-primary" id="showBacklogBtn" onclick="showBacklogView()">
                 <i class="bi bi-inbox"></i> بک لاگ
@@ -2879,7 +2962,7 @@
                                         @if (issue.ChildIssues.Count>0 )
                                         {
                                             <div class="subtasks-container mt-2" id="subtasks-@issue.Id" style="display: none; border-top: 1px solid #dee2e6; padding-top: 8px;">
-                                                @foreach (var subtask in issue.ChildIssues.OrderBy(c => c.CreatedAt))
+                                                @foreach (var subtask in issue.ChildIssues.OrderByDescending(c => c.CreatedAt).ThenByDescending(c => c.Id))
                                                 {
                                                     <div class="subtask-item d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded" style="font-size: 0.85rem;">
                                                         <div class="d-flex align-items-center gap-2 flex-grow-1">
@@ -3486,14 +3569,71 @@
             sessionStorage.setItem(BOARD_STATE_KEY, JSON.stringify(state));
         }
 
-        function restoreBoardFiltersFromState(state) {
-            if (!state?.filters) return;
-            const f = state.filters;
-            boardFilters.text = f.text || '';
-            boardFilters.status = f.status || 'all';
-            boardFilters.assignee = f.assignee || 'all';
-            boardFilters.dueSoon = !!f.dueSoon;
+        function hasActiveBoardFilters() {
+            return !!(boardFilters.text && boardFilters.text.trim())
+                || (boardFilters.status && boardFilters.status !== 'all')
+                || (boardFilters.assignee && boardFilters.assignee !== 'all')
+                || !!boardFilters.dueSoon;
+        }
 
+        function countActiveBoardFilters() {
+            let count = 0;
+            if (boardFilters.text && boardFilters.text.trim()) count++;
+            if (boardFilters.status && boardFilters.status !== 'all') count++;
+            if (boardFilters.assignee && boardFilters.assignee !== 'all') count++;
+            if (boardFilters.dueSoon) count++;
+            return count;
+        }
+
+        function updateAssigneeBadge() {
+            const badge = document.getElementById('selectedAssigneeBadge');
+            const badgeName = document.getElementById('selectedAssigneeName');
+            const assigneeSelect = document.getElementById('assigneeFilterSelect');
+            if (!badge || !badgeName || !assigneeSelect) return;
+
+            const selectedValue = assigneeSelect.value;
+            if (selectedValue === 'all') {
+                badge.classList.add('d-none');
+                return;
+            }
+
+            const selectedText = assigneeSelect.options[assigneeSelect.selectedIndex]?.text || '';
+            badgeName.textContent = selectedValue === 'unassigned' ? 'تخصیص نیافته' : selectedText;
+            badge.classList.remove('d-none');
+        }
+
+        function updateBoardFilterChrome() {
+            const active = hasActiveBoardFilters();
+            const count = countActiveBoardFilters();
+            const clearBtn = document.getElementById('clearBoardFiltersBtn');
+            if (clearBtn) {
+                clearBtn.style.display = active ? '' : 'none';
+            }
+
+            const searchClear = document.getElementById('clearBoardSearchBtn');
+            if (searchClear) {
+                searchClear.style.display = (boardFilters.text && boardFilters.text.trim()) ? 'flex' : 'none';
+            }
+
+            const showBtn = document.getElementById('showToolbarBtn');
+            if (showBtn) {
+                showBtn.classList.toggle('has-active-filters', active);
+            }
+
+            const badge = document.getElementById('activeFiltersBadge');
+            if (badge) {
+                if (active) {
+                    badge.textContent = toPersianDigits(count);
+                    badge.classList.remove('d-none');
+                } else {
+                    badge.classList.add('d-none');
+                }
+            }
+
+            updateAssigneeBadge();
+        }
+
+        function syncBoardFilterControls() {
             const searchInput = document.getElementById('boardSearchInput');
             const statusSelect = document.getElementById('statusFilterSelect');
             const assigneeSelect = document.getElementById('assigneeFilterSelect');
@@ -3502,18 +3642,43 @@
             if (statusSelect) statusSelect.value = boardFilters.status;
             if (assigneeSelect) assigneeSelect.value = boardFilters.assignee;
             if (dueToggle) dueToggle.classList.toggle('active', boardFilters.dueSoon);
+            updateBoardFilterChrome();
+        }
 
-            const badge = document.getElementById('selectedAssigneeBadge');
-            const badgeName = document.getElementById('selectedAssigneeName');
-            if (badge && badgeName && assigneeSelect) {
-                if (boardFilters.assignee === 'all') {
-                    badge.classList.add('d-none');
-                } else {
-                    const opt = assigneeSelect.options[assigneeSelect.selectedIndex];
-                    badgeName.textContent = boardFilters.assignee === 'unassigned' ? 'تخصیص نیافته' : (opt?.text || '');
-                    badge.classList.remove('d-none');
-                }
+        function clearBoardFilters() {
+            boardFilters.text = '';
+            boardFilters.status = 'all';
+            boardFilters.assignee = 'all';
+            boardFilters.dueSoon = false;
+            syncBoardFilterControls();
+            applyBoardFilters();
+        }
+
+        function clearAssigneeFilter() {
+            boardFilters.assignee = 'all';
+            const assigneeSelect = document.getElementById('assigneeFilterSelect');
+            if (assigneeSelect) assigneeSelect.value = 'all';
+            applyBoardFilters();
+        }
+
+        function clearSearchFilter() {
+            boardFilters.text = '';
+            const searchInput = document.getElementById('boardSearchInput');
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
             }
+            applyBoardFilters();
+        }
+
+        function restoreBoardFiltersFromState(state) {
+            if (!state?.filters) return;
+            const f = state.filters;
+            boardFilters.text = f.text || '';
+            boardFilters.status = f.status || 'all';
+            boardFilters.assignee = f.assignee || 'all';
+            boardFilters.dueSoon = !!f.dueSoon;
+            syncBoardFilterControls();
         }
 
         function restoreBoardScrollFromState(state) {
@@ -3811,6 +3976,7 @@
             updateIssueCounts();
             refreshEmptyColumnStyles();
             persistBoardFilters();
+            updateBoardFilterChrome();
             if (typeof updateBacklogSelectionUI === 'function') {
                 updateBacklogSelectionUI();
             }
@@ -3829,11 +3995,20 @@
             const statusSelect = document.getElementById('statusFilterSelect');
             const assigneeSelect = document.getElementById('assigneeFilterSelect');
             const dueToggle = document.getElementById('dueSoonToggle');
+            const searchClearBtn = document.getElementById('clearBoardSearchBtn');
 
             if (searchInput) {
                 searchInput.addEventListener('input', (e) => {
                     boardFilters.text = e.target.value || '';
                     applyBoardFilters();
+                });
+            }
+
+            if (searchClearBtn) {
+                searchClearBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    clearSearchFilter();
                 });
             }
 
@@ -3848,32 +4023,9 @@
             if (assigneeSelect) {
                 assigneeSelect.addEventListener('change', (e) => {
                     boardFilters.assignee = e.target.value || 'all';
-                    updateAssigneeBadge();
                     applyBoardFilters();
                 });
             }
-            
-            // تابع برای به‌روزرسانی نمایش مسئول انتخاب شده
-            function updateAssigneeBadge() {
-                const badge = document.getElementById('selectedAssigneeBadge');
-                const badgeName = document.getElementById('selectedAssigneeName');
-                const assigneeSelect = document.getElementById('assigneeFilterSelect');
-                
-                if (!badge || !badgeName || !assigneeSelect) return;
-                
-                const selectedValue = assigneeSelect.value;
-                const selectedText = assigneeSelect.options[assigneeSelect.selectedIndex].text;
-                
-                if (selectedValue === 'all') {
-                    badge.classList.add('d-none');
-                } else {
-                    badgeName.textContent = selectedValue === 'unassigned' ? 'تخصیص نیافته' : selectedText;
-                    badge.classList.remove('d-none');
-                }
-            }
-            
-            // مقداردهی اولیه
-            updateAssigneeBadge();
 
             if (dueToggle) {
                 dueToggle.addEventListener('click', () => {
@@ -3882,6 +4034,8 @@
                     applyBoardFilters();
                 });
             }
+
+            updateBoardFilterChrome();
         }
 
         function setQuickTaskTarget(statusId, statusName) {
@@ -5370,10 +5524,19 @@
         let boardSubtaskParentId = null;
         let boardSubtaskPanelBound = false;
 
+        function sortSubtasksNewestFirst(items) {
+            return [...(Array.isArray(items) ? items : [])].sort((a, b) => {
+                const timeA = Date.parse(a?.createdAt || '') || 0;
+                const timeB = Date.parse(b?.createdAt || '') || 0;
+                if (timeB !== timeA) return timeB - timeA;
+                return Number(b?.id || 0) - Number(a?.id || 0);
+            });
+        }
+
         function renderBoardSubtasks(items) {
             const listEl = document.getElementById('boardInlineSubtasksList');
             if (!listEl) return;
-            const subtasks = Array.isArray(items) ? items : [];
+            const subtasks = sortSubtasksNewestFirst(items);
             const badge = document.getElementById('boardSubtaskProgressBadge');
             if (badge) {
                 const done = subtasks.filter(s => s.isCompleted).length;
@@ -6838,6 +7001,7 @@
                     toolbar.style.display = 'none';
                     showBtn.style.display = 'block';
                 }
+                updateBoardFilterChrome();
             }
         }
 
@@ -7669,6 +7833,9 @@
             window.deleteTask = deleteTask;
             window.toggleSubtask = toggleSubtask;
             window.toggleToolbar = toggleToolbar;
+            window.clearBoardFilters = clearBoardFilters;
+            window.clearAssigneeFilter = clearAssigneeFilter;
+            window.clearSearchFilter = clearSearchFilter;
             window.openAddStatusModal = openAddStatusModal;
             window.submitStatus = submitStatus;
             window.submitSubtask = submitSubtask;

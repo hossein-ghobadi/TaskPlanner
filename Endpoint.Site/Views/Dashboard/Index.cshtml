@@ -160,9 +160,9 @@
                         @foreach (var t in Model.DueTasksToday)
                         {
                             <li>
-                                <a href="@Url.Action("Details", "Projects", new { id = t.ProjectId })" class="text-decoration-none d-flex justify-content-between align-items-center gap-2">
-                                    <span class="text-truncate">@t.Title</span>
-                                    <small class="text-muted text-nowrap">(@t.ProjectName)</small>
+                                <a href="@Url.Action("Details", "Projects", new { id = t.ProjectId })" class="text-decoration-none d-flex justify-content-between align-items-start gap-2 dash-due-task-link">
+                                    <span class="dash-due-task-title">@t.Title</span>
+                                    <small class="text-muted dash-due-task-project">(@t.ProjectName)</small>
                                 </a>
                             </li>
                         }
@@ -186,9 +186,9 @@
                         @foreach (var t in Model.DueTasksTomorrow)
                         {
                             <li>
-                                <a href="@Url.Action("Details", "Projects", new { id = t.ProjectId })" class="text-decoration-none d-flex justify-content-between align-items-center gap-2">
-                                    <span class="text-truncate">@t.Title</span>
-                                    <small class="text-muted text-nowrap">(@t.ProjectName)</small>
+                                <a href="@Url.Action("Details", "Projects", new { id = t.ProjectId })" class="text-decoration-none d-flex justify-content-between align-items-start gap-2 dash-due-task-link">
+                                    <span class="dash-due-task-title">@t.Title</span>
+                                    <small class="text-muted dash-due-task-project">(@t.ProjectName)</small>
                                 </a>
                             </li>
                         }
