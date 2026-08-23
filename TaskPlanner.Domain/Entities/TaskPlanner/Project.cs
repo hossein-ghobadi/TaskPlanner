@@ -41,6 +41,11 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+        /// <summary>
+        /// اگر true باشد پروژه بسته است و در لیست پیش‌فرض نمایش داده نمی‌شود.
+        /// </summary>
+        public bool IsClosed { get; set; }
+
         // اعضای پروژه
         public ICollection<ProjectMember> Members { get; set; } = new List<ProjectMember>();
         public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();

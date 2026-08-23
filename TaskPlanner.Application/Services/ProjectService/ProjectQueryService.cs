@@ -310,7 +310,7 @@ namespace TaskPlanner.Application.Services.ProjectService
             return selectableUsers;
         }
 
-        public async Task<ProjectDashboardDto> GetProjectsDashboardAsync(string userId, int page = 1, int pageSize = 4)
+        public async Task<ProjectDashboardDto> GetProjectsDashboardAsync(string userId, int page = 1, int pageSize = 4, ProjectListFilter status = ProjectListFilter.Open)
         {
             var userPhone = await _userManager.Users
                 .AsNoTracking()
@@ -318,7 +318,7 @@ namespace TaskPlanner.Application.Services.ProjectService
                 .Select(u => u.Phone)
                 .FirstOrDefaultAsync();
 
-            var cardsPage = await GetProjectCardsPageAsync(userId, page, pageSize);
+            var cardsPage = await GetProjectCardsPageAsync(userId, page, pageSize, status);
             var pendingInviteCount = string.IsNullOrWhiteSpace(userPhone)
                 ? 0
                 : await _context.ProjectInvitations
@@ -333,11 +333,15 @@ namespace TaskPlanner.Application.Services.ProjectService
                 .Where(n => n.UserId == userId)
                 .CountAsync();
 
+            var allProjectsCount = await GetAccessibleProjectsQuery(userId, ProjectListFilter.All).CountAsync();
+
             return new ProjectDashboardDto
             {
                 Projects = cardsPage.Projects,
                 ActiveSprintByProject = cardsPage.ActiveSprintByProject,
                 TotalProjectsCount = cardsPage.TotalProjectsCount,
+                AllProjectsCount = allProjectsCount,
+                Status = status,
                 Page = cardsPage.Page,
                 PageSize = cardsPage.PageSize,
                 PendingInviteCount = pendingInviteCount,
@@ -346,15 +350,13 @@ namespace TaskPlanner.Application.Services.ProjectService
             };
         }
 
-        public async Task<ProjectCardsPageDto> GetProjectCardsPageAsync(string userId, int page = 1, int pageSize = 4)
+        public async Task<ProjectCardsPageDto> GetProjectCardsPageAsync(string userId, int page = 1, int pageSize = 4, ProjectListFilter status = ProjectListFilter.Open)
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 4;
             if (pageSize > 48) pageSize = 48;
 
-            var baseQuery = _context.Projects
-                .AsNoTracking()
-                .Where(p => p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId));
+            var baseQuery = GetAccessibleProjectsQuery(userId, status);
 
             var totalProjectsCount = await baseQuery.CountAsync();
             var skip = (page - 1) * pageSize;
@@ -371,7 +373,8 @@ namespace TaskPlanner.Application.Services.ProjectService
                     TaskCount = p.Tasks.Count(t =>
                         t.ProjectIssueTypeId != null
                             ? t.ProjectIssueType != null && t.ProjectIssueType.CanAddToSprint
-                            : (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug))
+                            : (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug)),
+                    IsClosed = p.IsClosed
                 })
                 .ToListAsync();
 
@@ -390,8 +393,23 @@ namespace TaskPlanner.Application.Services.ProjectService
                 Projects = projects,
                 ActiveSprintByProject = activeSprintByProject,
                 TotalProjectsCount = totalProjectsCount,
+                Status = status,
                 Page = page,
                 PageSize = pageSize
+            };
+        }
+
+        private IQueryable<Project> GetAccessibleProjectsQuery(string userId, ProjectListFilter status)
+        {
+            var query = _context.Projects
+                .AsNoTracking()
+                .Where(p => p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId));
+
+            return status switch
+            {
+                ProjectListFilter.Closed => query.Where(p => p.IsClosed),
+                ProjectListFilter.All => query,
+                _ => query.Where(p => !p.IsClosed)
             };
         }
 

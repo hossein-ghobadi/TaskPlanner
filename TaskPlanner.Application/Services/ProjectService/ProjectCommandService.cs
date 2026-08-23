@@ -220,6 +220,8 @@ namespace TaskPlanner.Application.Services.ProjectService
             // بروزرسانی اطلاعات پروژه
             project.Name = dto.Name;
             project.Description = dto.Description;
+            project.IsClosed = dto.IsClosed;
+            project.UpdatedAt = DateTime.UtcNow;
 
             var currentMembers = project.Members.Select(m => m.UserId).ToList();
             var newMembers = dto.SelectedUserIds ?? new List<string>();
@@ -438,6 +440,24 @@ namespace TaskPlanner.Application.Services.ProjectService
             _context.ProjectMembers.Remove(member);
 
             await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// بستن یا باز کردن پروژه — فقط سازنده می‌تواند این کار را انجام دهد.
+        /// </summary>
+        public async Task<bool> ToggleProjectClosedAsync(int projectId, string userId)
+        {
+            var project = await _context.Projects.FindAsync(projectId);
+            if (project == null)
+                throw new InvalidOperationException("پروژه یافت نشد.");
+
+            if (project.CreatorUserId != userId)
+                throw new InvalidOperationException("فقط سازنده پروژه می‌تواند آن را ببندد یا باز کند.");
+
+            project.IsClosed = !project.IsClosed;
+            project.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return project.IsClosed;
         }
     }
 }

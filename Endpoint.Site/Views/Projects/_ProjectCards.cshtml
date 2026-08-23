@@ -9,9 +9,10 @@
 
 @foreach (var project in projects)
 {
-    @await Html.PartialAsync("_ProjectCard", project, new ViewDataDictionary(ViewData)
-    {
-        ["CurrentUserId"] = currentUserId,
-        ["SprintLookup"] = sprintLookup
-    })
+        @await Html.PartialAsync("_ProjectCard", project, new ViewDataDictionary(ViewData)
+        {
+            ["CurrentUserId"] = currentUserId,
+            ["SprintLookup"] = sprintLookup,
+            ["Status"] = ViewData["Status"]
+        })
 }

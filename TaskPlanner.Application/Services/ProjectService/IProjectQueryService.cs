@@ -46,12 +46,12 @@ namespace TaskPlanner.Application.Services.ProjectService
         /// <summary>
         /// دریافت داده‌های داشبورد پروژه‌ها برای صفحه Index
         /// </summary>
-        Task<ProjectDashboardDto> GetProjectsDashboardAsync(string userId, int page = 1, int pageSize = 4);
+        Task<ProjectDashboardDto> GetProjectsDashboardAsync(string userId, int page = 1, int pageSize = 4, ProjectListFilter status = ProjectListFilter.Open);
 
         /// <summary>
         /// دریافت صفحه‌ای کارت‌های پروژه برای لود تدریجی
         /// </summary>
-        Task<ProjectCardsPageDto> GetProjectCardsPageAsync(string userId, int page = 1, int pageSize = 4);
+        Task<ProjectCardsPageDto> GetProjectCardsPageAsync(string userId, int page = 1, int pageSize = 4, ProjectListFilter status = ProjectListFilter.Open);
     }
 
     /// <summary>

@@ -74,10 +74,10 @@ namespace Endpoint.Site.Controllers
         //}
 
 
-        public async Task<IActionResult> Index(int page = 1, int pageSize = 4)
+        public async Task<IActionResult> Index(int page = 1, int pageSize = 4, ProjectListFilter status = ProjectListFilter.Open)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var dashboard = await _projectQueryService.GetProjectsDashboardAsync(userId, page, pageSize);
+            var dashboard = await _projectQueryService.GetProjectsDashboardAsync(userId, page, pageSize, status);
             var availableUsers = await _projectQueryService.GetAvailableUsersForCreateAsync(userId);
             var pendingInvites = await _projectQueryService.GetPendingInvitationsAsync(userId);
 
@@ -92,12 +92,15 @@ namespace Endpoint.Site.Controllers
                     Id = p.Id,
                     Name = p.Name,
                     CreatorUserId = p.CreatorUserId,
-                    TaskCount = p.TaskCount
+                    TaskCount = p.TaskCount,
+                    IsClosed = p.IsClosed
                 }).ToList(),
                 ActiveSprintByProject = dashboard.ActiveSprintByProject,
                 Page = dashboard.Page,
                 PageSize = dashboard.PageSize,
                 TotalProjectsCount = dashboard.TotalProjectsCount,
+                AllProjectsCount = dashboard.AllProjectsCount,
+                Status = status,
                 HasMoreProjects = dashboard.HasMoreProjects,
                 PendingInviteCount = dashboard.PendingInviteCount,
                 CollaboratorCount = dashboard.CollaboratorCount,
@@ -141,6 +144,7 @@ namespace Endpoint.Site.Controllers
                 name = project.Name,
                 description = project.Description,
                 selectedUserIds = project.Members.Select(m => m.UserId).ToList(),
+                isClosed = project.IsClosed,
                 users = availableUsers.Select(u => new
                 {
                     id = u.Id,
@@ -156,10 +160,10 @@ namespace Endpoint.Site.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> IndexCards(int page = 1, int pageSize = 4)
+        public async Task<IActionResult> IndexCards(int page = 1, int pageSize = 4, ProjectListFilter status = ProjectListFilter.Open)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var cardsPage = await _projectQueryService.GetProjectCardsPageAsync(userId, page, pageSize);
+            var cardsPage = await _projectQueryService.GetProjectCardsPageAsync(userId, page, pageSize, status);
 
             Response.Headers["X-Has-More"] = cardsPage.HasMoreProjects ? "true" : "false";
 
@@ -168,11 +172,13 @@ namespace Endpoint.Site.Controllers
                 Id = p.Id,
                 Name = p.Name,
                 CreatorUserId = p.CreatorUserId,
-                TaskCount = p.TaskCount
+                TaskCount = p.TaskCount,
+                IsClosed = p.IsClosed
             }).ToList();
 
             ViewData["CurrentUserId"] = userId;
             ViewData["SprintLookup"] = cardsPage.ActiveSprintByProject;
+            ViewData["Status"] = status;
 
             return PartialView("_ProjectCards", vmCards);
         }
@@ -477,6 +483,7 @@ namespace Endpoint.Site.Controllers
                     Id = project.Id,
                     Name = project.Name,
                     Description = project.Description,
+                    IsClosed = project.IsClosed,
                     SelectedUserIds = project.Members.Select(m => m.UserId).ToList()
                 };
 
@@ -537,7 +544,8 @@ namespace Endpoint.Site.Controllers
                     Id = vm.Id,
                     Name = vm.Name,
                     Description = vm.Description,
-                    SelectedUserIds = vm.SelectedUserIds ?? new List<string>()
+                    SelectedUserIds = vm.SelectedUserIds ?? new List<string>(),
+                    IsClosed = vm.IsClosed
                 };
 
                 await _projectCommandService.UpdateProjectAsync(dto);
@@ -550,6 +558,32 @@ namespace Endpoint.Site.Controllers
                 TempData["Error"] = ex.Message;
                 return RedirectToAction(nameof(Index));
             }
+        }
+
+        [HttpPost("{id:int}")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleClosed(int id, ProjectListFilter status = ProjectListFilter.Open)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
+            {
+                TempData["Error"] = "کاربر لاگین‌شده یافت نشد.";
+                return RedirectToAction(nameof(Index), new { status });
+            }
+
+            try
+            {
+                var isClosed = await _projectCommandService.ToggleProjectClosedAsync(id, currentUser.Id);
+                TempData["Success"] = isClosed
+                    ? "پروژه بسته شد."
+                    : "پروژه دوباره باز شد.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["Error"] = ex.Message;
+            }
+
+            return RedirectToAction(nameof(Index), new { status });
         }
 
 

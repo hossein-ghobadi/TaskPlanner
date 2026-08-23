@@ -14,7 +14,7 @@
 
     @await Html.PartialAsync("_ProjectsStats", viewData: new ViewDataDictionary(ViewData)
     {
-        ["ProjectCount"] = Model?.TotalProjectsCount ?? projects.Count,
+        ["ProjectCount"] = Model?.AllProjectsCount ?? Model?.TotalProjectsCount ?? projects.Count,
         ["PendingInviteCount"] = Model?.PendingInviteCount ?? 0,
         ["CollaboratorCount"] = Model?.CollaboratorCount ?? 0,
         ["RecentNoteCount"] = Model?.RecentNoteCount ?? 0
@@ -26,7 +26,9 @@
         ["SprintLookup"] = Model?.ActiveSprintByProject ?? new Dictionary<int, int>(),
         ["Page"] = Model?.Page ?? 1,
         ["PageSize"] = Model?.PageSize ?? 4,
-        ["HasMoreProjects"] = Model?.HasMoreProjects ?? false
+        ["HasMoreProjects"] = Model?.HasMoreProjects ?? false,
+        ["Status"] = Model?.Status ?? TaskPlanner.Application.Services.ProjectService.ProjectListFilter.Open,
+        ["AllProjectsCount"] = Model?.AllProjectsCount ?? 0
     })
 </div>
 
@@ -102,6 +104,11 @@
                     <div class="mb-3">
                         <label class="form-label">توضیحات</label>
                         <textarea id="editProjectDescription" name="Description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3 form-check form-switch">
+                        <input type="hidden" name="IsClosed" value="false" />
+                        <input class="form-check-input" type="checkbox" id="editProjectIsClosed" name="IsClosed" value="true" />
+                        <label class="form-check-label" for="editProjectIsClosed">پروژه بسته است</label>
                     </div>
                     <div class="mb-2">
                         <label class="form-label">اعضای پروژه</label>
@@ -214,6 +221,7 @@
                     document.getElementById('editProjectId').value = data.id;
                     document.getElementById('editProjectName').value = data.name || '';
                     document.getElementById('editProjectDescription').value = data.description || '';
+                    document.getElementById('editProjectIsClosed').checked = !!data.isClosed;
                     document.getElementById('editProjectForm').setAttribute('action', '/Projects/Edit/' + data.id);
                     usersContainer.innerHTML = buildUsersCheckboxes(data.users, data.selectedUserIds);
                 } catch (_) {

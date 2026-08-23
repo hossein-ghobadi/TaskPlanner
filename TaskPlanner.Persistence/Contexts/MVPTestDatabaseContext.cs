@@ -175,6 +175,10 @@ namespace TaskPlanner.Persistence.Contexts
             modelBuilder.Entity<Project>()
                 .HasIndex(p => p.IssueKeyPrefix);
 
+            modelBuilder.Entity<Project>()
+                .Property(p => p.IsClosed)
+                .HasDefaultValue(false);
+
             // رابطه ProjectNote با Project
             modelBuilder.Entity<ProjectNote>()
                 .HasOne(n => n.Project)

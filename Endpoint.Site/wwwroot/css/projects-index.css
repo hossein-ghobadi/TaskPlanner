@@ -53,9 +53,18 @@
     cursor: pointer;
 }
 
-.project-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+.project-card.is-closed {
+    opacity: 0.78;
+    background: #f8fafc;
+}
+
+.project-card.is-closed .card-title {
+    color: #64748b;
+}
+
+.project-status-filter .form-select {
+    min-width: 170px;
+    border-radius: 8px;
 }
 
 .project-card .card-body {

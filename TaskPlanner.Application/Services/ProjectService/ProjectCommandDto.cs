@@ -19,6 +19,7 @@ namespace TaskPlanner.Application.Services.ProjectService
         public string Name { get; set; } = null!;
         public string? Description { get; set; }
         public List<string> SelectedUserIds { get; set; } = new List<string>();
+        public bool IsClosed { get; set; }
     }
 }
 

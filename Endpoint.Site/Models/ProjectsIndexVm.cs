@@ -1,3 +1,5 @@
+using TaskPlanner.Application.Services.ProjectService;
+
 namespace Endpoint.Site.Models
 {
     public class ProjectsIndexVm
@@ -8,6 +10,8 @@ namespace Endpoint.Site.Models
         public int Page { get; set; }
         public int PageSize { get; set; }
         public int TotalProjectsCount { get; set; }
+        public int AllProjectsCount { get; set; }
+        public ProjectListFilter Status { get; set; } = ProjectListFilter.Open;
         public bool HasMoreProjects { get; set; }
         public int PendingInviteCount { get; set; }
         public int CollaboratorCount { get; set; }
@@ -20,5 +24,6 @@ namespace Endpoint.Site.Models
         public string Name { get; set; } = string.Empty;
         public string CreatorUserId { get; set; } = string.Empty;
         public int TaskCount { get; set; }
+        public bool IsClosed { get; set; }
     }
 }

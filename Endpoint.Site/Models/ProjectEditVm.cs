@@ -11,6 +11,9 @@ namespace Endpoint.Site.Models
 
         public string? Description { get; set; }
 
+        [Display(Name = "پروژه بسته است")]
+        public bool IsClosed { get; set; }
+
         // اعضای انتخاب‌شده
         public List<string> SelectedUserIds { get; set; } = new List<string>();
     }

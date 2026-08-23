@@ -1,15 +1,47 @@
 @model IEnumerable<Endpoint.Site.Models.ProjectCardVm>
 @using System.Collections.Generic
+@using TaskPlanner.Application.Services.ProjectService
 
 @{
     var currentUserId = ViewData["CurrentUserId"] as string;
     var sprintLookup = ViewData["SprintLookup"] as Dictionary<int, int> ?? new Dictionary<int, int>();
     var projects = Model?.ToList() ?? new List<Endpoint.Site.Models.ProjectCardVm>();
+    var status = ViewData["Status"] is ProjectListFilter selectedStatus ? selectedStatus : ProjectListFilter.Open;
+    var allProjectsCount = ViewData["AllProjectsCount"] as int? ?? 0;
 }
 
 <div class="projects-section" id="projectsSection">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="section-title"><i class="bi bi-briefcase me-2"></i>پروژه‌های من</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h2 class="section-title mb-0"><i class="bi bi-briefcase me-2"></i>پروژه‌های من</h2>
+        <form method="get" asp-action="Index" class="d-flex align-items-center gap-2 project-status-filter">
+            <label class="form-label mb-0 small text-muted" for="projectStatusFilter">وضعیت</label>
+            <select class="form-select form-select-sm" id="projectStatusFilter" name="status" onchange="this.form.submit()">
+                @if (status == ProjectListFilter.Open)
+                {
+                    <option value="@ProjectListFilter.Open" selected>پروژه‌های باز</option>
+                }
+                else
+                {
+                    <option value="@ProjectListFilter.Open">پروژه‌های باز</option>
+                }
+                @if (status == ProjectListFilter.Closed)
+                {
+                    <option value="@ProjectListFilter.Closed" selected>پروژه‌های بسته</option>
+                }
+                else
+                {
+                    <option value="@ProjectListFilter.Closed">پروژه‌های بسته</option>
+                }
+                @if (status == ProjectListFilter.All)
+                {
+                    <option value="@ProjectListFilter.All" selected>همه پروژه‌ها</option>
+                }
+                else
+                {
+                    <option value="@ProjectListFilter.All">همه پروژه‌ها</option>
+                }
+            </select>
+        </form>
     </div>
 
     <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3" id="projectsCardsContainer">
@@ -17,7 +49,8 @@
         @await Html.PartialAsync("_ProjectCards", projects, new ViewDataDictionary(ViewData)
         {
             ["CurrentUserId"] = currentUserId,
-            ["SprintLookup"] = sprintLookup
+            ["SprintLookup"] = sprintLookup,
+            ["Status"] = status
         })
     </div>
 
@@ -31,6 +64,7 @@
          data-next-page="@(page + 1)"
          data-page-size="@pageSize"
          data-has-more="@(hasMoreProjects ? "true" : "false")"
+         data-status="@status"
          style="display:@(hasMoreProjects ? "block" : "none")">
         <span id="projectsLoadMoreText">در حال آماده‌سازی بارگذاری بیشتر...</span>
     </div>
@@ -40,11 +74,24 @@
     {
         <div class="empty-state text-center py-5">
             <i class="bi bi-inbox display-1 text-muted mb-3"></i>
-            <h4 class="text-muted">هنوز پروژه‌ای ندارید</h4>
-            <p class="text-muted mb-4">با ایجاد اولین پروژه شروع کنید</p>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createProjectModal">
-                <i class="bi bi-plus-circle me-2"></i>ایجاد اولین پروژه
-            </button>
+            @if (status == ProjectListFilter.Open && allProjectsCount > 0)
+            {
+                <h4 class="text-muted">پروژه بازی وجود ندارد</h4>
+                <p class="text-muted mb-4">پروژه‌های بسته‌شده را از فیلتر «پروژه‌های بسته» یا «همه پروژه‌ها» ببینید.</p>
+            }
+            else if (status == ProjectListFilter.Closed)
+            {
+                <h4 class="text-muted">پروژه بسته‌ای وجود ندارد</h4>
+                <p class="text-muted mb-4">با فیلتر «پروژه‌های باز» می‌توانید پروژه‌های فعال را ببینید.</p>
+            }
+            else
+            {
+                <h4 class="text-muted">هنوز پروژه‌ای ندارید</h4>
+                <p class="text-muted mb-4">با ایجاد اولین پروژه شروع کنید</p>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createProjectModal">
+                    <i class="bi bi-plus-circle me-2"></i>ایجاد اولین پروژه
+                </button>
+            }
         </div>
     }
 </div>
@@ -88,7 +135,9 @@
                 loadMoreText.textContent = 'در حال بارگذاری...';
 
                 try {
-                    var url = '/Projects/IndexCards?page=' + encodeURIComponent(nextPage) + '&pageSize=' + encodeURIComponent(pageSize);
+                    var url = '/Projects/IndexCards?page=' + encodeURIComponent(nextPage)
+                        + '&pageSize=' + encodeURIComponent(pageSize)
+                        + '&status=' + encodeURIComponent(loadMoreState.getAttribute('data-status') || 'Open');
                     var response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
                     if (!response.ok) {
                         throw new Error('load-failed');
