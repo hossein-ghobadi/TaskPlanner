@@ -55,7 +55,11 @@
             <a class="@NavClass("AdminUsers", "Index")" href="/Admin/AdminUsers/Index"><i class="bi bi-people"></i><span>مدیریت کاربران</span></a>
             <a class="@NavClass("AdminLeaves", "Index")" href="/Admin/AdminLeaves/Index"><i class="bi bi-calendar2-week"></i><span>مرخصی همکاران</span></a>
         }
-        <a class="@NavClass("Invitations", "MyInvitations")" href="/Invitations/MyInvitations"><i class="bi bi-envelope"></i><span>دعوت‌ها</span></a>
+        <a class="@NavClass("Invitations", "MyInvitations")" href="/Invitations/MyInvitations">
+            <i class="bi bi-envelope"></i>
+            <span>دعوت‌ها</span>
+            @await Component.InvokeAsync("PendingInvitationsCount")
+        </a>
     </nav>
 
     <div class="app-sidebar-footer d-none d-lg-block">

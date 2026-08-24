@@ -28,6 +28,12 @@ namespace Endpoint.Site.Controllers
             return View();
         }
 
+        [HttpGet("/invite")]
+        public IActionResult OpenInvite()
+        {
+            return RedirectToAction(nameof(MyInvitations));
+        }
+
 
 
         [HttpPost]

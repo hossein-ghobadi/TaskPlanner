@@ -5,6 +5,7 @@ using TaskPlanner.Application.Interfaces.Contexts;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Application.Services.NotificationService;
+using TaskPlanner.Application.Services.SMS;
 
 namespace TaskPlanner.Application.Services.ProjectService
 {
@@ -16,12 +17,18 @@ namespace TaskPlanner.Application.Services.ProjectService
         private readonly IMVPTestDatabaseContext _context;
         private readonly UserManager<User> _userManager;
         private readonly INotificationService _notificationService;
+        private readonly IInvitationSmsService _invitationSmsService;
 
-        public ProjectCommandService(IMVPTestDatabaseContext context, UserManager<User> userManager, INotificationService notificationService)
+        public ProjectCommandService(
+            IMVPTestDatabaseContext context,
+            UserManager<User> userManager,
+            INotificationService notificationService,
+            IInvitationSmsService invitationSmsService)
         {
             _context = context;
             _userManager = userManager;
             _notificationService = notificationService;
+            _invitationSmsService = invitationSmsService;
         }
 
         private async Task EnsureDefaultIssueTypesAsync(Project project, string creatorUserId)
@@ -246,6 +253,9 @@ namespace TaskPlanner.Application.Services.ProjectService
                     _context.ProjectMembers.Remove(member);
             }
 
+            if (toRemove.Count > 0)
+                await RemoveProjectInvitationsForUsersAsync(project.Id, toRemove);
+
             await _context.SaveChangesAsync();
         }
 
@@ -347,12 +357,6 @@ namespace TaskPlanner.Application.Services.ProjectService
             if (exists)
                 throw new InvalidOperationException("برای این شماره قبلاً دعوت در انتظار ارسال شده است.");
 
-            var hasAcceptedInvite = await _context.ProjectInvitations
-                .AnyAsync(i => i.InviteePhone == phone && i.ProjectId == projectId && i.Status == InvitationStatus.Accepted);
-
-            if (hasAcceptedInvite)
-                throw new InvalidOperationException("این کاربر قبلاً دعوت را پذیرفته و در پروژه حضور دارد.");
-
             // پیدا کردن کاربر
             var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Phone == phone);
             if (user == null)
@@ -369,6 +373,9 @@ namespace TaskPlanner.Application.Services.ProjectService
 
             if (isMember)
                 throw new InvalidOperationException("این کاربر هم‌اکنون عضو پروژه است.");
+
+            // دعوت‌های پذیرفته/ردشدهٔ قبلی مانع دعوت مجدد نمی‌شوند
+            await RemoveStaleProjectInvitationsAsync(projectId, user.Id, phone);
 
             // ثبت دعوت
             var invite = new ProjectInvitation
@@ -397,6 +404,12 @@ namespace TaskPlanner.Application.Services.ProjectService
                     projectId = projectId
                 })
             });
+
+            var inviterName = !string.IsNullOrWhiteSpace(inviter?.FullName)
+                ? inviter.FullName
+                : inviter?.UserName;
+
+            await _invitationSmsService.TrySendProjectInvitationAsync(phone, project.Name, inviterName);
         }
 
         /// <summary>
@@ -439,7 +452,42 @@ namespace TaskPlanner.Application.Services.ProjectService
             // حذف عضو از پروژه
             _context.ProjectMembers.Remove(member);
 
+            var memberUser = await _userManager.FindByIdAsync(memberUserId);
+            await RemoveProjectInvitationsForUserAsync(projectId, memberUserId, memberUser?.Phone);
+
             await _context.SaveChangesAsync();
+        }
+
+        private async Task RemoveProjectInvitationsForUserAsync(int projectId, string userId, string? phone)
+        {
+            await RemoveProjectInvitationsForUsersAsync(projectId, new[] { userId }, phone);
+        }
+
+        private async Task RemoveProjectInvitationsForUsersAsync(int projectId, IEnumerable<string> userIds, string? phone = null)
+        {
+            var ids = userIds.Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
+            if (ids.Count == 0 && string.IsNullOrWhiteSpace(phone))
+                return;
+
+            var invitations = await _context.ProjectInvitations
+                .Where(i => i.ProjectId == projectId &&
+                    (ids.Contains(i.InviteeId) || (!string.IsNullOrEmpty(phone) && i.InviteePhone == phone)))
+                .ToListAsync();
+
+            if (invitations.Count > 0)
+                _context.ProjectInvitations.RemoveRange(invitations);
+        }
+
+        private async Task RemoveStaleProjectInvitationsAsync(int projectId, string userId, string phone)
+        {
+            var leftoverInvites = await _context.ProjectInvitations
+                .Where(i => i.ProjectId == projectId
+                    && i.Status != InvitationStatus.Pending
+                    && (i.InviteeId == userId || i.InviteePhone == phone))
+                .ToListAsync();
+
+            if (leftoverInvites.Count > 0)
+                _context.ProjectInvitations.RemoveRange(leftoverInvites);
         }
 
         /// <summary>

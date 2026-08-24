@@ -117,8 +117,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 window.location.href = `/Tasks/Details/${payload.taskId}`;
                 return;
             }
-            if (payload?.projectId && notification.type === 'ProjectInvitation') {
-                window.location.href = `/Projects/Details/${payload.projectId}`;
+            if (notification.type === 'ProjectInvitation') {
+                window.location.href = '/Invitations/MyInvitations';
+                return;
             }
         } catch (error) {
             console.warn('payload parse failed', error);
