@@ -1,0 +1,69 @@
+@{
+    var deleteNotePostUrl = ViewData["DeleteNotePostUrl"] as string ?? "#";
+}
+
+<div class="modal fade" id="deleteNoteModal" tabindex="-1" aria-labelledby="deleteNoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="@deleteNotePostUrl">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="deleteNoteId" />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteNoteModalLabel">
+                        <i class="bi bi-trash text-danger"></i>
+                        حذف یادداشت
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning d-flex gap-2 align-items-start mb-3" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                        <div>
+                            <strong class="d-block mb-1">آیا مطمئن هستید؟</strong>
+                            <span>این عمل قابل بازگشت نیست. یادداشت و تمام فایل‌های پیوست آن برای همیشه حذف خواهند شد.</span>
+                        </div>
+                    </div>
+                    <div class="border rounded p-3 bg-light">
+                        <div class="fw-semibold mb-1" id="deleteNoteTitle"></div>
+                        <div class="text-muted small" id="deleteNoteExcerpt" style="display: none; white-space: pre-wrap;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i>
+                        حذف یادداشت
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        var deleteModal = document.getElementById('deleteNoteModal');
+        if (!deleteModal) return;
+
+        deleteModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            if (!button) return;
+
+            var id = button.getAttribute('data-note-id') || '';
+            var title = button.getAttribute('data-note-title') || '';
+            var excerpt = button.getAttribute('data-note-excerpt') || '';
+
+            document.getElementById('deleteNoteId').value = id;
+            document.getElementById('deleteNoteTitle').textContent = title;
+
+            var excerptEl = document.getElementById('deleteNoteExcerpt');
+            if (excerpt) {
+                excerptEl.textContent = excerpt;
+                excerptEl.style.display = '';
+            } else {
+                excerptEl.textContent = '';
+                excerptEl.style.display = 'none';
+            }
+        });
+    })();
+</script>

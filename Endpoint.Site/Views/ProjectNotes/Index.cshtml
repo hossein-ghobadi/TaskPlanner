@@ -94,6 +94,13 @@
                 {
                     var noteColor = "#3b82f6";
                     var timeAgo = GetTimeAgo(note.CreatedAt);
+                    var deleteExcerpt = string.IsNullOrWhiteSpace(note.Content)
+                        ? ""
+                        : System.Text.RegularExpressions.Regex.Replace(note.Content, @"\s+", " ").Trim();
+                    if (deleteExcerpt.Length > 120)
+                    {
+                        deleteExcerpt = deleteExcerpt.Substring(0, 120) + "…";
+                    }
 
                     <article class="note-post" data-detail-url="/ProjectNotes/Details?id=@note.Id" style="border-top: 2px solid #d8dee6;">
                         <!-- Post Header -->
@@ -214,10 +221,16 @@
                                     <i class="bi bi-pencil"></i>
                                     <span>ویرایش</span>
                                 </a>
-                                <a href="/ProjectNotes/Delete?id=@note.Id" class="action-btn action-danger">
+                                <button type="button"
+                                        class="action-btn action-danger"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#deleteNoteModal"
+                                        data-note-id="@note.Id"
+                                        data-note-title="@note.Title"
+                                        data-note-excerpt="@deleteExcerpt">
                                     <i class="bi bi-trash"></i>
                                     <span>حذف</span>
-                                </a>
+                                </button>
                             </div>
                         </div>
                     </article>
@@ -240,6 +253,12 @@
         }
     </div>
 </div>
+
+@await Html.PartialAsync("/Views/Shared/Notes/_DeleteNoteModal.cshtml", viewData: new ViewDataDictionary(ViewData)
+{
+    ["DeleteNotePostUrl"] = Url.Action("Delete", "ProjectNotes")
+})
+
 <script>
     document.addEventListener('click', function (event) {
         const card = event.target.closest('.note-post[data-detail-url]');
@@ -1147,6 +1166,7 @@
         text-decoration: none;
         font-size: 0.8rem;
         font-weight: 500;
+        font-family: inherit;
         transition: all 0.2s ease;
         cursor: pointer;
         position: relative;

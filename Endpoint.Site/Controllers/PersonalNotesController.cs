@@ -481,23 +481,6 @@ namespace Endpoint.Site.Controllers
         }
 
         // 📌 حذف یادداشت
-        [HttpGet]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            var note = await _context.PersonalNotes
-                .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
-
-            if (note == null)
-            {
-                TempData["Error"] = "یادداشت یافت نشد یا به آن دسترسی ندارید.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            return View(note);
-        }
-
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)

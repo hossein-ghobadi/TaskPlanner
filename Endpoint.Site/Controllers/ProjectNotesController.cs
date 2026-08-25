@@ -601,33 +601,6 @@ namespace Endpoint.Site.Controllers
         }
 
         // 📌 حذف یادداشت
-        [HttpGet]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var note = await _context.ProjectNotes
-                .Include(n => n.Project)
-                .Include(n => n.Attachments)
-                .FirstOrDefaultAsync(n => n.Id == id);
-
-            if (note == null)
-                return NotFound();
-
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            // بررسی دسترسی
-            var hasAccess = await _context.Projects
-                .AnyAsync(p => p.Id == note.ProjectId.Value && 
-                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
-
-            if (!hasAccess)
-            {
-                TempData["Error"] = "شما به این یادداشت دسترسی ندارید.";
-                return RedirectToAction("Index", "Projects");
-            }
-
-            return View(note);
-        }
-
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)

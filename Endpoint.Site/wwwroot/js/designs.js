@@ -45,6 +45,8 @@
         fileName: document.getElementById("designFileName"),
         status: document.getElementById("designStatus"),
         addBtn: document.getElementById("addTextBoxBtn"),
+        uploadSvgBtn: document.getElementById("uploadSvgBtn"),
+        svgFile: document.getElementById("designSvgFile"),
         deleteBtn: document.getElementById("deleteTextBoxBtn"),
         exportBtn: document.getElementById("exportSvgBtn"),
         clearBtn: document.getElementById("clearDesignBtn"),
@@ -71,9 +73,14 @@
     let lastPointer = { x: null, y: null, overStage: false };
     const MIN_BOX_WIDTH = 48;
     const MIN_BOX_HEIGHT = 36;
+    const MIN_FONT_SIZE = 12;
+    const MAX_FONT_SIZE = 240;
     const RULER_SIZE = 24;
-    const CANVAS_W = 1200;
-    const CANVAS_H = 800;
+    const MIN_CANVAS_W = 1200;
+    const MIN_CANVAS_H = 800;
+    const CANVAS_GROW_PAD = 400;
+    let canvasW = MIN_CANVAS_W;
+    let canvasH = MIN_CANVAS_H;
     const ZOOM_MIN = 0.25;
     const ZOOM_MAX = 4;
     const ZOOM_STEP = 0.1;
@@ -139,10 +146,53 @@
 
     function getCanvasPoint(event) {
         const point = clientToCanvasPoint(event.clientX, event.clientY);
+        // فقط کف صفر؛ سقف ثابت نداریم تا بوم بتواند بزرگ شود
         return {
-            x: Math.max(0, Math.min(CANVAS_W, point.x)),
-            y: Math.max(0, Math.min(CANVAS_H, point.y)),
+            x: Math.max(0, point.x),
+            y: Math.max(0, point.y),
         };
+    }
+
+    function applyCanvasDomSize() {
+        if (!els.canvas || !els.canvasScaler) {
+            return;
+        }
+        els.canvas.style.width = canvasW + "px";
+        els.canvas.style.height = canvasH + "px";
+        els.canvasScaler.style.width = canvasW * zoom + "px";
+        els.canvasScaler.style.height = canvasH * zoom + "px";
+    }
+
+    function setCanvasSize(nextW, nextH) {
+        const w = Math.max(MIN_CANVAS_W, Math.ceil(nextW));
+        const h = Math.max(MIN_CANVAS_H, Math.ceil(nextH));
+        if (w === canvasW && h === canvasH) {
+            return false;
+        }
+        canvasW = w;
+        canvasH = h;
+        applyCanvasDomSize();
+        drawRulers();
+        return true;
+    }
+
+    function contentBounds() {
+        let maxX = MIN_CANVAS_W;
+        let maxY = MIN_CANVAS_H;
+        boxes.forEach(function (box) {
+            const w = box.width || 0;
+            const h = box.height || 0;
+            maxX = Math.max(maxX, (box.x || 0) + w + CANVAS_GROW_PAD);
+            maxY = Math.max(maxY, (box.y || 0) + h + CANVAS_GROW_PAD);
+        });
+        return { width: maxX, height: maxY };
+    }
+
+    function ensureCanvasFits(extraX, extraY) {
+        const bounds = contentBounds();
+        const needW = Math.max(bounds.width, Number(extraX) || 0);
+        const needH = Math.max(bounds.height, Number(extraY) || 0);
+        return setCanvasSize(needW, needH);
     }
 
     function formatZoomLabel(value) {
@@ -212,9 +262,8 @@
         const before = clientToCanvasPoint(pivotClientX, pivotClientY);
 
         zoom = next;
-        els.canvasScaler.style.width = CANVAS_W * zoom + "px";
-        els.canvasScaler.style.height = CANVAS_H * zoom + "px";
         els.canvas.style.transform = "scale(" + zoom + ")";
+        applyCanvasDomSize();
 
         const grid = 24 * zoom;
         stage.style.backgroundSize = grid + "px " + grid + "px, " + grid + "px " + grid + "px, auto";
@@ -636,12 +685,12 @@
         return Object.assign(
             {
                 id: nextId++,
+                kind: "text",
                 text: "متن جدید",
                 x: 80 + offset,
                 y: 80 + offset,
                 width: 0,
                 height: 0,
-                manualSize: false,
                 fontFamily: "Vazir",
                 fontSize: 48,
                 letterSpacing: 0,
@@ -654,7 +703,14 @@
         );
     }
 
+    function isSvgItem(box) {
+        return !!(box && box.kind === "svg");
+    }
+
     function labelForBox(box) {
+        if (isSvgItem(box)) {
+            return (box.name || "SVG").slice(0, 28);
+        }
         const trimmed = (box.text || "").replace(/\s+/g, " ").trim();
         return trimmed ? trimmed.slice(0, 28) : "تکست باکس خالی";
     }
@@ -667,7 +723,7 @@
         if (!boxes.length) {
             const empty = document.createElement("div");
             empty.className = "small text-muted";
-            empty.textContent = "هنوز تکست باکسی نیست. «افزودن تکست باکس» را بزنید.";
+            empty.textContent = "هنوز آیتمی نیست. تکست باکس اضافه کنید یا SVG آپلود کنید.";
             els.boxList.appendChild(empty);
             return;
         }
@@ -681,7 +737,9 @@
             label.textContent = `#${index + 1} — ${labelForBox(box)}`;
 
             const icon = document.createElement("i");
-            icon.className = "bi bi-cursor-text text-muted";
+            icon.className = isSvgItem(box)
+                ? "bi bi-filetype-svg text-muted"
+                : "bi bi-cursor-text text-muted";
 
             item.appendChild(label);
             item.appendChild(icon);
@@ -694,16 +752,21 @@
 
     function syncPanelFromSelected() {
         const box = getSelected();
-        const enabled = !!box;
+        const enabled = !!box && !isSvgItem(box);
         els.controls.classList.toggle("is-disabled", !enabled);
-        els.deleteBtn.disabled = !enabled;
-        els.selectionHint.textContent = enabled
-            ? "داخل باکس تایپ کنید. نقطه آبی = جابه‌جایی. دستگیره‌های لبه = تغییر عرض و ارتفاع."
-            : "یک تکست باکس انتخاب کنید یا جدید بسازید.";
-
+        els.deleteBtn.disabled = !box;
         if (!box) {
+            els.selectionHint.textContent = "یک آیتم انتخاب کنید، تکست بسازید یا SVG آپلود کنید.";
             return;
         }
+        if (isSvgItem(box)) {
+            els.selectionHint.textContent =
+                "SVG انتخاب‌شده: نقطه آبی = جابه‌جایی، دستگیره‌ها = تغییر اندازه. تنظیمات فونت روی SVG اعمال نمی‌شود.";
+            return;
+        }
+
+        els.selectionHint.textContent =
+            "داخل باکس تایپ کنید. نقطه آبی = جابه‌جایی. دستگیره‌ها = بزرگ/کوچک کردن فونت.";
 
         suppressPanelSync = true;
         els.font.value = box.fontFamily;
@@ -727,23 +790,46 @@
     }
 
     function applyBoxStyles(box) {
+        if (isSvgItem(box)) {
+            applySvgStyles(box);
+            return;
+        }
         const el = box.el;
         const input = box.input;
+        if (!el || !input) {
+            return;
+        }
         const stack = getFontCssStack(box.fontFamily);
         el.style.setProperty("--box-font", stack);
         el.style.left = box.x + "px";
         el.style.top = box.y + "px";
         el.style.color = box.fill;
+        el.style.fontSize = box.fontSize + "px";
+        el.style.letterSpacing = box.letterSpacing + "px";
         el.style.webkitTextStroke = box.strokeWidth > 0 ? `${box.strokeWidth}px ${box.stroke}` : "0 transparent";
         input.style.fontFamily = stack;
         input.style.fontSize = box.fontSize + "px";
         input.style.letterSpacing = box.letterSpacing + "px";
         input.style.color = box.fill;
+        input.style.lineHeight = "1.35";
         if (input.value !== box.text) {
             input.value = box.text;
         }
         el.classList.toggle("is-selected", box.id === selectedId);
         fitBoxToText(box);
+    }
+
+    function applySvgStyles(box) {
+        const el = box.el;
+        if (!el) {
+            return;
+        }
+        el.style.left = box.x + "px";
+        el.style.top = box.y + "px";
+        el.style.width = box.width + "px";
+        el.style.height = box.height + "px";
+        el.classList.toggle("is-selected", box.id === selectedId);
+        ensureCanvasFits();
     }
 
     function createResizeHandle(direction, title) {
@@ -754,36 +840,20 @@
         return handle;
     }
 
-    function createBoxElement(box) {
-        const el = document.createElement("div");
-        el.className = "design-textbox";
-        el.dataset.boxId = String(box.id);
-
+    function attachCommonBoxChrome(box, el, resizeTitle) {
         const moveHandle = document.createElement("div");
         moveHandle.className = "design-textbox-handle";
         moveHandle.title = "جابه‌جایی";
 
-        const resizeE = createResizeHandle("e", "تغییر عرض");
-        const resizeS = createResizeHandle("s", "تغییر ارتفاع");
-        const resizeSe = createResizeHandle("se", "تغییر عرض و ارتفاع");
-
-        const input = document.createElement("textarea");
-        input.className = "design-textbox-input";
-        input.rows = 1;
-        input.cols = 1;
-        input.value = box.text;
-        input.spellcheck = false;
-        input.setAttribute("aria-label", "متن تکست باکس");
+        const resizeE = createResizeHandle("e", resizeTitle);
+        const resizeS = createResizeHandle("s", resizeTitle);
+        const resizeSe = createResizeHandle("se", resizeTitle);
 
         el.appendChild(moveHandle);
         el.appendChild(resizeE);
         el.appendChild(resizeS);
         el.appendChild(resizeSe);
-        el.appendChild(input);
-        els.canvas.appendChild(el);
 
-        box.el = el;
-        box.input = input;
         box.handle = moveHandle;
 
         moveHandle.addEventListener("mousedown", function (event) {
@@ -797,11 +867,39 @@
         });
 
         el.addEventListener("mousedown", function (event) {
-            if (event.target === input || event.target === moveHandle || event.target.classList.contains("design-textbox-resize")) {
+            if (
+                event.target === moveHandle ||
+                (event.target.classList && event.target.classList.contains("design-textbox-resize"))
+            ) {
+                return;
+            }
+            if (box.input && event.target === box.input) {
                 return;
             }
             beginDrag(box, event);
         });
+    }
+
+    function createBoxElement(box) {
+        const el = document.createElement("div");
+        el.className = "design-textbox";
+        el.dataset.boxId = String(box.id);
+
+        const input = document.createElement("textarea");
+        input.className = "design-textbox-input";
+        input.rows = 1;
+        input.cols = 1;
+        input.value = box.text;
+        input.spellcheck = false;
+        input.setAttribute("aria-label", "متن تکست باکس");
+
+        el.appendChild(input);
+        els.canvas.appendChild(el);
+
+        box.el = el;
+        box.input = input;
+
+        attachCommonBoxChrome(box, el, "بزرگ/کوچک کردن فونت");
 
         input.addEventListener("focus", function () {
             selectBox(box.id);
@@ -822,6 +920,455 @@
         applyBoxStyles(box);
     }
 
+    function parseSvgLength(value, fallback) {
+        if (value == null || value === "") {
+            return fallback;
+        }
+        const str = String(value).trim();
+        const num = parseFloat(str);
+        if (!Number.isFinite(num)) {
+            return fallback;
+        }
+        // تبدیل به پیکسل صفحه (۹۶ppi) — همان مقیاس خط‌کش/بوم
+        if (/mm\s*$/i.test(str)) {
+            return num * (CSS_PPI / 25.4);
+        }
+        if (/cm\s*$/i.test(str)) {
+            return num * (CSS_PPI / 2.54);
+        }
+        if (/in\s*$/i.test(str)) {
+            return num * CSS_PPI;
+        }
+        if (/pt\s*$/i.test(str)) {
+            return num * (CSS_PPI / 72);
+        }
+        if (/pc\s*$/i.test(str)) {
+            return num * (CSS_PPI / 6);
+        }
+        // px یا بدون واحد
+        return Math.abs(num) > 0 ? Math.abs(num) : fallback;
+    }
+
+    function inferUnitsPerCm(svg, declaredVb) {
+        const wAttr = svg.getAttribute("width");
+        if (!declaredVb || !(declaredVb.width > 0) || !wAttr) {
+            return 1000; // پیش‌فرض Corel: ۱۰۰۰ واحد = ۱cm
+        }
+        const str = String(wAttr).trim();
+        const num = parseFloat(str);
+        if (!(num > 0)) {
+            return 1000;
+        }
+        if (/cm\s*$/i.test(str)) {
+            return declaredVb.width / num;
+        }
+        if (/mm\s*$/i.test(str)) {
+            return declaredVb.width / (num / 10);
+        }
+        if (/in\s*$/i.test(str)) {
+            return declaredVb.width / (num * 2.54);
+        }
+        // width بر حسب px و viewBox هم‌اندازه → واحد viewBox = px
+        if (/px\s*$/i.test(str) || !/[a-z%]/i.test(str.replace(/[\d.\s+-eE]/g, ""))) {
+            return null;
+        }
+        return 1000;
+    }
+
+    function svgViewBoxToPagePx(viewBox, unitsPerCm) {
+        if (!viewBox) {
+            return { width: 100, height: 100 };
+        }
+        if (unitsPerCm == null) {
+            return {
+                width: Math.max(1, viewBox.width),
+                height: Math.max(1, viewBox.height),
+            };
+        }
+        const pxPerCm = CSS_PPI / 2.54;
+        return {
+            width: Math.max(1, (viewBox.width / unitsPerCm) * pxPerCm),
+            height: Math.max(1, (viewBox.height / unitsPerCm) * pxPerCm),
+        };
+    }
+
+    function sanitizeSvgRoot(svg) {
+        const forbidden = ["script", "foreignObject", "iframe", "embed", "object", "audio", "video", "metadata"];
+        forbidden.forEach(function (tag) {
+            Array.from(svg.getElementsByTagName(tag)).forEach(function (node) {
+                node.parentNode && node.parentNode.removeChild(node);
+            });
+        });
+        const walk = function (node) {
+            if (!node || node.nodeType !== 1) {
+                return;
+            }
+            Array.from(node.attributes || []).forEach(function (attr) {
+                const name = attr.name.toLowerCase();
+                const val = String(attr.value || "");
+                if (name.startsWith("on") || /javascript:/i.test(val) || /data:text\/html/i.test(val)) {
+                    node.removeAttribute(attr.name);
+                }
+                if ((name === "href" || name === "xlink:href") && /^\s*https?:/i.test(val)) {
+                    node.removeAttribute(attr.name);
+                }
+            });
+            Array.from(node.children || []).forEach(walk);
+        };
+        walk(svg);
+        return svg;
+    }
+
+    function measureSvgContentBox(svg) {
+        const host = document.createElement("div");
+        host.style.cssText =
+            "position:absolute;left:-99999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;";
+        const clone = document.importNode(svg, true);
+        clone.removeAttribute("viewBox");
+        clone.removeAttribute("width");
+        clone.removeAttribute("height");
+        host.appendChild(clone);
+        document.body.appendChild(host);
+
+        try {
+            let minX = Infinity;
+            let minY = Infinity;
+            let maxX = -Infinity;
+            let maxY = -Infinity;
+            let found = false;
+
+            const shapes = clone.querySelectorAll(
+                "path, polygon, polyline, rect, circle, ellipse, line, text, use, image"
+            );
+            shapes.forEach(function (el) {
+                try {
+                    if (typeof el.getBBox !== "function") {
+                        return;
+                    }
+                    const b = el.getBBox();
+                    if (!b || !Number.isFinite(b.x) || !Number.isFinite(b.y)) {
+                        return;
+                    }
+                    const x2 = b.x + (Number.isFinite(b.width) ? b.width : 0);
+                    const y2 = b.y + (Number.isFinite(b.height) ? b.height : 0);
+                    if (x2 === b.x && y2 === b.y && b.width === 0 && b.height === 0) {
+                        return;
+                    }
+                    found = true;
+                    minX = Math.min(minX, b.x);
+                    minY = Math.min(minY, b.y);
+                    maxX = Math.max(maxX, x2);
+                    maxY = Math.max(maxY, y2);
+                } catch (e) {
+                    // نادیده
+                }
+            });
+
+            if (found && maxX > minX && maxY > minY) {
+                return {
+                    x: minX,
+                    y: minY,
+                    width: maxX - minX,
+                    height: maxY - minY,
+                };
+            }
+
+            if (typeof clone.getBBox === "function") {
+                const b = clone.getBBox();
+                if (b && b.width > 0 && b.height > 0) {
+                    return { x: b.x, y: b.y, width: b.width, height: b.height };
+                }
+            }
+        } catch (e) {
+            // ادامه با fallback
+        } finally {
+            host.remove();
+        }
+        return null;
+    }
+
+    function readDeclaredViewBox(svg) {
+        const raw = (svg.getAttribute("viewBox") || svg.getAttribute("viewbox") || "").trim();
+        const vb = raw.split(/[\s,]+/).map(Number);
+        if (vb.length === 4 && vb.every(function (n) { return Number.isFinite(n); }) && vb[2] > 0 && vb[3] > 0) {
+            return { x: vb[0], y: vb[1], width: vb[2], height: vb[3] };
+        }
+        return null;
+    }
+
+    /**
+     * محتوا را به مبدأ منتقل می‌کند و viewBox را دقیقاً دور همان محتوا می‌بندد.
+     * از ورق بزرگ Corel (مثلاً 320cm) به‌عنوان کادر استفاده نمی‌کنیم.
+     */
+    function normalizeSvgContentIntoFrame(svg) {
+        const content = measureSvgContentBox(svg);
+
+        if (!content || !(content.width > 0 && content.height > 0)) {
+            const declared = readDeclaredViewBox(svg);
+            if (declared) {
+                svg.setAttribute("viewBox", "0 0 " + declared.width + " " + declared.height);
+                return { x: 0, y: 0, width: declared.width, height: declared.height };
+            }
+            const width = parseSvgLength(svg.getAttribute("width"), 100);
+            const height = parseSvgLength(svg.getAttribute("height"), 100);
+            svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+            return { x: 0, y: 0, width: width, height: height };
+        }
+
+        // کمی حاشیه برای stroke
+        const pad = Math.max(content.width, content.height) * 0.01 + 2;
+        const frame = {
+            x: 0,
+            y: 0,
+            width: content.width + pad * 2,
+            height: content.height + pad * 2,
+        };
+
+        const ns = "http://www.w3.org/2000/svg";
+        const wrap = svg.ownerDocument.createElementNS(ns, "g");
+        // فقط جابه‌جایی داده به داخل کادر (بدون مقیاس‌کردن به ورق عظیم)
+        wrap.setAttribute(
+            "transform",
+            "translate(" + (pad - content.x) + " " + (pad - content.y) + ")"
+        );
+        wrap.setAttribute("data-normalized", "1");
+
+        const keepOut = { defs: 1, style: 1, title: 1, desc: 1, metadata: 1 };
+        const toMove = [];
+        Array.from(svg.childNodes).forEach(function (node) {
+            if (node.nodeType === 1) {
+                const tag = String(node.tagName || "")
+                    .toLowerCase()
+                    .replace(/^.*:/, "");
+                if (keepOut[tag]) {
+                    return;
+                }
+                toMove.push(node);
+            }
+        });
+        toMove.forEach(function (node) {
+            wrap.appendChild(node);
+        });
+        svg.appendChild(wrap);
+
+        svg.setAttribute("viewBox", "0 0 " + frame.width + " " + frame.height);
+        svg.removeAttribute("width");
+        svg.removeAttribute("height");
+        return frame;
+    }
+
+    function extractSvgViewBox(svg) {
+        // بعد از normalize معمولاً viewBox از ۰ شروع می‌شود
+        const declared = readDeclaredViewBox(svg);
+        if (declared) {
+            return declared;
+        }
+        const contentBox = measureSvgContentBox(svg);
+        if (contentBox) {
+            return { x: 0, y: 0, width: contentBox.width, height: contentBox.height };
+        }
+        const width = parseSvgLength(svg.getAttribute("width"), 100);
+        const height = parseSvgLength(svg.getAttribute("height"), 100);
+        return { x: 0, y: 0, width: width, height: height };
+    }
+
+    function mountSvgInto(container, markup) {
+        container.replaceChildren();
+        const doc = new DOMParser().parseFromString(markup, "image/svg+xml");
+        if (doc.querySelector("parsererror")) {
+            return null;
+        }
+        const parsed = doc.documentElement;
+        if (!parsed || String(parsed.tagName).toLowerCase() !== "svg") {
+            return null;
+        }
+        const liveSvg = document.importNode(parsed, true);
+        liveSvg.removeAttribute("width");
+        liveSvg.removeAttribute("height");
+        liveSvg.setAttribute("width", "100%");
+        liveSvg.setAttribute("height", "100%");
+        liveSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+        liveSvg.style.width = "100%";
+        liveSvg.style.height = "100%";
+        liveSvg.style.display = "block";
+        liveSvg.style.maxWidth = "100%";
+        liveSvg.style.maxHeight = "100%";
+        liveSvg.style.overflow = "visible";
+        container.appendChild(liveSvg);
+        return liveSvg;
+    }
+
+    function createSvgElement(box) {
+        const el = document.createElement("div");
+        el.className = "design-svgbox";
+        el.dataset.boxId = String(box.id);
+
+        const inner = document.createElement("div");
+        inner.className = "design-svgbox-inner";
+        const liveSvg = mountSvgInto(inner, box.svgMarkup);
+        if (!liveSvg) {
+            inner.textContent = "SVG قابل نمایش نیست";
+            inner.style.color = "#b91c1c";
+            inner.style.fontSize = "12px";
+            inner.style.padding = "8px";
+            inner.style.pointerEvents = "none";
+        }
+
+        el.appendChild(inner);
+        els.canvas.appendChild(el);
+
+        box.el = el;
+        box.input = null;
+        box.inner = inner;
+
+        attachCommonBoxChrome(box, el, "تغییر اندازه SVG");
+        applySvgStyles(box);
+    }
+
+    function addSvgItem(parsed, fileName) {
+        const offset = (boxes.length % 8) * 28;
+        // اندازه واقعی فایل روی بوم — بدون کوچک/بزرگ‌کردن دلخواه
+        const width = Math.max(8, Number(parsed.widthPx) || 100);
+        const height = Math.max(8, Number(parsed.heightPx) || 100);
+
+        const box = {
+            id: nextId++,
+            kind: "svg",
+            name: (fileName || "svg").replace(/\.svg$/i, ""),
+            x: 100 + offset,
+            y: 100 + offset,
+            width: width,
+            height: height,
+            viewBox: parsed.viewBox,
+            svgMarkup: parsed.markup,
+            svgInner: parsed.inner,
+            unitsPerCm: parsed.unitsPerCm,
+        };
+        boxes.push(box);
+        createSvgElement(box);
+        selectBox(box.id);
+        renderList();
+        const cmW = width / (CSS_PPI / 2.54);
+        const cmH = height / (CSS_PPI / 2.54);
+        setStatus(
+            "SVG «" +
+                box.name +
+                "» اضافه شد — اندازه واقعی: " +
+                cmW.toFixed(2) +
+                "×" +
+                cmH.toFixed(2) +
+                " cm"
+        );
+        return box;
+    }
+
+    function parseUploadedSvg(text, fileName) {
+        const cleaned = String(text || "")
+            .replace(/^\uFEFF/, "")
+            .replace(/<\?xml[\s\S]*?\?>/i, "")
+            .replace(/<!DOCTYPE[\s\S]*?>/i, "")
+            .trim();
+        const doc = new DOMParser().parseFromString(cleaned, "image/svg+xml");
+        if (doc.querySelector("parsererror")) {
+            throw new Error("فایل SVG معتبر نیست.");
+        }
+        const svg = doc.documentElement;
+        if (!svg || String(svg.tagName).toLowerCase() !== "svg") {
+            throw new Error("ریشهٔ فایل باید <svg> باشد.");
+        }
+        sanitizeSvgRoot(svg);
+        if (!svg.getAttribute("xmlns")) {
+            svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        }
+
+        // مقیاس فیزیکی را قبل از نرمال‌سازی از روی محتوا + واحدهای فایل بخوان
+        // (نه maxSide دلخواه؛ ابعاد روی بوم = همان cm/mm فایل)
+        const declaredVb = readDeclaredViewBox(svg);
+        const unitsPerCm = inferUnitsPerCm(svg, declaredVb);
+        const sheetWpx = parseSvgLength(svg.getAttribute("width"), 0);
+        const sheetHpx = parseSvgLength(svg.getAttribute("height"), 0);
+        const contentBox = measureSvgContentBox(svg);
+
+        let widthPx;
+        let heightPx;
+        const pxPerCm = CSS_PPI / 2.54;
+        if (contentBox && contentBox.width > 0 && contentBox.height > 0) {
+            if (unitsPerCm == null) {
+                // واحد viewBox همان پیکسل صفحه است
+                widthPx = contentBox.width;
+                heightPx = contentBox.height;
+            } else if (sheetWpx > 0 && sheetHpx > 0 && declaredVb && declaredVb.width > 0 && declaredVb.height > 0) {
+                // محتوا نسبت به ورق فیزیکی فایل
+                widthPx = sheetWpx * (contentBox.width / declaredVb.width);
+                heightPx = sheetHpx * (contentBox.height / declaredVb.height);
+            } else {
+                widthPx = (contentBox.width / unitsPerCm) * pxPerCm;
+                heightPx = (contentBox.height / unitsPerCm) * pxPerCm;
+            }
+        } else if (sheetWpx > 0 && sheetHpx > 0) {
+            widthPx = sheetWpx;
+            heightPx = sheetHpx;
+        } else {
+            const sized = svgViewBoxToPagePx(
+                declaredVb || { x: 0, y: 0, width: 100, height: 100 },
+                unitsPerCm
+            );
+            widthPx = sized.width;
+            heightPx = sized.height;
+        }
+
+        // محتوا را به مبدأ منتقل کن؛ واحدهای مختصات عوض نمی‌شوند (فقط جابه‌جایی)
+        const viewBox = normalizeSvgContentIntoFrame(svg);
+        svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+        svg.removeAttribute("width");
+        svg.removeAttribute("height");
+
+        const inner = Array.from(svg.childNodes)
+            .map(function (node) {
+                return new XMLSerializer().serializeToString(node);
+            })
+            .join("");
+        if (!inner.trim()) {
+            throw new Error("محتوای SVG خالی است.");
+        }
+
+        return {
+            viewBox: viewBox,
+            markup: new XMLSerializer().serializeToString(svg),
+            inner: inner,
+            name: fileName,
+            widthPx: widthPx,
+            heightPx: heightPx,
+            unitsPerCm: unitsPerCm,
+        };
+    }
+
+    function onSvgFileChange(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) {
+            return;
+        }
+        if (!/\.svg$/i.test(file.name) && file.type !== "image/svg+xml") {
+            setStatus("فقط فایل SVG مجاز است.");
+            event.target.value = "";
+            return;
+        }
+        setStatus("در حال خواندن SVG…");
+        file
+            .text()
+            .then(function (text) {
+                const parsed = parseUploadedSvg(text, file.name);
+                addSvgItem(parsed, file.name);
+            })
+            .catch(function (err) {
+                console.error(err);
+                setStatus(err && err.message ? err.message : "آپلود SVG ناموفق بود.");
+            })
+            .finally(function () {
+                event.target.value = "";
+            });
+    }
+
     function applyBoxSize(box) {
         const el = box.el;
         const input = box.input;
@@ -837,11 +1384,13 @@
     function getContentMinSize(box) {
         const text = box.text || " ";
         const measured = measureTextBox(text, box.fontFamily, box.fontSize, box.letterSpacing);
-        const padX = 18;
-        const padY = 14;
+        // padding اینپوت: 6px 10px + border کادر ۱px
+        const padX = 20 + 2;
+        const padY = 12 + 2;
+        const lineH = Math.ceil(box.fontSize * 1.35);
         return {
-            width: Math.max(MIN_BOX_WIDTH, Math.max(box.fontSize * 0.8, measured.width) + padX),
-            height: Math.max(MIN_BOX_HEIGHT, Math.max(box.fontSize * 1.35, measured.height) + padY),
+            width: Math.max(MIN_BOX_WIDTH, measured.width + padX),
+            height: Math.max(MIN_BOX_HEIGHT, measured.height + padY, lineH + padY),
             measured,
         };
     }
@@ -853,17 +1402,37 @@
             return;
         }
 
+        // کادر هویت مستقلی ندارد؛ همیشه دور متن می‌نشیند
         const minSize = getContentMinSize(box);
-        if (!box.manualSize) {
-            box.width = minSize.width;
-            box.height = minSize.height;
-        } else {
-            // اگر متن بزرگ‌تر شد، کادر را حداقل به اندازه محتوا بزرگ کن
-            box.width = Math.max(box.width || MIN_BOX_WIDTH, minSize.width);
-            box.height = Math.max(box.height || MIN_BOX_HEIGHT, minSize.height);
-        }
-
+        box.width = minSize.width;
+        box.height = minSize.height;
         applyBoxSize(box);
+        // اسکرول ناخواسته بعد از تغییر اندازه
+        input.scrollTop = 0;
+        input.scrollLeft = 0;
+        ensureCanvasFits();
+    }
+
+    function clampFontSize(size) {
+        return Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, Math.round(size)));
+    }
+
+    function syncFontSizePanel(box) {
+        if (!box || suppressPanelSync) {
+            return;
+        }
+        suppressPanelSync = true;
+        els.fontSize.value = String(box.fontSize);
+        els.fontSizeValue.textContent = String(box.fontSize);
+        if (els.letterSpacing) {
+            els.letterSpacing.value = String(box.letterSpacing);
+            els.letterSpacingValue.textContent = String(box.letterSpacing);
+        }
+        if (els.strokeWidth) {
+            els.strokeWidth.value = String(box.strokeWidth);
+            els.strokeWidthValue.textContent = String(box.strokeWidth);
+        }
+        suppressPanelSync = false;
     }
 
     function selectBox(id) {
@@ -904,11 +1473,14 @@
     function clearDesign() {
         boxes.splice(0, boxes.length);
         selectedId = null;
-        els.canvas.querySelectorAll(".design-textbox").forEach(function (node) {
+        els.canvas.querySelectorAll(".design-textbox, .design-svgbox").forEach(function (node) {
             node.remove();
         });
         if (els.fontFile) {
             els.fontFile.value = "";
+        }
+        if (els.svgFile) {
+            els.svgFile.value = "";
         }
         els.fileName.value = "design";
         clearMeasure();
@@ -924,11 +1496,11 @@
             return;
         }
         const box = getSelected();
-        if (!box) {
+        if (!box || isSvgItem(box)) {
             return;
         }
         box.fontFamily = els.font.value || "Vazir";
-        box.fontSize = Number(els.fontSize.value) || 48;
+        box.fontSize = clampFontSize(Number(els.fontSize.value) || 48);
         box.letterSpacing = Number(els.letterSpacing.value) || 0;
         box.fill = els.fill.value;
         box.stroke = els.stroke.value;
@@ -964,13 +1536,19 @@
         event.preventDefault();
         event.stopPropagation();
         selectBox(box.id);
+        if (!isSvgItem(box)) {
+            fitBoxToText(box);
+        }
         resizeState = {
             box,
             direction,
             startX: event.clientX,
             startY: event.clientY,
-            startWidth: box.width || box.el.offsetWidth,
-            startHeight: box.height || box.el.offsetHeight,
+            startWidth: Math.max(1, box.width || box.el.offsetWidth),
+            startHeight: Math.max(1, box.height || box.el.offsetHeight),
+            startFontSize: box.fontSize || 48,
+            startLetterSpacing: box.letterSpacing || 0,
+            startStrokeWidth: box.strokeWidth || 0,
         };
         dragState = null;
         box.el.classList.add("is-resizing");
@@ -990,16 +1568,42 @@
             const dx = (event.clientX - resizeState.startX) / zoom;
             const dy = (event.clientY - resizeState.startY) / zoom;
             const dir = resizeState.direction;
-
-            if (dir === "e" || dir === "se") {
-                box.width = Math.max(MIN_BOX_WIDTH, resizeState.startWidth + dx);
+            const scaleX = (resizeState.startWidth + dx) / resizeState.startWidth;
+            const scaleY = (resizeState.startHeight + dy) / resizeState.startHeight;
+            let scale = 1;
+            if (dir === "e") {
+                scale = scaleX;
+            } else if (dir === "s") {
+                scale = scaleY;
+            } else {
+                scale = Math.sqrt(Math.max(0.01, scaleX) * Math.max(0.01, scaleY));
             }
-            if (dir === "s" || dir === "se") {
-                box.height = Math.max(MIN_BOX_HEIGHT, resizeState.startHeight + dy);
+            scale = Math.max(0.05, scale);
+
+            if (isSvgItem(box)) {
+                box.width = Math.max(24, resizeState.startWidth * scale);
+                box.height = Math.max(24, resizeState.startHeight * scale);
+                applySvgStyles(box);
+                return;
             }
 
-            box.manualSize = true;
-            applyBoxSize(box);
+            box.fontSize = clampFontSize(resizeState.startFontSize * scale);
+            box.letterSpacing = Math.round(resizeState.startLetterSpacing * scale * 10) / 10;
+            box.strokeWidth = Math.max(0, Math.round(resizeState.startStrokeWidth * scale * 10) / 10);
+
+            box.el.style.fontSize = box.fontSize + "px";
+            box.el.style.letterSpacing = box.letterSpacing + "px";
+            if (box.input) {
+                box.input.style.fontSize = box.fontSize + "px";
+                box.input.style.letterSpacing = box.letterSpacing + "px";
+            }
+            if (box.strokeWidth > 0) {
+                box.el.style.webkitTextStroke = box.strokeWidth + "px " + box.stroke;
+            } else {
+                box.el.style.webkitTextStroke = "0 transparent";
+            }
+            fitBoxToText(box);
+            syncFontSizePanel(box);
             return;
         }
 
@@ -1012,6 +1616,27 @@
         box.y = Math.max(0, point.y - dragState.offsetY);
         box.el.style.left = box.x + "px";
         box.el.style.top = box.y + "px";
+
+        const right = box.x + (box.width || 0) + CANVAS_GROW_PAD;
+        const bottom = box.y + (box.height || 0) + CANVAS_GROW_PAD;
+        if (right > canvasW - 80 || bottom > canvasH - 80) {
+            ensureCanvasFits(right, bottom);
+        }
+
+        if (els.stage) {
+            const edge = 48;
+            const rect = els.stage.getBoundingClientRect();
+            if (event.clientX > rect.right - edge) {
+                els.stage.scrollLeft += 24;
+            } else if (event.clientX < rect.left + edge + RULER_SIZE) {
+                els.stage.scrollLeft -= 24;
+            }
+            if (event.clientY > rect.bottom - edge) {
+                els.stage.scrollTop += 24;
+            } else if (event.clientY < rect.top + edge + RULER_SIZE) {
+                els.stage.scrollTop -= 24;
+            }
+        }
     }
 
     function onPointerUp() {
@@ -1022,9 +1647,18 @@
             return;
         }
         if (resizeState) {
-            resizeState.box.el.classList.remove("is-resizing");
+            const box = resizeState.box;
+            box.el.classList.remove("is-resizing");
+            if (isSvgItem(box)) {
+                applySvgStyles(box);
+                resizeState = null;
+                setStatus("اندازه SVG به‌روز شد.");
+                return;
+            }
+            fitBoxToText(box);
+            syncFontSizePanel(box);
             resizeState = null;
-            setStatus("اندازه کادر به‌روز شد.");
+            setStatus("اندازه فونت: " + box.fontSize);
             return;
         }
         if (!dragState) {
@@ -1039,13 +1673,19 @@
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         ctx.font = `${fontSize}px ${getFontCssStack(fontFamily)}`;
+        if (ctx.letterSpacing !== undefined) {
+            ctx.letterSpacing = `${Number(letterSpacing) || 0}px`;
+        }
         const lines = (text || " ").replace(/\r\n/g, "\n").split("\n");
         const lineHeight = Math.ceil(fontSize * 1.35);
         let maxWidth = 0;
         const lineWidths = lines.map((line) => {
-            const base = ctx.measureText(line || " ").width;
-            const extra = Math.max(0, (line.length - 1) * letterSpacing);
-            const width = base + extra;
+            const content = line || " ";
+            let width = ctx.measureText(content).width;
+            // اگر مرورگر letterSpacing کانواس را اعمال نکند
+            if (ctx.letterSpacing === undefined && letterSpacing) {
+                width += Math.max(0, (content.length - 1) * letterSpacing);
+            }
             maxWidth = Math.max(maxWidth, width);
             return width;
         });
@@ -1083,6 +1723,11 @@
         let maxX = 400;
         let maxY = 300;
         boxes.forEach((box) => {
+            if (isSvgItem(box)) {
+                maxX = Math.max(maxX, box.x + (box.width || 0) + 40);
+                maxY = Math.max(maxY, box.y + (box.height || 0) + 40);
+                return;
+            }
             const measured = measureTextBox(box.text || " ", box.fontFamily, box.fontSize, box.letterSpacing);
             const w = box.width || measured.width + 40;
             const h = box.height || measured.height + 40;
@@ -1093,6 +1738,22 @@
             width: Math.ceil(maxX),
             height: Math.ceil(maxY),
         };
+    }
+
+    function buildImportedSvgMarkup(box) {
+        const vb = box.viewBox || { x: 0, y: 0, width: box.width, height: box.height };
+        const sx = pxToCorelUnits(box.width) / Math.max(0.0001, vb.width);
+        const sy = pxToCorelUnits(box.height) / Math.max(0.0001, vb.height);
+        const tx = pxToCorelUnits(box.x);
+        const ty = pxToCorelUnits(box.y);
+        const round = function (n) {
+            return Math.round(n * 1000) / 1000;
+        };
+        return (
+            `  <g id="import_${box.id}" transform="translate(${round(tx)} ${round(ty)}) scale(${round(sx)} ${round(sy)}) translate(${round(-vb.x)} ${round(-vb.y)})">\n` +
+            `   ${box.svgInner}\n` +
+            `  </g>`
+        );
     }
 
     function buildTextMarkupCorel(box, styles) {
@@ -1130,6 +1791,9 @@
         const styles = getCorelStyleRegistry();
 
         const tasks = boxes.map((box) => {
+            if (isSvgItem(box)) {
+                return Promise.resolve({ type: "svg", box: box });
+            }
             if (!(box.text || "").trim()) {
                 return Promise.resolve({ type: "empty" });
             }
@@ -1156,6 +1820,10 @@
 
             parts.forEach(function (part) {
                 if (part.type === "empty") {
+                    return;
+                }
+                if (part.type === "svg") {
+                    body.push(buildImportedSvgMarkup(part.box));
                     return;
                 }
                 if (part.type === "text") {
@@ -1210,12 +1878,14 @@
 
     function exportSvg() {
         if (!boxes.length) {
-            setStatus("ابتدا حداقل یک تکست باکس اضافه کنید.");
+            setStatus("ابتدا یک تکست باکس یا SVG اضافه کنید.");
             return;
         }
-        const hasText = boxes.some((box) => (box.text || "").trim());
-        if (!hasText) {
-            setStatus("حداقل یکی از تکست باکس‌ها باید متن داشته باشد.");
+        const hasContent = boxes.some(function (box) {
+            return isSvgItem(box) || (box.text || "").trim();
+        });
+        if (!hasContent) {
+            setStatus("حداقل یک متن یا SVG برای خروجی لازم است.");
             return;
         }
 
@@ -1302,6 +1972,12 @@
     els.addBtn.addEventListener("click", function () {
         addTextBox();
     });
+    if (els.uploadSvgBtn && els.svgFile) {
+        els.uploadSvgBtn.addEventListener("click", function () {
+            els.svgFile.click();
+        });
+        els.svgFile.addEventListener("change", onSvgFileChange);
+    }
     els.deleteBtn.addEventListener("click", deleteSelected);
     els.clearBtn.addEventListener("click", clearDesign);
     els.exportBtn.addEventListener("click", exportSvg);
@@ -1487,6 +2163,7 @@
         }
     });
 
+    applyCanvasDomSize();
     applyZoom(1);
     addTextBox({ text: "طراحی" });
     setStatus("جابه‌جایی بوم: کشیدن روی فضای خالی، دکمه «جابه‌جایی»، Space+کشیدن، یا کلیک وسط ماوس. زوم حول مکان ماوس انجام می‌شود.");

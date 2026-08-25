@@ -160,6 +160,8 @@
     position: relative;
     width: 1200px;
     height: 800px;
+    min-width: 1200px;
+    min-height: 800px;
     direction: ltr;
 }
 
@@ -169,6 +171,8 @@
     left: 0;
     width: 1200px;
     height: 800px;
+    min-width: 1200px;
+    min-height: 800px;
     transform-origin: 0 0;
     transform: scale(1);
     direction: ltr;
@@ -232,7 +236,8 @@
     cursor: crosshair;
 }
 
-.design-stage.is-measure-mode .design-textbox {
+.design-stage.is-measure-mode .design-textbox,
+.design-stage.is-measure-mode .design-svgbox {
     pointer-events: none;
 }
 
@@ -242,7 +247,9 @@
 }
 
 .design-stage.is-pan-mode .design-textbox,
-.design-stage.is-space-pan .design-textbox {
+.design-stage.is-pan-mode .design-svgbox,
+.design-stage.is-space-pan .design-textbox,
+.design-stage.is-space-pan .design-svgbox {
     pointer-events: none;
 }
 
@@ -283,10 +290,11 @@
     min-height: 36px;
     border: 1px dashed rgba(100, 116, 139, 0.45);
     border-radius: 0.4rem;
-    padding: 0.35rem 0.55rem;
+    padding: 0;
     background: rgba(255, 255, 255, 0.55);
     box-sizing: border-box;
     cursor: default;
+    overflow: visible;
     /* غلبه بر * { font-family: Vazir } در استایل سراسری */
     font-family: var(--box-font, Vazir, Tahoma, sans-serif) !important;
 }
@@ -323,14 +331,15 @@
     outline: none;
     background: transparent;
     resize: none;
-    overflow: auto;
-    white-space: pre-wrap;
-    word-break: break-word;
+    overflow: hidden;
+    white-space: pre;
+    word-break: normal;
+    overflow-wrap: normal;
     direction: rtl;
     unicode-bidi: plaintext;
     color: inherit;
     line-height: 1.35;
-    padding: 0;
+    padding: 6px 10px;
     margin: 0;
     cursor: text;
     font-family: inherit !important;
@@ -395,6 +404,56 @@
 
 .design-textbox.is-selected .design-textbox-handle,
 .design-textbox.is-selected .design-textbox-resize {
+    display: block;
+}
+
+.design-svgbox {
+    position: absolute;
+    display: block;
+    min-width: 24px;
+    min-height: 24px;
+    border: 1px dashed rgba(100, 116, 139, 0.45);
+    border-radius: 0.35rem;
+    padding: 0;
+    background: transparent;
+    box-sizing: border-box;
+    cursor: default;
+    overflow: visible;
+}
+
+.design-svgbox.is-selected {
+    border-color: #2563eb;
+    border-style: solid;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+    z-index: 5;
+}
+
+.design-svgbox.is-dragging,
+.design-svgbox.is-resizing {
+    opacity: 0.92;
+    z-index: 10;
+}
+
+.design-svgbox-inner {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    line-height: 0;
+    background: repeating-conic-gradient(#f1f5f9 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+}
+
+.design-svgbox-inner svg {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none;
+    max-height: none;
+}
+
+.design-svgbox.is-selected .design-textbox-handle,
+.design-svgbox.is-selected .design-textbox-resize {
     display: block;
 }
 

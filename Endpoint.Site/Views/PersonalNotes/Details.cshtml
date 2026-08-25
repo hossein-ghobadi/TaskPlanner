@@ -8,6 +8,13 @@
     var requestToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
     var createdAtPersian = Model.CreatedAt.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers();
     var updatedAtPersian = Model.UpdatedAt?.ToLocalTime().ToShortPersianDateTimeString().ToPersianNumbers();
+    var deleteExcerpt = string.IsNullOrWhiteSpace(Model.Content)
+        ? ""
+        : System.Text.RegularExpressions.Regex.Replace(Model.Content, @"\s+", " ").Trim();
+    if (deleteExcerpt.Length > 120)
+    {
+        deleteExcerpt = deleteExcerpt.Substring(0, 120) + "…";
+    }
 }
 
 <div class="note-detail-container">
@@ -92,9 +99,15 @@
                         </li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
-                            <a class="dropdown-item text-danger" href="/PersonalNotes/Delete?id=@Model.Id">
+                            <button type="button"
+                                    class="dropdown-item text-danger"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#deleteNoteModal"
+                                    data-note-id="@Model.Id"
+                                    data-note-title="@Model.Title"
+                                    data-note-excerpt="@deleteExcerpt">
                                 <i class="bi bi-trash"></i> حذف
-                            </a>
+                            </button>
                         </li>
                     </ul>
                 </div>
@@ -215,6 +228,11 @@
         <img id="attachmentPreviewImage" class="attachment-preview-image" src="" alt="" />
     </div>
 </div>
+
+@await Html.PartialAsync("/Views/Shared/Notes/_DeleteNoteModal.cshtml", viewData: new ViewDataDictionary(ViewData)
+{
+    ["DeleteNotePostUrl"] = Url.Action("Delete", "PersonalNotes")
+})
 
 <style>
     .note-detail-container {
