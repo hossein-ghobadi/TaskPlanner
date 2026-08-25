@@ -31,7 +31,7 @@ namespace TaskPlanner.Application.Services.ProjectService
         Task RemoveMemberFromProjectAsync(int projectId, string memberUserId, string requesterUserId);
 
         /// <summary>
-        /// بستن یا باز کردن پروژه — فقط سازنده
+        /// بستن یا باز کردن پروژه — سازنده و اعضای پروژه
         /// </summary>
         Task<bool> ToggleProjectClosedAsync(int projectId, string userId);
     }

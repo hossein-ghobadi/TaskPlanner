@@ -491,7 +491,7 @@ namespace TaskPlanner.Application.Services.ProjectService
         }
 
         /// <summary>
-        /// بستن یا باز کردن پروژه — فقط سازنده می‌تواند این کار را انجام دهد.
+        /// بستن یا باز کردن پروژه — سازنده و اعضای پروژه می‌توانند این کار را انجام دهند.
         /// </summary>
         public async Task<bool> ToggleProjectClosedAsync(int projectId, string userId)
         {
@@ -499,8 +499,11 @@ namespace TaskPlanner.Application.Services.ProjectService
             if (project == null)
                 throw new InvalidOperationException("پروژه یافت نشد.");
 
-            if (project.CreatorUserId != userId)
-                throw new InvalidOperationException("فقط سازنده پروژه می‌تواند آن را ببندد یا باز کند.");
+            var hasAccess = project.CreatorUserId == userId
+                || await _context.ProjectMembers.AnyAsync(m => m.ProjectId == projectId && m.UserId == userId);
+
+            if (!hasAccess)
+                throw new InvalidOperationException("فقط اعضای پروژه می‌توانند آن را ببندند یا باز کنند.");
 
             project.IsClosed = !project.IsClosed;
             project.UpdatedAt = DateTime.UtcNow;
