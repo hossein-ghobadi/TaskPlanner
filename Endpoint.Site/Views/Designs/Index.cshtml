@@ -1,0 +1,134 @@
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/samim-font@v4.0.5/dist/font-face.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/sahel-font@v3.4.0/dist/font-face.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/tanha-font@v0.10/dist/font-face.css" />
+<link rel="stylesheet" href="~/css/designs.css" asp-append-version="true" />
+
+<div class="design-page">
+    <header class="design-header">
+        <div>
+            <h1 class="h4 mb-1">صفحه طراحی</h1>
+            <p class="text-muted mb-0">
+                با «افزودن تکست باکس» هر تعداد متن که می‌خواهید بسازید؛ روی بوم جابه‌جا کنید، انتخاب کنید و استایل بدهید.
+            </p>
+        </div>
+        <div class="design-actions">
+            <button class="btn btn-success" type="button" id="addTextBoxBtn">
+                <i class="bi bi-plus-lg me-1"></i>
+                افزودن تکست باکس
+            </button>
+            <button class="btn btn-outline-danger" type="button" id="deleteTextBoxBtn" disabled>
+                <i class="bi bi-trash me-1"></i>
+                حذف انتخاب‌شده
+            </button>
+            <button class="btn btn-outline-secondary" type="button" id="clearDesignBtn">
+                <i class="bi bi-x-circle me-1"></i>
+                پاکسازی همه
+            </button>
+            <button class="btn btn-primary" type="button" id="exportSvgBtn">
+                <i class="bi bi-filetype-svg me-1"></i>
+                خروجی SVG
+            </button>
+        </div>
+    </header>
+
+    <div class="design-workspace">
+        <section class="design-panel card">
+            <div class="card-body">
+                <h2 class="h6 mb-2">تکست باکس‌ها</h2>
+                <div id="designBoxList" class="design-box-list mb-3" aria-label="فهرست تکست باکس‌ها"></div>
+
+                <h2 class="h6 mb-3">تنظیمات انتخاب‌شده</h2>
+                <div id="selectionHint" class="small text-muted mb-3">یک تکست باکس انتخاب کنید یا جدید بسازید.</div>
+
+                <div id="designControls" class="design-controls is-disabled">
+                    <div class="mb-3">
+                        <label class="form-label small" for="designFontSelect">فونت</label>
+                        <select id="designFontSelect" class="form-select form-select-sm">
+                            <option value="Vazir" selected>وزیر (Vazir)</option>
+                            <option value="Vazirmatn">وزیرمتن (Vazirmatn)</option>
+                            <option value="Samim">صمیم (Samim)</option>
+                            <option value="Sahel">ساحل (Sahel)</option>
+                            <option value="Tanha">تنها (Tanha)</option>
+                            <option value="Tahoma">Tahoma</option>
+                            <option value="Arial">Arial</option>
+                            <option value="Georgia">Georgia</option>
+                            <option value="Times New Roman">Times New Roman</option>
+                            <option value="Courier New">Courier New</option>
+                            <option value="Segoe UI">Segoe UI</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small" for="designFontFile">آپلود فونت سفارشی (.ttf / .otf / .woff)</label>
+                        <input id="designFontFile" class="form-control form-control-sm" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" />
+                        <div class="form-text">فونت آپلودشده به لیست اضافه می‌شود.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                            <label class="form-label small mb-0" for="designFontSizeInput">اندازه فونت</label>
+                            <span class="small text-muted" id="designFontSizeValue" aria-live="polite">48</span>
+                        </div>
+                        <input id="designFontSizeInput" class="form-range" type="range" min="12" max="240" step="1" value="48" />
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                            <label class="form-label small mb-0" for="designLetterSpacingInput">فاصله حروف</label>
+                            <span class="small text-muted" id="designLetterSpacingValue" aria-live="polite">0</span>
+                        </div>
+                        <input id="designLetterSpacingInput" class="form-range" type="range" min="-20" max="80" step="1" value="0" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small" for="designFillColor">رنگ پر</label>
+                        <input id="designFillColor" class="form-control form-control-color w-100" type="color" value="#111827" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small" for="designStrokeColor">رنگ حاشیه</label>
+                        <input id="designStrokeColor" class="form-control form-control-color w-100" type="color" value="#111827" />
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                            <label class="form-label small mb-0" for="designStrokeWidthInput">ضخامت حاشیه</label>
+                            <span class="small text-muted" id="designStrokeWidthValue" aria-live="polite">0</span>
+                        </div>
+                        <input id="designStrokeWidthInput" class="form-range" type="range" min="0" max="12" step="0.5" value="0" />
+                    </div>
+
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" id="designWeldToggle" />
+                        <label class="form-check-label" for="designWeldToggle">جوشاندن این متن (Weld)</label>
+                        <div class="form-text">در خروجی SVG این باکس به‌صورت مسیر (path) ساخته می‌شود.</div>
+                    </div>
+                </div>
+
+                <div class="mb-0">
+                    <label class="form-label small" for="designFileName">نام فایل خروجی</label>
+                    <input id="designFileName" class="form-control form-control-sm" type="text" value="design" maxlength="80" />
+                </div>
+            </div>
+        </section>
+
+        <section class="design-canvas-wrap card">
+            <div class="card-body p-0 position-relative">
+                <div id="designStage" class="design-stage" aria-label="بوم طراحی">
+                    <div id="designCanvas" class="design-canvas"></div>
+                </div>
+                <div id="designStatus" class="design-status small text-muted" aria-live="polite"></div>
+            </div>
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/imagetracerjs@1.2.6/imagetracer_v1.2.6.js"></script>
+    <script src="~/js/designs.js" asp-append-version="true"></script>
+}

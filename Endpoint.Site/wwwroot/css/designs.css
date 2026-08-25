@@ -1,0 +1,241 @@
+.design-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.design-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.design-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.design-workspace {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 1rem;
+    min-height: 70vh;
+}
+
+.design-panel {
+    height: fit-content;
+    max-height: 80vh;
+    overflow: auto;
+}
+
+.design-box-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-height: 160px;
+    overflow: auto;
+}
+
+.design-box-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: #fff;
+    padding: 0.35rem 0.5rem;
+    cursor: pointer;
+    text-align: start;
+}
+
+.design-box-list-item.active {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.design-box-list-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.85rem;
+}
+
+.design-controls.is-disabled {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.design-canvas-wrap {
+    overflow: hidden;
+    min-height: 70vh;
+}
+
+.design-stage {
+    position: relative;
+    min-height: 70vh;
+    overflow: auto;
+    background:
+        linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+        linear-gradient(165deg, #f8fafc 0%, #eef2f7 55%, #e8edf4 100%);
+    background-size: 24px 24px, 24px 24px, auto;
+}
+
+.design-canvas {
+    position: relative;
+    width: 1200px;
+    height: 800px;
+    min-width: 100%;
+    min-height: 70vh;
+}
+
+.design-textbox {
+    position: absolute;
+    display: block;
+    min-width: 48px;
+    min-height: 36px;
+    border: 1px dashed rgba(100, 116, 139, 0.45);
+    border-radius: 0.4rem;
+    padding: 0.35rem 0.55rem;
+    background: rgba(255, 255, 255, 0.55);
+    box-sizing: border-box;
+    cursor: default;
+    /* غلبه بر * { font-family: Vazir } در استایل سراسری */
+    font-family: var(--box-font, Vazir, Tahoma, sans-serif) !important;
+}
+
+.design-textbox * {
+    font-family: inherit !important;
+}
+
+.design-textbox.is-selected {
+    border-color: #2563eb;
+    border-style: solid;
+    background: rgba(37, 99, 235, 0.08);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+    z-index: 5;
+}
+
+.design-textbox.is-dragging,
+.design-textbox.is-resizing {
+    opacity: 0.92;
+    z-index: 10;
+}
+
+.design-textbox.is-dragging {
+    cursor: grabbing;
+}
+
+.design-textbox-input {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-width: 2ch;
+    min-height: 1.2em;
+    border: 0;
+    outline: none;
+    background: transparent;
+    resize: none;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    direction: rtl;
+    unicode-bidi: plaintext;
+    color: inherit;
+    line-height: 1.35;
+    padding: 0;
+    margin: 0;
+    cursor: text;
+    font-family: inherit !important;
+    font-size: inherit;
+    letter-spacing: inherit;
+    -webkit-text-stroke: inherit;
+    box-sizing: border-box;
+}
+
+.design-textbox-handle {
+    display: none;
+    position: absolute;
+    top: -7px;
+    left: -7px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #2563eb;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+    cursor: grab;
+    z-index: 3;
+}
+
+.design-textbox-resize {
+    display: none;
+    position: absolute;
+    z-index: 3;
+    background: #2563eb;
+    border: 2px solid #fff;
+    border-radius: 2px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+}
+
+.design-textbox-resize-e {
+    top: 50%;
+    right: -6px;
+    width: 10px;
+    height: 18px;
+    margin-top: -9px;
+    cursor: ew-resize;
+}
+
+.design-textbox-resize-s {
+    left: 50%;
+    bottom: -6px;
+    width: 18px;
+    height: 10px;
+    margin-left: -9px;
+    cursor: ns-resize;
+}
+
+.design-textbox-resize-se {
+    right: -6px;
+    bottom: -6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    cursor: nwse-resize;
+}
+
+.design-textbox.is-selected .design-textbox-handle,
+.design-textbox.is-selected .design-textbox-resize {
+    display: block;
+}
+
+.design-status {
+    position: absolute;
+    bottom: 10px;
+    inset-inline-start: 12px;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    z-index: 20;
+}
+
+@media (max-width: 991.98px) {
+    .design-workspace {
+        grid-template-columns: 1fr;
+        min-height: auto;
+    }
+
+    .design-stage,
+    .design-canvas {
+        min-height: 50vh;
+    }
+
+    .design-panel {
+        max-height: none;
+    }
+}
