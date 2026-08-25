@@ -16,6 +16,34 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+    align-items: center;
+}
+
+.design-unit-select {
+    width: auto;
+    min-width: 170px;
+}
+
+.design-unit-select .input-group-text {
+    font-size: 0.8rem;
+}
+
+.design-zoom-group .btn {
+    min-width: 2.25rem;
+    font-weight: 600;
+}
+
+.design-zoom-toolbar {
+    position: absolute;
+    bottom: 12px;
+    inset-inline-end: 12px;
+    z-index: 22;
+    opacity: 0.96;
+}
+
+.design-zoom-toolbar .btn {
+    min-width: 2.25rem;
+    font-weight: 600;
 }
 
 .design-workspace {
@@ -74,10 +102,53 @@
     min-height: 70vh;
 }
 
-.design-stage {
-    position: relative;
+.design-board {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    grid-template-rows: 24px minmax(0, 1fr);
     min-height: 70vh;
+    height: 70vh;
+}
+
+.design-ruler-corner {
+    grid-column: 1;
+    grid-row: 1;
+    background: #e8edf4;
+    border-inline-end: 1px solid #cbd5e1;
+    border-bottom: 1px solid #cbd5e1;
+    z-index: 4;
+}
+
+.design-ruler {
+    display: block;
+    background: #f1f5f9;
+    z-index: 4;
+}
+
+.design-ruler-h {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    height: 24px;
+    border-bottom: 1px solid #cbd5e1;
+}
+
+.design-ruler-v {
+    grid-column: 1;
+    grid-row: 2;
+    width: 24px;
+    height: 100%;
+    border-inline-end: 1px solid #cbd5e1;
+}
+
+.design-stage {
+    grid-column: 2;
+    grid-row: 2;
+    position: relative;
+    min-height: 0;
     overflow: auto;
+    /* مختصات بوم همیشه از چپ‌بالا است؛ RTL باعث خراب شدن scrollLeft/زوم می‌شود */
+    direction: ltr;
     background:
         linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
         linear-gradient(0deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
@@ -85,12 +156,124 @@
     background-size: 24px 24px, 24px 24px, auto;
 }
 
-.design-canvas {
+.design-canvas-scaler {
     position: relative;
     width: 1200px;
     height: 800px;
-    min-width: 100%;
-    min-height: 70vh;
+    direction: ltr;
+}
+
+.design-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1200px;
+    height: 800px;
+    transform-origin: 0 0;
+    transform: scale(1);
+    direction: ltr;
+}
+
+.design-measure-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 15;
+    overflow: visible;
+}
+
+.design-measure-layer line {
+    stroke: #dc2626;
+    stroke-width: 1.5;
+    stroke-dasharray: 5 4;
+}
+
+.design-measure-layer circle {
+    fill: #dc2626;
+    stroke: #fff;
+    stroke-width: 1.5;
+}
+
+.design-measure-layer rect {
+    fill: rgba(220, 38, 38, 0.92);
+}
+
+.design-measure-layer text {
+    fill: #fff;
+    font-size: 12px;
+    font-family: Vazir, Tahoma, sans-serif !important;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+}
+
+.design-guide {
+    position: absolute;
+    pointer-events: none;
+    z-index: 14;
+    background: rgba(37, 99, 235, 0.55);
+}
+
+.design-guide-x {
+    top: 0;
+    bottom: 0;
+    width: 1px;
+}
+
+.design-guide-y {
+    left: 0;
+    right: 0;
+    height: 1px;
+}
+
+.design-stage.is-measure-mode {
+    cursor: crosshair;
+}
+
+.design-stage.is-measure-mode .design-textbox {
+    pointer-events: none;
+}
+
+.design-stage.is-pan-mode,
+.design-stage.is-space-pan {
+    cursor: grab;
+}
+
+.design-stage.is-pan-mode .design-textbox,
+.design-stage.is-space-pan .design-textbox {
+    pointer-events: none;
+}
+
+.design-stage.is-panning {
+    cursor: grabbing !important;
+    user-select: none;
+}
+
+#panToolBtn.active {
+    background-color: #212529;
+    border-color: #212529;
+    color: #fff;
+}
+
+.design-measure-info {
+    position: absolute;
+    top: 34px;
+    inset-inline-end: 12px;
+    z-index: 21;
+    background: rgba(15, 23, 42, 0.88);
+    color: #fff;
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.7rem;
+    line-height: 1.5;
+    min-width: 140px;
+}
+
+#measureToolBtn.active {
+    background-color: #0dcaf0;
+    border-color: #0dcaf0;
+    color: #052c34;
 }
 
 .design-textbox {
@@ -155,6 +338,7 @@
     letter-spacing: inherit;
     -webkit-text-stroke: inherit;
     box-sizing: border-box;
+    text-align: right;
 }
 
 .design-textbox-handle {
@@ -230,9 +414,9 @@
         min-height: auto;
     }
 
-    .design-stage,
-    .design-canvas {
-        min-height: 50vh;
+    .design-board {
+        height: 55vh;
+        min-height: 55vh;
     }
 
     .design-panel {

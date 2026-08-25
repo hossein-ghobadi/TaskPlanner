@@ -29,6 +29,34 @@
                 <i class="bi bi-x-circle me-1"></i>
                 پاکسازی همه
             </button>
+            <button class="btn btn-outline-info" type="button" id="measureToolBtn" aria-pressed="false" title="اندازه‌گیری فاصله بین دو نقطه">
+                <i class="bi bi-rulers me-1"></i>
+                اندازه‌گیر
+            </button>
+            <button class="btn btn-outline-dark" type="button" id="panToolBtn" aria-pressed="false" title="جابه‌جایی بوم با کشیدن ماوس">
+                <i class="bi bi-hand-index me-1"></i>
+                جابه‌جایی
+            </button>
+            <button class="btn btn-outline-secondary d-none" type="button" id="clearMeasureBtn" title="پاک کردن اندازه‌گیری">
+                <i class="bi bi-eraser me-1"></i>
+                پاک کردن اندازه
+            </button>
+            <div class="design-unit-select input-group input-group-sm">
+                <span class="input-group-text">واحد</span>
+                <select id="designUnitSelect" class="form-select" title="واحد اندازه‌گیری" aria-label="واحد اندازه‌گیری">
+                    <option value="px" selected>پیکسل (px)</option>
+                    <option value="mm">میلی‌متر (mm)</option>
+                    <option value="cm">سانتی‌متر (cm)</option>
+                    <option value="in">اینچ (in)</option>
+                </select>
+            </div>
+            <div class="design-zoom-group btn-group" role="group" aria-label="زوم بوم">
+                <button type="button" class="btn btn-outline-dark" id="zoomOutBtn" title="کوچک‌نمایی">−</button>
+                <button type="button" class="btn btn-outline-dark" id="zoomResetBtn" title="بازگشت به ۱۰۰٪">
+                    <span id="zoomLevelLabel">۱۰۰٪</span>
+                </button>
+                <button type="button" class="btn btn-outline-dark" id="zoomInBtn" title="بزرگ‌نمایی">+</button>
+            </div>
             <button class="btn btn-primary" type="button" id="exportSvgBtn">
                 <i class="bi bi-filetype-svg me-1"></i>
                 خروجی SVG
@@ -119,9 +147,32 @@
 
         <section class="design-canvas-wrap card">
             <div class="card-body p-0 position-relative">
-                <div id="designStage" class="design-stage" aria-label="بوم طراحی">
-                    <div id="designCanvas" class="design-canvas"></div>
+                <div class="design-board" id="designBoard">
+                    <div class="design-ruler-corner" aria-hidden="true"></div>
+                    <canvas id="designRulerH" class="design-ruler design-ruler-h" width="1200" height="24" aria-label="خط‌کش افقی"></canvas>
+                    <canvas id="designRulerV" class="design-ruler design-ruler-v" width="24" height="800" aria-label="خط‌کش عمودی"></canvas>
+                    <div id="designStage" class="design-stage" aria-label="بوم طراحی">
+                        <div id="designCanvasScaler" class="design-canvas-scaler">
+                            <div id="designCanvas" class="design-canvas">
+                                <svg id="designMeasureLayer" class="design-measure-layer" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <line id="measureLine" x1="0" y1="0" x2="0" y2="0" class="d-none"></line>
+                                    <circle id="measurePointA" cx="0" cy="0" r="4" class="d-none"></circle>
+                                    <circle id="measurePointB" cx="0" cy="0" r="4" class="d-none"></circle>
+                                    <rect id="measureLabelBg" x="0" y="0" rx="4" ry="4" width="0" height="0" class="d-none"></rect>
+                                    <text id="measureLabel" x="0" y="0" class="d-none"></text>
+                                </svg>
+                                <div id="designGuideX" class="design-guide design-guide-x d-none"></div>
+                                <div id="designGuideY" class="design-guide design-guide-y d-none"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                <div class="design-zoom-toolbar btn-group shadow-sm" role="group" aria-label="زوم سریع">
+                    <button type="button" class="btn btn-sm btn-light border" id="zoomOutFab" title="کوچک‌نمایی">−</button>
+                    <button type="button" class="btn btn-sm btn-light border" id="zoomResetFab" title="۱۰۰٪">۱۰۰٪</button>
+                    <button type="button" class="btn btn-sm btn-light border" id="zoomInFab" title="بزرگ‌نمایی">+</button>
+                </div>
+                <div id="designMeasureInfo" class="design-measure-info small d-none" aria-live="polite"></div>
                 <div id="designStatus" class="design-status small text-muted" aria-live="polite"></div>
             </div>
         </section>
