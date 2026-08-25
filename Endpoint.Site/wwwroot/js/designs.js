@@ -1042,153 +1042,41 @@
         const lines = (text || " ").replace(/\r\n/g, "\n").split("\n");
         const lineHeight = Math.ceil(fontSize * 1.35);
         let maxWidth = 0;
-        lines.forEach((line) => {
+        const lineWidths = lines.map((line) => {
             const base = ctx.measureText(line || " ").width;
             const extra = Math.max(0, (line.length - 1) * letterSpacing);
-            maxWidth = Math.max(maxWidth, base + extra);
+            const width = base + extra;
+            maxWidth = Math.max(maxWidth, width);
+            return width;
         });
         return {
             width: Math.ceil(maxWidth),
             height: Math.ceil(Math.max(1, lines.length) * lineHeight),
             lineHeight,
             lines,
+            lineWidths,
         };
     }
 
-    function buildTextMarkup(box) {
-        const text = (box.text || " ").replace(/\r\n/g, "\n");
-        const measured = measureTextBox(text, box.fontFamily, box.fontSize, box.letterSpacing);
-        const boxWidth = box.width || measured.width + 18;
-        const anchorX = box.x + boxWidth - 10;
-        const localY = box.y + 8;
-        const tspans = measured.lines
-            .map((line, index) => {
-                const y = localY + box.fontSize * 0.85 + index * measured.lineHeight;
-                return `<tspan x="${anchorX}" y="${y}">${escapeXml(line.length ? line : " ")}</tspan>`;
-            })
-            .join("");
-        return (
-            `  <text style="font-family: ${escapeXml(getFontCssStack(box.fontFamily))};" font-size="${box.fontSize}" ` +
-            `fill="${escapeXml(box.fill)}" stroke="${escapeXml(box.stroke)}" stroke-width="${box.strokeWidth}" ` +
-            `letter-spacing="${box.letterSpacing}" paint-order="stroke fill" text-anchor="end" ` +
-            `direction="rtl" unicode-bidi="plaintext">\n` +
-            `    ${tspans}\n` +
-            `  </text>`
-        );
+    function pxToCorelUnits(px) {
+        if (window.DesignVector && typeof DesignVector.pxToCorelUnits === "function") {
+            return DesignVector.pxToCorelUnits(px);
+        }
+        return Math.round(Number(px) * ((2.54 / CSS_PPI) * 1000));
     }
 
-    function parseRgb(fillValue) {
-        if (!fillValue) {
-            return null;
+    function getCorelStyleRegistry() {
+        if (window.DesignVector && typeof DesignVector.getCorelStyleRegistry === "function") {
+            return DesignVector.getCorelStyleRegistry();
         }
-        const match = String(fillValue).match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
-        if (!match) {
-            return null;
-        }
-        return {
-            r: Number(match[1]),
-            g: Number(match[2]),
-            b: Number(match[3]),
-        };
-    }
-
-    function isBackgroundFill(fillValue) {
-        const rgb = parseRgb(fillValue);
-        if (!rgb) {
-            return false;
-        }
-        return rgb.r + rgb.g + rgb.b >= 720;
+        throw new Error("ماژول DesignVector بارگذاری نشده است.");
     }
 
     function weldBoxToPaths(box) {
-        if (typeof ImageTracer === "undefined") {
-            return Promise.reject(new Error("کتابخانه Weld در دسترس نیست."));
+        if (!window.DesignVector || typeof DesignVector.textBoxToWeldedPath !== "function") {
+            return Promise.reject(new Error("کتابخانه Weld (opentype/paper) در دسترس نیست."));
         }
-
-        return waitForFonts(box.fontFamily, box.fontSize).then(function () {
-            const text = (box.text || " ").replace(/\r\n/g, "\n");
-            const scale = 2;
-            const pad = Math.ceil(Math.max(12, box.fontSize * 0.3, box.strokeWidth * 2));
-            const measured = measureTextBox(text, box.fontFamily, box.fontSize, box.letterSpacing);
-            const width = Math.max(1, measured.width + pad * 2);
-            const height = Math.max(1, measured.height + pad * 2);
-            const canvas = document.createElement("canvas");
-            canvas.width = width * scale;
-            canvas.height = height * scale;
-            const ctx = canvas.getContext("2d");
-            ctx.scale(scale, scale);
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(0, 0, width, height);
-            ctx.font = `${box.fontSize}px ${getFontCssStack(box.fontFamily)}`;
-            ctx.textAlign = "right";
-            ctx.textBaseline = "alphabetic";
-            ctx.direction = "rtl";
-            ctx.fillStyle = box.fill === "#ffffff" ? "#000000" : box.fill;
-            ctx.strokeStyle = box.stroke === "#ffffff" ? "#000000" : box.stroke;
-            ctx.lineWidth = box.strokeWidth;
-            ctx.lineJoin = "round";
-            if (ctx.letterSpacing !== undefined) {
-                ctx.letterSpacing = `${box.letterSpacing}px`;
-            }
-
-            measured.lines.forEach((line, index) => {
-                const x = width - pad;
-                const y = pad + box.fontSize * 0.85 + index * measured.lineHeight;
-                const content = line.length ? line : " ";
-                if (box.strokeWidth > 0) {
-                    ctx.strokeText(content, x, y);
-                }
-                ctx.fillText(content, x, y);
-            });
-
-            const traced = ImageTracer.imagedataToSVG(
-                ctx.getImageData(0, 0, canvas.width, canvas.height),
-                {
-                    ltres: 0.8,
-                    qtres: 0.8,
-                    pathomit: 4,
-                    colorsampling: 0,
-                    numberofcolors: 2,
-                    mincolorratio: 0,
-                    colorquantcycles: 1,
-                    blurradius: 0,
-                    blurdelta: 20,
-                    strokewidth: 0,
-                    linefilter: true,
-                    scale: 1,
-                    roundcoords: 2,
-                    viewbox: true,
-                    desc: false,
-                }
-            );
-
-            const doc = new DOMParser().parseFromString(traced, "image/svg+xml");
-            const paths = Array.from(doc.querySelectorAll("path")).filter((path) => {
-                return path.getAttribute("d") && !isBackgroundFill(path.getAttribute("fill"));
-            });
-            if (!paths.length) {
-                throw new Error("مسیری از متن جوش‌خورده ساخته نشد.");
-            }
-
-            const pathMarkup = paths
-                .map((path) => {
-                    const d = path.getAttribute("d");
-                    return (
-                        `    <path d="${d}" fill="${escapeXml(box.fill)}" ` +
-                        `stroke="${escapeXml(box.stroke)}" stroke-width="${box.strokeWidth}" fill-rule="evenodd"/>`
-                    );
-                })
-                .join("\n");
-
-            return {
-                width: canvas.width,
-                height: canvas.height,
-                markup:
-                    `  <g transform="translate(${box.x}, ${box.y}) scale(${1 / scale})">\n` +
-                    `${pathMarkup}\n` +
-                    `  </g>`,
-            };
-        });
+        return DesignVector.textBoxToWeldedPath(box);
     }
 
     function computeBounds() {
@@ -1196,8 +1084,10 @@
         let maxY = 300;
         boxes.forEach((box) => {
             const measured = measureTextBox(box.text || " ", box.fontFamily, box.fontSize, box.letterSpacing);
-            maxX = Math.max(maxX, box.x + measured.width + 40);
-            maxY = Math.max(maxY, box.y + measured.height + 40);
+            const w = box.width || measured.width + 40;
+            const h = box.height || measured.height + 40;
+            maxX = Math.max(maxX, box.x + w + 40);
+            maxY = Math.max(maxY, box.y + h + 40);
         });
         return {
             width: Math.ceil(maxX),
@@ -1205,23 +1095,104 @@
         };
     }
 
+    function buildTextMarkupCorel(box, styles) {
+        const text = (box.text || " ").replace(/\r\n/g, "\n");
+        const measured = measureTextBox(text, box.fontFamily, box.fontSize, box.letterSpacing);
+        const boxWidth = box.width || measured.width + 18;
+        const localY0 = box.y + 8;
+        const fillCls = styles.fillClass(box.fill);
+        const hasStroke = (box.strokeWidth || 0) > 0;
+        const strokeCls = hasStroke ? styles.strokeClass(box.stroke, box.strokeWidth) : "";
+        const className = hasStroke ? fillCls + " " + strokeCls : fillCls;
+        const fontSize = pxToCorelUnits(box.fontSize);
+        const letterSpacing = pxToCorelUnits(box.letterSpacing);
+        // متن منطقی اصلی + RTL (نه Presentation Forms؛ بدون فونت خالی دیده می‌شود)
+        const tspans = measured.lines
+            .map((line, index) => {
+                const content = line.length ? line : " ";
+                const y = pxToCorelUnits(localY0 + box.fontSize * 0.85 + index * measured.lineHeight);
+                const lineWidth = measured.lineWidths ? measured.lineWidths[index] : measured.width;
+                const x = pxToCorelUnits(box.x + boxWidth - 10 - lineWidth);
+                return `   <tspan x="${x}" y="${y}">${escapeXml(content)}</tspan>`;
+            })
+            .join("\n");
+
+        return (
+            `  <text class="${className}" style="font-family:'${escapeXml(box.fontFamily || "Vazir")}',Tahoma,sans-serif;font-size:${fontSize};letter-spacing:${letterSpacing}" ` +
+            `fill="${escapeXml(box.fill || "#000000")}" text-anchor="start" direction="rtl" unicode-bidi="bidi-override" xml:space="preserve">\n` +
+            `${tspans}\n` +
+            `  </text>`
+        );
+    }
+
     function buildExportSvg() {
         const bounds = computeBounds();
+        const styles = getCorelStyleRegistry();
+
         const tasks = boxes.map((box) => {
-            if (!box.weld) {
-                return Promise.resolve(buildTextMarkup(box));
+            if (!(box.text || "").trim()) {
+                return Promise.resolve({ type: "empty" });
             }
-            return weldBoxToPaths(box).then((result) => result.markup);
+            return weldBoxToPaths(box)
+                .then(function (result) {
+                    const paths = (result && result.paths) || [];
+                    const usable = paths.filter(function (p) {
+                        return p && p.d && String(p.d).replace(/[\sMZ]/gi, "").length > 0;
+                    });
+                    if (!usable.length) {
+                        throw new Error("path خالی ساخته شد.");
+                    }
+                    return { type: "paths", paths: usable };
+                })
+                .catch(function (err) {
+                    console.warn("path export failed, fallback to text:", err);
+                    return { type: "text", box: box, error: err };
+                });
         });
 
         return Promise.all(tasks).then(function (parts) {
-            return (
-                `<?xml version="1.0" encoding="UTF-8"?>\n` +
-                `<svg xmlns="http://www.w3.org/2000/svg" width="${bounds.width}" height="${bounds.height}" ` +
-                `viewBox="0 0 ${bounds.width} ${bounds.height}">\n` +
-                parts.join("\n") +
-                `\n</svg>\n`
-            );
+            const body = [];
+            let pathError = null;
+
+            parts.forEach(function (part) {
+                if (part.type === "empty") {
+                    return;
+                }
+                if (part.type === "text") {
+                    pathError = part.error || pathError;
+                    body.push(buildTextMarkupCorel(part.box, styles));
+                    return;
+                }
+                (part.paths || []).forEach(function (item) {
+                    if (!item.d) {
+                        return;
+                    }
+                    const fillCls = styles.fillClass(item.fill);
+                    const hasStroke = (item.strokeWidth || 0) > 0;
+                    const className = hasStroke
+                        ? fillCls + " " + styles.strokeClass(item.stroke, item.strokeWidth)
+                        : fillCls;
+                    const fillAttr = ` fill="${escapeXml(item.fill || "#000000")}"`;
+                    const strokeAttr =
+                        hasStroke
+                            ? ` stroke="${escapeXml(item.stroke || "#000000")}" stroke-width="${Math.max(
+                                  1,
+                                  pxToCorelUnits(item.strokeWidth)
+                              )}"`
+                            : ` stroke="none"`;
+                    body.push(`  <path class="${className}"${fillAttr}${strokeAttr} fill-rule="nonzero" d="${item.d}"/>`);
+                });
+            });
+
+            if (!body.length) {
+                throw pathError || new Error("محتوایی برای خروجی SVG ساخته نشد.");
+            }
+
+            if (window.DesignVector && typeof DesignVector.buildCorelSvgDocument === "function") {
+                return DesignVector.buildCorelSvgDocument(bounds, body, styles);
+            }
+
+            throw new Error("ماژول DesignVector بارگذاری نشده است.");
         });
     }
 
@@ -1252,8 +1223,11 @@
         setStatus("در حال ساخت SVG…");
         buildExportSvg()
             .then(function (svg) {
+                if (!svg || String(svg).length < 80) {
+                    throw new Error("خروجی SVG خالی بود.");
+                }
                 downloadSvg(svg, els.fileName.value);
-                setStatus("فایل SVG دانلود شد.");
+                setStatus("فایل SVG دانلود شد (" + Math.round(String(svg).length / 1024) + " KB).");
             })
             .catch(function (error) {
                 console.error(error);
@@ -1289,11 +1263,17 @@
         }
         customFonts.set(familyName, objectUrl);
 
-        const fontFace = new FontFace(familyName, `url(${objectUrl})`);
         setStatus("در حال بارگذاری فونت…");
-        fontFace
-            .load()
-            .then(function (loaded) {
+        Promise.all([
+            file.arrayBuffer(),
+            new FontFace(familyName, `url(${objectUrl})`).load(),
+        ])
+            .then(function (results) {
+                const buffer = results[0];
+                const loaded = results[1];
+                if (window.DesignVector && typeof DesignVector.registerCustomFont === "function") {
+                    DesignVector.registerCustomFont(familyName, buffer);
+                }
                 document.fonts.add(loaded);
                 addCustomFontOption(familyName);
                 applyPanelToSelected();
