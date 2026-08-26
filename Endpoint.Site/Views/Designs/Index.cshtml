@@ -79,6 +79,7 @@
                 <div id="selectionHint" class="small text-muted mb-3">یک تکست باکس انتخاب کنید یا جدید بسازید.</div>
 
                 <div id="designControls" class="design-controls is-disabled">
+                    <div class="design-control-text">
                     <div class="mb-3">
                         <label class="form-label small" for="designFontSelect">فونت</label>
                         <select id="designFontSelect" class="form-select form-select-sm">
@@ -117,12 +118,15 @@
                         </div>
                         <input id="designLetterSpacingInput" class="form-range" type="range" min="-20" max="80" step="1" value="0" />
                     </div>
+                    </div>
 
+                    <div class="design-control-paint">
                     <div class="mb-3">
                         <label class="form-label small" for="designFillColor">رنگ پر</label>
                         <input id="designFillColor" class="d-none" type="color" value="#111827" />
                         <div id="designFillSpectrum" class="design-spectrum" data-spectrum="fill" aria-label="طیف رنگ پر"></div>
-                        <div class="form-text">بخشی از متن را انتخاب کنید تا فقط همان بخش رنگ شود.</div>
+                        <div class="form-text design-control-text">بخشی از متن را انتخاب کنید تا فقط همان بخش رنگ شود.</div>
+                        <div class="form-text design-control-svg-only d-none">رنگ روی شکل‌های پرشدهٔ SVG اعمال می‌شود.</div>
                     </div>
 
                     <div class="mb-3">
@@ -138,12 +142,15 @@
                         </div>
                         <input id="designStrokeWidthInput" class="form-range" type="range" min="0" max="12" step="0.5" value="0" />
                     </div>
+                    </div>
 
+                    <div class="design-control-text">
                     <div class="mb-3 form-check form-switch">
                         <input class="form-check-input" type="checkbox" role="switch" id="designWeldToggle" />
                         <label class="form-check-label" for="designWeldToggle">جوشاندن مسیرها (Weld / Unite)</label>
                         <div class="form-text">خروجی همیشه به‌صورت منحنی (path) است؛ این گزینه حروف هم‌پوشان را یکی می‌کند.</div>
                         <div class="form-text">در خروجی SVG این باکس به‌صورت مسیر (path) ساخته می‌شود.</div>
+                    </div>
                     </div>
                 </div>
 

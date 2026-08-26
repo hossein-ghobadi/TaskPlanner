@@ -97,6 +97,19 @@
     pointer-events: none;
 }
 
+.design-controls.is-svg-mode .design-control-text {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.design-controls.is-svg-mode .design-control-svg-only {
+    display: block !important;
+}
+
+.design-controls.is-svg-mode .design-control-paint .design-control-text {
+    display: none;
+}
+
 .design-spectrum {
     display: flex;
     flex-direction: column;

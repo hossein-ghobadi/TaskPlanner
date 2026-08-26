@@ -756,16 +756,26 @@
 
     function syncPanelFromSelected() {
         const box = getSelected();
-        const enabled = !!box && !isSvgItem(box);
-        els.controls.classList.toggle("is-disabled", !enabled);
+        const hasBox = !!box;
+        const svgMode = isSvgItem(box);
+        els.controls.classList.toggle("is-disabled", !hasBox);
+        els.controls.classList.toggle("is-svg-mode", svgMode);
         els.deleteBtn.disabled = !box;
         if (!box) {
             els.selectionHint.textContent = "یک آیتم انتخاب کنید، تکست بسازید یا SVG آپلود کنید.";
             return;
         }
-        if (isSvgItem(box)) {
+        if (svgMode) {
             els.selectionHint.textContent =
-                "SVG انتخاب‌شده: نقطه آبی = جابه‌جایی، دستگیره‌ها = تغییر اندازه. تنظیمات فونت روی SVG اعمال نمی‌شود.";
+                "SVG انتخاب‌شده: رنگ پر/حاشیه را از طیف عوض کنید. نقطه آبی = جابه‌جایی، دستگیره‌ها = تغییر اندازه.";
+            suppressPanelSync = true;
+            els.fill.value = normalizeFillHex(box.fill || box.originalFill || "#111827");
+            els.stroke.value = normalizeFillHex(box.stroke || box.originalStroke || "#111827");
+            els.strokeWidth.value = String(box.strokeWidth || 0);
+            els.strokeWidthValue.textContent = String(box.strokeWidth || 0);
+            syncSpectrumFromInput("fill", els.fill.value);
+            syncSpectrumFromInput("stroke", els.stroke.value);
+            suppressPanelSync = false;
             return;
         }
 
@@ -1317,7 +1327,7 @@
         fitBoxToText(box);
     }
 
-    function applySvgStyles(box) {
+    function applySvgStyles(box, options) {
         const el = box.el;
         if (!el) {
             return;
@@ -1327,7 +1337,249 @@
         el.style.width = box.width + "px";
         el.style.height = box.height + "px";
         el.classList.toggle("is-selected", box.id === selectedId);
+        const forcePaint = !!(options && options.repaint);
+        if (forcePaint || !box.liveSvg) {
+            refreshSvgPaint(box);
+        } else if (box.strokeOverride && box.fillOverride !== undefined) {
+            // ضخامت حاشیه نسبت به اندازه باکس است؛ بعد از resize دوباره محاسبه شود
+            if (options && options.resize) {
+                refreshSvgPaint(box);
+            }
+        }
         ensureCanvasFits();
+    }
+
+    function isPaintNone(value) {
+        const v = String(value || "")
+            .trim()
+            .toLowerCase();
+        return !v || v === "none" || v === "transparent";
+    }
+
+    function extractCssColor(cssText, prop) {
+        if (!cssText) {
+            return null;
+        }
+        const re = new RegExp("(?:^|[;{]\\s*)" + prop + "\\s*:\\s*([^;}{]+)", "i");
+        const m = String(cssText).match(re);
+        return m ? m[1].trim() : null;
+    }
+
+    function cssColorToHex(color) {
+        if (!color) {
+            return "#111827";
+        }
+        const raw = String(color).trim();
+        if (/^#[0-9a-fA-F]{3}$|^#[0-9a-fA-F]{6}$/.test(raw)) {
+            return normalizeFillHex(raw);
+        }
+        const rgbMatch = raw.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+        if (rgbMatch) {
+            return rgbToHex(Number(rgbMatch[1]), Number(rgbMatch[2]), Number(rgbMatch[3]));
+        }
+        try {
+            const canvas = document.createElement("canvas");
+            canvas.width = 1;
+            canvas.height = 1;
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "#000000";
+            ctx.fillStyle = raw;
+            const computed = String(ctx.fillStyle || "");
+            const m = computed.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+            if (m) {
+                return rgbToHex(Number(m[1]), Number(m[2]), Number(m[3]));
+            }
+            if (/^#[0-9a-fA-F]{6}$/i.test(computed)) {
+                return normalizeFillHex(computed);
+            }
+        } catch (e) {
+            // ignore
+        }
+        return "#111827";
+    }
+
+    function detectSvgPaint(svg) {
+        const result = {
+            fill: "#111827",
+            stroke: "#111827",
+            strokeWidth: 0,
+        };
+        if (!svg) {
+            return result;
+        }
+
+        const styleColors = [];
+        Array.from(svg.querySelectorAll("style")).forEach(function (styleEl) {
+            const css = styleEl.textContent || "";
+            const fillMatches = css.match(/fill\s*:\s*([^;}{]+)/gi) || [];
+            fillMatches.forEach(function (part) {
+                const color = part.split(":").slice(1).join(":").trim();
+                if (!isPaintNone(color) && !/^url\(/i.test(color)) {
+                    styleColors.push(color);
+                }
+            });
+            const strokeMatch = css.match(/stroke\s*:\s*([^;}{]+)/i);
+            if (strokeMatch && !isPaintNone(strokeMatch[1]) && !/^url\(/i.test(strokeMatch[1])) {
+                result.stroke = strokeMatch[1].trim();
+            }
+        });
+        if (styleColors.length) {
+            result.fill = styleColors[0];
+        }
+
+        const shapes = svg.querySelectorAll("path, polygon, polyline, rect, circle, ellipse, text, tspan");
+        for (let i = 0; i < shapes.length; i++) {
+            const el = shapes[i];
+            const fill =
+                el.getAttribute("fill") ||
+                extractCssColor(el.getAttribute("style"), "fill") ||
+                (el.style && el.style.fill);
+            if (result.fill === "#111827" && fill && !isPaintNone(fill) && !/^url\(/i.test(fill)) {
+                result.fill = fill;
+            }
+            const stroke =
+                el.getAttribute("stroke") ||
+                extractCssColor(el.getAttribute("style"), "stroke") ||
+                (el.style && el.style.stroke);
+            if (stroke && !isPaintNone(stroke) && !/^url\(/i.test(stroke)) {
+                result.stroke = stroke;
+                const sw =
+                    el.getAttribute("stroke-width") ||
+                    extractCssColor(el.getAttribute("style"), "stroke-width");
+                const swNum = parseFloat(sw);
+                if (Number.isFinite(swNum) && swNum > 0) {
+                    result.strokeWidth = swNum;
+                }
+            }
+            if (result.fill !== "#111827") {
+                break;
+            }
+        }
+
+        result.fill = cssColorToHex(result.fill);
+        result.stroke = cssColorToHex(result.stroke);
+        return result;
+    }
+
+    function paintSvgDocument(svg, box) {
+        if (!svg || !box) {
+            return;
+        }
+        const fillOverride = !!box.fillOverride;
+        const strokeOverride = !!box.strokeOverride;
+        if (!fillOverride && !strokeOverride) {
+            return;
+        }
+
+        const fill = normalizeFillHex(box.fill || "#111827");
+        const stroke = normalizeFillHex(box.stroke || "#111827");
+        const strokeWidthPx = Math.max(0, Number(box.strokeWidth) || 0);
+        const vb = box.viewBox || { width: box.width || 1 };
+        const unitScale = box.width > 0 ? (vb.width || box.width) / box.width : 1;
+        const strokeWidthUnits = strokeWidthPx * unitScale;
+
+        Array.from(svg.querySelectorAll("style")).forEach(function (styleEl) {
+            let css = styleEl.textContent || "";
+            if (fillOverride) {
+                css = css.replace(/fill\s*:\s*([^;}{]+)/gi, function (full, value) {
+                    if (isPaintNone(value) || /^url\(/i.test(value)) {
+                        return full;
+                    }
+                    return "fill:" + fill;
+                });
+            }
+            if (strokeOverride) {
+                css = css.replace(/stroke\s*:\s*([^;}{]+)/gi, function (full, value) {
+                    if (isPaintNone(value) || /^url\(/i.test(value)) {
+                        return full;
+                    }
+                    return "stroke:" + (strokeWidthPx > 0 ? stroke : "none");
+                });
+                if (strokeWidthPx > 0) {
+                    if (/stroke-width\s*:/i.test(css)) {
+                        css = css.replace(/stroke-width\s*:\s*[^;}{]+/gi, "stroke-width:" + strokeWidthUnits);
+                    }
+                }
+            }
+            styleEl.textContent = css;
+        });
+
+        const shapes = svg.querySelectorAll(
+            "path, polygon, polyline, rect, circle, ellipse, line, text, tspan"
+        );
+        Array.from(shapes).forEach(function (el) {
+            if (fillOverride) {
+                const fillAttr = el.getAttribute("fill");
+                const styleFill = extractCssColor(el.getAttribute("style"), "fill") || (el.style && el.style.fill);
+                const current = fillAttr || styleFill;
+                if (!isPaintNone(current) && !/^url\(/i.test(String(current || ""))) {
+                    // اگر fill نداشت ولی در کلاس رنگ دارد، باز هم ست کن
+                    el.setAttribute("fill", fill);
+                    if (el.style) {
+                        el.style.fill = fill;
+                    }
+                } else if (!current) {
+                    // اشکال بدون fill صریح (رنگ از CSS کلاس) — override کن
+                    el.setAttribute("fill", fill);
+                    if (el.style) {
+                        el.style.fill = fill;
+                    }
+                }
+            }
+
+            if (strokeOverride) {
+                if (strokeWidthPx > 0) {
+                    el.setAttribute("stroke", stroke);
+                    el.setAttribute("stroke-width", String(strokeWidthUnits));
+                    if (el.style) {
+                        el.style.stroke = stroke;
+                        el.style.strokeWidth = String(strokeWidthUnits);
+                    }
+                } else {
+                    el.setAttribute("stroke", "none");
+                    if (el.style) {
+                        el.style.stroke = "none";
+                    }
+                }
+            }
+        });
+    }
+
+    function serializeSvgBoxMarkup(svg) {
+        if (!svg) {
+            return { markup: "", inner: "" };
+        }
+        const markup = new XMLSerializer().serializeToString(svg);
+        const inner = Array.from(svg.childNodes)
+            .map(function (node) {
+                return new XMLSerializer().serializeToString(node);
+            })
+            .join("");
+        return { markup: markup, inner: inner };
+    }
+
+    function refreshSvgPaint(box) {
+        if (!isSvgItem(box) || !box.inner) {
+            return;
+        }
+        const sourceMarkup = box.svgMarkupOriginal || box.svgMarkup;
+        if (!sourceMarkup) {
+            return;
+        }
+        const liveSvg = mountSvgInto(box.inner, sourceMarkup);
+        box.liveSvg = liveSvg;
+        if (!liveSvg) {
+            return;
+        }
+        if (box.fillOverride || box.strokeOverride) {
+            paintSvgDocument(liveSvg, box);
+            const painted = serializeSvgBoxMarkup(liveSvg);
+            box.svgMarkup = painted.markup;
+            box.svgInner = painted.inner;
+        } else {
+            box.svgMarkup = box.svgMarkupOriginal || box.svgMarkup;
+            box.svgInner = box.svgInnerOriginal || box.svgInner;
+        }
     }
 
     function createResizeHandle(direction, title) {
@@ -1732,14 +1984,6 @@
 
         const inner = document.createElement("div");
         inner.className = "design-svgbox-inner";
-        const liveSvg = mountSvgInto(inner, box.svgMarkup);
-        if (!liveSvg) {
-            inner.textContent = "SVG قابل نمایش نیست";
-            inner.style.color = "#b91c1c";
-            inner.style.fontSize = "12px";
-            inner.style.padding = "8px";
-            inner.style.pointerEvents = "none";
-        }
 
         el.appendChild(inner);
         els.canvas.appendChild(el);
@@ -1747,16 +1991,27 @@
         box.el = el;
         box.input = null;
         box.inner = inner;
+        box.liveSvg = null;
 
         attachCommonBoxChrome(box, el, "تغییر اندازه SVG");
         applySvgStyles(box);
+
+        if (!box.liveSvg && box.inner && !box.inner.querySelector("svg")) {
+            inner.textContent = "SVG قابل نمایش نیست";
+            inner.style.color = "#b91c1c";
+            inner.style.fontSize = "12px";
+            inner.style.padding = "8px";
+            inner.style.pointerEvents = "none";
+        }
     }
 
     function addSvgItem(parsed, fileName) {
         const offset = (boxes.length % 8) * 28;
-        // اندازه واقعی فایل روی بوم — بدون کوچک/بزرگ‌کردن دلخواه
         const width = Math.max(8, Number(parsed.widthPx) || 100);
         const height = Math.max(8, Number(parsed.heightPx) || 100);
+        const detected = detectSvgPaint(
+            new DOMParser().parseFromString(parsed.markup, "image/svg+xml").documentElement
+        );
 
         const box = {
             id: nextId++,
@@ -1769,7 +2024,16 @@
             viewBox: parsed.viewBox,
             svgMarkup: parsed.markup,
             svgInner: parsed.inner,
+            svgMarkupOriginal: parsed.markup,
+            svgInnerOriginal: parsed.inner,
             unitsPerCm: parsed.unitsPerCm,
+            fill: detected.fill,
+            stroke: detected.stroke,
+            strokeWidth: 0,
+            originalFill: detected.fill,
+            originalStroke: detected.stroke,
+            fillOverride: false,
+            strokeOverride: false,
         };
         boxes.push(box);
         createSvgElement(box);
@@ -2023,7 +2287,17 @@
             return;
         }
         const box = getSelected();
-        if (!box || isSvgItem(box)) {
+        if (!box) {
+            return;
+        }
+        if (isSvgItem(box)) {
+            box.stroke = normalizeFillHex(els.stroke.value);
+            box.strokeWidth = Number(els.strokeWidth.value) || 0;
+            box.strokeOverride = true;
+            els.strokeWidthValue.textContent = String(box.strokeWidth);
+            syncSpectrumFromInput("stroke", box.stroke);
+            applySvgStyles(box, { repaint: true });
+            setStatus("حاشیه SVG به‌روز شد.");
             return;
         }
         box.fontFamily = els.font.value || "Vazir";
@@ -2049,7 +2323,15 @@
             return;
         }
         const box = getSelected();
-        if (!box || isSvgItem(box)) {
+        if (!box) {
+            return;
+        }
+        if (isSvgItem(box)) {
+            box.fill = normalizeFillHex(els.fill.value);
+            box.fillOverride = true;
+            syncSpectrumFromInput("fill", box.fill);
+            applySvgStyles(box, { repaint: true });
+            setStatus("رنگ پر SVG اعمال شد.");
             return;
         }
         applyFillFromPanel(box, els.fill.value);
@@ -2064,7 +2346,22 @@
             return;
         }
         const box = getSelected();
-        if (!box || isSvgItem(box)) {
+        if (!box) {
+            return;
+        }
+        if (isSvgItem(box)) {
+            box.stroke = normalizeFillHex(els.stroke.value);
+            box.strokeOverride = true;
+            if (!(Number(box.strokeWidth) > 0)) {
+                box.strokeWidth = 1;
+                suppressPanelSync = true;
+                els.strokeWidth.value = "1";
+                els.strokeWidthValue.textContent = "1";
+                suppressPanelSync = false;
+            }
+            syncSpectrumFromInput("stroke", box.stroke);
+            applySvgStyles(box, { repaint: true });
+            setStatus("رنگ حاشیه SVG اعمال شد.");
             return;
         }
         box.stroke = els.stroke.value;
@@ -2205,7 +2502,7 @@
             const box = resizeState.box;
             box.el.classList.remove("is-resizing");
             if (isSvgItem(box)) {
-                applySvgStyles(box);
+                applySvgStyles(box, { resize: true, repaint: !!box.strokeOverride });
                 resizeState = null;
                 setStatus("اندازه SVG به‌روز شد.");
                 return;
