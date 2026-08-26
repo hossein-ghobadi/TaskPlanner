@@ -38,7 +38,9 @@
         letterSpacing: document.getElementById("designLetterSpacingInput"),
         letterSpacingValue: document.getElementById("designLetterSpacingValue"),
         fill: document.getElementById("designFillColor"),
+        fillSpectrum: document.getElementById("designFillSpectrum"),
         stroke: document.getElementById("designStrokeColor"),
+        strokeSpectrum: document.getElementById("designStrokeSpectrum"),
         strokeWidth: document.getElementById("designStrokeWidthInput"),
         strokeWidthValue: document.getElementById("designStrokeWidthValue"),
         weld: document.getElementById("designWeldToggle"),
@@ -82,6 +84,7 @@
     let canvasW = MIN_CANVAS_W;
     let canvasH = MIN_CANVAS_H;
     const ZOOM_MIN = 0.25;
+    const spectrumControllers = { fill: null, stroke: null };
     const ZOOM_MAX = 4;
     const ZOOM_STEP = 0.1;
     // استاندارد CSS: 96px = 1in
@@ -698,6 +701,7 @@
                 stroke: "#111827",
                 strokeWidth: 0,
                 weld: false,
+                charFills: null, // آرایه رنگ هر کاراکتر؛ null = یکدست با fill
             },
             partial || {}
         );
@@ -766,7 +770,7 @@
         }
 
         els.selectionHint.textContent =
-            "داخل باکس تایپ کنید. نقطه آبی = جابه‌جایی. دستگیره‌ها = بزرگ/کوچک کردن فونت.";
+            "بخشی از متن را انتخاب کنید و رنگ پر را عوض کنید؛ بدون انتخاب، رنگ کل باکس عوض می‌شود.";
 
         suppressPanelSync = true;
         els.font.value = box.fontFamily;
@@ -779,14 +783,498 @@
         }
         els.fontSize.value = String(box.fontSize);
         els.letterSpacing.value = String(box.letterSpacing);
-        els.fill.value = box.fill;
+        els.fill.value = getActiveFillForPanel(box);
         els.stroke.value = box.stroke;
         els.strokeWidth.value = String(box.strokeWidth);
         els.weld.checked = !!box.weld;
         els.fontSizeValue.textContent = String(box.fontSize);
         els.letterSpacingValue.textContent = String(box.letterSpacing);
         els.strokeWidthValue.textContent = String(box.strokeWidth);
+        syncSpectrumFromInput("fill", els.fill.value);
+        syncSpectrumFromInput("stroke", els.stroke.value);
         suppressPanelSync = false;
+    }
+
+    function clamp01(n) {
+        return Math.max(0, Math.min(1, n));
+    }
+
+    function hexToRgb(hex) {
+        const value = normalizeFillHex(hex || "#000000").replace("#", "");
+        return {
+            r: parseInt(value.slice(0, 2), 16),
+            g: parseInt(value.slice(2, 4), 16),
+            b: parseInt(value.slice(4, 6), 16),
+        };
+    }
+
+    function rgbToHex(r, g, b) {
+        function part(n) {
+            return Math.max(0, Math.min(255, Math.round(n)))
+                .toString(16)
+                .padStart(2, "0");
+        }
+        return "#" + part(r) + part(g) + part(b);
+    }
+
+    function rgbToHsv(r, g, b) {
+        r /= 255;
+        g /= 255;
+        b /= 255;
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const d = max - min;
+        let h = 0;
+        const s = max === 0 ? 0 : d / max;
+        const v = max;
+        if (d !== 0) {
+            switch (max) {
+                case r:
+                    h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+                    break;
+                case g:
+                    h = ((b - r) / d + 2) / 6;
+                    break;
+                default:
+                    h = ((r - g) / d + 4) / 6;
+                    break;
+            }
+        }
+        return { h: h * 360, s: s, v: v };
+    }
+
+    function hsvToRgb(h, s, v) {
+        h = ((h % 360) + 360) % 360;
+        const c = v * s;
+        const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+        const m = v - c;
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        if (h < 60) {
+            r = c;
+            g = x;
+        } else if (h < 120) {
+            r = x;
+            g = c;
+        } else if (h < 180) {
+            g = c;
+            b = x;
+        } else if (h < 240) {
+            g = x;
+            b = c;
+        } else if (h < 300) {
+            r = x;
+            b = c;
+        } else {
+            r = c;
+            b = x;
+        }
+        return {
+            r: (r + m) * 255,
+            g: (g + m) * 255,
+            b: (b + m) * 255,
+        };
+    }
+
+    function syncSpectrumFromInput(kind, color) {
+        const ctrl = spectrumControllers[kind];
+        if (!ctrl) {
+            return;
+        }
+        ctrl.setHex(color, true);
+    }
+
+    function buildSpectrumPicker(root, kind, onChange) {
+        if (!root) {
+            return null;
+        }
+        root.innerHTML = "";
+        root.classList.add("design-spectrum");
+
+        const sv = document.createElement("div");
+        sv.className = "design-spectrum-sv";
+        sv.tabIndex = 0;
+        const white = document.createElement("div");
+        white.className = "design-spectrum-sv-white";
+        const black = document.createElement("div");
+        black.className = "design-spectrum-sv-black";
+        const thumb = document.createElement("div");
+        thumb.className = "design-spectrum-sv-thumb";
+        sv.appendChild(white);
+        sv.appendChild(black);
+        sv.appendChild(thumb);
+
+        const hue = document.createElement("input");
+        hue.type = "range";
+        hue.className = "design-spectrum-hue";
+        hue.min = "0";
+        hue.max = "360";
+        hue.step = "1";
+        hue.value = "210";
+        hue.setAttribute("aria-label", "فام رنگ");
+
+        const rgbWrap = document.createElement("div");
+        rgbWrap.className = "design-spectrum-rgb";
+        const channels = ["R", "G", "B"].map(function (name) {
+            const label = document.createElement("label");
+            label.textContent = name;
+            const input = document.createElement("input");
+            input.type = "number";
+            input.min = "0";
+            input.max = "255";
+            input.step = "1";
+            input.value = "0";
+            input.setAttribute("aria-label", name);
+            label.appendChild(input);
+            rgbWrap.appendChild(label);
+            return input;
+        });
+
+        const preview = document.createElement("div");
+        preview.className = "design-spectrum-preview";
+
+        root.appendChild(sv);
+        root.appendChild(hue);
+        root.appendChild(rgbWrap);
+        root.appendChild(preview);
+
+        const state = { h: 210, s: 0.67, v: 0.67, silent: false };
+
+        function emit() {
+            const rgb = hsvToRgb(state.h, state.s, state.v);
+            const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+            if (!state.silent && typeof onChange === "function") {
+                onChange(hex);
+            }
+        }
+
+        function paint(skipRgbInputs) {
+            const rgb = hsvToRgb(state.h, state.s, state.v);
+            const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+            const pure = hsvToRgb(state.h, 1, 1);
+            sv.style.backgroundColor = rgbToHex(pure.r, pure.g, pure.b);
+            thumb.style.left = state.s * 100 + "%";
+            thumb.style.top = (1 - state.v) * 100 + "%";
+            hue.value = String(Math.round(state.h));
+            preview.style.backgroundColor = hex;
+            if (!skipRgbInputs) {
+                channels[0].value = String(Math.round(rgb.r));
+                channels[1].value = String(Math.round(rgb.g));
+                channels[2].value = String(Math.round(rgb.b));
+            }
+            return hex;
+        }
+
+        function setHex(hex, silent) {
+            const rgb = hexToRgb(hex);
+            const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+            state.h = hsv.h;
+            state.s = hsv.s;
+            state.v = hsv.v;
+            state.silent = !!silent;
+            paint(false);
+            state.silent = false;
+        }
+
+        function setFromPointer(clientX, clientY) {
+            const rect = sv.getBoundingClientRect();
+            if (!(rect.width > 0) || !(rect.height > 0)) {
+                return;
+            }
+            const x = clamp01((clientX - rect.left) / rect.width);
+            const y = clamp01((clientY - rect.top) / rect.height);
+            state.s = x;
+            state.v = clamp01(1 - y);
+            paint(false);
+            emit();
+        }
+
+        let dragging = false;
+        function onPointerDown(event) {
+            event.preventDefault();
+            dragging = true;
+            setFromPointer(event.clientX, event.clientY);
+            if (sv.setPointerCapture && event.pointerId != null) {
+                try {
+                    sv.setPointerCapture(event.pointerId);
+                } catch (e) {
+                    // ignore
+                }
+            }
+        }
+        function onPointerMove(event) {
+            if (!dragging) {
+                return;
+            }
+            event.preventDefault();
+            setFromPointer(event.clientX, event.clientY);
+        }
+        function onPointerUp() {
+            dragging = false;
+        }
+
+        sv.addEventListener("pointerdown", onPointerDown);
+        sv.addEventListener("pointermove", onPointerMove);
+        sv.addEventListener("pointerup", onPointerUp);
+        sv.addEventListener("pointercancel", onPointerUp);
+
+        hue.addEventListener("input", function () {
+            state.h = Number(hue.value) || 0;
+            paint(false);
+            emit();
+        });
+
+        channels.forEach(function (input) {
+            input.addEventListener("change", function () {
+                const r = Number(channels[0].value) || 0;
+                const g = Number(channels[1].value) || 0;
+                const b = Number(channels[2].value) || 0;
+                const hsv = rgbToHsv(r, g, b);
+                state.h = hsv.h;
+                state.s = hsv.s;
+                state.v = hsv.v;
+                paint(true);
+                emit();
+            });
+        });
+
+        // جلوگیری از از دست رفتن selection متن هنگام درگ روی طیف
+        root.addEventListener("mousedown", function (event) {
+            if (event.target && event.target.closest && event.target.closest("input")) {
+                return;
+            }
+            event.preventDefault();
+        });
+
+        paint(false);
+        const api = { setHex: setHex, kind: kind };
+        spectrumControllers[kind] = api;
+        return api;
+    }
+
+    function normalizeFillHex(color) {
+        if (!color) {
+            return "#111827";
+        }
+        const value = String(color).trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(value)) {
+            return value.toLowerCase();
+        }
+        if (/^#[0-9a-fA-F]{3}$/.test(value)) {
+            return ("#" + value[1] + value[1] + value[2] + value[2] + value[3] + value[3]).toLowerCase();
+        }
+        return value;
+    }
+
+    function hasMultiFill(box) {
+        if (!box || !Array.isArray(box.charFills) || !box.charFills.length) {
+            return false;
+        }
+        const first = normalizeFillHex(box.charFills[0] || box.fill);
+        for (let i = 1; i < box.charFills.length; i++) {
+            if (normalizeFillHex(box.charFills[i] || box.fill) !== first) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function collapseCharFillsIfUniform(box) {
+        if (!box || !Array.isArray(box.charFills)) {
+            return;
+        }
+        if (!box.charFills.length) {
+            box.charFills = null;
+            return;
+        }
+        const first = normalizeFillHex(box.charFills[0] || box.fill);
+        const allSame = box.charFills.every(function (c) {
+            return normalizeFillHex(c || box.fill) === first;
+        });
+        if (allSame) {
+            box.fill = first;
+            box.charFills = null;
+        }
+    }
+
+    function ensureCharFills(box) {
+        const text = box.text || "";
+        const fallback = normalizeFillHex(box.fill || "#111827");
+        if (!Array.isArray(box.charFills) || box.charFills.length !== text.length) {
+            const next = [];
+            for (let i = 0; i < text.length; i++) {
+                next.push(
+                    Array.isArray(box.charFills) && box.charFills[i]
+                        ? normalizeFillHex(box.charFills[i])
+                        : fallback
+                );
+            }
+            box.charFills = next;
+        }
+        return box.charFills;
+    }
+
+    function remapCharFills(oldText, oldFills, newText, defaultFill) {
+        if (!Array.isArray(oldFills)) {
+            return null;
+        }
+        const fallback = normalizeFillHex(defaultFill || "#111827");
+        const oldT = String(oldText || "");
+        const newT = String(newText || "");
+        let prefix = 0;
+        while (prefix < oldT.length && prefix < newT.length && oldT.charAt(prefix) === newT.charAt(prefix)) {
+            prefix++;
+        }
+        let suffix = 0;
+        while (
+            suffix < oldT.length - prefix &&
+            suffix < newT.length - prefix &&
+            oldT.charAt(oldT.length - 1 - suffix) === newT.charAt(newT.length - 1 - suffix)
+        ) {
+            suffix++;
+        }
+        const result = [];
+        for (let i = 0; i < prefix; i++) {
+            result.push(normalizeFillHex(oldFills[i] || fallback));
+        }
+        for (let i = prefix; i < newT.length - suffix; i++) {
+            result.push(fallback);
+        }
+        for (let i = 0; i < suffix; i++) {
+            result.push(normalizeFillHex(oldFills[oldT.length - suffix + i] || fallback));
+        }
+        if (!result.length) {
+            return null;
+        }
+        const first = result[0];
+        if (result.every(function (c) {
+            return c === first;
+        })) {
+            return null;
+        }
+        return result;
+    }
+
+    function getActiveFillForPanel(box) {
+        if (!box) {
+            return "#111827";
+        }
+        const range = getSavedTextSelection(box);
+        if (range && Array.isArray(box.charFills)) {
+            const i = Math.min(range.start, Math.max(0, (box.text || "").length - 1));
+            if (i >= 0 && box.charFills[i]) {
+                return normalizeFillHex(box.charFills[i]);
+            }
+        }
+        return normalizeFillHex(box.fill || "#111827");
+    }
+
+    function getSavedTextSelection(box) {
+        if (!box) {
+            return null;
+        }
+        const input = box.input;
+        let start = box._selStart;
+        let end = box._selEnd;
+        if (
+            input &&
+            document.activeElement === input &&
+            typeof input.selectionStart === "number"
+        ) {
+            start = input.selectionStart;
+            end = input.selectionEnd;
+        }
+        if (typeof start !== "number" || typeof end !== "number" || start === end) {
+            return null;
+        }
+        return {
+            start: Math.min(start, end),
+            end: Math.max(start, end),
+        };
+    }
+
+    function rememberTextSelection(box) {
+        const input = box && box.input;
+        if (!input || typeof input.selectionStart !== "number") {
+            return;
+        }
+        box._selStart = input.selectionStart;
+        box._selEnd = input.selectionEnd;
+    }
+
+    function escapeHtml(text) {
+        return String(text || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    function renderTextColorPreview(box) {
+        const preview = box.preview;
+        const input = box.input;
+        if (!preview || !input) {
+            return;
+        }
+        const text = box.text || "";
+        const multi = hasMultiFill(box);
+        if (!multi) {
+            preview.innerHTML = "";
+            preview.classList.add("d-none");
+            input.classList.remove("is-multicolor");
+            input.style.color = box.fill;
+            input.style.webkitTextFillColor = "";
+            return;
+        }
+
+        const fills = ensureCharFills(box);
+        let html = "";
+        let i = 0;
+        while (i < text.length) {
+            const fill = normalizeFillHex(fills[i] || box.fill);
+            let j = i + 1;
+            while (j < text.length && normalizeFillHex(fills[j] || box.fill) === fill) {
+                j++;
+            }
+            html +=
+                '<span style="color:' +
+                fill +
+                '">' +
+                escapeHtml(text.slice(i, j)).replace(/\n/g, "<br>") +
+                "</span>";
+            i = j;
+        }
+        preview.innerHTML = html || "&nbsp;";
+        preview.classList.remove("d-none");
+        input.classList.add("is-multicolor");
+        input.style.color = "transparent";
+        input.style.webkitTextFillColor = "transparent";
+    }
+
+    function applyFillFromPanel(box, color) {
+        const hex = normalizeFillHex(color);
+        const range = getSavedTextSelection(box);
+        const textLen = (box.text || "").length;
+
+        if (range && range.start < textLen) {
+            const start = Math.max(0, range.start);
+            const end = Math.min(textLen, range.end);
+            if (end > start) {
+                ensureCharFills(box);
+                for (let i = start; i < end; i++) {
+                    box.charFills[i] = hex;
+                }
+                collapseCharFillsIfUniform(box);
+                box.fill = hex;
+                setStatus("رنگ بخش انتخاب‌شده اعمال شد.");
+                return;
+            }
+        }
+
+        box.fill = hex;
+        box.charFills = null;
+        setStatus("رنگ کل متن اعمال شد.");
     }
 
     function applyBoxStyles(box) {
@@ -810,10 +1298,20 @@
         input.style.fontFamily = stack;
         input.style.fontSize = box.fontSize + "px";
         input.style.letterSpacing = box.letterSpacing + "px";
-        input.style.color = box.fill;
         input.style.lineHeight = "1.35";
         if (input.value !== box.text) {
             input.value = box.text;
+        }
+        if (box.preview) {
+            box.preview.style.fontFamily = stack;
+            box.preview.style.fontSize = box.fontSize + "px";
+            box.preview.style.letterSpacing = box.letterSpacing + "px";
+            box.preview.style.webkitTextStroke =
+                box.strokeWidth > 0 ? `${box.strokeWidth}px ${box.stroke}` : "0 transparent";
+        }
+        renderTextColorPreview(box);
+        if (!hasMultiFill(box)) {
+            input.style.color = box.fill;
         }
         el.classList.toggle("is-selected", box.id === selectedId);
         fitBoxToText(box);
@@ -885,6 +1383,10 @@
         el.className = "design-textbox";
         el.dataset.boxId = String(box.id);
 
+        const preview = document.createElement("div");
+        preview.className = "design-textbox-preview d-none";
+        preview.setAttribute("aria-hidden", "true");
+
         const input = document.createElement("textarea");
         input.className = "design-textbox-input";
         input.rows = 1;
@@ -893,11 +1395,13 @@
         input.spellcheck = false;
         input.setAttribute("aria-label", "متن تکست باکس");
 
+        el.appendChild(preview);
         el.appendChild(input);
         els.canvas.appendChild(el);
 
         box.el = el;
         box.input = input;
+        box.preview = preview;
 
         attachCommonBoxChrome(box, el, "بزرگ/کوچک کردن فونت");
 
@@ -906,10 +1410,33 @@
         });
 
         input.addEventListener("input", function () {
-            box.text = input.value;
+            const oldText = box.text || "";
+            const newText = input.value;
+            box.charFills = remapCharFills(oldText, box.charFills, newText, box.fill);
+            box.text = newText;
+            rememberTextSelection(box);
+            renderTextColorPreview(box);
             fitBoxToText(box);
             renderList();
             setStatus("متن به‌روز شد.");
+        });
+
+        function syncFillPickerFromSelection() {
+            rememberTextSelection(box);
+            if (suppressPanelSync || selectedId !== box.id) {
+                return;
+            }
+            suppressPanelSync = true;
+            els.fill.value = getActiveFillForPanel(box);
+            syncSpectrumFromInput("fill", els.fill.value);
+            suppressPanelSync = false;
+        }
+
+        input.addEventListener("select", syncFillPickerFromSelection);
+        input.addEventListener("keyup", syncFillPickerFromSelection);
+        input.addEventListener("mouseup", syncFillPickerFromSelection);
+        input.addEventListener("blur", function () {
+            rememberTextSelection(box);
         });
 
         input.addEventListener("mousedown", function (event) {
@@ -1502,7 +2029,6 @@
         box.fontFamily = els.font.value || "Vazir";
         box.fontSize = clampFontSize(Number(els.fontSize.value) || 48);
         box.letterSpacing = Number(els.letterSpacing.value) || 0;
-        box.fill = els.fill.value;
         box.stroke = els.stroke.value;
         box.strokeWidth = Number(els.strokeWidth.value) || 0;
         box.weld = !!els.weld.checked;
@@ -1516,6 +2042,35 @@
             applyBoxStyles(box);
             setStatus(box.weld ? "Weld برای این باکس فعال است." : "استایل اعمال شد.");
         });
+    }
+
+    function applyFillColorToSelected() {
+        if (suppressPanelSync) {
+            return;
+        }
+        const box = getSelected();
+        if (!box || isSvgItem(box)) {
+            return;
+        }
+        applyFillFromPanel(box, els.fill.value);
+        syncSpectrumFromInput("fill", els.fill.value);
+        applyBoxStyles(box);
+        fitBoxToText(box);
+        renderList();
+    }
+
+    function applyStrokeColorToSelected() {
+        if (suppressPanelSync) {
+            return;
+        }
+        const box = getSelected();
+        if (!box || isSvgItem(box)) {
+            return;
+        }
+        box.stroke = els.stroke.value;
+        syncSpectrumFromInput("stroke", els.stroke.value);
+        applyBoxStyles(box);
+        setStatus("رنگ حاشیه اعمال شد.");
     }
 
     function beginDrag(box, event) {
@@ -1761,26 +2316,57 @@
         const measured = measureTextBox(text, box.fontFamily, box.fontSize, box.letterSpacing);
         const boxWidth = box.width || measured.width + 18;
         const localY0 = box.y + 8;
-        const fillCls = styles.fillClass(box.fill);
         const hasStroke = (box.strokeWidth || 0) > 0;
         const strokeCls = hasStroke ? styles.strokeClass(box.stroke, box.strokeWidth) : "";
-        const className = hasStroke ? fillCls + " " + strokeCls : fillCls;
         const fontSize = pxToCorelUnits(box.fontSize);
         const letterSpacing = pxToCorelUnits(box.letterSpacing);
-        // متن منطقی اصلی + RTL (نه Presentation Forms؛ بدون فونت خالی دیده می‌شود)
+        const defaultFill = normalizeFillHex(box.fill || "#000000");
+        const charFills = Array.isArray(box.charFills) ? box.charFills : null;
+
+        let offset = 0;
         const tspans = measured.lines
             .map((line, index) => {
                 const content = line.length ? line : " ";
                 const y = pxToCorelUnits(localY0 + box.fontSize * 0.85 + index * measured.lineHeight);
                 const lineWidth = measured.lineWidths ? measured.lineWidths[index] : measured.width;
                 const x = pxToCorelUnits(box.x + boxWidth - 10 - lineWidth);
-                return `   <tspan x="${x}" y="${y}">${escapeXml(content)}</tspan>`;
+                const lineFills = charFills ? charFills.slice(offset, offset + line.length) : null;
+                offset += line.length + 1;
+
+                if (!lineFills || !hasMultiFill({ charFills: lineFills, fill: defaultFill, text: content })) {
+                    const fillCls = styles.fillClass(defaultFill);
+                    const className = hasStroke ? fillCls + " " + strokeCls : fillCls;
+                    return `   <tspan class="${className}" x="${x}" y="${y}" fill="${escapeXml(defaultFill)}">${escapeXml(content)}</tspan>`;
+                }
+
+                // بازه‌های رنگی پشت‌سرهم
+                let parts = "";
+                let i = 0;
+                let first = true;
+                while (i < content.length) {
+                    const fill = normalizeFillHex(lineFills[i] || defaultFill);
+                    let j = i + 1;
+                    while (j < content.length && normalizeFillHex(lineFills[j] || defaultFill) === fill) {
+                        j++;
+                    }
+                    const fillCls = styles.fillClass(fill);
+                    const className = hasStroke ? fillCls + " " + strokeCls : fillCls;
+                    const chunk = content.slice(i, j);
+                    if (first) {
+                        parts += `   <tspan class="${className}" x="${x}" y="${y}" fill="${escapeXml(fill)}">${escapeXml(chunk)}</tspan>`;
+                        first = false;
+                    } else {
+                        parts += `   <tspan class="${className}" fill="${escapeXml(fill)}">${escapeXml(chunk)}</tspan>`;
+                    }
+                    i = j;
+                }
+                return parts;
             })
             .join("\n");
 
         return (
-            `  <text class="${className}" style="font-family:'${escapeXml(box.fontFamily || "Vazir")}',Tahoma,sans-serif;font-size:${fontSize};letter-spacing:${letterSpacing}" ` +
-            `fill="${escapeXml(box.fill || "#000000")}" text-anchor="start" direction="rtl" unicode-bidi="bidi-override" xml:space="preserve">\n` +
+            `  <text style="font-family:'${escapeXml(box.fontFamily || "Vazir")}',Tahoma,sans-serif;font-size:${fontSize};letter-spacing:${letterSpacing}" ` +
+            `text-anchor="start" direction="rtl" unicode-bidi="bidi-override" xml:space="preserve">\n` +
             `${tspans}\n` +
             `  </text>`
         );
@@ -1955,12 +2541,29 @@
             });
     }
 
+    buildSpectrumPicker(els.fillSpectrum, "fill", function (hex) {
+        if (suppressPanelSync) {
+            return;
+        }
+        els.fill.value = hex;
+        applyFillColorToSelected();
+    });
+    buildSpectrumPicker(els.strokeSpectrum, "stroke", function (hex) {
+        if (suppressPanelSync) {
+            return;
+        }
+        els.stroke.value = hex;
+        applyStrokeColorToSelected();
+    });
+    syncSpectrumFromInput("fill", els.fill ? els.fill.value : "#111827");
+    syncSpectrumFromInput("stroke", els.stroke ? els.stroke.value : "#111827");
+
     ["input", "change"].forEach(function (evt) {
         els.font.addEventListener(evt, applyPanelToSelected);
         els.fontSize.addEventListener(evt, applyPanelToSelected);
         els.letterSpacing.addEventListener(evt, applyPanelToSelected);
-        els.fill.addEventListener(evt, applyPanelToSelected);
-        els.stroke.addEventListener(evt, applyPanelToSelected);
+        els.fill.addEventListener(evt, applyFillColorToSelected);
+        els.stroke.addEventListener(evt, applyStrokeColorToSelected);
         els.strokeWidth.addEventListener(evt, applyPanelToSelected);
         els.weld.addEventListener(evt, applyPanelToSelected);
     });

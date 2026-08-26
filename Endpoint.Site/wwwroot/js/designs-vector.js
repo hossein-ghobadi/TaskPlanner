@@ -307,6 +307,87 @@
         return chunks.join("");
     }
 
+    /**
+     * مسیرهای جدا برای هر بازهٔ رنگی پشت‌سرهم در متن بصری.
+     * colors[i] رنگ کاراکتر visualText[i] است.
+     */
+    function glyphRunToColoredPathChunks(font, visualText, colors, fontSize, letterSpacing, startX, baselineY, defaultFill) {
+        const text = String(visualText || "");
+        if (!text.length) {
+            return [];
+        }
+        const fills = Array.isArray(colors) ? colors : [];
+        const fallback = normalizeHexColor(defaultFill || "#000000");
+        const chunks = [];
+        let i = 0;
+        let x = startX;
+        const spacing = Number(letterSpacing) || 0;
+
+        while (i < text.length) {
+            const fill = normalizeHexColor(fills[i] || fallback);
+            let j = i + 1;
+            while (j < text.length && normalizeHexColor(fills[j] || fallback) === fill) {
+                j++;
+            }
+            const run = text.slice(i, j);
+            const d = glyphRunToPathData(font, run, fontSize, spacing, x, baselineY);
+            if (d) {
+                chunks.push({ d: d, fill: fill });
+            }
+            x += measureGlyphRunWidth(font, run, fontSize, spacing);
+            if (j < text.length) {
+                x += spacing;
+            }
+            i = j;
+        }
+        return chunks;
+    }
+
+    /**
+     * رنگ‌های منطقی یک خط را با reshape/معکوس RTL به ترتیب بصری هم‌تراز می‌کند.
+     */
+    function toVisualRtlRunWithColors(text, logicalColors, defaultFill) {
+        const content = text && text.length ? text : " ";
+        const fallback = normalizeHexColor(defaultFill || "#000000");
+        const colors = [];
+        for (let i = 0; i < content.length; i++) {
+            colors.push(normalizeHexColor((logicalColors && logicalColors[i]) || fallback));
+        }
+        const shaped = reshapeArabic(content);
+        let visualChars;
+        let visualColors;
+        if (shaped.length === content.length) {
+            visualChars = shaped.split("");
+            visualColors = colors.slice();
+        } else {
+            // طول عوض شده؛ کل خط با رنگ غالب
+            visualChars = shaped.split("");
+            const counts = {};
+            colors.forEach(function (c) {
+                counts[c] = (counts[c] || 0) + 1;
+            });
+            let dominant = fallback;
+            let best = 0;
+            Object.keys(counts).forEach(function (c) {
+                if (counts[c] > best) {
+                    best = counts[c];
+                    dominant = c;
+                }
+            });
+            visualColors = visualChars.map(function () {
+                return dominant;
+            });
+        }
+        if (hasArabicScript(content)) {
+            visualChars.reverse();
+            visualColors.reverse();
+        }
+        return {
+            text: visualChars.join(""),
+            colors: visualColors,
+        };
+    }
+
     function bakeItemToPathData(item) {
         if (!item) {
             return "";
@@ -407,63 +488,87 @@
             const lineHeight = box.fontSize * 1.35;
             const padX = 10;
             const padY = 8;
+            const defaultFill = normalizeHexColor(box.fill || "#000000");
+            const charFills = Array.isArray(box.charFills) ? box.charFills : null;
 
-            const visuals = lines.map(function (line) {
+            // رنگ‌های منطقی هر خط (شاخص UTF-16 هم‌تراز با textarea)
+            let offset = 0;
+            const lineColorSlices = lines.map(function (line) {
+                const slice = charFills ? charFills.slice(offset, offset + line.length) : null;
+                offset += line.length + 1; // +1 برای \n
+                return slice;
+            });
+
+            const visuals = lines.map(function (line, index) {
                 const content = line.length ? line : " ";
-                return toVisualRtlRun(content);
+                return toVisualRtlRunWithColors(content, lineColorSlices[index], defaultFill);
             });
             const measuredWidths = visuals.map(function (visual) {
-                return measureGlyphRunWidth(font, visual, box.fontSize, box.letterSpacing || 0);
+                return measureGlyphRunWidth(font, visual.text, box.fontSize, box.letterSpacing || 0);
             });
             const maxLineWidth = Math.max.apply(null, measuredWidths.concat([0]));
-            // اگر باکس دستی خیلی عریض باشد، متن را به عرض واقعی‌اش راست‌چین می‌کنیم
-            // نه اینکه فاصلهٔ جعلی داخل path ایجاد شود
             const contentWidth = maxLineWidth + padX * 2;
             const boxWidth = box.width > 0 ? box.width : contentWidth;
             const rightEdge = box.x + boxWidth - padX;
 
-            const pathChunks = [];
+            const coloredChunks = [];
             visuals.forEach(function (visual, index) {
                 const lineW = measuredWidths[index] || 0;
                 const startX = rightEdge - lineW;
                 const baselineY = box.y + padY + box.fontSize * 0.85 + index * lineHeight;
-                const d = glyphRunToPathData(
+                const parts = glyphRunToColoredPathChunks(
                     font,
-                    visual,
+                    visual.text,
+                    visual.colors,
                     box.fontSize,
                     box.letterSpacing || 0,
                     startX,
-                    baselineY
+                    baselineY,
+                    defaultFill
                 );
-                if (d) {
-                    pathChunks.push(d);
-                }
+                parts.forEach(function (part) {
+                    coloredChunks.push(part);
+                });
             });
 
-            if (!pathChunks.length) {
+            if (!coloredChunks.length) {
                 throw new Error("مسیری از فونت ساخته نشد.");
             }
 
-            let d = pathChunks.join("");
-            if (box.weld) {
-                d = weldPathData(d);
-            }
+            // Weld فقط داخل هر رنگ (رنگ‌های مختلف نباید یکی شوند)
+            const byFill = new Map();
+            coloredChunks.forEach(function (part) {
+                if (!part.d) {
+                    return;
+                }
+                if (!byFill.has(part.fill)) {
+                    byFill.set(part.fill, []);
+                }
+                byFill.get(part.fill).push(part.d);
+            });
 
-            const scaled = compactCorelPathD(scalePathDataToCorel(d));
-            if (!scaled || !String(scaled).replace(/[\sMZ]/gi, "").length) {
+            const paths = [];
+            byFill.forEach(function (ds, fill) {
+                let d = ds.join("");
+                if (box.weld) {
+                    d = weldPathData(d);
+                }
+                const scaled = compactCorelPathD(scalePathDataToCorel(d));
+                if (scaled && String(scaled).replace(/[\sMZ]/gi, "").length) {
+                    paths.push({
+                        d: scaled,
+                        fill: fill,
+                        stroke: box.stroke,
+                        strokeWidth: box.strokeWidth || 0,
+                    });
+                }
+            });
+
+            if (!paths.length) {
                 throw new Error("پس از مقیاس‌گذاری، path خالی شد.");
             }
 
-            return {
-                paths: [
-                    {
-                        d: scaled,
-                        fill: box.fill,
-                        stroke: box.stroke,
-                        strokeWidth: box.strokeWidth || 0,
-                    },
-                ],
-            };
+            return { paths: paths };
         });
     }
 
@@ -566,5 +671,6 @@
         normalizeHexColor: normalizeHexColor,
         hasArabicScript: hasArabicScript,
         toVisualRtlRun: toVisualRtlRun,
+        toVisualRtlRunWithColors: toVisualRtlRunWithColors,
     };
 })(window);
