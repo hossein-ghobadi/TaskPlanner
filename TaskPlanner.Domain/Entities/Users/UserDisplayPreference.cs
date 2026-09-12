@@ -3,8 +3,7 @@ using System;
 namespace TaskPlanner.Domain.Entities.Users
 {
     /// <summary>
-    /// تنظیمات نمایش منوی اصلی برای هر کاربر (یک ردیف به‌ازای هر کاربر).
-    /// پیش‌فرض همه بخش‌ها نمایش داده می‌شوند.
+    /// تنظیمات نمایش منوی اصلی و بخش‌های پروژه برای هر کاربر (یک ردیف به‌ازای هر کاربر).
     /// </summary>
     public class UserDisplayPreference
     {
@@ -23,6 +22,14 @@ namespace TaskPlanner.Domain.Entities.Users
 
         /// <summary>فقط برای کاربران ADMIN معنا دارد</summary>
         public bool ShowAdminLeaves { get; set; } = true;
+
+        public bool ShowProjectTasks { get; set; } = true;
+        public bool ShowProjectKanban { get; set; } = true;
+        public bool ShowProjectSprints { get; set; } = true;
+        public bool ShowProjectFeatures { get; set; } = true;
+        public bool ShowProjectTickets { get; set; } = true;
+        public bool ShowProjectGallery { get; set; } = true;
+        public bool ShowProjectCategories { get; set; } = true;
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }

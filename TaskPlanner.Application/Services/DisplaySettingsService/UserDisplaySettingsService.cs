@@ -31,7 +31,14 @@ namespace TaskPlanner.Application.Services.DisplaySettingsService
                 ShowMindMaps = pref.ShowMindMaps,
                 ShowDesigns = pref.ShowDesigns,
                 ShowAdminUsers = pref.ShowAdminUsers,
-                ShowAdminLeaves = pref.ShowAdminLeaves
+                ShowAdminLeaves = pref.ShowAdminLeaves,
+                ShowProjectTasks = pref.ShowProjectTasks,
+                ShowProjectKanban = pref.ShowProjectKanban,
+                ShowProjectSprints = pref.ShowProjectSprints,
+                ShowProjectFeatures = pref.ShowProjectFeatures,
+                ShowProjectTickets = pref.ShowProjectTickets,
+                ShowProjectGallery = pref.ShowProjectGallery,
+                ShowProjectCategories = pref.ShowProjectCategories
             };
         }
 
@@ -54,6 +61,13 @@ namespace TaskPlanner.Application.Services.DisplaySettingsService
             pref.ShowBoards = settings.ShowBoards;
             pref.ShowMindMaps = settings.ShowMindMaps;
             pref.ShowDesigns = settings.ShowDesigns;
+            pref.ShowProjectTasks = settings.ShowProjectTasks;
+            pref.ShowProjectKanban = settings.ShowProjectKanban;
+            pref.ShowProjectSprints = settings.ShowProjectSprints;
+            pref.ShowProjectFeatures = settings.ShowProjectFeatures;
+            pref.ShowProjectTickets = settings.ShowProjectTickets;
+            pref.ShowProjectGallery = settings.ShowProjectGallery;
+            pref.ShowProjectCategories = settings.ShowProjectCategories;
 
             if (isAdmin)
             {

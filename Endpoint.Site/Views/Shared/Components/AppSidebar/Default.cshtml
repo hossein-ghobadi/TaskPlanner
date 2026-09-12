@@ -58,6 +58,7 @@
         {
             <a class="@NavClass("Designs", "Index")" href="/Designs/Index"><i class="bi bi-palette"></i><span>صفحه طراحی</span></a>
         }
+        <a class="@(string.Equals(c, "ModuleTests", StringComparison.OrdinalIgnoreCase) ? "app-sidebar-link active" : "app-sidebar-link")" href="/ModuleTests/Index"><i class="bi bi-calculator"></i><span>تست ماژول محاسبه</span></a>
         <a class="@NavClass("PersonalNotes", "Index")" href="/PersonalNotes/Index"><i class="bi bi-journal-text"></i><span>یادداشت‌های شخصی</span></a>
         <a class="@NavClass("Notifications", "Index")" href="/Notifications/Index"><i class="bi bi-bell"></i><span>اعلان‌ها</span></a>
         @if (Model.ShowAdminUsers)

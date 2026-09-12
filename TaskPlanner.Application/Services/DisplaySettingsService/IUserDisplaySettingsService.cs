@@ -20,5 +20,13 @@ namespace TaskPlanner.Application.Services.DisplaySettingsService
         public bool ShowDesigns { get; set; } = true;
         public bool ShowAdminUsers { get; set; } = true;
         public bool ShowAdminLeaves { get; set; } = true;
+
+        public bool ShowProjectTasks { get; set; } = true;
+        public bool ShowProjectKanban { get; set; } = true;
+        public bool ShowProjectSprints { get; set; } = true;
+        public bool ShowProjectFeatures { get; set; } = true;
+        public bool ShowProjectTickets { get; set; } = true;
+        public bool ShowProjectGallery { get; set; } = true;
+        public bool ShowProjectCategories { get; set; } = true;
     }
 }

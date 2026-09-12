@@ -1,0 +1,361 @@
+@model Endpoint.Site.Models.EdgeCostTestVm
+@using TaskPlanner.Domain.Entities.Calculation
+@{
+    ViewData["Title"] = "تست ماژول هزینه لبه";
+    ViewData["UseFluidLayout"] = true;
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid px-0" style="max-width: 1100px;">
+    <div class="mb-4">
+        <div class="mb-2">
+            <a href="/ModuleTests/Index" class="text-decoration-none small">
+                <i class="bi bi-arrow-right me-1"></i>
+                بازگشت به لیست ماژول‌ها
+            </a>
+        </div>
+        <h2 class="fw-bold mb-1">
+            <i class="bi bi-border-outer me-2"></i>
+            تست ماژول هزینه لبه
+        </h2>
+        <p class="text-muted mb-0">
+            متریال لبه، پانچ لبه و دستمزد لبه را با طول حقیقی و طول نسبی PVC محاسبه کنید.
+        </p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-6">
+            <form method="post" asp-action="EdgeCost" id="edge-cost-form" class="card border-0 shadow-sm">
+                @Html.AntiForgeryToken()
+                <div class="card-header bg-white py-3">
+                    <strong>ورودی‌ها</strong>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Category" class="form-label"></label>
+                        <select asp-for="Category" class="form-select" id="category-select">
+                            @foreach (var category in Model.AllCategories)
+                            {
+                                <option value="@((int)category)"
+                                        data-can-edge="@(category.CanHaveEdgeCost() ? "true" : "false")">
+                                    @category.GetDisplayName()
+                                </option>
+                            }
+                        </select>
+                        <div class="form-text text-muted d-none" id="cut-hint">دسته برش هزینه لبه ندارد.</div>
+                    </div>
+
+                    <div id="edge-inputs">
+                        <div class="mb-3 pb-2 border-bottom">
+                            <div class="form-check mb-1">
+                                <input asp-for="EnablePunch" class="form-check-input" type="checkbox" id="enable-punch" />
+                                <label asp-for="EnablePunch" class="form-check-label fw-semibold"></label>
+                            </div>
+                            <div class="form-text mb-0">در صورت فعال بودن، هزینه پانچ لبه در محاسبه لحاظ می‌شود.</div>
+                        </div>
+
+                        <div class="row g-3 mb-3" id="price-fields-row">
+                            <div class="col-12 col-md-4" id="edge-price-group">
+                                <label asp-for="EdgeUnitPrice" class="form-label"></label>
+                                <input asp-for="EdgeUnitPrice" class="form-control" type="number" step="any" min="0" />
+                            </div>
+                            <div class="col-12 col-md-4" id="punch-price-group">
+                                <label asp-for="PunchUnitPrice" class="form-label"></label>
+                                <input asp-for="PunchUnitPrice" class="form-control" type="number" step="any" min="0" />
+                            </div>
+                            <div class="col-12 col-md-4" id="labor-price-group">
+                                <label asp-for="LaborUnitPrice" class="form-label"></label>
+                                <input asp-for="LaborUnitPrice" class="form-control" type="number" step="any" min="0" />
+                            </div>
+                        </div>
+
+                        <div class="border rounded p-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="fw-semibold">حروف</div>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="add-letter">
+                                    <i class="bi bi-plus"></i> حرف
+                                </button>
+                            </div>
+                            <div class="form-text mb-2">طول حقیقی PVC = مجموع طول همه حروف.</div>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>نام</th>
+                                            <th style="width:40%">طول</th>
+                                            <th style="width:48px"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="letters-body">
+                                        @for (var i = 0; i < Model.Letters.Count; i++)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <input name="Letters[@i].Label" value="@Model.Letters[i].Label" class="form-control form-control-sm" />
+                                                </td>
+                                                <td>
+                                                    <input name="Letters[@i].Length" value="@Model.Letters[i].Length" class="form-control form-control-sm" type="number" step="any" min="0" />
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger remove-row" title="حذف">&times;</button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="border rounded p-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="fw-semibold">محدوده‌های ضریب سختی</div>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="add-band">
+                                    <i class="bi bi-plus"></i> محدوده
+                                </button>
+                            </div>
+                            <div class="form-text mb-2">اگر طول حرف در چند محدوده باشد، اولین محدوده (با کمترین حد پایین) اعمال می‌شود.</div>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>از طول</th>
+                                            <th>تا طول</th>
+                                            <th>ضریب</th>
+                                            <th style="width:48px"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bands-body">
+                                        @for (var i = 0; i < Model.DifficultyBands.Count; i++)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <input name="DifficultyBands[@i].MinLength" value="@Model.DifficultyBands[i].MinLength" class="form-control form-control-sm" type="number" step="any" min="0" />
+                                                </td>
+                                                <td>
+                                                    <input name="DifficultyBands[@i].MaxLength" value="@Model.DifficultyBands[i].MaxLength" class="form-control form-control-sm" type="number" step="any" min="0" />
+                                                </td>
+                                                <td>
+                                                    <input name="DifficultyBands[@i].Coefficient" value="@Model.DifficultyBands[i].Coefficient" class="form-control form-control-sm" type="number" step="any" min="0" />
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger remove-row" title="حذف">&times;</button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-play-fill me-1"></i>
+                        محاسبه
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-white py-3">
+                    <strong>قوانین ماژول</strong>
+                </div>
+                <div class="card-body small">
+                    <ul class="mb-0 pe-3">
+                        <li class="mb-2"><strong>برش:</strong> هزینه لبه ندارد</li>
+                        <li class="mb-2"><strong>طول حقیقی:</strong> مجموع طول همه حروف</li>
+                        <li class="mb-2"><strong>متریال لبه:</strong> طول حقیقی PVC × فی لبه</li>
+                        <li class="mb-2"><strong>پانچ لبه:</strong> فقط با تیک فعال — طول حقیقی PVC × فی پانچ</li>
+                        <li class="mb-2"><strong>دستمزد لبه:</strong> طول نسبی PVC × فی دستمزد</li>
+                        <li class="mb-0"><strong>طول نسبی:</strong> Σ (طول هر حرف × ضریب سختی محدوده آن حرف)</li>
+                    </ul>
+                </div>
+            </div>
+
+            @if (Model.HasResult)
+            {
+                @if (Model.IsSuccess)
+                {
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                            <strong>خروجی شفاف</strong>
+                            <span class="badge text-bg-success">موفق</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="text-muted small">دسته</div>
+                                <div class="fw-semibold">@Model.CategoryDisplayName</div>
+                            </div>
+                            <div class="alert alert-light border small mb-3">
+                                @Model.RuleDescription
+                            </div>
+
+                            @if (!Model.Applies)
+                            {
+                                <div class="p-3 rounded bg-primary-subtle">
+                                    <div class="text-muted small">جمع هزینه لبه</div>
+                                    <div class="fs-4 fw-bold">0</div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="border rounded p-3 mb-3">
+                                    <div class="fw-semibold mb-2">طول حقیقی و نسبی PVC</div>
+                                    <div class="small mb-2">
+                                        طول حقیقی (= مجموع طول حروف):
+                                        <strong>@Model.ActualPvcLengthResult.ToString("#,0.####")</strong>
+                                    </div>
+                                    @foreach (var item in Model.LetterContributions)
+                                    {
+                                        <div class="small border-bottom py-2">
+                                            <div class="fw-semibold">@item.Label</div>
+                                            <div class="text-muted">محدوده [@item.MinLength.ToString("#,0.####") – @item.MaxLength.ToString("#,0.####")] ، ضریب @item.Coefficient.ToString("#,0.####")</div>
+                                            <div class="font-monospace">@item.FormulaWithValues</div>
+                                        </div>
+                                    }
+                                    <div class="mt-2">
+                                        طول نسبی =
+                                        <strong>@Model.RelativePvcLength.ToString("#,0.####")</strong>
+                                    </div>
+                                </div>
+
+                                @if (Model.EdgeMaterial is not null)
+                                {
+                                    <div class="border rounded p-3 mb-3">
+                                        <div class="fw-semibold mb-1">@Model.EdgeMaterial.Name</div>
+                                        <div class="small text-muted mb-1">@Model.EdgeMaterial.Formula</div>
+                                        <div class="font-monospace mb-1">@Model.EdgeMaterial.FormulaWithValues</div>
+                                        <div>مبلغ: <strong>@Model.EdgeMaterial.Amount.ToString("#,0.####")</strong></div>
+                                    </div>
+                                }
+                                @if (Model.IncludesPunch && Model.EdgePunch is not null)
+                                {
+                                    <div class="border rounded p-3 mb-3">
+                                        <div class="fw-semibold mb-1">@Model.EdgePunch.Name</div>
+                                        <div class="small text-muted mb-1">@Model.EdgePunch.Formula</div>
+                                        <div class="font-monospace mb-1">@Model.EdgePunch.FormulaWithValues</div>
+                                        <div>مبلغ: <strong>@Model.EdgePunch.Amount.ToString("#,0.####")</strong></div>
+                                    </div>
+                                }
+                                @if (Model.EdgeLabor is not null)
+                                {
+                                    <div class="border rounded p-3 mb-3">
+                                        <div class="fw-semibold mb-1">@Model.EdgeLabor.Name</div>
+                                        <div class="small text-muted mb-1">@Model.EdgeLabor.Formula</div>
+                                        <div class="font-monospace mb-1">@Model.EdgeLabor.FormulaWithValues</div>
+                                        <div>مبلغ: <strong>@Model.EdgeLabor.Amount.ToString("#,0.####")</strong></div>
+                                    </div>
+                                }
+
+                                <div class="p-3 rounded bg-primary-subtle">
+                                    <div class="text-muted small">جمع هزینه لبه</div>
+                                    <div class="fs-4 fw-bold">@Model.TotalEdgeCost.ToString("#,0.####")</div>
+                                    <div class="small text-muted mt-1">@(Model.IncludesPunch ? "متریال + پانچ + دستمزد" : "متریال + دستمزد")</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        @(Model.Message ?? "خطا در محاسبه")
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="alert alert-secondary mb-0">
+                    پس از وارد کردن مقادیر و زدن «محاسبه»، خروجی اینجا نمایش داده می‌شود.
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<template id="letter-row-template">
+    <tr>
+        <td><input name="Letters[__i__].Label" class="form-control form-control-sm" value="حرف" /></td>
+        <td><input name="Letters[__i__].Length" class="form-control form-control-sm" type="number" step="any" min="0" value="0" /></td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger remove-row" title="حذف">&times;</button></td>
+    </tr>
+</template>
+
+<template id="band-row-template">
+    <tr>
+        <td><input name="DifficultyBands[__i__].MinLength" class="form-control form-control-sm" type="number" step="any" min="0" value="0" /></td>
+        <td><input name="DifficultyBands[__i__].MaxLength" class="form-control form-control-sm" type="number" step="any" min="0" value="0" /></td>
+        <td><input name="DifficultyBands[__i__].Coefficient" class="form-control form-control-sm" type="number" step="any" min="0" value="1" /></td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger remove-row" title="حذف">&times;</button></td>
+    </tr>
+</template>
+
+<script>
+(() => {
+    const categorySelect = document.getElementById('category-select');
+    const edgeInputs = document.getElementById('edge-inputs');
+    const cutHint = document.getElementById('cut-hint');
+    const enablePunch = document.getElementById('enable-punch');
+    const punchPriceGroup = document.getElementById('punch-price-group');
+    const lettersBody = document.getElementById('letters-body');
+    const bandsBody = document.getElementById('bands-body');
+    const letterTemplate = document.getElementById('letter-row-template').innerHTML;
+    const bandTemplate = document.getElementById('band-row-template').innerHTML;
+
+    function reindex(tbody, prefix) {
+        [...tbody.querySelectorAll('tr')].forEach((tr, i) => {
+            tr.querySelectorAll('input').forEach(input => {
+                const field = input.name.split('.').pop();
+                input.name = `${prefix}[${i}].${field}`;
+            });
+        });
+    }
+
+    function syncPunch() {
+        const punchOn = enablePunch.checked;
+        punchPriceGroup.classList.toggle('d-none', !punchOn);
+
+        const edgeGroup = document.getElementById('edge-price-group');
+        const laborGroup = document.getElementById('labor-price-group');
+        edgeGroup.className = punchOn ? 'col-12 col-md-4' : 'col-12 col-md-6';
+        laborGroup.className = punchOn ? 'col-12 col-md-4' : 'col-12 col-md-6';
+        punchPriceGroup.className = punchOn ? 'col-12 col-md-4' : 'col-12 col-md-4 d-none';
+    }
+
+    function syncCategory() {
+        const opt = categorySelect.options[categorySelect.selectedIndex];
+        const canEdge = opt?.dataset.canEdge === 'true';
+        edgeInputs.classList.toggle('d-none', !canEdge);
+        cutHint.classList.toggle('d-none', canEdge);
+        syncPunch();
+    }
+
+    document.getElementById('add-letter').addEventListener('click', () => {
+        const i = lettersBody.querySelectorAll('tr').length;
+        lettersBody.insertAdjacentHTML('beforeend', letterTemplate.replaceAll('__i__', i).replace('value="حرف"', `value="حرف ${i + 1}"`));
+        reindex(lettersBody, 'Letters');
+    });
+
+    document.getElementById('add-band').addEventListener('click', () => {
+        const i = bandsBody.querySelectorAll('tr').length;
+        bandsBody.insertAdjacentHTML('beforeend', bandTemplate.replaceAll('__i__', i));
+        reindex(bandsBody, 'DifficultyBands');
+    });
+
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.remove-row');
+        if (!btn) return;
+        const tr = btn.closest('tr');
+        const tbody = tr.parentElement;
+        if (tbody.querySelectorAll('tr').length <= 1) return;
+        tr.remove();
+        reindex(tbody, tbody.id === 'letters-body' ? 'Letters' : 'DifficultyBands');
+    });
+
+    categorySelect.addEventListener('change', syncCategory);
+    enablePunch.addEventListener('change', syncPunch);
+    syncCategory();
+})();
+</script>

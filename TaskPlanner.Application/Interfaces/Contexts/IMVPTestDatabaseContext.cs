@@ -76,7 +76,6 @@ namespace TaskPlanner.Application.Interfaces.Contexts
         DbSet<LeaveRecord> LeaveRecords { get; set; }
 
         DbSet<UserDisplayPreference> UserDisplayPreferences { get; set; }
-        DbSet<UserProjectDisplayPreference> UserProjectDisplayPreferences { get; set; }
 
         void MarkAsModified<T>(T entity) where T : class;
         void MarkPropertyAsModified<T, TProperty>(T entity, Expression<Func<T, TProperty>> property) where T : class;

@@ -11,11 +11,11 @@ namespace Endpoint.Site.ViewComponents
     public class ProjectSidebarViewComponent : ViewComponent
     {
         private readonly MVPTestDatabaseContext _context;
-        private readonly IUserProjectDisplaySettingsService _displaySettings;
+        private readonly IUserDisplaySettingsService _displaySettings;
 
         public ProjectSidebarViewComponent(
             MVPTestDatabaseContext context,
-            IUserProjectDisplaySettingsService displaySettings)
+            IUserDisplaySettingsService displaySettings)
         {
             _context = context;
             _displaySettings = displaySettings;
@@ -75,7 +75,7 @@ namespace Endpoint.Site.ViewComponents
                     .CountAsync(i => i.ProjectId == projectId && i.Status == InvitationStatus.Pending);
             }
 
-            var prefs = await _displaySettings.GetAsync(userId, projectId);
+            var prefs = await _displaySettings.GetAsync(userId);
 
             var vm = new ProjectSidebarVm
             {
@@ -90,13 +90,13 @@ namespace Endpoint.Site.ViewComponents
                 ImagesCount = imagesCount,
                 PendingInvitesCount = pendingInvitesCount,
                 MemberCount = memberCount,
-                ShowTasks = prefs.ShowTasks,
-                ShowKanban = prefs.ShowKanban,
-                ShowSprints = prefs.ShowSprints,
-                ShowFeatures = prefs.ShowFeatures,
-                ShowTickets = prefs.ShowTickets,
-                ShowGallery = prefs.ShowGallery,
-                ShowCategories = prefs.ShowCategories
+                ShowTasks = prefs.ShowProjectTasks,
+                ShowKanban = prefs.ShowProjectKanban,
+                ShowSprints = prefs.ShowProjectSprints,
+                ShowFeatures = prefs.ShowProjectFeatures,
+                ShowTickets = prefs.ShowProjectTickets,
+                ShowGallery = prefs.ShowProjectGallery,
+                ShowCategories = prefs.ShowProjectCategories
             };
 
             return View(vm);

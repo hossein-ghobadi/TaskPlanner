@@ -23,5 +23,26 @@ namespace Endpoint.Site.Models
 
         [Display(Name = "مرخصی همکاران")]
         public bool ShowAdminLeaves { get; set; } = true;
+
+        [Display(Name = "لیست کارها")]
+        public bool ShowProjectTasks { get; set; } = true;
+
+        [Display(Name = "تخته کانبان")]
+        public bool ShowProjectKanban { get; set; } = true;
+
+        [Display(Name = "اسپرینت‌ها")]
+        public bool ShowProjectSprints { get; set; } = true;
+
+        [Display(Name = "فیچرها")]
+        public bool ShowProjectFeatures { get; set; } = true;
+
+        [Display(Name = "تیکت‌ها")]
+        public bool ShowProjectTickets { get; set; } = true;
+
+        [Display(Name = "گالری عکس")]
+        public bool ShowProjectGallery { get; set; } = true;
+
+        [Display(Name = "دسته‌بندی‌ها")]
+        public bool ShowProjectCategories { get; set; } = true;
     }
 }

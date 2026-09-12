@@ -28,6 +28,8 @@ using TaskPlanner.Application.Services.MyWorkService;
 using TaskPlanner.Application.Services.Bale;
 using TaskPlanner.Application.Services.SMS;
 using TaskPlanner.Application.Services.FileUpload;
+using TaskPlanner.Application.Services.Calculation.MaterialCost;
+using TaskPlanner.Application.Services.Calculation.EdgeCost;
 
 
 namespace TaskPlanner.Infrastructure.DependencyInjections
@@ -58,10 +60,13 @@ namespace TaskPlanner.Infrastructure.DependencyInjections
             services.AddScoped<ICrmService, CrmService>();
             services.AddScoped<ILeaveService, LeaveService>();
             services.AddScoped<IUserDisplaySettingsService, UserDisplaySettingsService>();
-            services.AddScoped<IUserProjectDisplaySettingsService, UserProjectDisplaySettingsService>();
 
             services.AddScoped<IDashboardService, DashboardService>();
             services.AddScoped<IMyWorkService, MyWorkService>();
+
+            // ماژول‌های سرویس محاسبه (محیط تست)
+            services.AddScoped<IMaterialCostCalculator, MaterialCostCalculator>();
+            services.AddScoped<IEdgeCostCalculator, EdgeCostCalculator>();
 
             // سرویس نوتیفیکیشن
             services.AddScoped<INotificationService, NotificationService>();

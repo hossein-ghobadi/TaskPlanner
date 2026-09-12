@@ -30,16 +30,7 @@ namespace Endpoint.Site.Controllers
             var prefs = await _displaySettings.GetAsync(userId, cancellationToken);
 
             ViewData["Title"] = "تنظیمات نمایش";
-            return View(new DisplaySettingsVm
-            {
-                ShowLeads = prefs.ShowLeads,
-                ShowBoards = prefs.ShowBoards,
-                ShowMindMaps = prefs.ShowMindMaps,
-                ShowDesigns = prefs.ShowDesigns,
-                CanManageAdminSections = isAdmin,
-                ShowAdminUsers = prefs.ShowAdminUsers,
-                ShowAdminLeaves = prefs.ShowAdminLeaves
-            });
+            return View(MapToVm(prefs, isAdmin));
         }
 
         [HttpPost]
@@ -63,7 +54,14 @@ namespace Endpoint.Site.Controllers
                     ShowMindMaps = model.ShowMindMaps,
                     ShowDesigns = model.ShowDesigns,
                     ShowAdminUsers = model.ShowAdminUsers,
-                    ShowAdminLeaves = model.ShowAdminLeaves
+                    ShowAdminLeaves = model.ShowAdminLeaves,
+                    ShowProjectTasks = model.ShowProjectTasks,
+                    ShowProjectKanban = model.ShowProjectKanban,
+                    ShowProjectSprints = model.ShowProjectSprints,
+                    ShowProjectFeatures = model.ShowProjectFeatures,
+                    ShowProjectTickets = model.ShowProjectTickets,
+                    ShowProjectGallery = model.ShowProjectGallery,
+                    ShowProjectCategories = model.ShowProjectCategories
                 },
                 isAdmin,
                 cancellationToken);
@@ -71,5 +69,23 @@ namespace Endpoint.Site.Controllers
             TempData["SuccessMessage"] = "تنظیمات نمایش ذخیره شد.";
             return RedirectToAction(nameof(Index));
         }
+
+        private static DisplaySettingsVm MapToVm(UserDisplaySettingsDto prefs, bool isAdmin) => new()
+        {
+            ShowLeads = prefs.ShowLeads,
+            ShowBoards = prefs.ShowBoards,
+            ShowMindMaps = prefs.ShowMindMaps,
+            ShowDesigns = prefs.ShowDesigns,
+            CanManageAdminSections = isAdmin,
+            ShowAdminUsers = prefs.ShowAdminUsers,
+            ShowAdminLeaves = prefs.ShowAdminLeaves,
+            ShowProjectTasks = prefs.ShowProjectTasks,
+            ShowProjectKanban = prefs.ShowProjectKanban,
+            ShowProjectSprints = prefs.ShowProjectSprints,
+            ShowProjectFeatures = prefs.ShowProjectFeatures,
+            ShowProjectTickets = prefs.ShowProjectTickets,
+            ShowProjectGallery = prefs.ShowProjectGallery,
+            ShowProjectCategories = prefs.ShowProjectCategories
+        };
     }
 }

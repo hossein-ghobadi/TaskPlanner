@@ -1,0 +1,312 @@
+@model Endpoint.Site.Models.MaterialCostTestVm
+@using TaskPlanner.Domain.Entities.Calculation
+@{
+    ViewData["Title"] = "تست ماژول هزینه متریال";
+    ViewData["UseFluidLayout"] = true;
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid px-0" style="max-width: 960px;">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
+        <div>
+            <div class="mb-2">
+                <a href="/ModuleTests/Index" class="text-decoration-none small">
+                    <i class="bi bi-arrow-right me-1"></i>
+                    بازگشت به لیست ماژول‌ها
+                </a>
+            </div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-boxes me-2"></i>
+                تست ماژول هزینه متریال
+            </h2>
+            <p class="text-muted mb-0">
+                ورودی‌ها را بدهید؛ فرمول اعمال‌شده و هزینه هر لایه شفاف نمایش داده می‌شود.
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-lg-6">
+            <form method="post" asp-action="MaterialCost" id="material-cost-form" class="card border-0 shadow-sm">
+                @Html.AntiForgeryToken()
+                <div class="card-header bg-white py-3">
+                    <strong>ورودی‌ها</strong>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Category" class="form-label"></label>
+                        <select asp-for="Category" class="form-select" id="category-select">
+                            @foreach (var category in Model.AllCategories)
+                            {
+                                <option value="@((int)category)"
+                                        data-always-single="@(category.IsAlwaysSingleLayer() ? "true" : "false")"
+                                        data-includes-waste="@(category.IncludesWasteInMaterialCost() ? "true" : "false")"
+                                        data-can-punch="@(category.CanHavePunchMaterial() ? "true" : "false")">
+                                    @category.GetDisplayName()
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="LayerMode" class="form-label"></label>
+                        <select asp-for="LayerMode" class="form-select" id="layer-mode-select">
+                            <option value="@((int)LayerMode.Single)">@LayerMode.Single.GetDisplayName()</option>
+                            <option value="@((int)LayerMode.Double)">@LayerMode.Double.GetDisplayName()</option>
+                        </select>
+                        <input type="hidden" name="LayerMode" id="layer-mode-hidden" value="@((int)Model.LayerMode)" />
+                        <div class="form-text" id="layer-mode-hint">
+                            آهن ساده و استیل ساده همیشه تک‌لایه هستند.
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="punch-enable-group">
+                        <div class="form-check">
+                            <input asp-for="EnablePunch" class="form-check-input" type="checkbox" id="enable-punch" />
+                            <label asp-for="EnablePunch" class="form-check-label"></label>
+                        </div>
+                        <div class="form-text">در صورت فعال بودن، هزینه پانچ در هر لایه محاسبه می‌شود.</div>
+                        <div class="form-text text-muted d-none" id="punch-cut-hint">دسته برش پانچ متریال ندارد.</div>
+                    </div>
+
+                    <div class="border rounded p-3 mb-3">
+                        <div class="fw-semibold mb-2">لایه اول</div>
+                        <div class="mb-2">
+                            <label asp-for="Layer1ConsumedArea" class="form-label"></label>
+                            <input asp-for="Layer1ConsumedArea" class="form-control" type="number" step="any" min="0" />
+                        </div>
+                        <div class="mb-2">
+                            <label asp-for="Layer1UnitPrice" class="form-label"></label>
+                            <input asp-for="Layer1UnitPrice" class="form-control" type="number" step="any" min="0" />
+                        </div>
+                        <div class="mb-2" id="layer1-waste-group">
+                            <label asp-for="Layer1Waste" class="form-label"></label>
+                            <input asp-for="Layer1Waste" class="form-control" type="number" step="any" min="0" />
+                            <div class="form-text">فقط برای وکیوم در فرمول لحاظ می‌شود.</div>
+                        </div>
+                        <div id="layer1-punch-group">
+                            <div class="mb-2">
+                                <label asp-for="Layer1ActualPvcArea" class="form-label"></label>
+                                <input asp-for="Layer1ActualPvcArea" class="form-control" type="number" step="any" min="0" />
+                            </div>
+                            <div class="mb-0">
+                                <label asp-for="Layer1PunchUnitPrice" class="form-label"></label>
+                                <input asp-for="Layer1PunchUnitPrice" class="form-control" type="number" step="any" min="0" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border rounded p-3 mb-3" id="layer2-group">
+                        <div class="fw-semibold mb-2">لایه دوم</div>
+                        <div class="mb-2">
+                            <label asp-for="Layer2ConsumedArea" class="form-label"></label>
+                            <input asp-for="Layer2ConsumedArea" class="form-control" type="number" step="any" min="0" />
+                        </div>
+                        <div class="mb-2">
+                            <label asp-for="Layer2UnitPrice" class="form-label"></label>
+                            <input asp-for="Layer2UnitPrice" class="form-control" type="number" step="any" min="0" />
+                        </div>
+                        <div class="mb-2" id="layer2-waste-group">
+                            <label asp-for="Layer2Waste" class="form-label"></label>
+                            <input asp-for="Layer2Waste" class="form-control" type="number" step="any" min="0" />
+                        </div>
+                        <div id="layer2-punch-group">
+                            <div class="mb-2">
+                                <label asp-for="Layer2ActualPvcArea" class="form-label"></label>
+                                <input asp-for="Layer2ActualPvcArea" class="form-control" type="number" step="any" min="0" />
+                            </div>
+                            <div class="mb-0">
+                                <label asp-for="Layer2PunchUnitPrice" class="form-label"></label>
+                                <input asp-for="Layer2PunchUnitPrice" class="form-control" type="number" step="any" min="0" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-play-fill me-1"></i>
+                        محاسبه
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-white py-3">
+                    <strong>قوانین ماژول</strong>
+                </div>
+                <div class="card-body small">
+                    <ul class="mb-0 pe-3">
+                        <li class="mb-2"><strong>آهن ساده / استیل ساده:</strong> همیشه تک‌لایه — مساحت مصرفی × فی</li>
+                        <li class="mb-2"><strong>وکیوم با رینگ آهن / استیل:</strong> (مساحت مصرفی + پرتی) × فی برای هر لایه</li>
+                        <li class="mb-2"><strong>سایر دسته‌ها:</strong> مساحت مصرفی × فی برای هر لایه (بدون پرتی)</li>
+                        <li class="mb-0"><strong>پانچ متریال:</strong> فقط با تیک فعال — مساحت حقیقی PVC × فی پانچ (برش ندارد)</li>
+                    </ul>
+                </div>
+            </div>
+
+            @if (Model.HasResult)
+            {
+                @if (Model.IsSuccess)
+                {
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                            <strong>خروجی شفاف</strong>
+                            <span class="badge text-bg-success">موفق</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="text-muted small">دسته</div>
+                                <div class="fw-semibold">@Model.CategoryDisplayName</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="text-muted small">حالت لایه</div>
+                                <div class="fw-semibold">@Model.LayerModeDisplayName</div>
+                            </div>
+                            <div class="alert alert-light border small mb-3">
+                                @Model.RuleDescription
+                            </div>
+
+                            @foreach (var layer in Model.Layers)
+                            {
+                                <div class="border rounded p-3 mb-3">
+                                    <div class="fw-semibold mb-2">لایه @layer.LayerNumber</div>
+
+                                    <div class="small text-muted mb-1">هزینه ورق</div>
+                                    <div class="mb-1">@layer.Formula</div>
+                                    <div class="font-monospace mb-2">@layer.FormulaWithValues</div>
+                                    <div class="d-flex flex-wrap gap-3 small mb-3">
+                                        <span>مساحت: <strong>@layer.ConsumedArea.ToString("#,0.####")</strong></span>
+                                        @if (Model.IncludesWaste)
+                                        {
+                                            <span>پرتی: <strong>@layer.Waste.ToString("#,0.####")</strong></span>
+                                            <span>مساحت قابل‌محاسبه: <strong>@layer.BillableArea.ToString("#,0.####")</strong></span>
+                                        }
+                                        <span>فی: <strong>@layer.UnitPrice.ToString("#,0.####")</strong></span>
+                                        <span>هزینه ورق: <strong>@layer.Cost.ToString("#,0.####")</strong></span>
+                                    </div>
+
+                                    @if (layer.HasPunch)
+                                    {
+                                        <div class="small text-muted mb-1">پانچ متریال</div>
+                                        <div class="mb-1">@layer.PunchFormula</div>
+                                        <div class="font-monospace mb-2">@layer.PunchFormulaWithValues</div>
+                                        <div class="d-flex flex-wrap gap-3 small mb-3">
+                                            <span>مساحت حقیقی PVC: <strong>@layer.ActualPvcArea.ToString("#,0.####")</strong></span>
+                                            <span>فی پانچ: <strong>@layer.PunchUnitPrice.ToString("#,0.####")</strong></span>
+                                            <span>هزینه پانچ: <strong>@layer.PunchCost.ToString("#,0.####")</strong></span>
+                                        </div>
+                                    }
+
+                                    <div class="small">
+                                        جمع لایه @layer.LayerNumber:
+                                        <strong>@layer.LayerTotalCost.ToString("#,0.####")</strong>
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="border rounded p-3 mb-2 small">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>جمع هزینه ورق</span>
+                                    <strong>@Model.TotalSheetMaterialCost.ToString("#,0.####")</strong>
+                                </div>
+                                @if (Model.IncludesPunch)
+                                {
+                                    <div class="d-flex justify-content-between">
+                                        <span>جمع پانچ متریال</span>
+                                        <strong>@Model.TotalPunchCost.ToString("#,0.####")</strong>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="p-3 rounded bg-primary-subtle">
+                                <div class="text-muted small">جمع کل هزینه متریال</div>
+                                <div class="fs-4 fw-bold">@Model.TotalMaterialCost.ToString("#,0.####")</div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        @(Model.Message ?? "خطا در محاسبه")
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="alert alert-secondary mb-0">
+                    پس از وارد کردن مقادیر و زدن «محاسبه»، خروجی اینجا نمایش داده می‌شود.
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    const categorySelect = document.getElementById('category-select');
+    const layerModeSelect = document.getElementById('layer-mode-select');
+    const layerModeHidden = document.getElementById('layer-mode-hidden');
+    const layerModeHint = document.getElementById('layer-mode-hint');
+    const layer2Group = document.getElementById('layer2-group');
+    const layer1WasteGroup = document.getElementById('layer1-waste-group');
+    const layer2WasteGroup = document.getElementById('layer2-waste-group');
+    const layer1PunchGroup = document.getElementById('layer1-punch-group');
+    const layer2PunchGroup = document.getElementById('layer2-punch-group');
+    const enablePunch = document.getElementById('enable-punch');
+    const punchCutHint = document.getElementById('punch-cut-hint');
+    const form = document.getElementById('material-cost-form');
+
+    function selectedOption() {
+        return categorySelect.options[categorySelect.selectedIndex];
+    }
+
+    function syncHidden() {
+        layerModeHidden.value = layerModeSelect.value;
+        layerModeSelect.name = layerModeSelect.disabled ? '' : 'LayerMode';
+        layerModeHidden.disabled = !layerModeSelect.disabled;
+    }
+
+    function syncUi() {
+        const opt = selectedOption();
+        const alwaysSingle = opt?.dataset.alwaysSingle === 'true';
+        const includesWaste = opt?.dataset.includesWaste === 'true';
+        const canPunch = opt?.dataset.canPunch === 'true';
+
+        if (alwaysSingle) {
+            layerModeSelect.value = '@((int)LayerMode.Single)';
+            layerModeSelect.disabled = true;
+            layerModeHint.classList.remove('d-none');
+        } else {
+            layerModeSelect.disabled = false;
+            layerModeHint.classList.add('d-none');
+        }
+
+        if (!canPunch) {
+            enablePunch.checked = false;
+            enablePunch.disabled = true;
+            punchCutHint.classList.remove('d-none');
+        } else {
+            enablePunch.disabled = false;
+            punchCutHint.classList.add('d-none');
+        }
+
+        const punchEnabled = canPunch && enablePunch.checked;
+        const isDouble = !alwaysSingle && layerModeSelect.value === '@((int)LayerMode.Double)';
+        layer2Group.classList.toggle('d-none', !isDouble);
+        layer1WasteGroup.classList.toggle('d-none', !includesWaste);
+        layer2WasteGroup.classList.toggle('d-none', !(includesWaste && isDouble));
+        layer1PunchGroup.classList.toggle('d-none', !punchEnabled);
+        layer2PunchGroup.classList.toggle('d-none', !(punchEnabled && isDouble));
+        syncHidden();
+    }
+
+    categorySelect.addEventListener('change', syncUi);
+    layerModeSelect.addEventListener('change', syncUi);
+    enablePunch.addEventListener('change', syncUi);
+    form.addEventListener('submit', syncHidden);
+    syncUi();
+})();
+</script>
