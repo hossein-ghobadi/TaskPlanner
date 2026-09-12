@@ -88,6 +88,9 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<LeaveType> LeaveTypes { get; set; }
         public DbSet<LeaveRecord> LeaveRecords { get; set; }
 
+        public DbSet<UserDisplayPreference> UserDisplayPreferences { get; set; }
+        public DbSet<UserProjectDisplayPreference> UserProjectDisplayPreferences { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -1083,6 +1086,40 @@ namespace TaskPlanner.Persistence.Contexts
 
             modelBuilder.Entity<LeaveRecord>()
                 .HasIndex(r => new { r.UserId, r.StartAt });
+
+            modelBuilder.Entity<UserDisplayPreference>()
+                .Property(p => p.UserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<UserDisplayPreference>()
+                .HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserDisplayPreference>()
+                .HasIndex(p => p.UserId)
+                .IsUnique();
+
+            modelBuilder.Entity<UserProjectDisplayPreference>()
+                .Property(p => p.UserId)
+                .HasMaxLength(450);
+
+            modelBuilder.Entity<UserProjectDisplayPreference>()
+                .HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserProjectDisplayPreference>()
+                .HasOne(p => p.Project)
+                .WithMany()
+                .HasForeignKey(p => p.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserProjectDisplayPreference>()
+                .HasIndex(p => new { p.UserId, p.ProjectId })
+                .IsUnique();
         }
         public void MarkAsModified<T>(T entity) where T : class
         {

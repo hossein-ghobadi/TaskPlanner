@@ -199,9 +199,20 @@
                          tabindex="0"
                          onclick="openEditTaskModal(@item.Id)"
                          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEditTaskModal(@item.Id);}">
-                    <h2 class="my-work-card__title">@item.Title</h2>
-                    <div class="my-work-card__project">@item.ProjectName</div>
-                    <div class="my-work-card__due">@DueLabel(item.DueDate, item.IsCompleted)</div>
+                    <div class="my-work-card__accent" aria-hidden="true"></div>
+                    <div class="my-work-card__body">
+                        <h2 class="my-work-card__title">@item.Title</h2>
+                        <div class="my-work-card__meta">
+                            <span class="my-work-card__project" title="@item.ProjectName">
+                                <i class="bi bi-folder2" aria-hidden="true"></i>
+                                <span>@item.ProjectName</span>
+                            </span>
+                            <span class="my-work-card__due">
+                                <i class="bi bi-calendar3" aria-hidden="true"></i>
+                                @DueLabel(item.DueDate, item.IsCompleted)
+                            </span>
+                        </div>
+                    </div>
                 </article>
             }
         </div>

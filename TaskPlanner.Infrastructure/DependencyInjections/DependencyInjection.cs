@@ -22,6 +22,7 @@ using TaskPlanner.Application.Services.NotificationService;
 using TaskPlanner.Application.Services.LeadService;
 using TaskPlanner.Application.Services.CrmService;
 using TaskPlanner.Application.Services.LeaveService;
+using TaskPlanner.Application.Services.DisplaySettingsService;
 using TaskPlanner.Application.Services.DashboardService;
 using TaskPlanner.Application.Services.MyWorkService;
 using TaskPlanner.Application.Services.Bale;
@@ -56,6 +57,8 @@ namespace TaskPlanner.Infrastructure.DependencyInjections
             services.AddScoped<ILeadService, LeadService>();
             services.AddScoped<ICrmService, CrmService>();
             services.AddScoped<ILeaveService, LeaveService>();
+            services.AddScoped<IUserDisplaySettingsService, UserDisplaySettingsService>();
+            services.AddScoped<IUserProjectDisplaySettingsService, UserProjectDisplaySettingsService>();
 
             services.AddScoped<IDashboardService, DashboardService>();
             services.AddScoped<IMyWorkService, MyWorkService>();

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskPlanner.Persistence.Contexts;
 
@@ -11,9 +12,11 @@ using TaskPlanner.Persistence.Contexts;
 namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 {
     [DbContext(typeof(MVPTestDatabaseContext))]
-    partial class MVPTestDatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260912074702_UserProjectDisplayPreferences")]
+    partial class UserProjectDisplayPreferences
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2857,13 +2860,7 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.Property<int>("ProjectId")
                         .HasColumnType("int");
 
-                    b.Property<bool>("ShowCategories")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("ShowFeatures")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("ShowGallery")
                         .HasColumnType("bit");
 
                     b.Property<bool>("ShowKanban")

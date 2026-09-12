@@ -1,0 +1,165 @@
+@model Endpoint.Site.Models.ProjectSettingsVm
+@{
+    ViewData["Title"] = "تنظیمات پروژه";
+    ViewData["UseFluidLayout"] = true;
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid px-0" style="max-width: 820px;">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h2 class="fw-bold mb-1 fs-4">
+                <i class="bi bi-gear-fill me-2"></i>
+                تنظیمات پروژه
+            </h2>
+            <p class="text-muted mb-0 small">@Model.ProjectName</p>
+        </div>
+        <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Details", "Projects", new { id = Model.ProjectId })">
+            <i class="bi bi-arrow-right me-1"></i>
+            بازگشت به پیشخوان
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show py-2">
+            <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show py-2">
+            <i class="bi bi-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (Model.IsCreator)
+    {
+        <div class="card mb-3">
+            <div class="card-header bg-white py-2">
+                <strong class="small"><i class="bi bi-sliders me-1"></i>مدیریت پروژه</strong>
+                <div class="small text-muted">فقط برای سازنده پروژه</div>
+            </div>
+            <div class="card-body py-3">
+                <div class="row g-2">
+                    <div class="col-12 col-sm-6">
+                        <a asp-action="Edit" asp-route-id="@Model.ProjectId" class="text-decoration-none d-block h-100">
+                            <div class="d-flex align-items-center gap-2 p-2 h-100" style="background: #f9fafb; border-radius: 10px; border: 1px solid #eef0f2;">
+                                <div class="flex-shrink-0 d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 10px; font-size: 1.1rem;">
+                                    <i class="bi bi-pencil-square"></i>
+                                </div>
+                                <div class="flex-grow-1 min-w-0">
+                                    <div class="fw-bold small mb-0">ویرایش پروژه</div>
+                                    <small class="text-muted">تغییر نام و توضیحات</small>
+                                </div>
+                                <i class="bi bi-arrow-left text-muted small"></i>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <a asp-controller="Categories" asp-action="Index" asp-route-projectId="@Model.ProjectId" class="text-decoration-none d-block h-100">
+                            <div class="d-flex align-items-center gap-2 p-2 h-100" style="background: #f9fafb; border-radius: 10px; border: 1px solid #eef0f2;">
+                                <div class="flex-shrink-0 d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 10px; font-size: 1.1rem;">
+                                    <i class="bi bi-folder-fill"></i>
+                                </div>
+                                <div class="flex-grow-1 min-w-0">
+                                    <div class="fw-bold small mb-0">دسته‌بندی‌ها</div>
+                                    <small class="text-muted">مدیریت دسته‌بندی‌ها</small>
+                                </div>
+                                <i class="bi bi-arrow-left text-muted small"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <form method="post" asp-action="Settings" asp-route-id="@Model.ProjectId">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="ProjectId" />
+        <input type="hidden" asp-for="ProjectName" />
+        <input type="hidden" asp-for="IsCreator" />
+
+        <div class="card mb-0">
+            <div class="card-header bg-white py-2">
+                <strong class="small"><i class="bi bi-eye me-1"></i>تنظیمات نمایش من</strong>
+                <div class="small text-muted">این تنظیمات فقط برای شما در این پروژه اعمال می‌شود.</div>
+            </div>
+            <div class="card-body py-3">
+                <div class="row g-2 mb-3">
+                    <div class="col-12 col-md-6">
+                        <div class="form-check form-switch mb-0 py-1">
+                            <input asp-for="ShowTasks" class="form-check-input" type="checkbox" role="switch" />
+                            <label asp-for="ShowTasks" class="form-check-label">
+                                <i class="bi bi-list-task me-1"></i>
+                                لیست کارها
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="form-check form-switch mb-0 py-1">
+                            <input asp-for="ShowKanban" class="form-check-input" type="checkbox" role="switch" />
+                            <label asp-for="ShowKanban" class="form-check-label">
+                                <i class="bi bi-kanban me-1"></i>
+                                تخته کانبان
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="form-check form-switch mb-0 py-1">
+                            <input asp-for="ShowSprints" class="form-check-input" type="checkbox" role="switch" />
+                            <label asp-for="ShowSprints" class="form-check-label">
+                                <i class="bi bi-calendar-range me-1"></i>
+                                اسپرینت‌ها
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="form-check form-switch mb-0 py-1">
+                            <input asp-for="ShowFeatures" class="form-check-input" type="checkbox" role="switch" />
+                            <label asp-for="ShowFeatures" class="form-check-label">
+                                <i class="bi bi-puzzle me-1"></i>
+                                فیچرها
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="form-check form-switch mb-0 py-1">
+                            <input asp-for="ShowTickets" class="form-check-input" type="checkbox" role="switch" />
+                            <label asp-for="ShowTickets" class="form-check-label">
+                                <i class="bi bi-ticket-detailed me-1"></i>
+                                تیکت‌ها
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="form-check form-switch mb-0 py-1">
+                            <input asp-for="ShowGallery" class="form-check-input" type="checkbox" role="switch" />
+                            <label asp-for="ShowGallery" class="form-check-label">
+                                <i class="bi bi-images me-1"></i>
+                                گالری عکس
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="form-check form-switch mb-0 py-1">
+                            <input asp-for="ShowCategories" class="form-check-input" type="checkbox" role="switch" />
+                            <label asp-for="ShowCategories" class="form-check-label">
+                                <i class="bi bi-folder2 me-1"></i>
+                                دسته‌بندی‌ها
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-check-lg me-1"></i>
+                    ذخیره تنظیمات نمایش
+                </button>
+            </div>
+        </div>
+    </form>
+</div>

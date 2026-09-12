@@ -755,52 +755,6 @@
         </div>
     </div>
 </div>
-<!-- بخش تنظیمات -->
-@if (isCreator)
-{
-    <div class="card-modern mb-4" id="section-project-settings">
-        <div class="card-header-modern">
-            <i class="bi bi-gear-fill me-2"></i>تنظیمات پروژه
-        </div>
-        <div class="card-body-modern">
-            <div class="row row-cols-1 row-cols-md-3 g-3">
-                <!-- ویرایش پروژه -->
-                <div class="col">
-                    <a asp-action="Edit" asp-route-id="@Model.Id" class="text-decoration-none">
-                        <div class="d-flex align-items-center gap-3 p-3 settings-item" style="background: #f9fafb; border-radius: 12px; transition: all 0.2s ease; border: 2px solid transparent;">
-                            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">
-                                <i class="bi bi-pencil-square"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1 fw-bold">ویرایش پروژه</h6>
-                                <small class="text-muted">تغییر نام و توضیحات</small>
-                            </div>
-                            <i class="bi bi-arrow-left text-muted"></i>
-                        </div>
-                    </a>
-                </div>
-                
-               
-                <!-- دسته‌بندی‌ها -->
-                <div class="col">
-                    <a asp-controller="Categories" asp-action="Index" asp-route-projectId="@Model.Id" class="text-decoration-none">
-                        <div class="d-flex align-items-center gap-3 p-3 settings-item" style="background: #f9fafb; border-radius: 12px; transition: all 0.2s ease; border: 2px solid transparent;">
-                            <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">
-                                <i class="bi bi-folder-fill"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1 fw-bold">دسته‌بندی‌ها</h6>
-                                <small class="text-muted">مدیریت دسته‌بندی‌ها</small>
-                            </div>
-                            <i class="bi bi-arrow-left text-muted"></i>
-                        </div>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
 <!-- بخش دعوت کاربران -->
 @if (isCreator)
 {

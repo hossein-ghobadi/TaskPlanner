@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskPlanner.Persistence.Contexts;
 
@@ -11,9 +12,11 @@ using TaskPlanner.Persistence.Contexts;
 namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 {
     [DbContext(typeof(MVPTestDatabaseContext))]
-    partial class MVPTestDatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260912071527_AddUserDisplayPreferences")]
+    partial class AddUserDisplayPreferences
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2846,56 +2849,6 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.ToTable("UserDisplayPreferences");
                 });
 
-            modelBuilder.Entity("TaskPlanner.Domain.Entities.Users.UserProjectDisplayPreference", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ProjectId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("ShowCategories")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("ShowFeatures")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("ShowGallery")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("ShowKanban")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("ShowSprints")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("ShowTasks")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("ShowTickets")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProjectId");
-
-                    b.HasIndex("UserId", "ProjectId")
-                        .IsUnique();
-
-                    b.ToTable("UserProjectDisplayPreferences");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -3763,25 +3716,6 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("TaskPlanner.Domain.Entities.Users.UserProjectDisplayPreference", b =>
-                {
-                    b.HasOne("TaskPlanner.Domain.Entities.TaskPlanner.Project", "Project")
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TaskPlanner.Domain.Entities.Users.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Project");
 
                     b.Navigation("User");
                 });

@@ -1,8 +1,8 @@
 using System.Security.Claims;
-using Endpoint.Site.Helpers;
 using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TaskPlanner.Application.Services.DisplaySettingsService;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Persistence.Contexts;
 
@@ -11,10 +11,14 @@ namespace Endpoint.Site.ViewComponents
     public class ProjectSidebarViewComponent : ViewComponent
     {
         private readonly MVPTestDatabaseContext _context;
+        private readonly IUserProjectDisplaySettingsService _displaySettings;
 
-        public ProjectSidebarViewComponent(MVPTestDatabaseContext context)
+        public ProjectSidebarViewComponent(
+            MVPTestDatabaseContext context,
+            IUserProjectDisplaySettingsService displaySettings)
         {
             _context = context;
+            _displaySettings = displaySettings;
         }
 
         public async Task<IViewComponentResult> InvokeAsync(int projectId)
@@ -71,6 +75,8 @@ namespace Endpoint.Site.ViewComponents
                     .CountAsync(i => i.ProjectId == projectId && i.Status == InvitationStatus.Pending);
             }
 
+            var prefs = await _displaySettings.GetAsync(userId, projectId);
+
             var vm = new ProjectSidebarVm
             {
                 ProjectId = projectId,
@@ -83,7 +89,14 @@ namespace Endpoint.Site.ViewComponents
                 NotesCount = notesCount,
                 ImagesCount = imagesCount,
                 PendingInvitesCount = pendingInvitesCount,
-                MemberCount = memberCount
+                MemberCount = memberCount,
+                ShowTasks = prefs.ShowTasks,
+                ShowKanban = prefs.ShowKanban,
+                ShowSprints = prefs.ShowSprints,
+                ShowFeatures = prefs.ShowFeatures,
+                ShowTickets = prefs.ShowTickets,
+                ShowGallery = prefs.ShowGallery,
+                ShowCategories = prefs.ShowCategories
             };
 
             return View(vm);
@@ -96,9 +109,13 @@ namespace Endpoint.Site.ViewComponents
             {
                 return "details";
             }
+            if (p.Contains("/projects/settings"))
+            {
+                return "settings";
+            }
             if (p.Contains("/projects/edit"))
             {
-                return "details";
+                return "settings";
             }
             if (p.Contains("/projects/issuetypes") || p.Contains("/projects/createissuetype") || p.Contains("/projects/editissuetype"))
             {

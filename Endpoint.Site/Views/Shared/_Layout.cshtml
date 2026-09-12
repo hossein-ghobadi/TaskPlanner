@@ -317,7 +317,7 @@
         <div class="app-notification-backdrop d-none" id="notificationBackdrop"></div>
 
         <div class="app-shell">
-            @await Html.PartialAsync("_AppSidebar")
+            @await Component.InvokeAsync("AppSidebar")
             <div class="app-main">
                 <main class="app-main-body @appMainBodyClass">
                     @if (layoutProjectId.HasValue)

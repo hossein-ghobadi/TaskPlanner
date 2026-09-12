@@ -30,6 +30,7 @@ namespace Endpoint.Site.Helpers
                 && int.TryParse(rd["id"]?.ToString(), out var routeId)
                 && (string.Equals(action, "Details", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(action, "Edit", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(action, "Settings", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(action, "Delete", StringComparison.OrdinalIgnoreCase)))
             {
                 return routeId;

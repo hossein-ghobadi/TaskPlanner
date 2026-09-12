@@ -1,26 +1,32 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Endpoint.Site.Models
 {
-    public class ProjectSidebarVm
+    public class ProjectSettingsVm
     {
         public int ProjectId { get; set; }
+        public string ProjectName { get; set; } = "";
         public bool IsCreator { get; set; }
-        public bool OnProjectDetailsPage { get; set; }
-        public string ActiveNav { get; set; } = "";
 
-        public int? TotalTasks { get; set; }
-        public int? FeaturesCount { get; set; }
-        public int? TicketsCount { get; set; }
-        public int? NotesCount { get; set; }
-        public int? ImagesCount { get; set; }
-        public int? PendingInvitesCount { get; set; }
-        public int? MemberCount { get; set; }
-
+        [Display(Name = "لیست کارها")]
         public bool ShowTasks { get; set; } = true;
+
+        [Display(Name = "تخته کانبان")]
         public bool ShowKanban { get; set; } = true;
+
+        [Display(Name = "اسپرینت‌ها")]
         public bool ShowSprints { get; set; } = true;
+
+        [Display(Name = "فیچرها")]
         public bool ShowFeatures { get; set; } = true;
+
+        [Display(Name = "تیکت‌ها")]
         public bool ShowTickets { get; set; } = true;
+
+        [Display(Name = "گالری عکس")]
         public bool ShowGallery { get; set; } = true;
+
+        [Display(Name = "دسته‌بندی‌ها")]
         public bool ShowCategories { get; set; } = true;
     }
 }

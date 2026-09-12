@@ -9,6 +9,7 @@ using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Domain.Entities.Users;
 using TaskPlanner.Persistence.Contexts;
 using TaskPlanner.Application.Services.ProjectService;
+using TaskPlanner.Application.Services.DisplaySettingsService;
 using Microsoft.Data.SqlClient;
 
 namespace Endpoint.Site.Controllers
@@ -21,17 +22,20 @@ namespace Endpoint.Site.Controllers
         private readonly UserManager<User> _userManager;
         private readonly IProjectQueryService _projectQueryService;
         private readonly IProjectCommandService _projectCommandService;
+        private readonly IUserProjectDisplaySettingsService _projectDisplaySettings;
 
         public ProjectsController(
             MVPTestDatabaseContext context,
             UserManager<User> userManager,
             IProjectQueryService projectQueryService,
-            IProjectCommandService projectCommandService)
+            IProjectCommandService projectCommandService,
+            IUserProjectDisplaySettingsService projectDisplaySettings)
         {
             _context = context;
             _userManager = userManager;
             _projectQueryService = projectQueryService;
             _projectCommandService = projectCommandService;
+            _projectDisplaySettings = projectDisplaySettings;
         }
         // 📌 لیست پروژه‌ها
         //public async Task<IActionResult> Index()
@@ -448,6 +452,98 @@ namespace Endpoint.Site.Controllers
                 return View(vm);
             }
         }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> Settings(int id, CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            var project = await _context.Projects.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+            if (project == null)
+            {
+                return NotFound();
+            }
+
+            var isCreator = string.Equals(project.CreatorUserId, userId, StringComparison.Ordinal);
+            var isMember = isCreator || await _context.ProjectMembers.AsNoTracking()
+                .AnyAsync(m => m.ProjectId == id && m.UserId == userId, cancellationToken);
+            if (!isMember)
+            {
+                TempData["Error"] = "شما به این پروژه دسترسی ندارید.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var prefs = await _projectDisplaySettings.GetAsync(userId, id, cancellationToken);
+
+            ViewBag.ProjectId = id;
+            ViewData["Title"] = "تنظیمات پروژه";
+            ViewData["UseFluidLayout"] = true;
+
+            return View(new ProjectSettingsVm
+            {
+                ProjectId = id,
+                ProjectName = project.Name,
+                IsCreator = isCreator,
+                ShowTasks = prefs.ShowTasks,
+                ShowKanban = prefs.ShowKanban,
+                ShowSprints = prefs.ShowSprints,
+                ShowFeatures = prefs.ShowFeatures,
+                ShowTickets = prefs.ShowTickets,
+                ShowGallery = prefs.ShowGallery,
+                ShowCategories = prefs.ShowCategories
+            });
+        }
+
+        [HttpPost("{id}")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Settings(int id, ProjectSettingsVm model, CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Challenge();
+            }
+
+            var project = await _context.Projects.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+            if (project == null)
+            {
+                return NotFound();
+            }
+
+            var isCreator = string.Equals(project.CreatorUserId, userId, StringComparison.Ordinal);
+            var isMember = isCreator || await _context.ProjectMembers.AsNoTracking()
+                .AnyAsync(m => m.ProjectId == id && m.UserId == userId, cancellationToken);
+            if (!isMember)
+            {
+                TempData["Error"] = "شما به این پروژه دسترسی ندارید.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            await _projectDisplaySettings.SaveAsync(
+                userId,
+                id,
+                new UserProjectDisplaySettingsDto
+                {
+                    ShowTasks = model.ShowTasks,
+                    ShowKanban = model.ShowKanban,
+                    ShowSprints = model.ShowSprints,
+                    ShowFeatures = model.ShowFeatures,
+                    ShowTickets = model.ShowTickets,
+                    ShowGallery = model.ShowGallery,
+                    ShowCategories = model.ShowCategories
+                },
+                cancellationToken);
+
+            TempData["SuccessMessage"] = "تنظیمات نمایش پروژه ذخیره شد.";
+            return RedirectToAction(nameof(Settings), new { id });
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> Edit(int id)
         {

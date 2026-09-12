@@ -1,0 +1,100 @@
+@model Endpoint.Site.Models.DisplaySettingsVm
+@{
+    ViewData["Title"] = "تنظیمات نمایش";
+    ViewData["UseFluidLayout"] = true;
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid px-0" style="max-width: 720px;">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-eye me-2"></i>
+                تنظیمات نمایش
+            </h2>
+            <p class="text-muted mb-0">مشخص کنید کدام بخش‌های منوی اصلی برای شما نمایش داده شوند.</p>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-2"></i>@TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <form method="post" asp-action="Index">
+        @Html.AntiForgeryToken()
+
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <strong>بخش‌های اختیاری منو</strong>
+            </div>
+            <div class="card-body">
+                <div class="form-check form-switch mb-3">
+                    <input asp-for="ShowLeads" class="form-check-input" type="checkbox" role="switch" />
+                    <label asp-for="ShowLeads" class="form-check-label">
+                        <i class="bi bi-person-lines-fill me-1"></i>
+                        لیدها (CRM)
+                    </label>
+                </div>
+                <div class="form-check form-switch mb-3">
+                    <input asp-for="ShowBoards" class="form-check-input" type="checkbox" role="switch" />
+                    <label asp-for="ShowBoards" class="form-check-label">
+                        <i class="bi bi-kanban me-1"></i>
+                        تخته‌ها
+                    </label>
+                </div>
+                <div class="form-check form-switch mb-3">
+                    <input asp-for="ShowMindMaps" class="form-check-input" type="checkbox" role="switch" />
+                    <label asp-for="ShowMindMaps" class="form-check-label">
+                        <i class="bi bi-diagram-3 me-1"></i>
+                        مایندمپ‌ها
+                    </label>
+                </div>
+                <div class="form-check form-switch mb-0">
+                    <input asp-for="ShowDesigns" class="form-check-input" type="checkbox" role="switch" />
+                    <label asp-for="ShowDesigns" class="form-check-label">
+                        <i class="bi bi-palette me-1"></i>
+                        صفحه طراحی
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.CanManageAdminSections)
+        {
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <strong>بخش‌های مدیریتی</strong>
+                    <div class="small text-muted mt-1">فقط به‌خاطر دسترسی ادمین شما قابل تنظیم هستند.</div>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch mb-3">
+                        <input asp-for="ShowAdminUsers" class="form-check-input" type="checkbox" role="switch" />
+                        <label asp-for="ShowAdminUsers" class="form-check-label">
+                            <i class="bi bi-people me-1"></i>
+                            مدیریت کاربران
+                        </label>
+                    </div>
+                    <div class="form-check form-switch mb-0">
+                        <input asp-for="ShowAdminLeaves" class="form-check-input" type="checkbox" role="switch" />
+                        <label asp-for="ShowAdminLeaves" class="form-check-label">
+                            <i class="bi bi-calendar2-week me-1"></i>
+                            مرخصی همکاران
+                        </label>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1"></i>
+                ذخیره تنظیمات
+            </button>
+            <a href="/Dashboard" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </form>
+</div>

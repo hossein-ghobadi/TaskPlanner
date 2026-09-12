@@ -1,0 +1,91 @@
+@model Endpoint.Site.Models.AppSidebarVm
+@{
+    var c = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var a = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+    string NavClass(string controller, string action = "Index", string? altAction = null)
+    {
+        var match = string.Equals(c, controller, StringComparison.OrdinalIgnoreCase)
+            && (string.Equals(a, action, StringComparison.OrdinalIgnoreCase)
+                || (altAction != null && string.Equals(a, altAction, StringComparison.OrdinalIgnoreCase)));
+        return "app-sidebar-link" + (match ? " active" : "");
+    }
+}
+
+<aside class="app-sidebar" data-app-sidebar>
+    <form id="app-sidebar-logout-form" method="post" action="/account/logout" class="app-sidebar-logout-form-hidden m-0">
+        <input name="__RequestVerificationToken" type="hidden" value="@Model.AntiforgeryToken" />
+    </form>
+    <div class="app-sidebar-mobile-header d-lg-none">
+        <span>منوی برنامه</span>
+        <button type="button" class="btn btn-sm btn-light" id="mobileSidebarClose" aria-label="بستن منو">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+
+    <div class="app-sidebar-user">
+        <div class="app-sidebar-user-avatar"><i class="bi bi-person-fill"></i></div>
+        <div class="app-sidebar-user-text">
+            <div class="app-sidebar-user-name">@(Model.UserName ?? "کاربر")</div>
+            <div class="app-sidebar-user-meta">خوش آمدید</div>
+        </div>
+        <button type="button"
+                class="app-sidebar-toggle d-none d-lg-inline-flex"
+                data-app-sidebar-toggle
+                aria-expanded="true"
+                aria-label="جمع کردن سایدبار"
+                title="جمع کردن منوی اصلی">
+            <i class="bi bi-layout-sidebar-inset-reverse" aria-hidden="true"></i>
+        </button>
+    </div>
+
+    <nav class="app-sidebar-nav" aria-label="ناوبری اصلی">
+        <a class="@NavClass("Dashboard", "Index")" href="/Dashboard"><i class="bi bi-speedometer2"></i><span>داشبورد</span></a>
+        <a class="@NavClass("MyWork", "Index")" href="/MyWork/Index"><i class="bi bi-person-check"></i><span>کارهای من</span></a>
+        @if (Model.ShowLeads)
+        {
+            <a class="@(string.Equals(c, "Leads", StringComparison.OrdinalIgnoreCase) ? "app-sidebar-link active" : "app-sidebar-link")" href="/Leads/Index"><i class="bi bi-person-lines-fill"></i><span>لیدها (CRM)</span></a>
+        }
+        <a class="@NavClass("Projects", "Index")" href="/Projects/Index"><i class="bi bi-briefcase"></i><span>پروژه‌ها</span></a>
+        @if (Model.ShowBoards)
+        {
+            <a class="@NavClass("Boards", "Index")" href="/Boards/Index"><i class="bi bi-kanban"></i><span>تخته‌ها</span></a>
+        }
+        @if (Model.ShowMindMaps)
+        {
+            <a class="@NavClass("MindMaps", "Index")" href="/MindMaps/Index"><i class="bi bi-diagram-3"></i><span>مایندمپ‌ها</span></a>
+        }
+        @if (Model.ShowDesigns)
+        {
+            <a class="@NavClass("Designs", "Index")" href="/Designs/Index"><i class="bi bi-palette"></i><span>صفحه طراحی</span></a>
+        }
+        <a class="@NavClass("PersonalNotes", "Index")" href="/PersonalNotes/Index"><i class="bi bi-journal-text"></i><span>یادداشت‌های شخصی</span></a>
+        <a class="@NavClass("Notifications", "Index")" href="/Notifications/Index"><i class="bi bi-bell"></i><span>اعلان‌ها</span></a>
+        @if (Model.ShowAdminUsers)
+        {
+            <a class="@NavClass("AdminUsers", "Index")" href="/Admin/AdminUsers/Index"><i class="bi bi-people"></i><span>مدیریت کاربران</span></a>
+        }
+        @if (Model.ShowAdminLeaves)
+        {
+            <a class="@NavClass("AdminLeaves", "Index")" href="/Admin/AdminLeaves/Index"><i class="bi bi-calendar2-week"></i><span>مرخصی همکاران</span></a>
+        }
+        <a class="@NavClass("Invitations", "MyInvitations")" href="/Invitations/MyInvitations">
+            <i class="bi bi-envelope"></i>
+            <span>دعوت‌ها</span>
+            @await Component.InvokeAsync("PendingInvitationsCount")
+        </a>
+        <a class="@NavClass("DisplaySettings", "Index")" href="/DisplaySettings/Index"><i class="bi bi-eye"></i><span>تنظیمات نمایش</span></a>
+    </nav>
+
+    <div class="app-sidebar-footer d-none d-lg-block">
+        <button type="submit" form="app-sidebar-logout-form" class="app-sidebar-logout">
+            <i class="bi bi-box-arrow-right"></i>
+            خروج از حساب
+        </button>
+    </div>
+</aside>
+<div class="app-mobile-logout-dock d-lg-none" role="region" aria-label="خروج از حساب">
+    <button type="submit" form="app-sidebar-logout-form" class="app-sidebar-logout w-100">
+        <i class="bi bi-box-arrow-right"></i>
+        خروج از حساب
+    </button>
+</div>
