@@ -1,0 +1,294 @@
+@model TaskPlanner.Application.Services.MyWorkService.MyWorkPageDto
+@using TaskPlanner.Application.Services.MyWorkService
+@using DNTPersianUtils.Core
+@{
+    ViewData["Title"] = "کارهای من";
+    ViewData["UseFluidLayout"] = true;
+    Layout = "/Views/Shared/_Layout.cshtml";
+
+    var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.Local).Date;
+
+    DateTime? ToLocalDate(DateTime? due)
+    {
+        if (!due.HasValue) return null;
+        var v = due.Value;
+        return v.Kind == DateTimeKind.Utc
+            ? TimeZoneInfo.ConvertTimeFromUtc(v, TimeZoneInfo.Local).Date
+            : v.ToLocalTime().Date;
+    }
+
+    string DueTone(DateTime? due, bool completed)
+    {
+        if (completed) return "done";
+        var local = ToLocalDate(due);
+        if (!local.HasValue) return "none";
+        if (local.Value < today) return "overdue";
+        if (local.Value == today) return "today";
+        return "later";
+    }
+
+    string DueLabel(DateTime? due, bool completed)
+    {
+        if (completed) return "انجام‌شده";
+        var local = ToLocalDate(due);
+        if (!local.HasValue) return "بدون موعد";
+        if (local.Value < today) return "سررسید گذشته";
+        if (local.Value == today) return "امروز";
+        return due!.Value.ToShortPersianDateString();
+    }
+
+    string ScopeHref(MyWorkScope s) =>
+        Url.Action("Index", "MyWork", new
+        {
+            scope = s,
+            projectId = Model.ProjectId,
+            includeCompleted = Model.IncludeCompleted,
+            due = Model.DueFilter
+        })!;
+}
+
+<link rel="stylesheet" href="~/css/my-work.css" asp-append-version="true" />
+
+<div class="my-work-page">
+    <header class="my-work-head">
+        <div>
+            <nav class="my-work-breadcrumb text-muted small mb-1" aria-label="breadcrumb">
+                <span>خانه</span>
+                <span class="mx-1">/</span>
+                <span class="fw-semibold text-dark">کارهای من</span>
+            </nav>
+            <h1 class="my-work-title">کارهای من</h1>
+            <p class="text-muted mb-0 small">کارهای پروژه‌ها که به شما واگذار شده یا خودتان ساخته‌اید.</p>
+        </div>
+    </header>
+
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="my-work-stat">
+                <div class="my-work-stat__value">@Model.OpenCount.ToString().ToPersianNumbers()</div>
+                <div class="my-work-stat__label">باز</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="my-work-stat my-work-stat--danger">
+                <div class="my-work-stat__value">@Model.OverdueCount.ToString().ToPersianNumbers()</div>
+                <div class="my-work-stat__label">سررسید گذشته</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="my-work-stat my-work-stat--muted">
+                <div class="my-work-stat__value">@Model.CompletedCount.ToString().ToPersianNumbers()</div>
+                <div class="my-work-stat__label">انجام‌شده</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="my-work-stat">
+                <div class="my-work-stat__value">@Model.Items.Count.ToString().ToPersianNumbers()</div>
+                <div class="my-work-stat__label">نمایش داده‌شده</div>
+            </div>
+        </div>
+    </div>
+
+    <ul class="nav nav-pills my-work-tabs mb-3" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link @(Model.Scope == MyWorkScope.Assigned ? "active" : null)" href="@ScopeHref(MyWorkScope.Assigned)">
+                واگذارشده به من
+                <span class="badge rounded-pill bg-light text-dark border ms-1">@Model.AssignedOpenCount.ToString().ToPersianNumbers()</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(Model.Scope == MyWorkScope.Created ? "active" : null)" href="@ScopeHref(MyWorkScope.Created)">
+                ساخته‌شده توسط من
+                <span class="badge rounded-pill bg-light text-dark border ms-1">@Model.CreatedOpenCount.ToString().ToPersianNumbers()</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(Model.Scope == MyWorkScope.All ? "active" : null)" href="@ScopeHref(MyWorkScope.All)">
+                همه
+            </a>
+        </li>
+    </ul>
+
+    <form method="get" asp-controller="MyWork" asp-action="Index" class="my-work-filters card border-0 shadow-sm mb-3">
+        <input type="hidden" name="scope" value="@((int)Model.Scope)" />
+        <div class="card-body py-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small text-muted mb-1" for="projectId">پروژه</label>
+                    <select class="form-select" id="projectId" name="projectId">
+                        <option value="">همه پروژه‌ها</option>
+                        @foreach (var p in Model.Projects)
+                        {
+                            if (Model.ProjectId == p.Id)
+                            {
+                                <option value="@p.Id" selected>@p.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@p.Id">@p.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-1" for="due">موعد</label>
+                    <select class="form-select" id="due" name="due">
+                        @if (Model.DueFilter == MyWorkDueFilter.All)
+                        {
+                            <option value="@((int)MyWorkDueFilter.All)" selected>همه</option>
+                        }
+                        else
+                        {
+                            <option value="@((int)MyWorkDueFilter.All)">همه</option>
+                        }
+                        @if (Model.DueFilter == MyWorkDueFilter.Overdue)
+                        {
+                            <option value="@((int)MyWorkDueFilter.Overdue)" selected>سررسید گذشته</option>
+                        }
+                        else
+                        {
+                            <option value="@((int)MyWorkDueFilter.Overdue)">سررسید گذشته</option>
+                        }
+                        @if (Model.DueFilter == MyWorkDueFilter.Today)
+                        {
+                            <option value="@((int)MyWorkDueFilter.Today)" selected>امروز</option>
+                        }
+                        else
+                        {
+                            <option value="@((int)MyWorkDueFilter.Today)">امروز</option>
+                        }
+                        @if (Model.DueFilter == MyWorkDueFilter.ThisWeek)
+                        {
+                            <option value="@((int)MyWorkDueFilter.ThisWeek)" selected>۷ روز آینده</option>
+                        }
+                        else
+                        {
+                            <option value="@((int)MyWorkDueFilter.ThisWeek)">۷ روز آینده</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" id="includeCompleted" name="includeCompleted" value="true"
+                               checked="@Model.IncludeCompleted" />
+                        <label class="form-check-label" for="includeCompleted">نمایش انجام‌شده‌ها</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">اعمال</button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    @if (Model.Items.Count == 0)
+    {
+        <div class="my-work-empty text-center text-muted py-5">
+            <i class="bi bi-inbox display-6 d-block mb-2 opacity-50"></i>
+            کاری با این فیلترها پیدا نشد.
+        </div>
+    }
+    else
+    {
+        <div class="my-work-grid">
+            @foreach (var item in Model.Items)
+            {
+                var tone = DueTone(item.DueDate, item.IsCompleted);
+                <article class="my-work-card my-work-card--@tone @(item.IsCompleted ? "is-completed" : null)"
+                         role="button"
+                         tabindex="0"
+                         onclick="openEditTaskModal(@item.Id)"
+                         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEditTaskModal(@item.Id);}">
+                    <h2 class="my-work-card__title">@item.Title</h2>
+                    <div class="my-work-card__project">@item.ProjectName</div>
+                    <div class="my-work-card__due">@DueLabel(item.DueDate, item.IsCompleted)</div>
+                </article>
+            }
+        </div>
+    }
+</div>
+
+<div class="modal fade" id="editTaskModal" tabindex="-1" aria-labelledby="editTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="min-height: 80vh;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editTaskModalLabel">
+                    <i class="bi bi-pencil-square me-2"></i>
+                    ویرایش کار
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="editTaskFrame"
+                        title="Edit Task"
+                        style="width: 100%; height: calc(80vh - 56px); border: 0;"
+                        loading="lazy"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 start-0 p-3" style="z-index: 1100;">
+    <div id="liveToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastMessage"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let editTaskModalInstance = null;
+
+        function openEditTaskModal(taskId) {
+            if (!taskId) {
+                showToast('شناسه کار معتبر نیست', true);
+                return;
+            }
+
+            const iframe = document.getElementById('editTaskFrame');
+            const modalElement = document.getElementById('editTaskModal');
+            if (!iframe || !modalElement) return;
+
+            iframe.src = `/Tasks/Edit?id=${taskId}&fromModal=true&_=${Date.now()}`;
+            editTaskModalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+            editTaskModalInstance.show();
+        }
+
+        function showToast(message, isError = false) {
+            const toastEl = document.getElementById('liveToast');
+            const toastBody = document.getElementById('toastMessage');
+            if (!toastEl || !toastBody) return;
+            toastBody.textContent = message;
+            toastEl.classList.remove('bg-success', 'bg-danger');
+            toastEl.classList.add(isError ? 'bg-danger' : 'bg-success');
+            bootstrap.Toast.getOrCreateInstance(toastEl).show();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const editModalElement = document.getElementById('editTaskModal');
+            const editIframe = document.getElementById('editTaskFrame');
+            if (editModalElement) {
+                editModalElement.addEventListener('hidden.bs.modal', () => {
+                    if (editIframe) editIframe.src = 'about:blank';
+                });
+            }
+
+            window.addEventListener('message', (event) => {
+                if (!event || !event.data) return;
+
+                if (event.data === 'taskEditCancel') {
+                    editTaskModalInstance?.hide();
+                    return;
+                }
+
+                if (typeof event.data === 'object' && event.data.type === 'taskEditSuccess') {
+                    editTaskModalInstance?.hide();
+                    showToast('کار با موفقیت ویرایش شد ✅');
+                    setTimeout(() => window.location.reload(), 300);
+                }
+            });
+        });
+    </script>
+}

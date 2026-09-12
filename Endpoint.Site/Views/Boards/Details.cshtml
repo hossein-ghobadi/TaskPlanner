@@ -1871,6 +1871,11 @@
         document.getElementById('addSubtaskInputContainer').style.display = 'none';
         document.getElementById('addSubtaskInput').value = '';
     }
+
+    document.getElementById('taskDetailsModal')?.addEventListener('hidden.bs.modal', function () {
+        hideAddSubtaskInput();
+        currentTaskDetailsId = null;
+    });
     
     function handleAddSubtaskKeyPress(event) {
         if (event.key === 'Enter') {

@@ -424,7 +424,9 @@ namespace Endpoint.Site.Controllers
                         ProjectId = parent.ProjectId,
                         CategoryId = selectedCategory?.Id ?? parent.CategoryId,
                         ParentTaskId = parent.Id,
-                        AssignedUserId = parent.AssignedUserId, // وراثت مسئول از parent
+                        AssignedUserId = await ResolveProjectAssigneeIdAsync(
+                            parent.ProjectId,
+                            GetOptionalJsonString(data, "assignedUserId")),
                         StoryPoints = resolvedStoryPoints, // نگاشت سطح جدید به StoryPoints برای سازگاری
                         IsCompleted = false,
                         CreatedByUserId = userId,
@@ -2171,7 +2173,11 @@ namespace Endpoint.Site.Controllers
                     id = t.Id,
                     title = t.Title,
                     isCompleted = t.IsCompleted,
-                    createdAt = t.CreatedAt
+                    createdAt = t.CreatedAt,
+                    assignedUserId = t.AssignedUserId,
+                    assignedUserName = t.AssignedUser != null
+                        ? (t.AssignedUser.FullName ?? t.AssignedUser.UserName)
+                        : null
                 })
                 .ToListAsync();
 
@@ -2197,6 +2203,15 @@ namespace Endpoint.Site.Controllers
                 .FirstOrDefaultAsync(t => t.Id == parentId);
             if (parent == null) return NotFound("کار والد یافت نشد.");
             if (parent.IssueType != IssueType.Task) return BadRequest("فقط برای تسک می‌توان کارک ثبت کرد.");
+
+            var requestedAssigneeId = GetOptionalJsonString(data, "assignedUserId");
+            string? subtaskAssigneeId = null;
+            if (!string.IsNullOrWhiteSpace(requestedAssigneeId))
+            {
+                subtaskAssigneeId = await ResolveProjectAssigneeIdAsync(parent.ProjectId, requestedAssigneeId);
+                if (subtaskAssigneeId == null)
+                    return BadRequest("کاربر انتخاب‌شده عضو این پروژه نیست.");
+            }
 
             var hasAccess = await _context.Projects
                 .AnyAsync(p => p.Id == parent.ProjectId &&
@@ -2263,7 +2278,7 @@ namespace Endpoint.Site.Controllers
                         ProjectIssueTypeId = subtaskProjectIssueType?.Id,
                         CategoryId = parent.CategoryId,
                         ParentTaskId = parent.Id,
-                        AssignedUserId = parent.AssignedUserId,
+                        AssignedUserId = subtaskAssigneeId,
                         IsCompleted = false,
                         CreatedByUserId = userId,
                         CreatedAt = DateTime.UtcNow,
@@ -2301,12 +2316,15 @@ namespace Endpoint.Site.Controllers
                 return BadRequest("خطا در ایجاد کارک. لطفاً دوباره تلاش کنید.");
             }
 
+            var assignedUserName = await GetUserDisplayNameAsync(subtask.AssignedUserId);
             return Json(new
             {
                 success = true,
                 id = subtask.Id,
                 title = subtask.Title,
-                isCompleted = subtask.IsCompleted
+                isCompleted = subtask.IsCompleted,
+                assignedUserId = subtask.AssignedUserId,
+                assignedUserName
             });
         }
 
@@ -2355,12 +2373,15 @@ namespace Endpoint.Site.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!data.TryGetProperty("subtaskId", out var subtaskIdProp) || subtaskIdProp.ValueKind != JsonValueKind.Number)
                 return BadRequest("subtaskId الزامی است.");
-            if (!data.TryGetProperty("title", out var titleProp))
-                return BadRequest("title الزامی است.");
+
+            var hasTitle = data.TryGetProperty("title", out var titleProp) && titleProp.ValueKind == JsonValueKind.String;
+            var hasAssignee = data.TryGetProperty("assignedUserId", out var assigneeProp);
+            if (!hasTitle && !hasAssignee)
+                return BadRequest("title یا assignedUserId الزامی است.");
 
             var subtaskId = subtaskIdProp.GetInt32();
-            var title = (titleProp.GetString() ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(title))
+            string? title = hasTitle ? (titleProp.GetString() ?? string.Empty).Trim() : null;
+            if (hasTitle && string.IsNullOrWhiteSpace(title))
                 return BadRequest("عنوان کارک الزامی است.");
 
             var subtask = await _context.TaskItems
@@ -2377,11 +2398,39 @@ namespace Endpoint.Site.Controllers
                                                           i.Status == InvitationStatus.Accepted)));
             if (!hasAccess) return Forbid();
 
-            subtask.Title = title;
+            if (hasTitle)
+                subtask.Title = title!;
+
+            if (hasAssignee)
+            {
+                var requestedAssigneeId = assigneeProp.ValueKind == JsonValueKind.String
+                    ? assigneeProp.GetString()
+                    : null;
+                if (string.IsNullOrWhiteSpace(requestedAssigneeId))
+                {
+                    subtask.AssignedUserId = null;
+                }
+                else
+                {
+                    var resolvedAssigneeId = await ResolveProjectAssigneeIdAsync(subtask.ProjectId, requestedAssigneeId);
+                    if (resolvedAssigneeId == null)
+                        return BadRequest("کاربر انتخاب‌شده عضو این پروژه نیست.");
+                    subtask.AssignedUserId = resolvedAssigneeId;
+                }
+            }
+
             subtask.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            return Json(new { success = true, id = subtask.Id, title = subtask.Title });
+            var assignedUserName = await GetUserDisplayNameAsync(subtask.AssignedUserId);
+            return Json(new
+            {
+                success = true,
+                id = subtask.Id,
+                title = subtask.Title,
+                assignedUserId = subtask.AssignedUserId,
+                assignedUserName
+            });
         }
 
         [HttpGet]
@@ -2950,42 +2999,8 @@ namespace Endpoint.Site.Controllers
 
             TaskScheduleHelper.ApplySchedule(task, parsedStartDate, vm.DurationDays);
 
-            // 👇 مسئول تسک
-            // برای Subtask، AssignedUserId را از parent task بگیر (نه از vm)
-            if (vm.IssueType == IssueType.Subtask && task.ParentTaskId.HasValue)
-            {
-                var parentTask = await _context.TaskItems
-                    .FirstOrDefaultAsync(t => t.Id == task.ParentTaskId.Value);
-                if (parentTask != null)
-                {
-                    task.AssignedUserId = parentTask.AssignedUserId;
-                }
-                else
-                {
-                    task.AssignedUserId = vm.AssignedUserId; // fallback
-                }
-            }
-            else
-            {
-                task.AssignedUserId = vm.AssignedUserId;
-                
-                // 🔄 اگر مسئول کار تغییر کرد، مسئول تمام کارک‌های آن را هم به‌روزرسانی کن
-                var assignedUserIdChanged = !string.Equals(previousAssignee, vm.AssignedUserId, StringComparison.OrdinalIgnoreCase);
-                if (assignedUserIdChanged && vm.IssueType != IssueType.Subtask)
-                {
-                    // پیدا کردن تمام کارک‌های این کار
-                    var childTasks = await _context.TaskItems
-                        .Where(t => t.ParentTaskId == task.Id && t.IssueType == IssueType.Subtask)
-                        .ToListAsync();
-                    
-                    // به‌روزرسانی مسئول تمام کارک‌ها
-                    foreach (var childTask in childTasks)
-                    {
-                        childTask.AssignedUserId = vm.AssignedUserId;
-                        _context.Update(childTask);
-                    }
-                }
-            }
+            // مسئول کار و کارک مستقل از هم هستند
+            task.AssignedUserId = string.IsNullOrWhiteSpace(vm.AssignedUserId) ? null : vm.AssignedUserId;
 
             task.StoryPoints = vm.StoryPoints;
 
@@ -3419,6 +3434,37 @@ namespace Endpoint.Site.Controllers
             }
 
             await MarkAncestorsIncompleteAsync(parent.ParentTaskId);
+        }
+
+        private static string? GetOptionalJsonString(JsonElement data, string propertyName)
+        {
+            if (!data.TryGetProperty(propertyName, out var prop))
+                return null;
+            if (prop.ValueKind == JsonValueKind.Null || prop.ValueKind == JsonValueKind.Undefined)
+                return null;
+            if (prop.ValueKind != JsonValueKind.String)
+                return null;
+            var value = prop.GetString();
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+
+        private async Task<string?> ResolveProjectAssigneeIdAsync(int projectId, string? userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return null;
+
+            var isAllowed = await _context.Projects.AnyAsync(p => p.Id == projectId &&
+                (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
+            return isAllowed ? userId : null;
+        }
+
+        private async Task<string?> GetUserDisplayNameAsync(string? userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return null;
+
+            var user = await _userManager.FindByIdAsync(userId);
+            return user == null ? null : (user.FullName ?? user.UserName);
         }
 
     }

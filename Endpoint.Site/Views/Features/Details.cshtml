@@ -2852,7 +2852,7 @@
     }
     #featureTaskModal .feature-subtask-input-row {
         display: grid;
-        grid-template-columns: 1fr auto;
+        grid-template-columns: 1fr minmax(9rem, 12rem) auto;
         align-items: start;
         gap: 0.5rem;
         margin-bottom: 0.65rem;
@@ -2862,6 +2862,29 @@
         max-height: 8rem;
         resize: vertical;
         line-height: 1.4;
+    }
+    #featureTaskModal .feature-inline-subtask-assignee {
+        font-size: 0.8rem;
+        min-height: 2.5rem;
+    }
+    #featureTaskModal .feature-subtask-item-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        flex: 1;
+        min-width: 0;
+    }
+    #featureTaskModal .feature-subtask-assignee {
+        font-size: 0.8rem;
+        max-width: 16rem;
+    }
+    @@media (max-width: 768px) {
+        #featureTaskModal .feature-subtask-input-row {
+            grid-template-columns: 1fr;
+        }
+        #featureTaskModal .feature-subtask-assignee {
+            max-width: none;
+        }
     }
     #featureTaskModal .feature-subtask-list {
         list-style: none;
@@ -3002,6 +3025,13 @@
                                 </div>
                                 <div class="feature-subtask-input-row">
                                     <textarea id="featureInlineSubtaskTitle" class="form-control" rows="2" placeholder="عنوان کارک..."></textarea>
+                                    <select id="featureInlineSubtaskAssignee" class="form-select feature-inline-subtask-assignee" title="مسئول کارک">
+                                        <option value="">-- مسئول کارک --</option>
+                                        @foreach (var m in featureTaskMembers)
+                                        {
+                                            <option value="@m.UserId">@m.DisplayName</option>
+                                        }
+                                    </select>
                                     <button type="button" id="featureAddSubtaskBtn" class="btn btn-sm btn-primary">افزودن</button>
                                 </div>
                                 <ul id="featureInlineSubtasksList" class="feature-subtask-list"></ul>
@@ -3161,6 +3191,16 @@
 
         var featureSubtaskParentId = null;
         var featureSubtaskUiBound = false;
+        var featureSubtaskMembers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(featureTaskMembers.Select(m => new { id = m.UserId, name = m.DisplayName })));
+
+        function buildFeatureAssigneeOptionsHtml(selectedId) {
+            var html = '<option value="">-- بدون مسئول --</option>';
+            (featureSubtaskMembers || []).forEach(function (user) {
+                var selected = selectedId && String(user.id) === String(selectedId) ? ' selected' : '';
+                html += '<option value="' + escapeHtml(user.id) + '"' + selected + '>' + escapeHtml(user.name) + '</option>';
+            });
+            return html;
+        }
 
         function setFeatureChecklistVisible(show, parentId) {
             var panel = document.getElementById('featureChecklistPanel');
@@ -3171,6 +3211,8 @@
                 ensureFeatureSubtaskUiBound();
                 var note = document.getElementById('featureInlineSubtaskNote');
                 if (note) note.textContent = '';
+                var titleInput = document.getElementById('featureInlineSubtaskTitle');
+                if (titleInput) titleInput.value = '';
                 loadFeatureSubtasks(parentId);
             } else {
                 panel.style.display = 'none';
@@ -3218,8 +3260,11 @@
                 return '<li class="feature-subtask-item" data-subtask-id="' + id + '">' +
                     '<div class="feature-subtask-item-main">' +
                     '<input type="checkbox" class="feature-subtask-check" data-subtask-id="' + id + '"' + (completed ? ' checked' : '') + ' />' +
+                    '<div class="feature-subtask-item-body">' +
                     '<span class="feature-subtask-title editable' + (completed ? ' completed' : '') + '" data-subtask-id="' + id + '" title="برای ویرایش کلیک کنید">' + title + '</span>' +
-                    '</div>' +
+                    '<select class="form-select form-select-sm feature-subtask-assignee" data-subtask-id="' + id + '" title="مسئول کارک" aria-label="مسئول کارک">' +
+                    buildFeatureAssigneeOptionsHtml(st.assignedUserId || '') +
+                    '</select></div></div>' +
                     '<div class="feature-subtask-actions">' +
                     '<button type="button" class="feature-subtask-edit-btn" data-subtask-id="' + id + '" title="ویرایش" aria-label="ویرایش"><i class="bi bi-pencil"></i></button>' +
                     '<button type="button" class="feature-subtask-delete-btn" data-subtask-id="' + id + '" title="حذف" aria-label="حذف"><i class="bi bi-trash"></i></button>' +
@@ -3316,6 +3361,29 @@
             if (featureSubtaskParentId) await loadFeatureSubtasks(featureSubtaskParentId);
         }
 
+        async function updateFeatureSubtaskAssignee(subtaskId, assignedUserId) {
+            var noteEl = document.getElementById('featureInlineSubtaskNote');
+            try {
+                if (noteEl) noteEl.textContent = 'در حال ذخیره مسئول کارک...';
+                var response = await fetch('/Tasks/UpdateInlineSubtask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subtaskId: subtaskId, assignedUserId: assignedUserId || null })
+                });
+                if (!response.ok) {
+                    var errText = await response.text();
+                    throw new Error(errText || 'update_failed');
+                }
+                var result = await response.json();
+                if (!result.success) throw new Error(result.message || 'update_failed');
+                if (noteEl) noteEl.textContent = '';
+                if (featureSubtaskParentId) await loadFeatureSubtasks(featureSubtaskParentId);
+            } catch (error) {
+                if (noteEl) noteEl.textContent = (error && error.message) || 'ذخیره مسئول کارک انجام نشد.';
+                if (featureSubtaskParentId) await loadFeatureSubtasks(featureSubtaskParentId);
+            }
+        }
+
         async function loadFeatureSubtasks(parentId) {
             var listEl = document.getElementById('featureInlineSubtasksList');
             if (!listEl) return;
@@ -3340,12 +3408,14 @@
                 if (noteEl) noteEl.textContent = 'عنوان کارک الزامی است.';
                 return;
             }
+            var assigneeSelect = document.getElementById('featureInlineSubtaskAssignee');
+            var assignedUserId = assigneeSelect ? (assigneeSelect.value || null) : null;
             try {
                 if (noteEl) noteEl.textContent = 'در حال افزودن...';
                 var response = await fetch('/Tasks/AddInlineSubtask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ parentId: parentId, title: title })
+                    body: JSON.stringify({ parentId: parentId, title: title, assignedUserId: assignedUserId })
                 });
                 if (!response.ok) {
                     var err = await response.text();
@@ -3420,6 +3490,9 @@
                     if (t.classList && t.classList.contains('feature-subtask-check')) {
                         var sid = parseInt(t.getAttribute('data-subtask-id'), 10);
                         if (sid) toggleFeatureSubtask(sid);
+                    } else if (t.classList && t.classList.contains('feature-subtask-assignee')) {
+                        var assigneeId = parseInt(t.getAttribute('data-subtask-id'), 10);
+                        if (assigneeId) updateFeatureSubtaskAssignee(assigneeId, t.value);
                     }
                 });
                 listEl.addEventListener('click', function (e) {
@@ -4230,6 +4303,10 @@
                 btn.disabled = false;
                 btn.innerHTML = original;
             }
+        });
+
+        document.getElementById('featureTaskModal')?.addEventListener('hidden.bs.modal', function () {
+            resetFeatureTaskForm();
         });
     })();
 </script>

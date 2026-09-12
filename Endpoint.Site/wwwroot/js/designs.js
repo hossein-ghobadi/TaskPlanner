@@ -1221,6 +1221,18 @@
             .replace(/"/g, "&quot;");
     }
 
+    function forceMulticolorPreviewPaint(box) {
+        const preview = box && box.preview;
+        if (!preview || preview.classList.contains("d-none")) {
+            return;
+        }
+        // بوم با transform:scale رندر می‌شود؛ بدون این، گاهی فقط کادر بزرگ می‌شود
+        // و گلیف‌های preview تا تعامل بعدی (کلیک) در اندازه قبلی می‌مانند.
+        preview.style.transform = "translateZ(0)";
+        void preview.offsetWidth;
+        preview.style.removeProperty("transform");
+    }
+
     function renderTextColorPreview(box) {
         const preview = box.preview;
         const input = box.input;
@@ -1238,6 +1250,8 @@
             return;
         }
 
+        const fontSizePx = box.fontSize + "px";
+        const letterSpacingPx = box.letterSpacing + "px";
         const fills = ensureCharFills(box);
         let html = "";
         let i = 0;
@@ -1247,10 +1261,15 @@
             while (j < text.length && normalizeFillHex(fills[j] || box.fill) === fill) {
                 j++;
             }
+            // font-size صریح روی span — inherit زیر transform بوم گاهی به‌روز نمی‌شود
             html +=
                 '<span style="color:' +
                 fill +
-                '">' +
+                ";font-size:" +
+                fontSizePx +
+                ";letter-spacing:" +
+                letterSpacingPx +
+                ';line-height:1.35">' +
                 escapeHtml(text.slice(i, j)).replace(/\n/g, "<br>") +
                 "</span>";
             i = j;
@@ -1260,6 +1279,7 @@
         input.classList.add("is-multicolor");
         input.style.color = "transparent";
         input.style.webkitTextFillColor = "transparent";
+        forceMulticolorPreviewPaint(box);
     }
 
     function applyFillFromPanel(box, color) {
@@ -2449,11 +2469,18 @@
                 box.input.style.fontSize = box.fontSize + "px";
                 box.input.style.letterSpacing = box.letterSpacing + "px";
             }
+            if (box.preview) {
+                box.preview.style.fontSize = box.fontSize + "px";
+                box.preview.style.letterSpacing = box.letterSpacing + "px";
+                box.preview.style.webkitTextStroke =
+                    box.strokeWidth > 0 ? box.strokeWidth + "px " + box.stroke : "0 transparent";
+            }
             if (box.strokeWidth > 0) {
                 box.el.style.webkitTextStroke = box.strokeWidth + "px " + box.stroke;
             } else {
                 box.el.style.webkitTextStroke = "0 transparent";
             }
+            renderTextColorPreview(box);
             fitBoxToText(box);
             syncFontSizePanel(box);
             return;

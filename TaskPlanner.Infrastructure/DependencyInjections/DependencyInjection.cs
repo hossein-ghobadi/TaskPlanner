@@ -23,6 +23,7 @@ using TaskPlanner.Application.Services.LeadService;
 using TaskPlanner.Application.Services.CrmService;
 using TaskPlanner.Application.Services.LeaveService;
 using TaskPlanner.Application.Services.DashboardService;
+using TaskPlanner.Application.Services.MyWorkService;
 using TaskPlanner.Application.Services.Bale;
 using TaskPlanner.Application.Services.SMS;
 using TaskPlanner.Application.Services.FileUpload;
@@ -57,6 +58,7 @@ namespace TaskPlanner.Infrastructure.DependencyInjections
             services.AddScoped<ILeaveService, LeaveService>();
 
             services.AddScoped<IDashboardService, DashboardService>();
+            services.AddScoped<IMyWorkService, MyWorkService>();
 
             // سرویس نوتیفیکیشن
             services.AddScoped<INotificationService, NotificationService>();

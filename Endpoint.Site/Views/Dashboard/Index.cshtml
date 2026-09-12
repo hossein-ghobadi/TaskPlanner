@@ -32,17 +32,19 @@
             </a>
         </div>
         <div class="col-6 col-xl-3">
-            <div class="dash-stat-card dash-stat-card--amber">
-                <div class="dash-stat-card__icon"><i class="bi bi-kanban"></i></div>
-                <div class="dash-stat-card__value">@Model.MyOpenProjectTasks.ToString().ToPersianNumbers()</div>
-                <div class="dash-stat-card__label">کار باز (پروژه)</div>
-                @if (Model.MyOverdueProjectTasks > 0)
-                {
-                    <div class="dash-stat-card__hint text-danger small mt-1">
-                        @Model.MyOverdueProjectTasks.ToString().ToPersianNumbers() سررسید گذشته
-                    </div>
-                }
-            </div>
+            <a href="@Url.Action("Index", "MyWork")" class="text-decoration-none">
+                <div class="dash-stat-card dash-stat-card--amber">
+                    <div class="dash-stat-card__icon"><i class="bi bi-kanban"></i></div>
+                    <div class="dash-stat-card__value">@Model.MyOpenProjectTasks.ToString().ToPersianNumbers()</div>
+                    <div class="dash-stat-card__label">کار باز (پروژه)</div>
+                    @if (Model.MyOverdueProjectTasks > 0)
+                    {
+                        <div class="dash-stat-card__hint text-danger small mt-1">
+                            @Model.MyOverdueProjectTasks.ToString().ToPersianNumbers() سررسید گذشته
+                        </div>
+                    }
+                </div>
+            </a>
         </div>
         <div class="col-6 col-xl-3">
             <div class="dash-stat-card dash-stat-card--emerald">

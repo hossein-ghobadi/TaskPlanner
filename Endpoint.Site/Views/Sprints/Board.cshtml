@@ -94,6 +94,71 @@
     var sprintIsActive = Model.Status == SprintStatus.Active;
 }
 
+@functions {
+    private static string AssigneeDisplayName(TaskItem item)
+    {
+        return item.AssignedUser?.FullName
+            ?? item.AssignedUser?.UserName
+            ?? "اختصاص داده شده";
+    }
+
+    private static List<(string Id, string Name)> UniqueSubtaskAssignees(TaskItem issue)
+    {
+        var result = new List<(string, string)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(issue.AssignedUserId))
+            seen.Add(issue.AssignedUserId);
+
+        if (issue.ChildIssues == null)
+            return result;
+
+        foreach (var child in issue.ChildIssues)
+        {
+            if (child.IssueType != IssueType.Subtask)
+                continue;
+            if (string.IsNullOrWhiteSpace(child.AssignedUserId))
+                continue;
+            if (!seen.Add(child.AssignedUserId))
+                continue;
+            result.Add((child.AssignedUserId, AssigneeDisplayName(child)));
+        }
+
+        return result;
+    }
+
+    private static string InvolvedAssigneeIds(TaskItem issue)
+    {
+        var ids = new List<string>();
+        if (!string.IsNullOrWhiteSpace(issue.AssignedUserId))
+            ids.Add(issue.AssignedUserId);
+
+        if (issue.ChildIssues != null)
+        {
+            foreach (var child in issue.ChildIssues)
+            {
+                if (child.IssueType != IssueType.Subtask)
+                    continue;
+                if (!string.IsNullOrWhiteSpace(child.AssignedUserId))
+                    ids.Add(child.AssignedUserId);
+            }
+        }
+
+        return ids.Count == 0
+            ? "unassigned"
+            : string.Join(",", ids.Distinct(StringComparer.OrdinalIgnoreCase));
+    }
+
+    private static string InvolvedAssigneeNames(TaskItem issue)
+    {
+        var names = new List<string>();
+        if (!string.IsNullOrWhiteSpace(issue.AssignedUserId))
+            names.Add(AssigneeDisplayName(issue));
+        foreach (var person in UniqueSubtaskAssignees(issue))
+            names.Add(person.Name);
+        return names.Count == 0 ? "نامشخص" : string.Join(" ", names);
+    }
+}
+
 <style>
     .board-container {
     direction: rtl;
@@ -734,57 +799,131 @@
     #editTaskModal .checklist-card-board.checklist-board-floating {
     margin-top: 0;
     margin-bottom: 1rem;
-    background: #fff !important;
-    border: 1px solid #e8eaef;
-    border-radius: 12px;
-    padding: 0.85rem 1rem;
+    background: linear-gradient(180deg, #fbfcfe 0%, #fff 48%) !important;
+    border: 1px solid #e6eaf0;
+    border-radius: 14px;
+    padding: 0.95rem 1rem 1rem;
     direction: rtl;
     text-align: right;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     }
     #editTaskModal .checklist-header-board {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px solid #eef1f5;
     }
     #editTaskModal .checklist-title-board {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.45rem;
     font-size: 0.95rem;
-    font-weight: 600;
+    font-weight: 700;
     color: #1f2937;
     }
     #editTaskModal .checklist-title-board i {
-    color: #4b5563;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 8px;
+    background: #eef2ff;
+    color: #4f46e5;
+    font-size: 0.85rem;
     }
     #editTaskModal .checklist-progress-badge-board {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 2.4rem;
-    padding: 0.2rem 0.5rem;
+    min-width: 2.5rem;
+    padding: 0.22rem 0.55rem;
     border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    background: #4b5563;
-    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    background: #eef2ff;
+    color: #4338ca;
+    border: 1px solid #e0e7ff;
     }
     #editTaskModal .subtask-input-row-board {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: start;
-    gap: 0.5rem;
-    margin-bottom: 0.65rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    margin-bottom: 0.85rem;
+    padding: 0.7rem 0.75rem;
+    border: 1px dashed #d7dde7;
+    border-radius: 12px;
+    background: #fff;
     }
     #editTaskModal .subtask-input-row-board textarea {
-    min-height: 2.5rem;
-    max-height: 8rem;
+    min-height: 2.35rem;
+    max-height: 7rem;
     resize: vertical;
-    line-height: 1.4;
+    line-height: 1.45;
+    border: none;
+    box-shadow: none;
+    padding: 0.15rem 0.1rem;
+    background: transparent;
+    font-size: 0.9rem;
+    }
+    #editTaskModal .subtask-input-row-board textarea:focus {
+    outline: none;
+    box-shadow: none;
+    }
+    #editTaskModal .subtask-input-actions-board {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    }
+    #editTaskModal .subtask-assignee-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex: 1;
+    min-width: 10rem;
+    max-width: 14rem;
+    }
+    #editTaskModal .subtask-assignee-wrap > i {
+    position: absolute;
+    right: 0.65rem;
+    color: #6366f1;
+    font-size: 0.85rem;
+    pointer-events: none;
+    z-index: 1;
+    }
+    #editTaskModal .subtask-input-row-board .board-inline-subtask-assignee,
+    #editTaskModal .board-subtask-assignee {
+    width: 100%;
+    font-size: 0.78rem;
+    min-height: 2.05rem;
+    padding: 0.25rem 1.9rem 0.25rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #334155;
+    box-shadow: none;
+    }
+    #editTaskModal .subtask-input-row-board .board-inline-subtask-assignee:focus,
+    #editTaskModal .board-subtask-assignee:focus {
+    border-color: #a5b4fc;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    }
+    #editTaskModal #boardAddSubtaskBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 999px;
+    padding: 0.35rem 0.95rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.18);
     }
     #editTaskModal .subtask-list-board {
     list-style: none;
@@ -792,113 +931,140 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
+    gap: 0.5rem;
     }
     #editTaskModal .subtask-item-board {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 0.5rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
+    gap: 0.55rem;
+    border: 1px solid #e8ecf2;
+    border-radius: 12px;
     background: #fff;
-    padding: 0.5rem 0.6rem;
+    padding: 0.65rem 0.7rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    #editTaskModal .subtask-item-board:hover {
+    border-color: #d5dceb;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    background: #fcfdff;
     }
     #editTaskModal .subtask-item-main-board {
     display: flex;
     align-items: flex-start;
-    gap: 0.45rem;
+    gap: 0.55rem;
     flex: 1;
     min-width: 0;
+    }
+    #editTaskModal .subtask-item-body-board {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 0;
+    }
+    #editTaskModal .subtask-item-body-board .subtask-assignee-wrap {
+    max-width: 13rem;
     }
     #editTaskModal .subtask-item-main-board input[type="checkbox"] {
     width: 1.05rem;
     height: 1.05rem;
-    margin-top: 0.15rem;
+    margin-top: 0.2rem;
     flex-shrink: 0;
     cursor: pointer;
+    accent-color: #4f46e5;
     }
     #editTaskModal .subtask-title-board {
     white-space: pre-wrap;
     word-break: break-word;
-    font-size: 0.88rem;
-    line-height: 1.4;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: #1e293b;
+    font-weight: 500;
     flex: 1;
     min-width: 0;
     }
     #editTaskModal .subtask-title-board.completed {
     text-decoration: line-through;
-    color: #9ca3af;
+    color: #94a3b8;
+    font-weight: 400;
     }
     #editTaskModal .subtask-title-board.editable {
     cursor: text;
     }
     #editTaskModal .subtask-title-board.editable:hover {
-    color: #2563eb;
+    color: #4f46e5;
     }
     #editTaskModal .subtask-edit-input-board {
-    font-size: 0.88rem;
-    padding: 0.2rem 0.45rem;
+    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
     min-width: 0;
     flex: 1;
-    min-height: 2.4rem;
+    min-height: 2.2rem;
     max-height: 8rem;
     resize: vertical;
     line-height: 1.4;
     white-space: pre-wrap;
+    border-radius: 8px;
     }
     #editTaskModal .subtask-item-actions-board {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.3rem;
     flex-shrink: 0;
     }
-    #editTaskModal .subtask-edit-btn-board {
+    #editTaskModal .subtask-edit-btn-board,
+    #editTaskModal .subtask-delete-btn-board {
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
+    width: 1.85rem;
+    height: 1.85rem;
     padding: 0;
     border: none;
     border-radius: 50%;
-    background: #3b82f6;
     color: #fff;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background 0.15s ease, transform 0.1s ease;
+    }
+    #editTaskModal .subtask-edit-btn-board {
+    background: #3b82f6;
     }
     #editTaskModal .subtask-edit-btn-board:hover {
     background: #2563eb;
     color: #fff;
     }
     #editTaskModal .subtask-delete-btn-board {
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    padding: 0;
-    border: none;
-    border-radius: 50%;
     background: #ef4444;
-    color: #fff;
-    cursor: pointer;
-    transition: background 0.15s ease;
     }
     #editTaskModal .subtask-delete-btn-board:hover {
     background: #dc2626;
     color: #fff;
     }
     #editTaskModal .subtask-empty-board {
-    border: 1px dashed #d1d5db;
-    border-radius: 10px;
-    padding: 0.55rem;
+    border: 1px dashed #d8dee8;
+    border-radius: 12px;
+    padding: 0.85rem 0.7rem;
     font-size: 0.82rem;
-    color: #6b7280;
-    background: #f9fafb;
+    color: #94a3b8;
+    background: #f8fafc;
     text-align: center;
+    }
+    @@media (max-width: 768px) {
+    #editTaskModal .subtask-assignee-wrap,
+    #editTaskModal .subtask-item-body-board .subtask-assignee-wrap {
+    max-width: none;
+    width: 100%;
+    }
+    #editTaskModal .subtask-input-actions-board {
+    flex-direction: column;
+    align-items: stretch;
+    }
+    #editTaskModal #boardAddSubtaskBtn {
+    width: 100%;
+    justify-content: center;
+    }
     }
     @@media (max-width: 992px) {
     #editTaskModal .modal-dialog {
@@ -959,8 +1125,18 @@
     color: #6c757d;
     min-width: 0;
     }
+    .task-people {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+    flex: 1;
+    }
     .task-badge {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
     font-size: 0.75rem;
@@ -970,8 +1146,13 @@
     word-break: break-word;
     }
     .badge-assigned {
-    background: #e3f2fd;
-    color: #1976d2;
+    background: #e8f1ff;
+    color: #1d4ed8;
+    }
+    .badge-subtask-assigned {
+    background: #f3e8ff;
+    color: #7c3aed;
+    border: 1px solid #eadbff;
     }
     .available-tasks-column {
     background: #f8f9fa;
@@ -2872,8 +3053,10 @@
                                          data-status-name="@status.Name"
                                          data-is-completed="@issue.IsCompleted.ToString().ToLower()"
                                          data-title="@issue.Title"
-                                         data-assignee="@((issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص"))"
+                                         data-assignee="@InvolvedAssigneeNames(issue)"
                                          data-assignee-id="@(issue.AssignedUserId ?? "unassigned")"
+                                         data-involved-ids="@InvolvedAssigneeIds(issue)"
+                                         data-subtask-people="@System.Text.Json.JsonSerializer.Serialize(UniqueSubtaskAssignees(issue).Select(p => new { id = p.Id, name = p.Name }))"
                                          data-key="@issue.IssueKey"
                                          data-due="@dueDate?.ToString("o")"
                                          data-due-soon="@dueSoonFlag.ToString().ToLower()">
@@ -2935,13 +3118,22 @@
                                             <div class="task-description">@(issue.Description.Length > 100 ? issue.Description.Substring(0, 100) + "..." : issue.Description)</div>
                                         }
                                         <div class="task-footer">
+                                            <div class="task-people">
                                             @if (!string.IsNullOrWhiteSpace(issue.AssignedUserId))
                                             {
-                                                <span class="task-badge badge-assigned">
-                                                    <i class="bi bi-person"></i>
-                                                    @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "اختصاص داده شده")
+                                                <span class="task-badge badge-assigned" title="مسئول کار">
+                                                    <i class="bi bi-person-fill"></i>
+                                                    @AssigneeDisplayName(issue)
                                                 </span>
                                             }
+                                            @foreach (var person in UniqueSubtaskAssignees(issue))
+                                            {
+                                                <span class="task-badge badge-subtask-assigned" title="مسئول کارک">
+                                                    <i class="bi bi-person"></i>
+                                                    @person.Name
+                                                </span>
+                                            }
+                                            </div>
                                             <small>@issue.DueDate.ToShortPersianDateString().ToPersianNumbers()</small>
                                         </div>
                                         
@@ -3124,8 +3316,10 @@
                          onclick="handleCardClick(event, @issue.Id)"
                          data-issue-id="@issue.Id"
                          data-title="@issue.Title"
-                         data-assignee="@((issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "نامشخص"))"
+                         data-assignee="@InvolvedAssigneeNames(issue)"
                          data-assignee-id="@(issue.AssignedUserId ?? "unassigned")"
+                         data-involved-ids="@InvolvedAssigneeIds(issue)"
+                         data-subtask-people="@System.Text.Json.JsonSerializer.Serialize(UniqueSubtaskAssignees(issue).Select(p => new { id = p.Id, name = p.Name }))"
                          data-key="@issue.IssueKey"
                          data-due="@dueDate?.ToString("o")"
                          data-due-soon="@dueSoonFlag.ToString().ToLower()">
@@ -3155,13 +3349,22 @@
                             <div class="task-description">@(issue.Description.Length > 100 ? issue.Description.Substring(0, 100) + "..." : issue.Description)</div>
                         }
                         <div class="task-footer">
+                            <div class="task-people">
                             @if (!string.IsNullOrWhiteSpace(issue.AssignedUserId))
                             {
-                                <span class="task-badge badge-assigned">
-                                    <i class="bi bi-person"></i>
-                                    @(issue.AssignedUser?.FullName ?? issue.AssignedUserName ?? issue.AssignedUser?.UserName ?? "اختصاص داده شده")
+                                <span class="task-badge badge-assigned" title="مسئول کار">
+                                    <i class="bi bi-person-fill"></i>
+                                    @AssigneeDisplayName(issue)
                                 </span>
                             }
+                            @foreach (var person in UniqueSubtaskAssignees(issue))
+                            {
+                                <span class="task-badge badge-subtask-assigned" title="مسئول کارک">
+                                    <i class="bi bi-person"></i>
+                                    @person.Name
+                                </span>
+                            }
+                            </div>
                             <small>@issue.CreatedAt.ToShortPersianDateString().ToPersianNumbers()</small>
                         </div>
                     </div>
@@ -3209,9 +3412,15 @@
                             }
                         </select>
                     </div>
-                    <div class="alert alert-info mb-0" style="font-size: 0.9rem;">
-                        <i class="bi bi-info-circle"></i>
-                        <strong>نکته:</strong> مسئول کارک به صورت خودکار از کار والد گرفته می‌شود.
+                    <div class="mb-3">
+                        <label for="subtaskAssignedUser" class="form-label">مسئول کارک</label>
+                        <select class="form-select" id="subtaskAssignedUser">
+                            <option value="">-- بدون مسئول --</option>
+                            @foreach (var member in projectMembers)
+                            {
+                                <option value="@member.UserId">@(member.FullName ?? member.UserName)</option>
+                            }
+                        </select>
                     </div>
                 </form>
             </div>
@@ -3310,8 +3519,19 @@
                                         <span class="checklist-progress-badge-board" id="boardSubtaskProgressBadge">0/0</span>
                                     </div>
                                     <div class="subtask-input-row-board">
-                                        <textarea id="boardInlineSubtaskTitle" class="form-control" rows="2" placeholder="عنوان کارک..." autocomplete="off"></textarea>
-                                        <button type="button" id="boardAddSubtaskBtn" class="btn btn-sm btn-primary">افزودن</button>
+                                        <textarea id="boardInlineSubtaskTitle" class="form-control" rows="2" placeholder="عنوان کارک جدید را بنویسید..." autocomplete="off"></textarea>
+                                        <div class="subtask-input-actions-board">
+                                            <div class="subtask-assignee-wrap">
+                                                <i class="bi bi-person"></i>
+                                                <select id="boardInlineSubtaskAssignee" class="form-select board-inline-subtask-assignee" title="مسئول کارک">
+                                                    <option value="">بدون مسئول</option>
+                                                </select>
+                                            </div>
+                                            <button type="button" id="boardAddSubtaskBtn" class="btn btn-sm btn-primary">
+                                                <i class="bi bi-plus-lg"></i>
+                                                افزودن
+                                            </button>
+                                        </div>
                                     </div>
                                     <ul id="boardInlineSubtasksList" class="subtask-list-board"></ul>
                                     <div id="boardInlineSubtaskNote" class="text-muted small mt-1"></div>
@@ -3710,7 +3930,6 @@
             const titleEl = document.getElementById('editTaskModalLabel');
             const submitBtn = document.getElementById('editTaskSubmitBtn');
             const chatSection = document.querySelector('#editTaskModal .chat-container');
-            const checklistPanel = document.getElementById('boardChecklistPanel');
             if (titleEl) {
                 titleEl.innerHTML = isCreate
                     ? '<i class="bi bi-plus-circle me-2"></i>افزودن کار جدید'
@@ -3724,9 +3943,8 @@
             if (chatSection) {
                 chatSection.style.display = isCreate ? 'none' : '';
             }
-            if (checklistPanel && isCreate) {
-                checklistPanel.style.display = 'none';
-                boardSubtaskParentId = null;
+            if (isCreate) {
+                resetBoardChecklistUi();
             }
         }
 
@@ -3738,7 +3956,7 @@
                 const option = document.createElement('option');
                 option.value = user.id;
                 option.textContent = user.name;
-                if (selectedId && user.id === selectedId) {
+                if (selectedId && String(user.id) === String(selectedId)) {
                     option.selected = true;
                 }
                 assignedUserSelect.appendChild(option);
@@ -3861,6 +4079,7 @@
             if (durationInput) durationInput.value = '';
             originalTaskData = null;
             clearReplyContext();
+            resetBoardChecklistUi();
         }
 
         function openAddTaskModal(statusId, statusName) {
@@ -3932,6 +4151,25 @@
             });
         }
 
+        function parseInvolvedIds(value) {
+            if (!value || value === 'unassigned') return [];
+            return String(value).split(',').map(s => s.trim()).filter(Boolean);
+        }
+
+        function getElementInvolvedIds(el) {
+            const fromAttr = parseInvolvedIds(el.dataset.involvedIds);
+            if (fromAttr.length) return fromAttr;
+            const mainId = el.dataset.assigneeId;
+            return mainId && mainId !== 'unassigned' ? [mainId] : [];
+        }
+
+        function matchesAssigneeFilter(el, assignee) {
+            const ids = getElementInvolvedIds(el);
+            if (assignee === 'all') return true;
+            if (assignee === 'unassigned') return ids.length === 0;
+            return ids.some(id => id === assignee);
+        }
+
         function applyBoardFilters() {
             const text = boardFilters.text.trim().toLowerCase();
             const status = boardFilters.status;
@@ -3948,15 +4186,12 @@
 
                 const title = (card.dataset.title || '').toLowerCase();
                 const assigneeName = (card.dataset.assignee || '').toLowerCase();
-                const assigneeId = card.dataset.assigneeId || 'unassigned';
                 const key = (card.dataset.key || '').toLowerCase();
 
                 const matchesText = !text || title.includes(text) || assigneeName.includes(text) || key.includes(text);
                 const inBacklog = !!card.closest('#tasks-backlog');
                 const matchesStatus = inBacklog || status === 'all' || card.dataset.statusId === status;
-                const matchesAssignee = assignee === 'all' || 
-                    (assignee === 'unassigned' && assigneeId === 'unassigned') ||
-                    (assignee !== 'unassigned' && assigneeId === assignee);
+                const matchesAssignee = matchesAssigneeFilter(card, assignee);
                 const matchesDue = !dueSoon || card.dataset.dueSoon === 'true';
 
                 const visible = matchesText && matchesStatus && matchesAssignee && matchesDue;
@@ -3965,12 +4200,7 @@
             });
 
             document.querySelectorAll('.available-task-item').forEach(item => {
-                const assigneeId = item.dataset.assigneeId || 'unassigned';
-                const matchesAssignee = assignee === 'all' || 
-                    (assignee === 'unassigned' && assigneeId === 'unassigned') ||
-                    (assignee !== 'unassigned' && assigneeId === assignee);
-                
-                item.style.display = matchesAssignee ? '' : 'none';
+                item.style.display = matchesAssigneeFilter(item, assignee) ? '' : 'none';
             });
 
             updateIssueCounts();
@@ -4361,6 +4591,8 @@
             card.dataset.title = task.title || '';
             card.dataset.assignee = task.assigneeName || 'نامشخص';
             card.dataset.assigneeId = task.assigneeId || 'unassigned';
+            card.dataset.involvedIds = (task.assigneeId && task.assigneeId !== 'unassigned') ? task.assigneeId : 'unassigned';
+            card.dataset.subtaskPeople = '[]';
             card.dataset.key = task.issueKey || '';
             card.dataset.due = '';
             card.dataset.dueSoon = 'false';
@@ -4427,8 +4659,8 @@
                 <div class="task-title">
                     <a href="#" draggable="false" onclick="event.stopPropagation(); event.preventDefault(); openEditTaskModal(${task.id}); return false;">${safeTitle}</a>
                 </div>
-                <div class="task-meta">
-                    <div>👤 ${escapeHtml(task.assigneeName || 'نامشخص')}</div>
+                <div class="task-footer">
+                    ${renderTaskPeopleHtml(task.assigneeId, task.assigneeName, [])}
                 </div>
             `;
 
@@ -4443,6 +4675,111 @@
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;');
+        }
+
+        function parseSubtaskPeople(card) {
+            try {
+                const parsed = card?.dataset?.subtaskPeople ? JSON.parse(card.dataset.subtaskPeople) : [];
+                return Array.isArray(parsed) ? parsed : [];
+            } catch {
+                return [];
+            }
+        }
+
+        function renderTaskPeopleHtml(mainId, mainName, subPeople) {
+            const parts = [];
+            if (mainId && mainId !== 'unassigned') {
+                parts.push(`<span class="task-badge badge-assigned" title="مسئول کار"><i class="bi bi-person-fill"></i> ${escapeHtml(mainName || 'اختصاص داده شده')}</span>`);
+            }
+            (subPeople || []).forEach(person => {
+                if (!person || !person.id || person.id === mainId) return;
+                parts.push(`<span class="task-badge badge-subtask-assigned" title="مسئول کارک"><i class="bi bi-person"></i> ${escapeHtml(person.name || 'اختصاص داده شده')}</span>`);
+            });
+            return `<div class="task-people">${parts.join('')}</div>`;
+        }
+
+        function applyPeopleToCard(card, mainId, mainName, subPeople) {
+            const people = (Array.isArray(subPeople) ? subPeople : []).filter(p => p && p.id && p.id !== mainId);
+            const involved = [];
+            if (mainId && mainId !== 'unassigned') involved.push(mainId);
+            people.forEach(p => {
+                if (p.id && !involved.includes(p.id)) involved.push(p.id);
+            });
+            card.dataset.assigneeId = mainId || 'unassigned';
+            card.dataset.involvedIds = involved.length ? involved.join(',') : 'unassigned';
+            card.dataset.subtaskPeople = JSON.stringify(people);
+            const names = [];
+            if (mainId && mainId !== 'unassigned' && mainName) names.push(mainName);
+            people.forEach(p => { if (p.name) names.push(p.name); });
+            card.dataset.assignee = names.join(' ') || 'نامشخص';
+
+            const peopleHtml = renderTaskPeopleHtml(mainId, mainName, people);
+            const footer = card.querySelector('.task-footer');
+            if (footer) {
+                const existingPeople = footer.querySelector('.task-people');
+                if (existingPeople) existingPeople.outerHTML = peopleHtml;
+                else footer.insertAdjacentHTML('afterbegin', peopleHtml);
+            } else {
+                const meta = card.querySelector('.task-meta');
+                if (meta) meta.outerHTML = `<div class="task-footer">${peopleHtml}</div>`;
+            }
+        }
+
+        function syncBoardCardFromSubtasks(parentId, subtasks) {
+            const card = document.querySelector(`.task-card[data-issue-id="${parentId}"]`);
+            if (!card) return;
+            const mainId = card.dataset.assigneeId || 'unassigned';
+            let mainName = (card.querySelector('.badge-assigned')?.textContent || '').trim();
+            if (!mainName && mainId && mainId !== 'unassigned') {
+                const opt = document.querySelector(`#editTaskAssignedUser option[value="${CSS.escape(mainId)}"]`);
+                mainName = opt ? opt.textContent.trim() : 'اختصاص داده شده';
+            }
+            const seen = new Set();
+            const subPeople = [];
+            (subtasks || []).forEach(st => {
+                if (!st.assignedUserId || st.assignedUserId === mainId || seen.has(st.assignedUserId)) return;
+                seen.add(st.assignedUserId);
+                subPeople.push({
+                    id: st.assignedUserId,
+                    name: st.assignedUserName || 'اختصاص داده شده'
+                });
+            });
+            applyPeopleToCard(card, mainId, mainName, subPeople);
+            applyBoardFilters();
+        }
+
+        function shortenAssigneeLabel(name) {
+            if (!name) return '';
+            let label = String(name)
+                .replace(/\s*-\s*سازنده پروژه\s*$/u, '')
+                .replace(/\s*\(\d[\d\s-]{7,}\)\s*/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            if (label.length > 22) {
+                label = label.slice(0, 21).trim() + '…';
+            }
+            return label;
+        }
+
+        function buildAssigneeOptionsHtml(users, selectedId) {
+            let html = '<option value="">بدون مسئول</option>';
+            (users || []).forEach(user => {
+                const id = user.id || '';
+                const fullName = user.name || '';
+                const name = shortenAssigneeLabel(fullName) || fullName;
+                const selected = selectedId && String(id) === String(selectedId) ? ' selected' : '';
+                html += `<option value="${escapeHtml(id)}"${selected} title="${escapeHtml(fullName)}">${escapeHtml(name)}</option>`;
+            });
+            return html;
+        }
+
+        function populateBoardInlineSubtaskAssigneeSelect(selectedId) {
+            const select = document.getElementById('boardInlineSubtaskAssignee');
+            if (!select) return;
+            const current = selectedId !== undefined ? selectedId : select.value;
+            const users = (boardSubtaskUsers && boardSubtaskUsers.length) ? boardSubtaskUsers : boardProjectMembers;
+            select.innerHTML = buildAssigneeOptionsHtml(users, current);
+            if (current) select.value = current;
         }
 
         function ensureColumnHasEmptyMessage(columnBody) {
@@ -4871,7 +5208,10 @@
             document.body.style.removeProperty('overflow');
         }
 
-        document.addEventListener('hidden.bs.modal', function () {
+        document.addEventListener('hidden.bs.modal', function (e) {
+            if (e.target && e.target.id === 'editTaskModal') {
+                resetBoardChecklistUi();
+            }
             setTimeout(cleanupStaleModalBackdrops, 0);
         });
         document.addEventListener('DOMContentLoaded', function () {
@@ -5502,17 +5842,12 @@
 
             const assigneeSelect = document.getElementById('editTaskAssignedUser');
             const assigneeId = formData.AssignedUserId || 'unassigned';
-            card.dataset.assigneeId = assigneeId;
             let assigneeName = 'نامشخص';
             if (assigneeSelect && assigneeId && assigneeId !== 'unassigned') {
                 const opt = assigneeSelect.querySelector(`option[value="${CSS.escape(assigneeId)}"]`);
                 assigneeName = opt ? opt.textContent.trim() : assigneeName;
             }
-            card.dataset.assignee = assigneeName;
-            const metaDiv = card.querySelector('.task-meta div');
-            if (metaDiv) {
-                metaDiv.textContent = `👤 ${assigneeName}`;
-            }
+            applyPeopleToCard(card, assigneeId, assigneeName, parseSubtaskPeople(card));
 
             applyBoardFilters();
             return true;
@@ -5523,6 +5858,21 @@
         let originalTaskData = null;
         let boardSubtaskParentId = null;
         let boardSubtaskPanelBound = false;
+        let boardSubtaskUsers = [];
+
+        function resetBoardChecklistUi() {
+            boardSubtaskParentId = null;
+            const panel = document.getElementById('boardChecklistPanel');
+            const input = document.getElementById('boardInlineSubtaskTitle');
+            const noteEl = document.getElementById('boardInlineSubtaskNote');
+            const listEl = document.getElementById('boardInlineSubtasksList');
+            const badge = document.getElementById('boardSubtaskProgressBadge');
+            if (input) input.value = '';
+            if (noteEl) noteEl.textContent = '';
+            if (listEl) listEl.innerHTML = '';
+            if (badge) badge.textContent = '0/0';
+            if (panel) panel.style.display = 'none';
+        }
 
         function sortSubtasksNewestFirst(items) {
             return [...(Array.isArray(items) ? items : [])].sort((a, b) => {
@@ -5550,11 +5900,22 @@
                 const id = Number(st.id || 0);
                 const title = escapeHtml(st.title || '');
                 const completed = !!st.isCompleted;
+                const assigneeOptions = buildAssigneeOptionsHtml(
+                    (boardSubtaskUsers && boardSubtaskUsers.length) ? boardSubtaskUsers : boardProjectMembers,
+                    st.assignedUserId || '');
                 return `
                     <li class="subtask-item-board" data-subtask-id="${id}">
                         <div class="subtask-item-main-board">
                             <input type="checkbox" class="board-subtask-check" data-subtask-id="${id}" ${completed ? 'checked' : ''} />
-                            <span class="subtask-title-board editable ${completed ? 'completed' : ''}" data-subtask-id="${id}" title="برای ویرایش کلیک کنید">${title}</span>
+                            <div class="subtask-item-body-board">
+                                <span class="subtask-title-board editable ${completed ? 'completed' : ''}" data-subtask-id="${id}" title="برای ویرایش کلیک کنید">${title}</span>
+                                <div class="subtask-assignee-wrap">
+                                    <i class="bi bi-person"></i>
+                                    <select class="form-select form-select-sm board-subtask-assignee" data-subtask-id="${id}" title="مسئول کارک" aria-label="مسئول کارک">
+                                        ${assigneeOptions}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                         <div class="subtask-item-actions-board">
                             <button type="button" class="subtask-edit-btn-board" data-subtask-id="${id}" title="ویرایش" aria-label="ویرایش"><i class="bi bi-pencil"></i></button>
@@ -5661,6 +6022,35 @@
             }
         }
 
+        async function updateBoardSubtaskAssignee(subtaskId, assignedUserId) {
+            const noteEl = document.getElementById('boardInlineSubtaskNote');
+            try {
+                if (noteEl) noteEl.textContent = 'در حال ذخیره مسئول کارک...';
+                const response = await fetch('/Tasks/UpdateInlineSubtask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subtaskId, assignedUserId: assignedUserId || null })
+                });
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(errText || 'update_failed');
+                }
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.message || 'update_failed');
+                }
+                if (noteEl) noteEl.textContent = '';
+                if (boardSubtaskParentId) {
+                    await loadBoardSubtasks(boardSubtaskParentId);
+                }
+            } catch (error) {
+                if (noteEl) noteEl.textContent = (error && error.message) || 'ذخیره مسئول کارک انجام نشد.';
+                if (boardSubtaskParentId) {
+                    await loadBoardSubtasks(boardSubtaskParentId);
+                }
+            }
+        }
+
         async function loadBoardSubtasks(parentId) {
             const listEl = document.getElementById('boardInlineSubtasksList');
             if (!listEl) return;
@@ -5671,6 +6061,7 @@
                 if (!response.ok) throw new Error('load_failed');
                 const data = await response.json();
                 renderBoardSubtasks(data);
+                syncBoardCardFromSubtasks(parentId, data);
             } catch {
                 listEl.innerHTML = '<li class="subtask-empty-board">خطا در دریافت کارک‌ها.</li>';
             }
@@ -5685,12 +6076,14 @@
                 if (noteEl) noteEl.textContent = 'عنوان کارک الزامی است.';
                 return;
             }
+            const assigneeSelect = document.getElementById('boardInlineSubtaskAssignee');
+            const assignedUserId = assigneeSelect ? (assigneeSelect.value || null) : null;
             try {
                 if (noteEl) noteEl.textContent = 'در حال افزودن...';
                 const response = await fetch('/Tasks/AddInlineSubtask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ parentId, title })
+                    body: JSON.stringify({ parentId, title, assignedUserId })
                 });
                 if (!response.ok) {
                     const err = await response.text();
@@ -5765,6 +6158,9 @@
                     if (t.classList && t.classList.contains('board-subtask-check')) {
                         const sid = parseInt(t.getAttribute('data-subtask-id'), 10);
                         if (sid) toggleBoardSubtask(sid);
+                    } else if (t.classList && t.classList.contains('board-subtask-assignee')) {
+                        const sid = parseInt(t.getAttribute('data-subtask-id'), 10);
+                        if (sid) updateBoardSubtaskAssignee(sid, t.value);
                     }
                 });
                 listEl.addEventListener('click', function (e) {
@@ -5821,6 +6217,7 @@
             setTaskModalMode('edit');
             document.getElementById('editTaskTargetStatusId').value = '';
             document.getElementById('editTaskTargetStatusName').value = '';
+            resetBoardChecklistUi();
 
             // باز کردن modal
             const modal = new bootstrap.Modal(modalElement);
@@ -5915,64 +6312,23 @@
                 
                 // چک کردن اینکه آیا این یک Subtask است (issueType === 4)
                 const isSubtask = taskData.issueType === 4;
-                
-                if (isSubtask) {
-                    // برای Subtask: غیرفعال کردن فیلد و نمایش پیام
-                    assignedUserSelect.innerHTML = '<option value="">-- انتخاب کاربر --</option>';
-                    if (taskData.assignedUsers && taskData.assignedUserId) {
-                        // نمایش کاربر فعلی برای اطلاع (فقط خواندنی)
-                        const currentUser = taskData.assignedUsers.find(u => u.id == taskData.assignedUserId);
-                        if (currentUser) {
-                            const option = document.createElement('option');
-                            option.value = currentUser.id;
-                            option.textContent = currentUser.name;
-                            option.selected = true;
-                            assignedUserSelect.appendChild(option);
-                        }
-                    }
-                    assignedUserSelect.disabled = true;
-                    assignedUserSelect.setAttribute('title', 'مسئول کارک به صورت خودکار از کار والد گرفته می‌شود');
-                    if (effortLevelSelect) {
+                boardSubtaskUsers = taskData.assignedUsers || boardProjectMembers || [];
+                populateAssignedUserSelect(boardSubtaskUsers, taskData.assignedUserId || '');
+                populateBoardInlineSubtaskAssigneeSelect(taskData.assignedUserId || '');
+                assignedUserSelect.disabled = false;
+                assignedUserSelect.removeAttribute('title');
+                if (effortLevelSelect) {
+                    if (isSubtask) {
                         effortLevelSelect.disabled = true;
                         effortLevelSelect.setAttribute('title', 'سطح کارک از آیتم والد مدیریت می‌شود');
-                    }
-                    
-                    // اضافه کردن پیام توضیحی
-                    let helpText = assignedUserContainer.querySelector('.subtask-assignee-help');
-                    if (!helpText) {
-                        helpText = document.createElement('small');
-                        helpText.className = 'text-muted subtask-assignee-help';
-                        helpText.style.display = 'block';
-                        helpText.style.marginTop = '0.25rem';
-                        helpText.innerHTML = '<i class="bi bi-info-circle"></i> مسئول کارک از کار والد گرفته می‌شود';
-                        assignedUserSelect.parentNode.appendChild(helpText);
-                    }
-                } else {
-                    // برای کارهای عادی: نمایش لیست کاربران
-                    assignedUserSelect.innerHTML = '<option value="">-- انتخاب کاربر --</option>';
-                    if (taskData.assignedUsers) {
-                        taskData.assignedUsers.forEach(user => {
-                            const option = document.createElement('option');
-                            option.value = user.id;
-                            option.textContent = user.name;
-                            if (taskData.assignedUserId == user.id) {
-                                option.selected = true;
-                            }
-                            assignedUserSelect.appendChild(option);
-                        });
-                    }
-                    assignedUserSelect.disabled = false;
-                    assignedUserSelect.removeAttribute('title');
-                    if (effortLevelSelect) {
+                    } else {
                         effortLevelSelect.disabled = false;
                         effortLevelSelect.removeAttribute('title');
                     }
-                    
-                    // حذف پیام توضیحی اگر وجود داشت
-                    const helpText = assignedUserContainer?.querySelector('.subtask-assignee-help');
-                    if (helpText) {
-                        helpText.remove();
-                    }
+                }
+                const helpText = assignedUserContainer?.querySelector('.subtask-assignee-help');
+                if (helpText) {
+                    helpText.remove();
                 }
 
                    
@@ -5985,15 +6341,20 @@
                 const isTaskForChecklist = !isSubtask && et === 3;
                 if (boardChecklist) {
                     if (isTaskForChecklist) {
+                        const titleInput = document.getElementById('boardInlineSubtaskTitle');
+                        const noteSub = document.getElementById('boardInlineSubtaskNote');
+                        const listEl = document.getElementById('boardInlineSubtasksList');
+                        const badge = document.getElementById('boardSubtaskProgressBadge');
+                        if (titleInput) titleInput.value = '';
+                        if (noteSub) noteSub.textContent = '';
+                        if (listEl) listEl.innerHTML = '';
+                        if (badge) badge.textContent = '0/0';
                         boardChecklist.style.display = '';
                         boardSubtaskParentId = taskData.id;
                         ensureBoardSubtaskPanelBound();
-                        const noteSub = document.getElementById('boardInlineSubtaskNote');
-                        if (noteSub) noteSub.textContent = '';
                         await loadBoardSubtasks(taskData.id);
                     } else {
-                        boardChecklist.style.display = 'none';
-                        boardSubtaskParentId = null;
+                        resetBoardChecklistUi();
                     }
                 }
                 
@@ -6427,9 +6788,15 @@
 
                 let html = '';
                 tasks.forEach(task => {
+                    const involved = [];
+                    if (task.assignedUserId) involved.push(task.assignedUserId);
+                    (task.involvedUserIds || []).forEach(id => {
+                        if (id && !involved.includes(id)) involved.push(id);
+                    });
                     const assigneeId = task.assignedUserId || 'unassigned';
+                    const involvedIds = involved.length ? involved.join(',') : 'unassigned';
                     html += `
-                        <div class="available-task-item" data-task-id="${task.id}" data-assignee-id="${assigneeId}">
+                        <div class="available-task-item" data-task-id="${task.id}" data-assignee-id="${assigneeId}" data-involved-ids="${involvedIds}">
                             <div class="available-task-title">
 
                                 <a href="/Tasks/Details/${task.id}" onclick="event.stopPropagation();">${escapeHtml(task.title || 'بدون عنوان')}</a>
@@ -6791,6 +7158,7 @@
                 $('#subtaskParentKey').val(parentTitle);
                 $('#subtaskTitle').val('');
                 $('#subtaskCategory').val('');
+                $('#subtaskAssignedUser').val('');
                 const modal = new bootstrap.Modal(document.getElementById('addSubtaskModal'));
                 modal.show();
             }
@@ -6806,9 +7174,11 @@
                     return;
                 }
 
+                const assignedUserId = $('#subtaskAssignedUser').val();
                 const data = {
                     parentId: parseInt(parentId),
-                    title: title
+                    title: title,
+                    assignedUserId: assignedUserId || null
                 };
 
                 if (categoryId) {

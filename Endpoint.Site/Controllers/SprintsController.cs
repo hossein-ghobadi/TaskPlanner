@@ -127,6 +127,7 @@ namespace Endpoint.Site.Controllers
                 .Include(s => s.SprintTasks)
                     .ThenInclude(st => st.Task)
                         .ThenInclude(t => t.ChildIssues)
+                            .ThenInclude(c => c.AssignedUser)
                 .Include(s => s.SprintTasks)
                     .ThenInclude(st => st.Task)
                         .ThenInclude(t => t.AssignedUser)
@@ -157,6 +158,8 @@ namespace Endpoint.Site.Controllers
             var sprintTaskIds = sprint.SprintTasks.Select(st => st.TaskId).ToList();
             var tasksWithoutSprint = await _context.TaskItems
                 .Include(t => t.AssignedUser)
+                .Include(t => t.ChildIssues)
+                    .ThenInclude(c => c.AssignedUser)
                 .Include(t => t.Category)
                 .Include(t => t.ProjectIssueType)
                 .Where(t => t.ProjectId == sprint.ProjectId
@@ -666,6 +669,11 @@ namespace Endpoint.Site.Controllers
                     categoryName = t.Category != null ? t.Category.Name : "بدون دسته",
                     assignedUserId = t.AssignedUserId,
                     assignedUserName = t.AssignedUser != null ? (t.AssignedUser.FullName ?? t.AssignedUser.UserName) : "تخصیص نیافته",
+                    involvedUserIds = t.ChildIssues
+                        .Where(c => c.IssueType == IssueType.Subtask && !string.IsNullOrEmpty(c.AssignedUserId))
+                        .Select(c => c.AssignedUserId)
+                        .Distinct()
+                        .ToList(),
                     dueDate = t.DueDate,
                     priority = t.Priority.ToString(),
                     isCompleted = t.IsCompleted
