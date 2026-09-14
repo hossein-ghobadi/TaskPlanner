@@ -41,33 +41,18 @@
     <nav class="app-sidebar-nav" aria-label="ناوبری اصلی">
         <a class="@NavClass("Dashboard", "Index")" href="/Dashboard"><i class="bi bi-speedometer2"></i><span>داشبورد</span></a>
         <a class="@NavClass("MyWork", "Index")" href="/MyWork/Index"><i class="bi bi-person-check"></i><span>کارهای من</span></a>
-        @if (Model.ShowLeads)
-        {
-            <a class="@(string.Equals(c, "Leads", StringComparison.OrdinalIgnoreCase) ? "app-sidebar-link active" : "app-sidebar-link")" href="/Leads/Index"><i class="bi bi-person-lines-fill"></i><span>لیدها (CRM)</span></a>
-        }
+        <a class="@(string.Equals(c, "Leads", StringComparison.OrdinalIgnoreCase) ? "app-sidebar-link active" : "app-sidebar-link")" data-display-key="leads" href="/Leads/Index"><i class="bi bi-person-lines-fill"></i><span>لیدها (CRM)</span></a>
         <a class="@NavClass("Projects", "Index")" href="/Projects/Index"><i class="bi bi-briefcase"></i><span>پروژه‌ها</span></a>
-        @if (Model.ShowBoards)
-        {
-            <a class="@NavClass("Boards", "Index")" href="/Boards/Index"><i class="bi bi-kanban"></i><span>تخته‌ها</span></a>
-        }
-        @if (Model.ShowMindMaps)
-        {
-            <a class="@NavClass("MindMaps", "Index")" href="/MindMaps/Index"><i class="bi bi-diagram-3"></i><span>مایندمپ‌ها</span></a>
-        }
-        @if (Model.ShowDesigns)
-        {
-            <a class="@NavClass("Designs", "Index")" href="/Designs/Index"><i class="bi bi-palette"></i><span>صفحه طراحی</span></a>
-        }
+        <a class="@NavClass("Boards", "Index")" data-display-key="boards" href="/Boards/Index"><i class="bi bi-kanban"></i><span>تخته‌ها</span></a>
+        <a class="@NavClass("MindMaps", "Index")" data-display-key="mindmaps" href="/MindMaps/Index"><i class="bi bi-diagram-3"></i><span>مایندمپ‌ها</span></a>
+        <a class="@NavClass("Designs", "Index")" data-display-key="designs" href="/Designs/Index"><i class="bi bi-palette"></i><span>صفحه طراحی</span></a>
         <a class="@(string.Equals(c, "ModuleTests", StringComparison.OrdinalIgnoreCase) ? "app-sidebar-link active" : "app-sidebar-link")" href="/ModuleTests/Index"><i class="bi bi-calculator"></i><span>تست ماژول محاسبه</span></a>
         <a class="@NavClass("PersonalNotes", "Index")" href="/PersonalNotes/Index"><i class="bi bi-journal-text"></i><span>یادداشت‌های شخصی</span></a>
         <a class="@NavClass("Notifications", "Index")" href="/Notifications/Index"><i class="bi bi-bell"></i><span>اعلان‌ها</span></a>
-        @if (Model.ShowAdminUsers)
+        @if (Model.IsAdmin)
         {
-            <a class="@NavClass("AdminUsers", "Index")" href="/Admin/AdminUsers/Index"><i class="bi bi-people"></i><span>مدیریت کاربران</span></a>
-        }
-        @if (Model.ShowAdminLeaves)
-        {
-            <a class="@NavClass("AdminLeaves", "Index")" href="/Admin/AdminLeaves/Index"><i class="bi bi-calendar2-week"></i><span>مرخصی همکاران</span></a>
+            <a class="@NavClass("AdminUsers", "Index")" data-display-key="adminUsers" href="/Admin/AdminUsers/Index"><i class="bi bi-people"></i><span>مدیریت کاربران</span></a>
+            <a class="@NavClass("AdminLeaves", "Index")" data-display-key="adminLeaves" href="/Admin/AdminLeaves/Index"><i class="bi bi-calendar2-week"></i><span>مرخصی همکاران</span></a>
         }
         <a class="@NavClass("Invitations", "MyInvitations")" href="/Invitations/MyInvitations">
             <i class="bi bi-envelope"></i>

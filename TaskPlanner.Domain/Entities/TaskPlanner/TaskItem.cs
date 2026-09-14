@@ -136,6 +136,11 @@ namespace TaskPlanner.Domain.Entities.TaskPlanner
         // Relation با Sprint (Many-to-Many via SprintTask)
         public ICollection<SprintTask> SprintTasks { get; set; } = new List<SprintTask>();
 
+        /// <summary>
+        /// تصاویر/فایل‌های پیوست مستقیم روی این Issue (مثلاً عکس کارک)
+        /// </summary>
+        public ICollection<TaskItemAttachment> Attachments { get; set; } = new List<TaskItemAttachment>();
+
         // Audit Fields
         public string? CreatedByUserId { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

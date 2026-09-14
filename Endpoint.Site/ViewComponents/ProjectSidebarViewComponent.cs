@@ -2,7 +2,6 @@ using System.Security.Claims;
 using Endpoint.Site.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TaskPlanner.Application.Services.DisplaySettingsService;
 using TaskPlanner.Domain.Entities.TaskPlanner;
 using TaskPlanner.Persistence.Contexts;
 
@@ -11,14 +10,10 @@ namespace Endpoint.Site.ViewComponents
     public class ProjectSidebarViewComponent : ViewComponent
     {
         private readonly MVPTestDatabaseContext _context;
-        private readonly IUserDisplaySettingsService _displaySettings;
 
-        public ProjectSidebarViewComponent(
-            MVPTestDatabaseContext context,
-            IUserDisplaySettingsService displaySettings)
+        public ProjectSidebarViewComponent(MVPTestDatabaseContext context)
         {
             _context = context;
-            _displaySettings = displaySettings;
         }
 
         public async Task<IViewComponentResult> InvokeAsync(int projectId)
@@ -29,21 +24,36 @@ namespace Endpoint.Site.ViewComponents
                 return Content(string.Empty);
             }
 
-            var exists = await _context.Projects.AsNoTracking()
-                .AnyAsync(p => p.Id == projectId &&
-                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)));
-            if (!exists)
+            // یک round-trip به‌جای چند Count جداگانه
+            var sidebarData = await _context.Projects.AsNoTracking()
+                .Where(p => p.Id == projectId &&
+                    (p.CreatorUserId == userId || p.Members.Any(m => m.UserId == userId)))
+                .Select(p => new
+                {
+                    p.CreatorUserId,
+                    TotalTasks = _context.TaskItems.Count(t =>
+                        t.ProjectId == projectId
+                        && (t.IssueType == IssueType.Story
+                            || t.IssueType == IssueType.Task
+                            || t.IssueType == IssueType.Bug)),
+                    NotesCount = _context.ProjectNotes.Count(n => n.ProjectId == projectId),
+                    ImagesCount = _context.ProjectImageGalleries.Count(img => img.ProjectId == projectId),
+                    FeaturesCount = _context.ProjectFeatures.Count(f => f.ProjectId == projectId),
+                    TicketsCount = _context.ProjectTickets.Count(t => t.ProjectId == projectId),
+                    MembersCount = _context.ProjectMembers.Count(m => m.ProjectId == projectId),
+                    CreatorInMembers = _context.ProjectMembers.Any(m =>
+                        m.ProjectId == projectId && m.UserId == p.CreatorUserId),
+                    PendingInvitesCount = _context.ProjectInvitations.Count(i =>
+                        i.ProjectId == projectId && i.Status == InvitationStatus.Pending)
+                })
+                .FirstOrDefaultAsync();
+
+            if (sidebarData == null)
             {
                 return Content(string.Empty);
             }
 
-            var creatorId = await _context.Projects.AsNoTracking()
-                .Where(p => p.Id == projectId)
-                .Select(p => p.CreatorUserId)
-                .FirstOrDefaultAsync();
-
-            var isCreator = !string.IsNullOrEmpty(creatorId) &&
-                string.Equals(creatorId, userId, StringComparison.Ordinal);
+            var isCreator = string.Equals(sidebarData.CreatorUserId, userId, StringComparison.Ordinal);
             if (ViewContext.ViewBag.ProjectSidebarIsCreator is bool flag)
             {
                 isCreator = flag;
@@ -51,31 +61,7 @@ namespace Endpoint.Site.ViewComponents
 
             var path = ViewContext.HttpContext.Request.Path.Value ?? "";
             var onDetails = path.Contains("/Projects/Details", StringComparison.OrdinalIgnoreCase);
-
-            var totalTasks = await _context.TaskItems.AsNoTracking()
-                .CountAsync(t => t.ProjectId == projectId
-                    && (t.IssueType == IssueType.Story || t.IssueType == IssueType.Task || t.IssueType == IssueType.Bug));
-            var notesCount = await _context.ProjectNotes.AsNoTracking()
-                .CountAsync(n => n.ProjectId == projectId);
-            var imagesCount = await _context.ProjectImageGalleries.AsNoTracking()
-                .CountAsync(img => img.ProjectId == projectId);
-            var featuresCount = await _context.ProjectFeatures.AsNoTracking()
-                .CountAsync(f => f.ProjectId == projectId);
-            var ticketsCount = await _context.ProjectTickets.AsNoTracking()
-                .CountAsync(t => t.ProjectId == projectId);
-            var membersCount = await _context.ProjectMembers.AsNoTracking()
-                .CountAsync(m => m.ProjectId == projectId);
-            var creatorInMembers = await _context.ProjectMembers.AsNoTracking()
-                .AnyAsync(m => m.ProjectId == projectId && m.UserId == creatorId);
-            var memberCount = membersCount + (creatorInMembers ? 0 : 1);
-            int? pendingInvitesCount = null;
-            if (isCreator)
-            {
-                pendingInvitesCount = await _context.ProjectInvitations.AsNoTracking()
-                    .CountAsync(i => i.ProjectId == projectId && i.Status == InvitationStatus.Pending);
-            }
-
-            var prefs = await _displaySettings.GetAsync(userId);
+            var memberCount = sidebarData.MembersCount + (sidebarData.CreatorInMembers ? 0 : 1);
 
             var vm = new ProjectSidebarVm
             {
@@ -83,20 +69,13 @@ namespace Endpoint.Site.ViewComponents
                 IsCreator = isCreator,
                 OnProjectDetailsPage = onDetails,
                 ActiveNav = DetectActiveNav(path),
-                TotalTasks = totalTasks,
-                FeaturesCount = featuresCount,
-                TicketsCount = ticketsCount,
-                NotesCount = notesCount,
-                ImagesCount = imagesCount,
-                PendingInvitesCount = pendingInvitesCount,
-                MemberCount = memberCount,
-                ShowTasks = prefs.ShowProjectTasks,
-                ShowKanban = prefs.ShowProjectKanban,
-                ShowSprints = prefs.ShowProjectSprints,
-                ShowFeatures = prefs.ShowProjectFeatures,
-                ShowTickets = prefs.ShowProjectTickets,
-                ShowGallery = prefs.ShowProjectGallery,
-                ShowCategories = prefs.ShowProjectCategories
+                TotalTasks = sidebarData.TotalTasks,
+                FeaturesCount = sidebarData.FeaturesCount,
+                TicketsCount = sidebarData.TicketsCount,
+                NotesCount = sidebarData.NotesCount,
+                ImagesCount = sidebarData.ImagesCount,
+                PendingInvitesCount = isCreator ? sidebarData.PendingInvitesCount : null,
+                MemberCount = memberCount
             };
 
             return View(vm);

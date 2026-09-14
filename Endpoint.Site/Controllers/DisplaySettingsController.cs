@@ -33,6 +33,37 @@ namespace Endpoint.Site.Controllers
             return View(MapToVm(prefs, isAdmin));
         }
 
+        /// <summary>
+        /// فقط برای اولین بار (وقتی localStorage خالی است) توسط مرورگر فراخوانی می‌شود.
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> Preferences(CancellationToken cancellationToken)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var prefs = await _displaySettings.GetAsync(userId, cancellationToken);
+            return Json(new
+            {
+                showLeads = prefs.ShowLeads,
+                showBoards = prefs.ShowBoards,
+                showMindMaps = prefs.ShowMindMaps,
+                showDesigns = prefs.ShowDesigns,
+                showAdminUsers = prefs.ShowAdminUsers,
+                showAdminLeaves = prefs.ShowAdminLeaves,
+                showProjectTasks = prefs.ShowProjectTasks,
+                showProjectKanban = prefs.ShowProjectKanban,
+                showProjectSprints = prefs.ShowProjectSprints,
+                showProjectFeatures = prefs.ShowProjectFeatures,
+                showProjectTickets = prefs.ShowProjectTickets,
+                showProjectGallery = prefs.ShowProjectGallery,
+                showProjectCategories = prefs.ShowProjectCategories
+            });
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Index(DisplaySettingsVm model, CancellationToken cancellationToken)

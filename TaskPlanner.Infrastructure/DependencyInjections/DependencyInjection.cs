@@ -30,6 +30,15 @@ using TaskPlanner.Application.Services.SMS;
 using TaskPlanner.Application.Services.FileUpload;
 using TaskPlanner.Application.Services.Calculation.MaterialCost;
 using TaskPlanner.Application.Services.Calculation.EdgeCost;
+using TaskPlanner.Application.Services.Calculation.SmdCost;
+using TaskPlanner.Application.Services.Calculation.MetalsCost;
+using TaskPlanner.Application.Services.Calculation.PvcCost;
+using TaskPlanner.Application.Services.Calculation.GlueCost;
+using TaskPlanner.Application.Services.Calculation.CrystalCost;
+using TaskPlanner.Application.Services.Calculation.PaintCost;
+using TaskPlanner.Application.Services.Calculation.WoodCost;
+using TaskPlanner.Application.Services.Calculation.VacuumWageCost;
+using TaskPlanner.Application.Services.Calculation.CutSpecificCost;
 
 
 namespace TaskPlanner.Infrastructure.DependencyInjections
@@ -67,6 +76,15 @@ namespace TaskPlanner.Infrastructure.DependencyInjections
             // ماژول‌های سرویس محاسبه (محیط تست)
             services.AddScoped<IMaterialCostCalculator, MaterialCostCalculator>();
             services.AddScoped<IEdgeCostCalculator, EdgeCostCalculator>();
+            services.AddScoped<ISmdCostCalculator, SmdCostCalculator>();
+            services.AddScoped<IMetalsCostCalculator, MetalsCostCalculator>();
+            services.AddScoped<IPvcCostCalculator, PvcCostCalculator>();
+            services.AddScoped<IGlueCostCalculator, GlueCostCalculator>();
+            services.AddScoped<ICrystalCostCalculator, CrystalCostCalculator>();
+            services.AddScoped<IPaintCostCalculator, PaintCostCalculator>();
+            services.AddScoped<IWoodCostCalculator, WoodCostCalculator>();
+            services.AddScoped<IVacuumWageCostCalculator, VacuumWageCostCalculator>();
+            services.AddScoped<ICutSpecificCostCalculator, CutSpecificCostCalculator>();
 
             // سرویس نوتیفیکیشن
             services.AddScoped<INotificationService, NotificationService>();

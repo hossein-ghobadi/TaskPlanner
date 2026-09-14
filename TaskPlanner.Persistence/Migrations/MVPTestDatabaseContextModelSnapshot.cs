@@ -2576,6 +2576,53 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.ToTable("TaskItems");
                 });
 
+            modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.TaskItemAttachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("FileType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("MimeType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("TaskId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UploadedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaskId");
+
+                    b.ToTable("TaskItemAttachments");
+                });
+
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.WorkflowStatus", b =>
                 {
                     b.Property<int>("Id")
@@ -3682,6 +3729,17 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
                     b.Navigation("WorkflowStatus");
                 });
 
+            modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.TaskItemAttachment", b =>
+                {
+                    b.HasOne("TaskPlanner.Domain.Entities.TaskPlanner.TaskItem", "Task")
+                        .WithMany("Attachments")
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Task");
+                });
+
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.WorkflowStatus", b =>
                 {
                     b.HasOne("TaskPlanner.Domain.Entities.TaskPlanner.Project", "Project")
@@ -3910,6 +3968,8 @@ namespace TaskPlanner.Persistence.Migrations.MVPTestDatabase
 
             modelBuilder.Entity("TaskPlanner.Domain.Entities.TaskPlanner.TaskItem", b =>
                 {
+                    b.Navigation("Attachments");
+
                     b.Navigation("ChildIssues");
 
                     b.Navigation("SprintTasks");

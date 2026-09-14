@@ -24,22 +24,7 @@ namespace TaskPlanner.Application.Services.DisplaySettingsService
                 return new UserDisplaySettingsDto();
             }
 
-            return new UserDisplaySettingsDto
-            {
-                ShowLeads = pref.ShowLeads,
-                ShowBoards = pref.ShowBoards,
-                ShowMindMaps = pref.ShowMindMaps,
-                ShowDesigns = pref.ShowDesigns,
-                ShowAdminUsers = pref.ShowAdminUsers,
-                ShowAdminLeaves = pref.ShowAdminLeaves,
-                ShowProjectTasks = pref.ShowProjectTasks,
-                ShowProjectKanban = pref.ShowProjectKanban,
-                ShowProjectSprints = pref.ShowProjectSprints,
-                ShowProjectFeatures = pref.ShowProjectFeatures,
-                ShowProjectTickets = pref.ShowProjectTickets,
-                ShowProjectGallery = pref.ShowProjectGallery,
-                ShowProjectCategories = pref.ShowProjectCategories
-            };
+            return MapToDto(pref);
         }
 
         public async Task SaveAsync(
@@ -78,5 +63,22 @@ namespace TaskPlanner.Application.Services.DisplaySettingsService
             pref.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
         }
+
+        private static UserDisplaySettingsDto MapToDto(UserDisplayPreference pref) => new()
+        {
+            ShowLeads = pref.ShowLeads,
+            ShowBoards = pref.ShowBoards,
+            ShowMindMaps = pref.ShowMindMaps,
+            ShowDesigns = pref.ShowDesigns,
+            ShowAdminUsers = pref.ShowAdminUsers,
+            ShowAdminLeaves = pref.ShowAdminLeaves,
+            ShowProjectTasks = pref.ShowProjectTasks,
+            ShowProjectKanban = pref.ShowProjectKanban,
+            ShowProjectSprints = pref.ShowProjectSprints,
+            ShowProjectFeatures = pref.ShowProjectFeatures,
+            ShowProjectTickets = pref.ShowProjectTickets,
+            ShowProjectGallery = pref.ShowProjectGallery,
+            ShowProjectCategories = pref.ShowProjectCategories
+        };
     }
 }

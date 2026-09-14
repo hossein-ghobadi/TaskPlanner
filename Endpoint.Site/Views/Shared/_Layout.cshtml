@@ -273,6 +273,9 @@
 <body data-antiforgery-token="@antiforgeryToken">
     @if (User?.Identity?.IsAuthenticated == true)
     {
+        <script>
+            !function(){try{var k='tp-display-settings-v1',r=localStorage.getItem(k);if(!r)return;var s=JSON.parse(r),m={leads:'showLeads',boards:'showBoards',mindmaps:'showMindMaps',designs:'showDesigns',adminUsers:'showAdminUsers',adminLeaves:'showAdminLeaves','project-tasks':'showProjectTasks','project-kanban':'showProjectKanban','project-sprints':'showProjectSprints','project-features':'showProjectFeatures','project-tickets':'showProjectTickets','project-gallery':'showProjectGallery','project-categories':'showProjectCategories'},c='';Object.keys(m).forEach(function(key){if(s[m[key]]===false)c+='[data-display-key="'+key+'"]{display:none!important}';});if(c){var el=document.createElement('style');el.id='tp-display-hide';el.textContent=c;document.head.appendChild(el);}}catch(e){}}();
+        </script>
         <div class="app-mobile-topbar d-lg-none">
             <button type="button" class="app-mobile-menu-btn" id="mobileSidebarToggle" aria-label="باز کردن منو">
                 <i class="bi bi-list"></i>
@@ -387,6 +390,7 @@
     @if (User?.Identity?.IsAuthenticated == true)
     {
         @* اسکریپت اعلان‌ها به فایل خارجی منتقل شده تا cache طولانی‌مدت بشود *@
+        <script src="~/js/display-settings.js" asp-append-version="true"></script>
         <script src="~/js/notifications.js" asp-append-version="true" defer></script>
         <script src="~/js/app-sidebar.js" asp-append-version="true" defer></script>
     }

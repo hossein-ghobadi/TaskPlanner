@@ -14,13 +14,5 @@ namespace Endpoint.Site.Models
         public int? ImagesCount { get; set; }
         public int? PendingInvitesCount { get; set; }
         public int? MemberCount { get; set; }
-
-        public bool ShowTasks { get; set; } = true;
-        public bool ShowKanban { get; set; } = true;
-        public bool ShowSprints { get; set; } = true;
-        public bool ShowFeatures { get; set; } = true;
-        public bool ShowTickets { get; set; } = true;
-        public bool ShowGallery { get; set; } = true;
-        public bool ShowCategories { get; set; } = true;
     }
 }

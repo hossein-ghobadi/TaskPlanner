@@ -1,4 +1,5 @@
 @model Endpoint.Site.Models.DisplaySettingsVm
+@using System.Text.Json
 @{
     ViewData["Title"] = "تنظیمات نمایش";
     ViewData["UseFluidLayout"] = true;
@@ -188,3 +189,25 @@
         </div>
     </form>
 </div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <script>
+        window.__tpDisplaySettingsSync = @Html.Raw(JsonSerializer.Serialize(new
+        {
+            showLeads = Model.ShowLeads,
+            showBoards = Model.ShowBoards,
+            showMindMaps = Model.ShowMindMaps,
+            showDesigns = Model.ShowDesigns,
+            showAdminUsers = Model.ShowAdminUsers,
+            showAdminLeaves = Model.ShowAdminLeaves,
+            showProjectTasks = Model.ShowProjectTasks,
+            showProjectKanban = Model.ShowProjectKanban,
+            showProjectSprints = Model.ShowProjectSprints,
+            showProjectFeatures = Model.ShowProjectFeatures,
+            showProjectTickets = Model.ShowProjectTickets,
+            showProjectGallery = Model.ShowProjectGallery,
+            showProjectCategories = Model.ShowProjectCategories
+        }));
+    </script>
+}

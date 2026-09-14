@@ -523,6 +523,19 @@ namespace Endpoint.Site.Controllers
                         _context.TaskComments.RemoveRange(comments);
                     }
 
+                    // حذف پیوست‌های مستقیم تسک/کارک
+                    var taskAttachments = await _context.TaskItemAttachments
+                        .Where(a => a.TaskId == item.Id)
+                        .ToListAsync();
+                    if (taskAttachments.Any())
+                    {
+                        foreach (var attachment in taskAttachments)
+                        {
+                            _fileUploadService.DeleteFile(attachment.FilePath);
+                        }
+                        _context.TaskItemAttachments.RemoveRange(taskAttachments);
+                    }
+
                     // حذف خود تسک
                     _context.TaskItems.Remove(item);
                 }
@@ -2177,7 +2190,8 @@ namespace Endpoint.Site.Controllers
                     assignedUserId = t.AssignedUserId,
                     assignedUserName = t.AssignedUser != null
                         ? (t.AssignedUser.FullName ?? t.AssignedUser.UserName)
-                        : null
+                        : null,
+                    imageCount = t.Attachments.Count(a => a.FileType == "Image")
                 })
                 .ToListAsync();
 
@@ -2324,7 +2338,8 @@ namespace Endpoint.Site.Controllers
                 title = subtask.Title,
                 isCompleted = subtask.IsCompleted,
                 assignedUserId = subtask.AssignedUserId,
-                assignedUserName
+                assignedUserName,
+                imageCount = 0
             });
         }
 
@@ -2431,6 +2446,175 @@ namespace Endpoint.Site.Controllers
                 assignedUserId = subtask.AssignedUserId,
                 assignedUserName
             });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetTaskImages(int taskId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (taskId <= 0) return BadRequest("taskId نامعتبر است.");
+
+            var task = await _context.TaskItems
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == taskId);
+            if (task == null) return NotFound();
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == task.ProjectId &&
+                    (p.CreatorUserId == userId ||
+                     p.Members.Any(m => m.UserId == userId) ||
+                     _context.ProjectInvitations.Any(i => i.ProjectId == task.ProjectId &&
+                                                          i.InviteeId == userId &&
+                                                          i.Status == InvitationStatus.Accepted)));
+            if (!hasAccess) return Forbid();
+
+            var images = await _context.TaskItemAttachments
+                .AsNoTracking()
+                .Where(a => a.TaskId == taskId && a.FileType == "Image")
+                .OrderByDescending(a => a.UploadedAt)
+                .ThenByDescending(a => a.Id)
+                .Select(a => new
+                {
+                    id = a.Id,
+                    fileName = a.FileName,
+                    filePath = a.FilePath,
+                    fileSize = a.FileSize,
+                    mimeType = a.MimeType,
+                    uploadedAt = a.UploadedAt
+                })
+                .ToListAsync();
+
+            var payload = images.Select(a => new
+            {
+                a.id,
+                a.fileName,
+                fileUrl = _fileUploadService.ToPublicUrl(a.filePath),
+                a.fileSize,
+                a.mimeType,
+                a.uploadedAt
+            });
+
+            return Json(payload);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadTaskImages(int taskId, List<IFormFile>? images)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (taskId <= 0) return BadRequest("taskId نامعتبر است.");
+            if (images == null || images.Count == 0)
+                return BadRequest("هیچ تصویری انتخاب نشده است.");
+
+            var task = await _context.TaskItems
+                .FirstOrDefaultAsync(t => t.Id == taskId);
+            if (task == null) return NotFound();
+
+            var hasAccess = await _context.Projects
+                .AnyAsync(p => p.Id == task.ProjectId &&
+                    (p.CreatorUserId == userId ||
+                     p.Members.Any(m => m.UserId == userId) ||
+                     _context.ProjectInvitations.Any(i => i.ProjectId == task.ProjectId &&
+                                                          i.InviteeId == userId &&
+                                                          i.Status == InvitationStatus.Accepted)));
+            if (!hasAccess) return Forbid();
+
+            var uploaded = new List<object>();
+            var uploadErrors = new List<string>();
+
+            foreach (var file in images)
+            {
+                if (file == null || file.Length == 0) continue;
+
+                var fileType = _fileUploadService.GetFileType(file.FileName);
+                if (!string.Equals(fileType, "Image", StringComparison.OrdinalIgnoreCase))
+                {
+                    uploadErrors.Add($"{file.FileName}: فقط تصویر مجاز است");
+                    continue;
+                }
+
+                var uploadResult = await _fileUploadService.UploadFileAsync(file, "task-images");
+                if (!uploadResult.Success)
+                {
+                    uploadErrors.Add($"{file.FileName}: {uploadResult.Error}");
+                    continue;
+                }
+
+                var attachment = new TaskItemAttachment
+                {
+                    TaskId = task.Id,
+                    FileName = file.FileName,
+                    FilePath = uploadResult.FilePath,
+                    FileType = "Image",
+                    FileSize = file.Length,
+                    MimeType = file.ContentType,
+                    UploadedByUserId = userId,
+                    UploadedAt = DateTime.UtcNow
+                };
+                _context.TaskItemAttachments.Add(attachment);
+                await _context.SaveChangesAsync();
+
+                uploaded.Add(new
+                {
+                    id = attachment.Id,
+                    fileName = attachment.FileName,
+                    fileUrl = _fileUploadService.ToPublicUrl(attachment.FilePath),
+                    fileSize = attachment.FileSize,
+                    mimeType = attachment.MimeType,
+                    uploadedAt = attachment.UploadedAt
+                });
+            }
+
+            if (uploaded.Count == 0)
+            {
+                return BadRequest(uploadErrors.Any()
+                    ? $"خطا در آپلود:\n{string.Join("\n", uploadErrors)}"
+                    : "آپلود تصویر انجام نشد.");
+            }
+
+            var imageCount = await _context.TaskItemAttachments
+                .CountAsync(a => a.TaskId == taskId && a.FileType == "Image");
+
+            return Json(new
+            {
+                success = true,
+                images = uploaded,
+                imageCount,
+                errors = uploadErrors
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteTaskImage(int attachmentId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (attachmentId <= 0) return BadRequest("attachmentId نامعتبر است.");
+
+            var attachment = await _context.TaskItemAttachments
+                .Include(a => a.Task)
+                .ThenInclude(t => t.Project)
+                .FirstOrDefaultAsync(a => a.Id == attachmentId);
+            if (attachment == null) return NotFound();
+
+            var project = attachment.Task.Project;
+            var isUploader = attachment.UploadedByUserId == userId;
+            var isProjectCreator = project.CreatorUserId == userId;
+            var isMember = await _context.ProjectMembers
+                .AnyAsync(m => m.ProjectId == attachment.Task.ProjectId && m.UserId == userId);
+
+            if (!isUploader && !isProjectCreator && !isMember)
+                return Forbid();
+
+            var taskId = attachment.TaskId;
+            _fileUploadService.DeleteFile(attachment.FilePath);
+            _context.TaskItemAttachments.Remove(attachment);
+            await _context.SaveChangesAsync();
+
+            var imageCount = await _context.TaskItemAttachments
+                .CountAsync(a => a.TaskId == taskId && a.FileType == "Image");
+
+            return Json(new { success = true, imageCount });
         }
 
         [HttpGet]

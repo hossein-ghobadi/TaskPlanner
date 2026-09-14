@@ -1014,6 +1014,7 @@
     flex-shrink: 0;
     }
     #editTaskModal .subtask-edit-btn-board,
+    #editTaskModal .subtask-images-btn-board,
     #editTaskModal .subtask-delete-btn-board {
     flex-shrink: 0;
     display: inline-flex;
@@ -1027,6 +1028,7 @@
     color: #fff;
     cursor: pointer;
     transition: background 0.15s ease, transform 0.1s ease;
+    position: relative;
     }
     #editTaskModal .subtask-edit-btn-board {
     background: #3b82f6;
@@ -1034,6 +1036,29 @@
     #editTaskModal .subtask-edit-btn-board:hover {
     background: #2563eb;
     color: #fff;
+    }
+    #editTaskModal .subtask-images-btn-board {
+    background: #0d9488;
+    }
+    #editTaskModal .subtask-images-btn-board:hover {
+    background: #0f766e;
+    color: #fff;
+    }
+    #editTaskModal .subtask-images-count-badge {
+    position: absolute;
+    top: -0.35rem;
+    left: -0.35rem;
+    min-width: 1.05rem;
+    height: 1.05rem;
+    padding: 0 0.28rem;
+    border-radius: 999px;
+    background: #0f172a;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 1.05rem;
+    text-align: center;
+    box-shadow: 0 0 0 1.5px #fff;
     }
     #editTaskModal .subtask-delete-btn-board {
     background: #ef4444;
@@ -2074,6 +2099,114 @@
     }
     .board-task-image-lightbox-close:hover {
         background: #fff;
+    }
+    #subtaskImagesModal .modal-dialog {
+        max-width: 640px;
+    }
+    #subtaskImagesModal {
+        z-index: 1065;
+    }
+    #subtaskImagesModal .modal-content {
+        border: none;
+        border-radius: 16px;
+        overflow: hidden;
+    }
+    #subtaskImagesModal .modal-header {
+        border-bottom: 1px solid #e8edf5;
+        padding: 0.9rem 1.15rem;
+    }
+    #subtaskImagesModal .modal-title {
+        font-size: 1rem;
+        font-weight: 700;
+    }
+    #subtaskImagesModal .modal-body {
+        padding: 1rem 1.15rem 1.15rem;
+    }
+    #subtaskImagesUploadBar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.9rem;
+        padding: 0.75rem;
+        border: 1px dashed #c7d2e0;
+        border-radius: 12px;
+        background: #f8fafc;
+    }
+    #subtaskImagesUploadBar .btn {
+        white-space: nowrap;
+    }
+    #subtaskImagesNote {
+        font-size: 0.8rem;
+        color: #64748b;
+        min-height: 1.2rem;
+    }
+    #subtaskImagesGrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.75rem;
+    }
+    .subtask-image-card {
+        position: relative;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #fff;
+    }
+    .subtask-image-card button.subtask-image-thumb {
+        display: block;
+        width: 100%;
+        padding: 0;
+        border: 0;
+        background: #0f172a;
+        cursor: zoom-in;
+    }
+    .subtask-image-card img {
+        display: block;
+        width: 100%;
+        height: 110px;
+        object-fit: cover;
+    }
+    .subtask-image-card-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.4rem;
+        padding: 0.45rem 0.55rem;
+    }
+    .subtask-image-card-name {
+        font-size: 0.72rem;
+        color: #475569;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+        flex: 1;
+    }
+    .subtask-image-delete-btn {
+        flex-shrink: 0;
+        width: 1.6rem;
+        height: 1.6rem;
+        border: none;
+        border-radius: 50%;
+        background: #fee2e2;
+        color: #dc2626;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    .subtask-image-delete-btn:hover {
+        background: #fecaca;
+    }
+    .subtask-images-empty {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 1.5rem 0.75rem;
+        color: #94a3b8;
+        font-size: 0.88rem;
+        border: 1px dashed #e2e8f0;
+        border-radius: 12px;
     }
     .attachment-actions,
     .message-actions {
@@ -3672,6 +3805,31 @@
                 <button type="button" class="btn btn-primary" id="editTaskSubmitBtn" onclick="submitEditTask()">
                     <i class="bi bi-check-circle me-2"></i>ذخیره تغییرات
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="subtaskImagesModal" tabindex="-1" aria-labelledby="subtaskImagesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="subtaskImagesModalLabel">
+                    <i class="bi bi-images me-2"></i>تصاویر کارک
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="subtaskImagesTaskId" value="" />
+                <div id="subtaskImagesUploadBar">
+                    <label class="btn btn-sm btn-primary mb-0" for="subtaskImagesFileInput">
+                        <i class="bi bi-plus-lg me-1"></i>افزودن تصویر
+                    </label>
+                    <input type="file" id="subtaskImagesFileInput" accept="image/*" multiple hidden />
+                    <span class="text-muted small">فقط تصویر (jpg, png, gif, webp)</span>
+                </div>
+                <div id="subtaskImagesNote"></div>
+                <div id="subtaskImagesGrid" class="mt-2"></div>
             </div>
         </div>
     </div>
@@ -5900,6 +6058,10 @@
                 const id = Number(st.id || 0);
                 const title = escapeHtml(st.title || '');
                 const completed = !!st.isCompleted;
+                const imageCount = Number(st.imageCount || 0);
+                const countBadge = imageCount > 0
+                    ? `<span class="subtask-images-count-badge">${imageCount > 99 ? '99+' : imageCount}</span>`
+                    : '';
                 const assigneeOptions = buildAssigneeOptionsHtml(
                     (boardSubtaskUsers && boardSubtaskUsers.length) ? boardSubtaskUsers : boardProjectMembers,
                     st.assignedUserId || '');
@@ -5918,6 +6080,7 @@
                             </div>
                         </div>
                         <div class="subtask-item-actions-board">
+                            <button type="button" class="subtask-images-btn-board" data-subtask-id="${id}" title="تصاویر کارک" aria-label="تصاویر کارک"><i class="bi bi-image"></i>${countBadge}</button>
                             <button type="button" class="subtask-edit-btn-board" data-subtask-id="${id}" title="ویرایش" aria-label="ویرایش"><i class="bi bi-pencil"></i></button>
                             <button type="button" class="subtask-delete-btn-board" data-subtask-id="${id}" title="حذف" aria-label="حذف"><i class="bi bi-trash"></i></button>
                         </div>
@@ -6164,6 +6327,13 @@
                     }
                 });
                 listEl.addEventListener('click', function (e) {
+                    const imagesBtn = e.target.closest('.subtask-images-btn-board');
+                    if (imagesBtn) {
+                        e.preventDefault();
+                        const sid = parseInt(imagesBtn.getAttribute('data-subtask-id'), 10);
+                        if (sid) openSubtaskImagesModal(sid);
+                        return;
+                    }
                     const editBtn = e.target.closest('.subtask-edit-btn-board');
                     if (editBtn) {
                         e.preventDefault();
@@ -6181,6 +6351,188 @@
                     if (btn) {
                         const sid = parseInt(btn.getAttribute('data-subtask-id'), 10);
                         if (sid) deleteBoardSubtask(sid);
+                    }
+                });
+            }
+        }
+
+        let boardSubtaskImagesTaskId = null;
+        let boardSubtaskImagesBound = false;
+
+        function getAntiForgeryToken() {
+            return document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+        }
+
+        function updateBoardSubtaskImageCountBadge(subtaskId, count) {
+            const btn = document.querySelector(`.subtask-images-btn-board[data-subtask-id="${subtaskId}"]`);
+            if (!btn) return;
+            let badge = btn.querySelector('.subtask-images-count-badge');
+            const n = Number(count || 0);
+            if (n <= 0) {
+                if (badge) badge.remove();
+                return;
+            }
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'subtask-images-count-badge';
+                btn.appendChild(badge);
+            }
+            badge.textContent = n > 99 ? '99+' : String(n);
+        }
+
+        function renderSubtaskImagesGrid(images) {
+            const grid = document.getElementById('subtaskImagesGrid');
+            if (!grid) return;
+            const list = Array.isArray(images) ? images : [];
+            if (list.length === 0) {
+                grid.innerHTML = '<div class="subtask-images-empty">هنوز تصویری برای این کارک ثبت نشده است.</div>';
+                return;
+            }
+            grid.innerHTML = list.map(img => {
+                const id = Number(img.id || 0);
+                const url = escapeHtml(img.fileUrl || '');
+                const name = escapeHtml(img.fileName || 'تصویر');
+                return `
+                    <div class="subtask-image-card" data-attachment-id="${id}">
+                        <button type="button" class="subtask-image-thumb board-chat-image-thumb"
+                                data-image-url="${url}" data-image-name="${name}" title="مشاهده تصویر">
+                            <img src="${url}" alt="${name}" loading="lazy" />
+                        </button>
+                        <div class="subtask-image-card-meta">
+                            <span class="subtask-image-card-name" title="${name}">${name}</span>
+                            <button type="button" class="subtask-image-delete-btn" data-attachment-id="${id}" title="حذف تصویر" aria-label="حذف تصویر">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadSubtaskImages(taskId) {
+            const noteEl = document.getElementById('subtaskImagesNote');
+            const grid = document.getElementById('subtaskImagesGrid');
+            if (grid) grid.innerHTML = '<div class="subtask-images-empty">در حال بارگذاری...</div>';
+            try {
+                const response = await fetch(`/Tasks/GetTaskImages?taskId=${taskId}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) throw new Error('load_failed');
+                const data = await response.json();
+                renderSubtaskImagesGrid(data);
+                updateBoardSubtaskImageCountBadge(taskId, Array.isArray(data) ? data.length : 0);
+                if (noteEl) noteEl.textContent = '';
+            } catch {
+                if (grid) grid.innerHTML = '<div class="subtask-images-empty">خطا در دریافت تصاویر.</div>';
+                if (noteEl) noteEl.textContent = 'خطا در دریافت تصاویر.';
+            }
+        }
+
+        async function openSubtaskImagesModal(subtaskId) {
+            boardSubtaskImagesTaskId = subtaskId;
+            const idInput = document.getElementById('subtaskImagesTaskId');
+            if (idInput) idInput.value = String(subtaskId);
+            const noteEl = document.getElementById('subtaskImagesNote');
+            if (noteEl) noteEl.textContent = '';
+            const fileInput = document.getElementById('subtaskImagesFileInput');
+            if (fileInput) fileInput.value = '';
+            ensureSubtaskImagesWiringBound();
+            await loadSubtaskImages(subtaskId);
+            const modalEl = document.getElementById('subtaskImagesModal');
+            if (modalEl && window.bootstrap) {
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            }
+        }
+
+        async function uploadSubtaskImages(files) {
+            if (!boardSubtaskImagesTaskId || !files || !files.length) return;
+            const noteEl = document.getElementById('subtaskImagesNote');
+            const token = getAntiForgeryToken();
+            const formData = new FormData();
+            formData.append('taskId', String(boardSubtaskImagesTaskId));
+            if (token) formData.append('__RequestVerificationToken', token);
+            Array.from(files).forEach(f => formData.append('images', f));
+            try {
+                if (noteEl) noteEl.textContent = 'در حال آپلود...';
+                const response = await fetch('/Tasks/UploadTaskImages', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(token ? { 'RequestVerificationToken': token } : {})
+                    },
+                    body: formData
+                });
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(errText || 'upload_failed');
+                }
+                const result = await response.json();
+                if (noteEl) {
+                    noteEl.textContent = (result.errors && result.errors.length)
+                        ? `برخی فایل‌ها آپلود نشدند: ${result.errors.join(' | ')}`
+                        : 'تصاویر با موفقیت اضافه شدند.';
+                }
+                updateBoardSubtaskImageCountBadge(boardSubtaskImagesTaskId, result.imageCount);
+                await loadSubtaskImages(boardSubtaskImagesTaskId);
+            } catch (error) {
+                if (noteEl) noteEl.textContent = (error && error.message) || 'آپلود تصویر انجام نشد.';
+            }
+        }
+
+        async function deleteSubtaskImage(attachmentId) {
+            if (!attachmentId || !confirm('این تصویر حذف شود؟')) return;
+            const noteEl = document.getElementById('subtaskImagesNote');
+            const token = getAntiForgeryToken();
+            const formData = new FormData();
+            formData.append('attachmentId', String(attachmentId));
+            if (token) formData.append('__RequestVerificationToken', token);
+            try {
+                if (noteEl) noteEl.textContent = 'در حال حذف...';
+                const response = await fetch('/Tasks/DeleteTaskImage', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(token ? { 'RequestVerificationToken': token } : {})
+                    },
+                    body: formData
+                });
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(errText || 'delete_failed');
+                }
+                const result = await response.json();
+                if (boardSubtaskImagesTaskId) {
+                    updateBoardSubtaskImageCountBadge(boardSubtaskImagesTaskId, result.imageCount);
+                    await loadSubtaskImages(boardSubtaskImagesTaskId);
+                }
+                if (noteEl) noteEl.textContent = '';
+            } catch (error) {
+                if (noteEl) noteEl.textContent = (error && error.message) || 'حذف تصویر انجام نشد.';
+            }
+        }
+
+        function ensureSubtaskImagesWiringBound() {
+            if (boardSubtaskImagesBound) return;
+            boardSubtaskImagesBound = true;
+            const fileInput = document.getElementById('subtaskImagesFileInput');
+            const grid = document.getElementById('subtaskImagesGrid');
+            if (fileInput) {
+                fileInput.addEventListener('change', function () {
+                    const files = fileInput.files;
+                    if (files && files.length) {
+                        uploadSubtaskImages(files);
+                    }
+                    fileInput.value = '';
+                });
+            }
+            if (grid) {
+                grid.addEventListener('click', function (e) {
+                    const delBtn = e.target.closest('.subtask-image-delete-btn');
+                    if (delBtn) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const aid = parseInt(delBtn.getAttribute('data-attachment-id'), 10);
+                        if (aid) deleteSubtaskImage(aid);
                     }
                 });
             }

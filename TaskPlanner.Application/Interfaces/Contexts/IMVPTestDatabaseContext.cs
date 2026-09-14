@@ -30,6 +30,7 @@ namespace TaskPlanner.Application.Interfaces.Contexts
         DbSet<PersonalNoteAttachment> PersonalNoteAttachments { get; set; }
         DbSet<TaskComment> TaskComments { get; set; }
         DbSet<TaskCommentAttachment> TaskCommentAttachments { get; set; }
+        DbSet<TaskItemAttachment> TaskItemAttachments { get; set; }
         DbSet<ProjectChatGroup> ProjectChatGroups { get; set; }
         DbSet<ProjectChatGroupMember> ProjectChatGroupMembers { get; set; }
         DbSet<ProjectChatMessage> ProjectChatMessages { get; set; }

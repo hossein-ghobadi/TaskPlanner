@@ -1,0 +1,162 @@
+@model Endpoint.Site.Models.CutSpecificCostTestVm
+@using TaskPlanner.Domain.Entities.Calculation
+@{
+    ViewData["Title"] = "تست ماژول اختصاصی برش";
+    ViewData["UseFluidLayout"] = true;
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid px-0" style="max-width: 960px;">
+    <div class="mb-4">
+        <div class="mb-2">
+            <a href="/ModuleTests/Index" class="text-decoration-none small">
+                <i class="bi bi-arrow-right me-1"></i>
+                بازگشت به لیست ماژول‌ها
+            </a>
+        </div>
+        <h2 class="fw-bold mb-1">
+            <i class="bi bi-scissors me-2"></i>
+            تست ماژول اختصاصی برش
+        </h2>
+        <p class="text-muted mb-0">
+            هزینه برش را با طول حقیقی PVC، فی برش و ضریب چندلایه بودن محاسبه کنید.
+        </p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-lg-6">
+            <form method="post" asp-action="CutSpecificCost" id="cut-specific-cost-form" class="card border-0 shadow-sm">
+                @Html.AntiForgeryToken()
+                <div class="card-header bg-white py-3">
+                    <strong>ورودی‌ها</strong>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label asp-for="Category" class="form-label"></label>
+                        <select asp-for="Category" class="form-select" id="category-select">
+                            @foreach (var category in Model.AllCategories)
+                            {
+                                <option value="@((int)category)"
+                                        data-can-cut="@(category.CanHaveCutSpecificCost() ? "true" : "false")">
+                                    @category.GetDisplayName()
+                                </option>
+                            }
+                        </select>
+                        <div class="form-text text-muted d-none" id="no-cut-hint">
+                            این ماژول فقط برای دسته برش است.
+                        </div>
+                    </div>
+
+                    <div id="cut-inputs" class="row g-3 mb-3">
+                        <div class="col-12">
+                            <label asp-for="ActualPvcLength" class="form-label"></label>
+                            <input asp-for="ActualPvcLength" class="form-control" type="number" step="any" min="0" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label asp-for="CutUnitPrice" class="form-label"></label>
+                            <input asp-for="CutUnitPrice" class="form-control" type="number" step="any" min="0" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label asp-for="MultiLayerCoefficient" class="form-label"></label>
+                            <input asp-for="MultiLayerCoefficient" class="form-control" type="number" step="any" min="0" />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-play-fill me-1"></i>
+                        محاسبه
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-white py-3">
+                    <strong>قوانین ماژول</strong>
+                </div>
+                <div class="card-body small">
+                    <ul class="mb-0 pe-3">
+                        <li class="mb-2"><strong>فقط دسته برش</strong></li>
+                        <li class="mb-0"><strong>فرمول:</strong> طول حقیقی PVC × فی برش × ضریب چندلایه بودن</li>
+                    </ul>
+                </div>
+            </div>
+
+            @if (Model.HasResult)
+            {
+                @if (Model.IsSuccess)
+                {
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                            <strong>خروجی شفاف</strong>
+                            <span class="badge text-bg-success">موفق</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="text-muted small">دسته</div>
+                                <div class="fw-semibold">@Model.CategoryDisplayName</div>
+                            </div>
+                            <div class="alert alert-light border small mb-3">
+                                @Model.RuleDescription
+                            </div>
+
+                            @if (!Model.Applies)
+                            {
+                                <div class="p-3 rounded bg-primary-subtle">
+                                    <div class="text-muted small">هزینه برش</div>
+                                    <div class="fs-4 fw-bold">0</div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="border rounded p-3 mb-3">
+                                    <div class="fw-semibold mb-1">هزینه برش</div>
+                                    <div class="small text-muted mb-1">@Model.Formula</div>
+                                    <div class="font-monospace mb-2">@Model.FormulaWithValues</div>
+                                    <div>مبلغ: <strong>@Model.CutCost.ToString("#,0.####")</strong></div>
+                                </div>
+
+                                <div class="p-3 rounded bg-primary-subtle">
+                                    <div class="text-muted small">جمع هزینه برش</div>
+                                    <div class="fs-4 fw-bold">@Model.CutCost.ToString("#,0.####")</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        @(Model.Message ?? "خطا در محاسبه")
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="alert alert-secondary mb-0">
+                    پس از وارد کردن مقادیر و زدن «محاسبه»، خروجی اینجا نمایش داده می‌شود.
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    const categorySelect = document.getElementById('category-select');
+    const cutInputs = document.getElementById('cut-inputs');
+    const noCutHint = document.getElementById('no-cut-hint');
+
+    function syncUi() {
+        const opt = categorySelect.options[categorySelect.selectedIndex];
+        const canCut = opt?.dataset.canCut === 'true';
+        cutInputs.classList.toggle('d-none', !canCut);
+        noCutHint.classList.toggle('d-none', canCut);
+    }
+
+    categorySelect.addEventListener('change', syncUi);
+    syncUi();
+})();
+</script>

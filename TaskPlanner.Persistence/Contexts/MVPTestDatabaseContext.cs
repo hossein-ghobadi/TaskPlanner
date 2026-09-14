@@ -39,6 +39,7 @@ namespace TaskPlanner.Persistence.Contexts
         public DbSet<PersonalNoteFolder> PersonalNoteFolders { get; set; }
         public DbSet<TaskComment> TaskComments { get; set; }
         public DbSet<TaskCommentAttachment> TaskCommentAttachments { get; set; }
+        public DbSet<TaskItemAttachment> TaskItemAttachments { get; set; }
         public DbSet<ProjectChatGroup> ProjectChatGroups { get; set; }
         public DbSet<ProjectChatGroupMember> ProjectChatGroupMembers { get; set; }
         public DbSet<ProjectChatMessage> ProjectChatMessages { get; set; }
@@ -266,6 +267,26 @@ namespace TaskPlanner.Persistence.Contexts
                 .WithMany(c => c.Attachments)
                 .HasForeignKey(a => a.TaskCommentId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // رابطه TaskItemAttachment با TaskItem
+            modelBuilder.Entity<TaskItemAttachment>()
+                .HasOne(a => a.Task)
+                .WithMany(t => t.Attachments)
+                .HasForeignKey(a => a.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TaskItemAttachment>()
+                .Property(a => a.FileName).HasMaxLength(500);
+            modelBuilder.Entity<TaskItemAttachment>()
+                .Property(a => a.FilePath).HasMaxLength(1000);
+            modelBuilder.Entity<TaskItemAttachment>()
+                .Property(a => a.FileType).HasMaxLength(50);
+            modelBuilder.Entity<TaskItemAttachment>()
+                .Property(a => a.MimeType).HasMaxLength(100);
+            modelBuilder.Entity<TaskItemAttachment>()
+                .Property(a => a.UploadedByUserId).HasMaxLength(450);
+            modelBuilder.Entity<TaskItemAttachment>()
+                .HasIndex(a => a.TaskId);
 
             modelBuilder.Entity<ProjectChatGroup>()
                 .HasOne(g => g.Project)
