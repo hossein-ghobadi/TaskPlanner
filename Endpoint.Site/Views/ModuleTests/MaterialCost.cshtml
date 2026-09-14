@@ -40,6 +40,7 @@
                             {
                                 <option value="@((int)category)"
                                         data-always-single="@(category.IsAlwaysSingleLayer() ? "true" : "false")"
+                                        data-always-double="@(category.IsAlwaysDoubleLayer() ? "true" : "false")"
                                         data-includes-waste="@(category.IncludesWasteInMaterialCost() ? "true" : "false")"
                                         data-can-punch="@(category.CanHavePunchMaterial() ? "true" : "false")">
                                     @category.GetDisplayName()
@@ -55,9 +56,7 @@
                             <option value="@((int)LayerMode.Double)">@LayerMode.Double.GetDisplayName()</option>
                         </select>
                         <input type="hidden" name="LayerMode" id="layer-mode-hidden" value="@((int)Model.LayerMode)" />
-                        <div class="form-text" id="layer-mode-hint">
-                            آهن ساده و استیل ساده همیشه تک‌لایه هستند.
-                        </div>
+                        <div class="form-text d-none" id="layer-mode-hint"></div>
                     </div>
 
                     <div class="mb-3" id="punch-enable-group">
@@ -66,7 +65,7 @@
                             <label asp-for="EnablePunch" class="form-check-label"></label>
                         </div>
                         <div class="form-text">در صورت فعال بودن، هزینه پانچ در هر لایه محاسبه می‌شود.</div>
-                        <div class="form-text text-muted d-none" id="punch-cut-hint">دسته برش پانچ متریال ندارد.</div>
+                        <div class="form-text text-muted d-none" id="punch-unavailable-hint">این دسته پانچ متریال ندارد.</div>
                     </div>
 
                     <div class="border rounded p-3 mb-3">
@@ -138,9 +137,10 @@
                 <div class="card-body small">
                     <ul class="mb-0 pe-3">
                         <li class="mb-2"><strong>آهن ساده / استیل ساده:</strong> همیشه تک‌لایه — مساحت مصرفی × فی</li>
-                        <li class="mb-2"><strong>وکیوم با رینگ آهن / استیل:</strong> (مساحت مصرفی + پرتی) × فی برای هر لایه</li>
+                        <li class="mb-2"><strong>آهن رینگی / استیل رینگی:</strong> همیشه دو‌لایه — مساحت مصرفی × فی برای هر لایه (بدون پرتی)</li>
+                        <li class="mb-2"><strong>وکیوم با رینگ آهن / استیل:</strong> همیشه دو‌لایه — (مساحت مصرفی + پرتی) × فی برای هر لایه — بدون پانچ</li>
                         <li class="mb-2"><strong>سایر دسته‌ها:</strong> مساحت مصرفی × فی برای هر لایه (بدون پرتی)</li>
-                        <li class="mb-0"><strong>پانچ متریال:</strong> فقط با تیک فعال — مساحت حقیقی PVC × فی پانچ (برش ندارد)</li>
+                        <li class="mb-0"><strong>پانچ متریال:</strong> فقط با تیک فعال — مساحت حقیقی PVC × فی پانچ (برش و وکیوم با رینگ ندارند)</li>
                     </ul>
                 </div>
             </div>
@@ -256,8 +256,10 @@
     const layer1PunchGroup = document.getElementById('layer1-punch-group');
     const layer2PunchGroup = document.getElementById('layer2-punch-group');
     const enablePunch = document.getElementById('enable-punch');
-    const punchCutHint = document.getElementById('punch-cut-hint');
+    const punchUnavailableHint = document.getElementById('punch-unavailable-hint');
     const form = document.getElementById('material-cost-form');
+    const singleLayerValue = '@((int)LayerMode.Single)';
+    const doubleLayerValue = '@((int)LayerMode.Double)';
 
     function selectedOption() {
         return categorySelect.options[categorySelect.selectedIndex];
@@ -272,12 +274,19 @@
     function syncUi() {
         const opt = selectedOption();
         const alwaysSingle = opt?.dataset.alwaysSingle === 'true';
+        const alwaysDouble = opt?.dataset.alwaysDouble === 'true';
         const includesWaste = opt?.dataset.includesWaste === 'true';
         const canPunch = opt?.dataset.canPunch === 'true';
 
         if (alwaysSingle) {
-            layerModeSelect.value = '@((int)LayerMode.Single)';
+            layerModeSelect.value = singleLayerValue;
             layerModeSelect.disabled = true;
+            layerModeHint.textContent = 'آهن ساده و استیل ساده همیشه تک‌لایه هستند.';
+            layerModeHint.classList.remove('d-none');
+        } else if (alwaysDouble) {
+            layerModeSelect.value = doubleLayerValue;
+            layerModeSelect.disabled = true;
+            layerModeHint.textContent = 'آهن رینگی، استیل رینگی و وکیوم با رینگ همیشه دو‌لایه هستند.';
             layerModeHint.classList.remove('d-none');
         } else {
             layerModeSelect.disabled = false;
@@ -287,14 +296,17 @@
         if (!canPunch) {
             enablePunch.checked = false;
             enablePunch.disabled = true;
-            punchCutHint.classList.remove('d-none');
+            punchUnavailableHint.textContent = includesWaste
+                ? 'وکیوم با رینگ آهن و وکیوم با رینگ استیل پانچ متریال ندارند.'
+                : 'دسته برش پانچ متریال ندارد.';
+            punchUnavailableHint.classList.remove('d-none');
         } else {
             enablePunch.disabled = false;
-            punchCutHint.classList.add('d-none');
+            punchUnavailableHint.classList.add('d-none');
         }
 
         const punchEnabled = canPunch && enablePunch.checked;
-        const isDouble = !alwaysSingle && layerModeSelect.value === '@((int)LayerMode.Double)';
+        const isDouble = alwaysDouble || (!alwaysSingle && layerModeSelect.value === doubleLayerValue);
         layer2Group.classList.toggle('d-none', !isDouble);
         layer1WasteGroup.classList.toggle('d-none', !includesWaste);
         layer2WasteGroup.classList.toggle('d-none', !(includesWaste && isDouble));

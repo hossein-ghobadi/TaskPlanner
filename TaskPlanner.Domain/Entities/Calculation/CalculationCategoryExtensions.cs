@@ -25,16 +25,27 @@ namespace TaskPlanner.Domain.Entities.Calculation
             category is CalculationCategory.SimpleIron or CalculationCategory.SimpleSteel;
 
         /// <summary>
+        /// آهن رینگی، استیل رینگی و وکیوم با رینگ همیشه دو‌لایه هستند.
+        /// </summary>
+        public static bool IsAlwaysDoubleLayer(this CalculationCategory category) =>
+            category is CalculationCategory.RingIron
+                or CalculationCategory.RingSteel
+                or CalculationCategory.VacuumIronRing
+                or CalculationCategory.VacuumSteelRing;
+
+        /// <summary>
         /// در وکیوم، پرتی به مساحت مصرفی اضافه می‌شود.
         /// </summary>
         public static bool IncludesWasteInMaterialCost(this CalculationCategory category) =>
             category is CalculationCategory.VacuumIronRing or CalculationCategory.VacuumSteelRing;
 
         /// <summary>
-        /// دسته برش پانچ متریال ندارد.
+        /// برش و وکیوم با رینگ پانچ متریال ندارند.
         /// </summary>
         public static bool CanHavePunchMaterial(this CalculationCategory category) =>
-            category != CalculationCategory.Cut;
+            category is not CalculationCategory.Cut
+                and not CalculationCategory.VacuumIronRing
+                and not CalculationCategory.VacuumSteelRing;
 
         /// <summary>
         /// دسته برش هزینه لبه ندارد.
@@ -143,6 +154,9 @@ namespace TaskPlanner.Domain.Entities.Calculation
         {
             if (category.IsAlwaysSingleLayer())
                 return mode == LayerMode.Single;
+
+            if (category.IsAlwaysDoubleLayer())
+                return mode == LayerMode.Double;
 
             return mode is LayerMode.Single or LayerMode.Double;
         }

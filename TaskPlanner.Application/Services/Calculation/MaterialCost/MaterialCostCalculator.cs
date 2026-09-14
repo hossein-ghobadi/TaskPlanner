@@ -25,11 +25,14 @@ namespace TaskPlanner.Application.Services.Calculation.MaterialCost
 
             var layerMode = input.Category.IsAlwaysSingleLayer()
                 ? LayerMode.Single
-                : input.LayerMode;
+                : input.Category.IsAlwaysDoubleLayer()
+                    ? LayerMode.Double
+                    : input.LayerMode;
 
             if (!input.Category.SupportsLayerMode(layerMode))
             {
-                return Fail($"{input.Category.GetDisplayName()} فقط به‌صورت تک‌لایه قابل محاسبه است.");
+                var expectedMode = input.Category.IsAlwaysDoubleLayer() ? "دو‌لایه" : "تک‌لایه";
+                return Fail($"{input.Category.GetDisplayName()} فقط به‌صورت {expectedMode} قابل محاسبه است.");
             }
 
             if (input.Layer1ConsumedArea < 0 || input.Layer1UnitPrice < 0 || input.Layer1Waste < 0
@@ -160,9 +163,11 @@ namespace TaskPlanner.Application.Services.Calculation.MaterialCost
             }
             else if (includesWaste)
             {
-                sheetRule = layerMode == LayerMode.Double
-                    ? "وکیوم: هزینه ورق هر لایه = (مساحت مصرفی + پرتی) × فی همان لایه."
-                    : "وکیوم تک‌لایه: هزینه ورق لایه اول = (مساحت مصرفی لایه اول + پرتی لایه اول) × فی لایه اول.";
+                sheetRule = "وکیوم با رینگ همیشه دو‌لایه است: هزینه ورق هر لایه = (مساحت مصرفی + پرتی) × فی همان لایه.";
+            }
+            else if (category.IsAlwaysDoubleLayer())
+            {
+                sheetRule = "آهن رینگی و استیل رینگی همیشه دو‌لایه‌اند: هزینه ورق هر لایه = مساحت مصرفی همان لایه × فی همان لایه (بدون پرتی).";
             }
             else
             {
@@ -175,7 +180,9 @@ namespace TaskPlanner.Application.Services.Calculation.MaterialCost
                 ? " پانچ متریال فعال است: هر لایه = مساحت حقیقی PVC × فی پانچ."
                 : category.CanHavePunchMaterial()
                     ? " پانچ متریال غیرفعال است و در محاسبه لحاظ نمی‌شود."
-                    : " دسته برش پانچ متریال ندارد.";
+                    : category == CalculationCategory.Cut
+                        ? " دسته برش پانچ متریال ندارد."
+                        : " وکیوم با رینگ آهن و وکیوم با رینگ استیل پانچ متریال ندارند.";
 
             return sheetRule + punchRule;
         }
