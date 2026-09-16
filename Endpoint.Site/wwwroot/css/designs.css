@@ -98,8 +98,7 @@
 }
 
 .design-controls.is-svg-mode .design-control-text {
-    opacity: 0.45;
-    pointer-events: none;
+    display: none;
 }
 
 .design-controls.is-svg-mode .design-control-svg-only {
@@ -526,6 +525,7 @@
 .design-textbox-handle {
     display: none;
     position: absolute;
+    z-index: 3;
     top: -7px;
     left: -7px;
     width: 14px;
@@ -535,7 +535,6 @@
     border: 2px solid #fff;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
     cursor: grab;
-    z-index: 3;
 }
 
 .design-textbox-resize {
@@ -615,6 +614,15 @@
     pointer-events: none;
     line-height: 0;
     background: repeating-conic-gradient(#f1f5f9 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+}
+
+.design-svgbox.is-curve,
+.design-svgbox.is-curve .design-svgbox-inner {
+    background: transparent !important;
+}
+
+.design-svgbox.is-curve .design-svgbox-inner {
+    overflow: visible;
 }
 
 .design-svgbox-inner svg {

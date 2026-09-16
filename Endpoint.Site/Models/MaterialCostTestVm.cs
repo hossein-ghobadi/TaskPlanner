@@ -12,7 +12,10 @@ namespace Endpoint.Site.Models
         public LayerMode LayerMode { get; set; } = LayerMode.Single;
 
         [Display(Name = "پانچ متریال")]
-        public bool EnablePunch { get; set; }
+        public bool EnableLayer1Punch { get; set; }
+
+        [Display(Name = "پانچ متریال")]
+        public bool EnableLayer2Punch { get; set; }
 
         [Display(Name = "مساحت مصرفی لایه اول")]
         public decimal Layer1ConsumedArea { get; set; }

@@ -7,10 +7,8 @@ namespace TaskPlanner.Application.Services.Calculation.MaterialCost
         public CalculationCategory Category { get; set; }
         public LayerMode LayerMode { get; set; } = LayerMode.Single;
 
-        /// <summary>
-        /// فقط وقتی true باشد و دسته برش نباشد، پانچ در محاسبه لحاظ می‌شود.
-        /// </summary>
-        public bool EnablePunch { get; set; }
+        public bool EnableLayer1Punch { get; set; }
+        public bool EnableLayer2Punch { get; set; }
 
         public decimal Layer1ConsumedArea { get; set; }
         public decimal Layer1UnitPrice { get; set; }

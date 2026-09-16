@@ -59,13 +59,8 @@
                         <div class="form-text d-none" id="layer-mode-hint"></div>
                     </div>
 
-                    <div class="mb-3" id="punch-enable-group">
-                        <div class="form-check">
-                            <input asp-for="EnablePunch" class="form-check-input" type="checkbox" id="enable-punch" />
-                            <label asp-for="EnablePunch" class="form-check-label"></label>
-                        </div>
-                        <div class="form-text">در صورت فعال بودن، هزینه پانچ در هر لایه محاسبه می‌شود.</div>
-                        <div class="form-text text-muted d-none" id="punch-unavailable-hint">این دسته پانچ متریال ندارد.</div>
+                    <div class="mb-3 d-none" id="punch-unavailable-group">
+                        <div class="form-text text-muted mb-0" id="punch-unavailable-hint">این دسته پانچ متریال ندارد.</div>
                     </div>
 
                     <div class="border rounded p-3 mb-3">
@@ -83,14 +78,20 @@
                             <input asp-for="Layer1Waste" class="form-control" type="number" step="any" min="0" />
                             <div class="form-text">فقط برای وکیوم در فرمول لحاظ می‌شود.</div>
                         </div>
-                        <div id="layer1-punch-group">
-                            <div class="mb-2">
-                                <label asp-for="Layer1ActualPvcArea" class="form-label"></label>
-                                <input asp-for="Layer1ActualPvcArea" class="form-control" type="number" step="any" min="0" />
+                        <div id="layer1-punch-enable-group">
+                            <div class="form-check mb-2">
+                                <input asp-for="EnableLayer1Punch" class="form-check-input" type="checkbox" id="enable-layer1-punch" />
+                                <label asp-for="EnableLayer1Punch" class="form-check-label"></label>
                             </div>
-                            <div class="mb-0">
-                                <label asp-for="Layer1PunchUnitPrice" class="form-label"></label>
-                                <input asp-for="Layer1PunchUnitPrice" class="form-control" type="number" step="any" min="0" />
+                            <div id="layer1-punch-fields">
+                                <div class="mb-2">
+                                    <label asp-for="Layer1ActualPvcArea" class="form-label"></label>
+                                    <input asp-for="Layer1ActualPvcArea" class="form-control" type="number" step="any" min="0" />
+                                </div>
+                                <div class="mb-0">
+                                    <label asp-for="Layer1PunchUnitPrice" class="form-label"></label>
+                                    <input asp-for="Layer1PunchUnitPrice" class="form-control" type="number" step="any" min="0" />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -109,14 +110,20 @@
                             <label asp-for="Layer2Waste" class="form-label"></label>
                             <input asp-for="Layer2Waste" class="form-control" type="number" step="any" min="0" />
                         </div>
-                        <div id="layer2-punch-group">
-                            <div class="mb-2">
-                                <label asp-for="Layer2ActualPvcArea" class="form-label"></label>
-                                <input asp-for="Layer2ActualPvcArea" class="form-control" type="number" step="any" min="0" />
+                        <div id="layer2-punch-enable-group">
+                            <div class="form-check mb-2">
+                                <input asp-for="EnableLayer2Punch" class="form-check-input" type="checkbox" id="enable-layer2-punch" />
+                                <label asp-for="EnableLayer2Punch" class="form-check-label"></label>
                             </div>
-                            <div class="mb-0">
-                                <label asp-for="Layer2PunchUnitPrice" class="form-label"></label>
-                                <input asp-for="Layer2PunchUnitPrice" class="form-control" type="number" step="any" min="0" />
+                            <div id="layer2-punch-fields">
+                                <div class="mb-2">
+                                    <label asp-for="Layer2ActualPvcArea" class="form-label"></label>
+                                    <input asp-for="Layer2ActualPvcArea" class="form-control" type="number" step="any" min="0" />
+                                </div>
+                                <div class="mb-0">
+                                    <label asp-for="Layer2PunchUnitPrice" class="form-label"></label>
+                                    <input asp-for="Layer2PunchUnitPrice" class="form-control" type="number" step="any" min="0" />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -140,7 +147,7 @@
                         <li class="mb-2"><strong>آهن رینگی / استیل رینگی:</strong> همیشه دو‌لایه — مساحت مصرفی × فی برای هر لایه (بدون پرتی)</li>
                         <li class="mb-2"><strong>وکیوم با رینگ آهن / استیل:</strong> همیشه دو‌لایه — (مساحت مصرفی + پرتی) × فی برای هر لایه — بدون پانچ</li>
                         <li class="mb-2"><strong>سایر دسته‌ها:</strong> مساحت مصرفی × فی برای هر لایه (بدون پرتی)</li>
-                        <li class="mb-0"><strong>پانچ متریال:</strong> فقط با تیک فعال — مساحت حقیقی PVC × فی پانچ (برش و وکیوم با رینگ ندارند)</li>
+                        <li class="mb-0"><strong>پانچ متریال:</strong> در دو‌لایه هر لایه چک‌باکس جدا دارد — مساحت حقیقی PVC × فی پانچ (برش و وکیوم با رینگ ندارند)</li>
                     </ul>
                 </div>
             </div>
@@ -253,9 +260,13 @@
     const layer2Group = document.getElementById('layer2-group');
     const layer1WasteGroup = document.getElementById('layer1-waste-group');
     const layer2WasteGroup = document.getElementById('layer2-waste-group');
-    const layer1PunchGroup = document.getElementById('layer1-punch-group');
-    const layer2PunchGroup = document.getElementById('layer2-punch-group');
-    const enablePunch = document.getElementById('enable-punch');
+    const layer1PunchEnableGroup = document.getElementById('layer1-punch-enable-group');
+    const layer2PunchEnableGroup = document.getElementById('layer2-punch-enable-group');
+    const layer1PunchFields = document.getElementById('layer1-punch-fields');
+    const layer2PunchFields = document.getElementById('layer2-punch-fields');
+    const enableLayer1Punch = document.getElementById('enable-layer1-punch');
+    const enableLayer2Punch = document.getElementById('enable-layer2-punch');
+    const punchUnavailableGroup = document.getElementById('punch-unavailable-group');
     const punchUnavailableHint = document.getElementById('punch-unavailable-hint');
     const form = document.getElementById('material-cost-form');
     const singleLayerValue = '@((int)LayerMode.Single)';
@@ -293,31 +304,37 @@
             layerModeHint.classList.add('d-none');
         }
 
+        const isDouble = alwaysDouble || (!alwaysSingle && layerModeSelect.value === doubleLayerValue);
+
         if (!canPunch) {
-            enablePunch.checked = false;
-            enablePunch.disabled = true;
+            enableLayer1Punch.checked = false;
+            enableLayer2Punch.checked = false;
             punchUnavailableHint.textContent = includesWaste
                 ? 'وکیوم با رینگ آهن و وکیوم با رینگ استیل پانچ متریال ندارند.'
                 : 'دسته برش پانچ متریال ندارد.';
-            punchUnavailableHint.classList.remove('d-none');
+            punchUnavailableGroup.classList.remove('d-none');
         } else {
-            enablePunch.disabled = false;
-            punchUnavailableHint.classList.add('d-none');
+            punchUnavailableGroup.classList.add('d-none');
         }
 
-        const punchEnabled = canPunch && enablePunch.checked;
-        const isDouble = alwaysDouble || (!alwaysSingle && layerModeSelect.value === doubleLayerValue);
+        if (!isDouble) {
+            enableLayer2Punch.checked = false;
+        }
+
         layer2Group.classList.toggle('d-none', !isDouble);
         layer1WasteGroup.classList.toggle('d-none', !includesWaste);
         layer2WasteGroup.classList.toggle('d-none', !(includesWaste && isDouble));
-        layer1PunchGroup.classList.toggle('d-none', !punchEnabled);
-        layer2PunchGroup.classList.toggle('d-none', !(punchEnabled && isDouble));
+        layer1PunchEnableGroup.classList.toggle('d-none', !canPunch);
+        layer2PunchEnableGroup.classList.toggle('d-none', !(canPunch && isDouble));
+        layer1PunchFields.classList.toggle('d-none', !(canPunch && enableLayer1Punch.checked));
+        layer2PunchFields.classList.toggle('d-none', !(canPunch && isDouble && enableLayer2Punch.checked));
         syncHidden();
     }
 
     categorySelect.addEventListener('change', syncUi);
     layerModeSelect.addEventListener('change', syncUi);
-    enablePunch.addEventListener('change', syncUi);
+    enableLayer1Punch.addEventListener('change', syncUi);
+    enableLayer2Punch.addEventListener('change', syncUi);
     form.addEventListener('submit', syncHidden);
     syncUi();
 })();

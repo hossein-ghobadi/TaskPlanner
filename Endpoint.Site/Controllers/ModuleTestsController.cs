@@ -89,7 +89,8 @@ namespace Endpoint.Site.Controllers
             {
                 Category = model.Category,
                 LayerMode = model.LayerMode,
-                EnablePunch = model.EnablePunch,
+                EnableLayer1Punch = model.EnableLayer1Punch,
+                EnableLayer2Punch = model.EnableLayer2Punch,
                 Layer1ConsumedArea = model.Layer1ConsumedArea,
                 Layer1UnitPrice = model.Layer1UnitPrice,
                 Layer1Waste = model.Layer1Waste,

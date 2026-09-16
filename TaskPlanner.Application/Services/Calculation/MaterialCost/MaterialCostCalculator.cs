@@ -44,7 +44,10 @@ namespace TaskPlanner.Application.Services.Calculation.MaterialCost
             }
 
             var includesWaste = input.Category.IncludesWasteInMaterialCost();
-            var includesPunch = input.EnablePunch && input.Category.CanHavePunchMaterial();
+            var canPunch = input.Category.CanHavePunchMaterial();
+            var punchLayer1 = canPunch && input.EnableLayer1Punch;
+            var punchLayer2 = canPunch && layerMode == LayerMode.Double && input.EnableLayer2Punch;
+            var includesPunch = punchLayer1 || punchLayer2;
 
             var layers = new List<MaterialCostLayerResultDto>
             {
@@ -54,7 +57,7 @@ namespace TaskPlanner.Application.Services.Calculation.MaterialCost
                     waste: includesWaste ? input.Layer1Waste : 0m,
                     unitPrice: input.Layer1UnitPrice,
                     includeWaste: includesWaste,
-                    includePunch: includesPunch,
+                    includePunch: punchLayer1,
                     actualPvcArea: input.Layer1ActualPvcArea,
                     punchUnitPrice: input.Layer1PunchUnitPrice)
             };
@@ -67,7 +70,7 @@ namespace TaskPlanner.Application.Services.Calculation.MaterialCost
                     waste: includesWaste ? input.Layer2Waste : 0m,
                     unitPrice: input.Layer2UnitPrice,
                     includeWaste: includesWaste,
-                    includePunch: includesPunch,
+                    includePunch: punchLayer2,
                     actualPvcArea: input.Layer2ActualPvcArea,
                     punchUnitPrice: input.Layer2PunchUnitPrice));
             }
@@ -83,7 +86,7 @@ namespace TaskPlanner.Application.Services.Calculation.MaterialCost
                 LayerModeDisplayName = layerMode.GetDisplayName(),
                 IncludesWaste = includesWaste,
                 IncludesPunch = includesPunch,
-                RuleDescription = BuildRuleDescription(input.Category, layerMode, includesWaste, includesPunch),
+                RuleDescription = BuildRuleDescription(input.Category, layerMode, includesWaste, punchLayer1, punchLayer2),
                 Layers = layers,
                 TotalSheetMaterialCost = totalSheet,
                 TotalPunchCost = totalPunch,
@@ -154,7 +157,8 @@ namespace TaskPlanner.Application.Services.Calculation.MaterialCost
             CalculationCategory category,
             LayerMode layerMode,
             bool includesWaste,
-            bool includesPunch)
+            bool punchLayer1,
+            bool punchLayer2)
         {
             string sheetRule;
             if (category.IsAlwaysSingleLayer())
@@ -176,13 +180,29 @@ namespace TaskPlanner.Application.Services.Calculation.MaterialCost
                     : "سایر دسته‌ها (تک‌لایه): هزینه ورق = مساحت مصرفی لایه اول × فی لایه اول.";
             }
 
-            var punchRule = includesPunch
-                ? " پانچ متریال فعال است: هر لایه = مساحت حقیقی PVC × فی پانچ."
-                : category.CanHavePunchMaterial()
-                    ? " پانچ متریال غیرفعال است و در محاسبه لحاظ نمی‌شود."
-                    : category == CalculationCategory.Cut
-                        ? " دسته برش پانچ متریال ندارد."
-                        : " وکیوم با رینگ آهن و وکیوم با رینگ استیل پانچ متریال ندارند.";
+            string punchRule;
+            if (!category.CanHavePunchMaterial())
+            {
+                punchRule = category == CalculationCategory.Cut
+                    ? " دسته برش پانچ متریال ندارد."
+                    : " وکیوم با رینگ آهن و وکیوم با رینگ استیل پانچ متریال ندارند.";
+            }
+            else if (layerMode == LayerMode.Double)
+            {
+                punchRule = (punchLayer1, punchLayer2) switch
+                {
+                    (true, true) => " پانچ هر دو لایه فعال است: هر لایه فعال = مساحت حقیقی PVC × فی پانچ همان لایه.",
+                    (true, false) => " پانچ فقط لایه اول فعال است: مساحت حقیقی PVC لایه اول × فی پانچ لایه اول.",
+                    (false, true) => " پانچ فقط لایه دوم فعال است: مساحت حقیقی PVC لایه دوم × فی پانچ لایه دوم.",
+                    _ => " پانچ متریال برای هیچ لایه‌ای فعال نیست و در محاسبه لحاظ نمی‌شود."
+                };
+            }
+            else
+            {
+                punchRule = punchLayer1
+                    ? " پانچ متریال فعال است: مساحت حقیقی PVC لایه اول × فی پانچ لایه اول."
+                    : " پانچ متریال غیرفعال است و در محاسبه لحاظ نمی‌شود.";
+            }
 
             return sheetRule + punchRule;
         }

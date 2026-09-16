@@ -43,7 +43,8 @@
         strokeSpectrum: document.getElementById("designStrokeSpectrum"),
         strokeWidth: document.getElementById("designStrokeWidthInput"),
         strokeWidthValue: document.getElementById("designStrokeWidthValue"),
-        weld: document.getElementById("designWeldToggle"),
+        convertBtn: document.getElementById("convertToCurvesBtn"),
+        breakApartBtn: document.getElementById("breakApartBtn"),
         fileName: document.getElementById("designFileName"),
         status: document.getElementById("designStatus"),
         addBtn: document.getElementById("addTextBoxBtn"),
@@ -700,7 +701,6 @@
                 fill: "#111827",
                 stroke: "#111827",
                 strokeWidth: 0,
-                weld: false,
                 charFills: null, // آرایه رنگ هر کاراکتر؛ null = یکدست با fill
             },
             partial || {}
@@ -713,7 +713,7 @@
 
     function labelForBox(box) {
         if (isSvgItem(box)) {
-            return (box.name || "SVG").slice(0, 28);
+            return (box.name || (box.convertedFromText ? "منحنی" : "SVG")).slice(0, 28);
         }
         const trimmed = (box.text || "").replace(/\s+/g, " ").trim();
         return trimmed ? trimmed.slice(0, 28) : "تکست باکس خالی";
@@ -742,7 +742,9 @@
 
             const icon = document.createElement("i");
             icon.className = isSvgItem(box)
-                ? "bi bi-filetype-svg text-muted"
+                ? box.convertedFromText
+                    ? "bi bi-bezier2 text-muted"
+                    : "bi bi-filetype-svg text-muted"
                 : "bi bi-cursor-text text-muted";
 
             item.appendChild(label);
@@ -763,11 +765,15 @@
         els.deleteBtn.disabled = !box;
         if (!box) {
             els.selectionHint.textContent = "یک آیتم انتخاب کنید، تکست بسازید یا SVG آپلود کنید.";
+            if (els.breakApartBtn) {
+                els.breakApartBtn.disabled = true;
+            }
             return;
         }
         if (svgMode) {
-            els.selectionHint.textContent =
-                "SVG انتخاب‌شده: رنگ پر/حاشیه را از طیف عوض کنید. نقطه آبی = جابه‌جایی، دستگیره‌ها = تغییر اندازه.";
+            els.selectionHint.textContent = box.convertedFromText
+                ? "این آیتم شکل است (از متن تبدیل شده). با «جدا کردن اجزا» هر حرف را جدا کنید و رنگش را عوض کنید."
+                : "SVG انتخاب‌شده: رنگ پر/حاشیه را از طیف عوض کنید. نقطه آبی = جابه‌جایی، دستگیره‌ها = تغییر اندازه.";
             suppressPanelSync = true;
             els.fill.value = normalizeFillHex(box.fill || box.originalFill || "#111827");
             els.stroke.value = normalizeFillHex(box.stroke || box.originalStroke || "#111827");
@@ -776,7 +782,12 @@
             syncSpectrumFromInput("fill", els.fill.value);
             syncSpectrumFromInput("stroke", els.stroke.value);
             suppressPanelSync = false;
+            updateBreakApartButton(box);
             return;
+        }
+
+        if (els.breakApartBtn) {
+            els.breakApartBtn.disabled = true;
         }
 
         els.selectionHint.textContent =
@@ -796,7 +807,6 @@
         els.fill.value = getActiveFillForPanel(box);
         els.stroke.value = box.stroke;
         els.strokeWidth.value = String(box.strokeWidth);
-        els.weld.checked = !!box.weld;
         els.fontSizeValue.textContent = String(box.fontSize);
         els.letterSpacingValue.textContent = String(box.letterSpacing);
         els.strokeWidthValue.textContent = String(box.strokeWidth);
@@ -1586,7 +1596,9 @@
         if (!sourceMarkup) {
             return;
         }
-        const liveSvg = mountSvgInto(box.inner, sourceMarkup);
+        const liveSvg = mountSvgInto(box.inner, sourceMarkup, {
+            preserveAspectRatio: box.convertedFromText ? "none" : "xMidYMid meet",
+        });
         box.liveSvg = liveSvg;
         if (!liveSvg) {
             return;
@@ -1821,7 +1833,7 @@
     function measureSvgContentBox(svg) {
         const host = document.createElement("div");
         host.style.cssText =
-            "position:absolute;left:-99999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;";
+            "position:absolute;left:-99999px;top:0;width:800px;height:800px;overflow:visible;opacity:0;pointer-events:none;";
         const clone = document.importNode(svg, true);
         clone.removeAttribute("viewBox");
         clone.removeAttribute("width");
@@ -1971,7 +1983,7 @@
         return { x: 0, y: 0, width: width, height: height };
     }
 
-    function mountSvgInto(container, markup) {
+    function mountSvgInto(container, markup, options) {
         container.replaceChildren();
         const doc = new DOMParser().parseFromString(markup, "image/svg+xml");
         if (doc.querySelector("parsererror")) {
@@ -1986,7 +1998,10 @@
         liveSvg.removeAttribute("height");
         liveSvg.setAttribute("width", "100%");
         liveSvg.setAttribute("height", "100%");
-        liveSvg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+        liveSvg.setAttribute(
+            "preserveAspectRatio",
+            (options && options.preserveAspectRatio) || "xMidYMid meet"
+        );
         liveSvg.style.width = "100%";
         liveSvg.style.height = "100%";
         liveSvg.style.display = "block";
@@ -1999,7 +2014,7 @@
 
     function createSvgElement(box) {
         const el = document.createElement("div");
-        el.className = "design-svgbox";
+        el.className = "design-svgbox" + (box.convertedFromText ? " is-curve" : "");
         el.dataset.boxId = String(box.id);
 
         const inner = document.createElement("div");
@@ -2013,7 +2028,7 @@
         box.inner = inner;
         box.liveSvg = null;
 
-        attachCommonBoxChrome(box, el, "تغییر اندازه SVG");
+        attachCommonBoxChrome(box, el, box.convertedFromText ? "تغییر اندازه شکل" : "تغییر اندازه SVG");
         applySvgStyles(box);
 
         if (!box.liveSvg && box.inner && !box.inner.querySelector("svg")) {
@@ -2246,12 +2261,20 @@
         suppressPanelSync = false;
     }
 
-    function selectBox(id) {
+    function selectBox(id, options) {
         selectedId = id;
         boxes.forEach((box) => applyBoxStyles(box));
         renderList();
         syncPanelFromSelected();
-        setStatus(getSelected() ? "تکست باکس انتخاب شد." : "");
+        if (options && options.silent) {
+            return;
+        }
+        const selected = getSelected();
+        if (!selected) {
+            setStatus("");
+            return;
+        }
+        setStatus(isSvgItem(selected) ? "شکل انتخاب شد." : "تکست باکس انتخاب شد.");
     }
 
     function addTextBox(partial) {
@@ -2325,7 +2348,6 @@
         box.letterSpacing = Number(els.letterSpacing.value) || 0;
         box.stroke = els.stroke.value;
         box.strokeWidth = Number(els.strokeWidth.value) || 0;
-        box.weld = !!els.weld.checked;
         els.fontSizeValue.textContent = String(box.fontSize);
         els.letterSpacingValue.textContent = String(box.letterSpacing);
         els.strokeWidthValue.textContent = String(box.strokeWidth);
@@ -2334,7 +2356,7 @@
         renderList();
         waitForFonts(box.fontFamily, box.fontSize).then(function () {
             applyBoxStyles(box);
-            setStatus(box.weld ? "Weld برای این باکس فعال است." : "استایل اعمال شد.");
+            setStatus("استایل اعمال شد.");
         });
     }
 
@@ -2591,11 +2613,423 @@
         throw new Error("ماژول DesignVector بارگذاری نشده است.");
     }
 
-    function weldBoxToPaths(box) {
+    function textBoxToPaths(box, options) {
         if (!window.DesignVector || typeof DesignVector.textBoxToWeldedPath !== "function") {
-            return Promise.reject(new Error("کتابخانه Weld (opentype/paper) در دسترس نیست."));
+            return Promise.reject(new Error("کتابخانه تبدیل به منحنی (opentype/paper) در دسترس نیست."));
         }
-        return DesignVector.textBoxToWeldedPath(box);
+        return DesignVector.textBoxToWeldedPath(box, options);
+    }
+
+    function usableCurvePaths(result) {
+        return ((result && result.paths) || []).filter(function (p) {
+            return p && p.d && String(p.d).replace(/[\sMZ]/gi, "").length > 0;
+        });
+    }
+
+    function buildCurvesSvgFromPaths(width, height, paths) {
+        const w = Math.max(1, Number(width) || 1);
+        const h = Math.max(1, Number(height) || 1);
+        const inner = paths
+            .map(function (item) {
+                const fill = escapeXml(item.fill || "#000000");
+                const strokeWidth = Number(item.strokeWidth) || 0;
+                const strokeAttrs =
+                    strokeWidth > 0
+                        ? ` stroke="${escapeXml(item.stroke || "#000000")}" stroke-width="${strokeWidth}"`
+                        : ` stroke="none"`;
+                return `<path d="${item.d}" fill="${fill}" fill-rule="nonzero"${strokeAttrs}/>`;
+            })
+            .join("");
+        return {
+            viewBox: { x: 0, y: 0, width: w, height: h },
+            markup:
+                `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" overflow="visible">` +
+                inner +
+                `</svg>`,
+            inner: inner,
+        };
+    }
+
+    function boundsFromPathData(d) {
+        const nums = String(d || "").match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi);
+        if (!nums || nums.length < 2) {
+            return null;
+        }
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        let found = false;
+        for (let i = 0; i + 1 < nums.length; i += 2) {
+            const x = Number(nums[i]);
+            const y = Number(nums[i + 1]);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) {
+                continue;
+            }
+            found = true;
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+        }
+        if (!found || !(maxX > minX) || !(maxY > minY)) {
+            return null;
+        }
+        return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    }
+
+    function unionPathBounds(paths) {
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        let found = false;
+        (paths || []).forEach(function (item) {
+            const b = boundsFromPathData(item && item.d);
+            if (!b) {
+                return;
+            }
+            found = true;
+            minX = Math.min(minX, b.x);
+            minY = Math.min(minY, b.y);
+            maxX = Math.max(maxX, b.x + b.width);
+            maxY = Math.max(maxY, b.y + b.height);
+        });
+        if (!found) {
+            return null;
+        }
+        return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    }
+
+    function fitCurvesToGlyphBounds(originX, originY, originW, originH, paths, strokeWidth) {
+        const parsed = buildCurvesSvgFromPaths(originW, originH, paths);
+        let content = unionPathBounds(paths);
+        if (!content || !(content.width > 0 && content.height > 0)) {
+            try {
+                const doc = new DOMParser().parseFromString(parsed.markup, "image/svg+xml");
+                const svg = doc.documentElement;
+                if (svg && String(svg.tagName).toLowerCase() === "svg") {
+                    content = measureSvgContentBox(svg);
+                }
+            } catch (e) {
+                content = null;
+            }
+        }
+        if (!content || !(content.width > 0 && content.height > 0)) {
+            return {
+                parsed: parsed,
+                x: originX,
+                y: originY,
+                width: originW,
+                height: originH,
+            };
+        }
+        const pad = Math.max(2, (Number(strokeWidth) || 0) * 0.5 + 2);
+        const frame = {
+            x: content.x - pad,
+            y: content.y - pad,
+            width: content.width + pad * 2,
+            height: content.height + pad * 2,
+        };
+        return {
+            parsed: {
+                viewBox: frame,
+                markup:
+                    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${frame.x} ${frame.y} ${frame.width} ${frame.height}" overflow="visible" preserveAspectRatio="none">` +
+                    parsed.inner +
+                    `</svg>`,
+                inner: parsed.inner,
+            },
+            x: originX + frame.x,
+            y: originY + frame.y,
+            width: frame.width,
+            height: frame.height,
+        };
+    }
+
+    function convertSelectedTextToCurves() {
+        const box = getSelected();
+        if (!box || isSvgItem(box)) {
+            return;
+        }
+        if (!(box.text || "").trim()) {
+            setStatus("متن خالی را نمی‌توان به منحنی تبدیل کرد.");
+            return;
+        }
+
+        if (els.convertBtn) {
+            els.convertBtn.disabled = true;
+        }
+        setStatus("در حال تبدیل به منحنی…");
+
+        textBoxToPaths(box, { scaleToCorel: false, origin: "box", separateGlyphs: true })
+            .then(function (result) {
+                const paths = usableCurvePaths(result);
+                if (!paths.length) {
+                    throw new Error("مسیر منحنی ساخته نشد.");
+                }
+
+                const width = Math.max(1, box.width || (box.el && box.el.offsetWidth) || 1);
+                const height = Math.max(1, box.height || (box.el && box.el.offsetHeight) || 1);
+                const strokeWidth = Number(box.strokeWidth) || 0;
+                const fitted = fitCurvesToGlyphBounds(box.x, box.y, width, height, paths, strokeWidth);
+                const parsed = fitted.parsed;
+                const name = (box.text || "").replace(/\s+/g, " ").trim().slice(0, 28) || "منحنی";
+                const fill = normalizeFillHex(box.fill || "#111827");
+                const stroke = normalizeFillHex(box.stroke || "#111827");
+
+                if (box.el) {
+                    box.el.remove();
+                }
+
+                box.kind = "svg";
+                box.convertedFromText = true;
+                box.name = name;
+                box.x = fitted.x;
+                box.y = fitted.y;
+                box.width = fitted.width;
+                box.height = fitted.height;
+                box.viewBox = parsed.viewBox;
+                box.svgMarkup = parsed.markup;
+                box.svgInner = parsed.inner;
+                box.svgMarkupOriginal = parsed.markup;
+                box.svgInnerOriginal = parsed.inner;
+                box.unitsPerCm = null;
+                box.fill = fill;
+                box.stroke = stroke;
+                box.strokeWidth = strokeWidth;
+                box.originalFill = fill;
+                box.originalStroke = stroke;
+                box.fillOverride = false;
+                box.strokeOverride = false;
+
+                delete box.text;
+                delete box.fontFamily;
+                delete box.fontSize;
+                delete box.letterSpacing;
+                delete box.charFills;
+                delete box.weld;
+                delete box.input;
+                delete box.preview;
+                delete box.handle;
+                delete box.weldLayer;
+                delete box._selStart;
+                delete box._selEnd;
+
+                createSvgElement(box);
+                boxes.forEach(function (item) {
+                    applyBoxStyles(item);
+                });
+                renderList();
+                syncPanelFromSelected();
+                setStatus("متن به منحنی تبدیل شد. برای رنگ جداگانه، «جدا کردن اجزا» را بزنید.");
+            })
+            .catch(function (err) {
+                console.error(err);
+                setStatus(err && err.message ? err.message : "تبدیل به منحنی ناموفق بود.");
+            })
+            .finally(function () {
+                if (els.convertBtn) {
+                    els.convertBtn.disabled = false;
+                }
+            });
+    }
+
+    function svgShapeSelector() {
+        return "path, polygon, polyline, rect, circle, ellipse, line";
+    }
+
+    function listSvgShapeElements(svg) {
+        if (!svg || !svg.querySelectorAll) {
+            return [];
+        }
+        return Array.from(svg.querySelectorAll(svgShapeSelector()));
+    }
+
+    function countSvgShapes(box) {
+        if (!box) {
+            return 0;
+        }
+        if (!box.liveSvg && isSvgItem(box)) {
+            refreshSvgPaint(box);
+        }
+        return listSvgShapeElements(box.liveSvg).length;
+    }
+
+    function updateBreakApartButton(box) {
+        if (!els.breakApartBtn) {
+            return;
+        }
+        const count = isSvgItem(box) ? countSvgShapes(box) : 0;
+        els.breakApartBtn.disabled = count < 2;
+    }
+
+    function ancestorTransformList(el, svg) {
+        const transforms = [];
+        let node = el;
+        while (node && node !== svg) {
+            const t = node.getAttribute && node.getAttribute("transform");
+            if (t) {
+                transforms.unshift(t);
+            }
+            node = node.parentElement;
+        }
+        return transforms;
+    }
+
+    function shapeBBoxInSvg(svg, el) {
+        const transforms = ancestorTransformList(el, svg);
+        if (!transforms.length && typeof el.getBBox === "function") {
+            try {
+                const b = el.getBBox();
+                if (b && b.width > 0.2 && b.height > 0.2) {
+                    return { x: b.x, y: b.y, width: b.width, height: b.height };
+                }
+            } catch (e) {
+                // fallback صفحه
+            }
+        }
+        const svgRect = svg.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        if (!(svgRect.width > 0) || !(svgRect.height > 0)) {
+            return null;
+        }
+        const vb =
+            svg.viewBox && svg.viewBox.baseVal
+                ? svg.viewBox.baseVal
+                : { x: 0, y: 0, width: svgRect.width, height: svgRect.height };
+        const sx = vb.width / svgRect.width;
+        const sy = vb.height / svgRect.height;
+        const bbox = {
+            x: vb.x + (elRect.left - svgRect.left) * sx,
+            y: vb.y + (elRect.top - svgRect.top) * sy,
+            width: elRect.width * sx,
+            height: elRect.height * sy,
+        };
+        if (!(bbox.width > 0.2) || !(bbox.height > 0.2)) {
+            return null;
+        }
+        return bbox;
+    }
+
+    function extractShapeMarkup(svg, el) {
+        const clone = el.cloneNode(true);
+        const markup = new XMLSerializer().serializeToString(clone);
+        const transforms = ancestorTransformList(el, svg);
+        if (!transforms.length) {
+            return markup;
+        }
+        return `<g transform="${transforms.join(" ")}">${markup}</g>`;
+    }
+
+    function createPartBoxFromShape(parentBox, svg, el, index, total) {
+        const bbox = shapeBBoxInSvg(svg, el);
+        if (!bbox) {
+            return null;
+        }
+        const pad = Math.max(bbox.width, bbox.height) * 0.04 + 1;
+        const frame = {
+            x: bbox.x - pad,
+            y: bbox.y - pad,
+            width: Math.max(1, bbox.width + pad * 2),
+            height: Math.max(1, bbox.height + pad * 2),
+        };
+        const parentVb = parentBox.viewBox || { x: 0, y: 0, width: parentBox.width, height: parentBox.height };
+        const scaleX = parentBox.width / Math.max(0.0001, parentVb.width);
+        const scaleY = parentBox.height / Math.max(0.0001, parentVb.height);
+        const inner = extractShapeMarkup(svg, el);
+        const markup =
+            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${frame.x} ${frame.y} ${frame.width} ${frame.height}" overflow="visible">` +
+            inner +
+            `</svg>`;
+        const fillAttr = el.getAttribute("fill") || (el.style && el.style.fill);
+        const strokeAttr = el.getAttribute("stroke") || (el.style && el.style.stroke);
+        const fill = isPaintNone(fillAttr)
+            ? normalizeFillHex(parentBox.fill || "#111827")
+            : cssColorToHex(fillAttr);
+        const stroke = isPaintNone(strokeAttr)
+            ? normalizeFillHex(parentBox.stroke || "#111827")
+            : cssColorToHex(strokeAttr);
+        const baseName = (parentBox.name || "شکل").replace(/\s+\d+$/, "");
+        return {
+            id: nextId++,
+            kind: "svg",
+            convertedFromText: !!parentBox.convertedFromText,
+            name: total > 1 ? baseName + " " + (index + 1) : baseName,
+            x: parentBox.x + (frame.x - parentVb.x) * scaleX,
+            y: parentBox.y + (frame.y - parentVb.y) * scaleY,
+            width: Math.max(8, frame.width * scaleX),
+            height: Math.max(8, frame.height * scaleY),
+            viewBox: frame,
+            svgMarkup: markup,
+            svgInner: inner,
+            svgMarkupOriginal: markup,
+            svgInnerOriginal: inner,
+            unitsPerCm: parentBox.unitsPerCm,
+            fill: fill,
+            stroke: stroke,
+            strokeWidth: Number(parentBox.strokeWidth) || 0,
+            originalFill: fill,
+            originalStroke: stroke,
+            fillOverride: false,
+            strokeOverride: false,
+        };
+    }
+
+    function breakApartSelected() {
+        const box = getSelected();
+        if (!box || !isSvgItem(box)) {
+            return;
+        }
+        if (!box.liveSvg) {
+            refreshSvgPaint(box);
+        }
+        const svg = box.liveSvg;
+        if (!svg) {
+            setStatus("شکل قابل جداسازی نیست.");
+            return;
+        }
+        const shapes = listSvgShapeElements(svg);
+        if (shapes.length < 2) {
+            setStatus("این شکل فقط یک جزء دارد.");
+            return;
+        }
+
+        if (els.breakApartBtn) {
+            els.breakApartBtn.disabled = true;
+        }
+
+        const created = [];
+        shapes.forEach(function (shape, index) {
+            const part = createPartBoxFromShape(box, svg, shape, index, shapes.length);
+            if (part) {
+                created.push(part);
+            }
+        });
+
+        if (created.length < 2) {
+            setStatus("اجزای قابل جداسازی پیدا نشد.");
+            updateBreakApartButton(box);
+            return;
+        }
+
+        const index = boxes.findIndex(function (item) {
+            return item.id === box.id;
+        });
+        if (box.el) {
+            box.el.remove();
+        }
+        if (index >= 0) {
+            boxes.splice(index, 1);
+        }
+
+        created.forEach(function (part, i) {
+            boxes.splice(Math.max(0, index) + i, 0, part);
+            createSvgElement(part);
+        });
+
+        selectBox(created[0].id, { silent: true });
+        setStatus(created.length + " جزء جدا شد. هر کدام را انتخاب کنید و رنگ یا حاشیه‌اش را عوض کنید.");
     }
 
     function computeBounds() {
@@ -2707,7 +3141,7 @@
             if (!(box.text || "").trim()) {
                 return Promise.resolve({ type: "empty" });
             }
-            return weldBoxToPaths(box)
+            return textBoxToPaths(box)
                 .then(function (result) {
                     const paths = (result && result.paths) || [];
                     const usable = paths.filter(function (p) {
@@ -2889,7 +3323,6 @@
         els.fill.addEventListener(evt, applyFillColorToSelected);
         els.stroke.addEventListener(evt, applyStrokeColorToSelected);
         els.strokeWidth.addEventListener(evt, applyPanelToSelected);
-        els.weld.addEventListener(evt, applyPanelToSelected);
     });
 
     if (els.fontFile) {
@@ -2908,6 +3341,12 @@
     els.deleteBtn.addEventListener("click", deleteSelected);
     els.clearBtn.addEventListener("click", clearDesign);
     els.exportBtn.addEventListener("click", exportSvg);
+    if (els.convertBtn) {
+        els.convertBtn.addEventListener("click", convertSelectedTextToCurves);
+    }
+    if (els.breakApartBtn) {
+        els.breakApartBtn.addEventListener("click", breakApartSelected);
+    }
 
     if (els.measureBtn) {
         els.measureBtn.addEventListener("click", function () {

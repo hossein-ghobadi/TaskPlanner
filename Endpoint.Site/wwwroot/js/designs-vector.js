@@ -308,9 +308,25 @@
     }
 
     /**
-     * مسیرهای جدا برای هر بازهٔ رنگی پشت‌سرهم در متن بصری.
-     * colors[i] رنگ کاراکتر visualText[i] است.
+     * مسیر جدا برای هر گلیف — برای تبدیل به منحنی و جدا کردن اجزا.
      */
+    function glyphRunToGlyphPaths(font, visualText, colors, fontSize, letterSpacing, startX, baselineY, defaultFill) {
+        const chunks = [];
+        const fallback = normalizeHexColor(defaultFill || "#000000");
+        const fills = Array.isArray(colors) ? colors : [];
+        let glyphIndex = 0;
+        forEachGlyph(font, visualText, fontSize, letterSpacing, startX, baselineY, function (glyph, x, y) {
+            const d = otPathToD(glyph.getPath(x, y, fontSize));
+            if (d && d.length > 4) {
+                const fill = normalizeHexColor(
+                    fills[Math.min(glyphIndex, Math.max(0, fills.length - 1))] || fallback
+                );
+                chunks.push({ d: d, fill: fill });
+            }
+            glyphIndex++;
+        });
+        return chunks;
+    }
     function glyphRunToColoredPathChunks(font, visualText, colors, fontSize, letterSpacing, startX, baselineY, defaultFill) {
         const text = String(visualText || "");
         if (!text.length) {
@@ -475,8 +491,11 @@
         }
     }
 
-    function textBoxToWeldedPath(box) {
+    function textBoxToWeldedPath(box, options) {
         ensureOpentype();
+        options = options || {};
+        const scaleToCorel = options.scaleToCorel !== false;
+        const originBox = options.origin === "box";
         const family = box.fontFamily || "Vazir";
         return loadFont(family).then(function (font) {
             const raw = (box.text || "").replace(/\r\n/g, "\n");
@@ -490,6 +509,8 @@
             const padY = 8;
             const defaultFill = normalizeHexColor(box.fill || "#000000");
             const charFills = Array.isArray(box.charFills) ? box.charFills : null;
+            const originX = originBox ? 0 : Number(box.x) || 0;
+            const originY = originBox ? 0 : Number(box.y) || 0;
 
             // رنگ‌های منطقی هر خط (شاخص UTF-16 هم‌تراز با textarea)
             let offset = 0;
@@ -509,23 +530,34 @@
             const maxLineWidth = Math.max.apply(null, measuredWidths.concat([0]));
             const contentWidth = maxLineWidth + padX * 2;
             const boxWidth = box.width > 0 ? box.width : contentWidth;
-            const rightEdge = box.x + boxWidth - padX;
+            const rightEdge = originX + boxWidth - padX;
 
             const coloredChunks = [];
             visuals.forEach(function (visual, index) {
                 const lineW = measuredWidths[index] || 0;
                 const startX = rightEdge - lineW;
-                const baselineY = box.y + padY + box.fontSize * 0.85 + index * lineHeight;
-                const parts = glyphRunToColoredPathChunks(
-                    font,
-                    visual.text,
-                    visual.colors,
-                    box.fontSize,
-                    box.letterSpacing || 0,
-                    startX,
-                    baselineY,
-                    defaultFill
-                );
+                const baselineY = originY + padY + box.fontSize * 0.85 + index * lineHeight;
+                const parts = options.separateGlyphs
+                    ? glyphRunToGlyphPaths(
+                          font,
+                          visual.text,
+                          visual.colors,
+                          box.fontSize,
+                          box.letterSpacing || 0,
+                          startX,
+                          baselineY,
+                          defaultFill
+                      )
+                    : glyphRunToColoredPathChunks(
+                          font,
+                          visual.text,
+                          visual.colors,
+                          box.fontSize,
+                          box.letterSpacing || 0,
+                          startX,
+                          baselineY,
+                          defaultFill
+                      );
                 parts.forEach(function (part) {
                     coloredChunks.push(part);
                 });
@@ -535,7 +567,23 @@
                 throw new Error("مسیری از فونت ساخته نشد.");
             }
 
-            // Weld فقط داخل هر رنگ (رنگ‌های مختلف نباید یکی شوند)
+            const paths = [];
+            if (options.separateGlyphs) {
+                coloredChunks.forEach(function (part) {
+                    if (!part.d) {
+                        return;
+                    }
+                    const outD = scaleToCorel ? compactCorelPathD(scalePathDataToCorel(part.d)) : part.d;
+                    if (outD && String(outD).replace(/[\sMZ]/gi, "").length) {
+                        paths.push({
+                            d: outD,
+                            fill: part.fill,
+                            stroke: box.stroke,
+                            strokeWidth: box.strokeWidth || 0,
+                        });
+                    }
+                });
+            } else {
             const byFill = new Map();
             coloredChunks.forEach(function (part) {
                 if (!part.d) {
@@ -547,25 +595,25 @@
                 byFill.get(part.fill).push(part.d);
             });
 
-            const paths = [];
             byFill.forEach(function (ds, fill) {
                 let d = ds.join("");
                 if (box.weld) {
                     d = weldPathData(d);
                 }
-                const scaled = compactCorelPathD(scalePathDataToCorel(d));
-                if (scaled && String(scaled).replace(/[\sMZ]/gi, "").length) {
+                const outD = scaleToCorel ? compactCorelPathD(scalePathDataToCorel(d)) : d;
+                if (outD && String(outD).replace(/[\sMZ]/gi, "").length) {
                     paths.push({
-                        d: scaled,
+                        d: outD,
                         fill: fill,
                         stroke: box.stroke,
                         strokeWidth: box.strokeWidth || 0,
                     });
                 }
             });
+            }
 
             if (!paths.length) {
-                throw new Error("پس از مقیاس‌گذاری، path خالی شد.");
+                throw new Error(scaleToCorel ? "پس از مقیاس‌گذاری، path خالی شد." : "path خالی ساخته شد.");
             }
 
             return { paths: paths };

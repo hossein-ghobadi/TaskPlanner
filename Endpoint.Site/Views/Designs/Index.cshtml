@@ -126,7 +126,7 @@
                         <input id="designFillColor" class="d-none" type="color" value="#111827" />
                         <div id="designFillSpectrum" class="design-spectrum" data-spectrum="fill" aria-label="طیف رنگ پر"></div>
                         <div class="form-text design-control-text">بخشی از متن را انتخاب کنید تا فقط همان بخش رنگ شود.</div>
-                        <div class="form-text design-control-svg-only d-none">رنگ روی شکل‌های پرشدهٔ SVG اعمال می‌شود.</div>
+                        <div class="form-text design-control-svg-only d-none">رنگ روی شکل انتخاب‌شده اعمال می‌شود.</div>
                     </div>
 
                     <div class="mb-3">
@@ -145,11 +145,22 @@
                     </div>
 
                     <div class="design-control-text">
-                    <div class="mb-3 form-check form-switch">
-                        <input class="form-check-input" type="checkbox" role="switch" id="designWeldToggle" />
-                        <label class="form-check-label" for="designWeldToggle">جوشاندن مسیرها (Weld / Unite)</label>
-                        <div class="form-text">خروجی همیشه به‌صورت منحنی (path) است؛ این گزینه حروف هم‌پوشان را یکی می‌کند.</div>
-                        <div class="form-text">در خروجی SVG این باکس به‌صورت مسیر (path) ساخته می‌شود.</div>
+                    <div class="mb-3">
+                        <button class="btn btn-outline-primary w-100" type="button" id="convertToCurvesBtn">
+                            <i class="bi bi-bezier2 me-1"></i>
+                            تبدیل به منحنی
+                        </button>
+                        <div class="form-text">متن به شکل تبدیل می‌شود و دیگر فونت یا ویرایش متن نخواهد داشت.</div>
+                    </div>
+                    </div>
+
+                    <div class="design-control-svg-only d-none">
+                    <div class="mb-3">
+                        <button class="btn btn-outline-primary w-100" type="button" id="breakApartBtn">
+                            <i class="bi bi-bounding-box me-1"></i>
+                            جدا کردن اجزا
+                        </button>
+                        <div class="form-text">هر حرف یا مسیر یک شکل جدا می‌شود تا رنگ و مشخصاتش را جداگانه عوض کنید.</div>
                     </div>
                     </div>
                 </div>
