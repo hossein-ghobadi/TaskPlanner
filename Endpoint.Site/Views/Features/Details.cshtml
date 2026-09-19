@@ -2897,9 +2897,37 @@
         flex: 1;
         min-width: 0;
     }
+    #featureTaskModal .feature-subtask-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+    }
     #featureTaskModal .feature-subtask-assignee {
         font-size: 0.8rem;
         max-width: 16rem;
+        flex: 0 1 16rem;
+    }
+    #featureTaskModal .feature-subtask-creator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.22rem;
+        max-width: 11rem;
+        min-width: 0;
+        font-size: 0.72rem;
+        line-height: 1.2;
+        color: #64748b;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    #featureTaskModal .feature-subtask-creator i {
+        font-size: 0.74rem;
+        color: #94a3b8;
+        flex-shrink: 0;
+    }
+    #featureTaskModal .feature-subtask-creator span {
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     @@media (max-width: 768px) {
         #featureTaskModal .feature-subtask-input-row {
@@ -2907,6 +2935,10 @@
         }
         #featureTaskModal .feature-subtask-assignee {
             max-width: none;
+            flex-basis: 100%;
+        }
+        #featureTaskModal .feature-subtask-creator {
+            max-width: 100%;
         }
     }
     #featureTaskModal .feature-subtask-list {
@@ -3275,6 +3307,14 @@
             return html;
         }
 
+        function formatFeatureSubtaskCreatorHtml(st) {
+            var fullName = (st && st.createdByUserName) ? String(st.createdByUserName) : '';
+            var label = fullName.replace(/\s*-\s*سازنده پروژه\s*$/u, '').replace(/\s+/g, ' ').trim();
+            if (label.length > 22) label = label.slice(0, 21).trim() + '…';
+            if (!label) return '';
+            return '<span class="feature-subtask-creator" title="تعریف‌کننده: ' + escapeHtml(fullName) + '"><i class="bi bi-pencil-square" aria-hidden="true"></i><span>تعریف: ' + escapeHtml(label) + '</span></span>';
+        }
+
         function setFeatureChecklistVisible(show, parentId) {
             var panel = document.getElementById('featureChecklistPanel');
             if (!panel) return;
@@ -3339,9 +3379,12 @@
                     '<input type="checkbox" class="feature-subtask-check" data-subtask-id="' + id + '"' + (completed ? ' checked' : '') + ' />' +
                     '<div class="feature-subtask-item-body">' +
                     '<span class="feature-subtask-title editable' + (completed ? ' completed' : '') + '" data-subtask-id="' + id + '" title="برای ویرایش کلیک کنید">' + title + '</span>' +
+                    '<div class="feature-subtask-meta">' +
                     '<select class="form-select form-select-sm feature-subtask-assignee" data-subtask-id="' + id + '" title="مسئول کارک" aria-label="مسئول کارک">' +
                     buildFeatureAssigneeOptionsHtml(st.assignedUserId || '') +
-                    '</select></div></div>' +
+                    '</select>' +
+                    formatFeatureSubtaskCreatorHtml(st) +
+                    '</div></div></div>' +
                     '<div class="feature-subtask-actions">' +
                     '<button type="button" class="feature-subtask-images-btn" data-subtask-id="' + id + '" title="تصاویر کارک" aria-label="تصاویر کارک"><i class="bi bi-image"></i>' + countBadge + '</button>' +
                     '<button type="button" class="feature-subtask-edit-btn" data-subtask-id="' + id + '" title="ویرایش" aria-label="ویرایش"><i class="bi bi-pencil"></i></button>' +

@@ -9,6 +9,28 @@
     const COREL_UNITS_PER_CM = 1000;
     const PX_TO_CM = 2.54 / CSS_PPI;
     const PX_TO_COREL = PX_TO_CM * COREL_UNITS_PER_CM;
+    // باید با .design-textbox-input padding و border کادر یکی باشد
+    const TEXT_PAD_X = 10;
+    const TEXT_PAD_Y = 6;
+    const TEXT_BORDER = 1;
+
+    function textBoxContentInset() {
+        return {
+            x: TEXT_PAD_X + TEXT_BORDER,
+            y: TEXT_PAD_Y + TEXT_BORDER,
+        };
+    }
+
+    function cssLineBaseline(font, fontSize, padY, lineIndex) {
+        const size = Number(fontSize) || 0;
+        const upm = Math.max(1, Number(font && font.unitsPerEm) || 1000);
+        const ascent = (Number(font && font.ascender) / upm) * size;
+        const descent = Math.abs(Number(font && font.descender) / upm) * size;
+        const lineHeight = size * 1.35;
+        const extra = lineHeight - (ascent + descent);
+        const halfLeading = extra / 2;
+        return padY + halfLeading + ascent + (Number(lineIndex) || 0) * lineHeight;
+    }
 
     const FONT_URLS = {
         Vazir: "/lib/vazir-font/dist/Vazir-Regular.ttf",
@@ -681,9 +703,20 @@
         );
     }
 
+    function boundsOverlap(a, b, pad) {
+        pad = Number(pad) || 0;
+        return (
+            a.x < b.x + b.width + pad &&
+            a.x + a.width > b.x - pad &&
+            a.y < b.y + b.height + pad &&
+            a.y + a.height > b.y - pad
+        );
+    }
+
     /**
      * روی یک گلیف: حفره با بدنه می‌ماند.
      * کانتور کوچک بالا/پایین یا داخل حرف نقطه است؛ تکهٔ وصل کناری بدنه است.
+     * اگر چند حرف در یک path باشند، موقعیت نسبت به نزدیک‌ترین حرف سنجیده می‌شود.
      */
     function splitGlyphContours(d) {
         const subs = splitPathSubpaths(d);
@@ -734,6 +767,60 @@
                 item.winding !== 0 && (item.winding >= 0 ? 1 : -1) !== bodySign;
         });
 
+        const largeBodies = items.filter(function (item) {
+            if (item.parent >= 0) {
+                const parent = items[item.parent];
+                if (contourArea(item.bounds) < contourArea(parent.bounds) * 0.55) {
+                    return false;
+                }
+            }
+            return contourArea(item.bounds) >= maxArea * 0.1;
+        });
+        const multiLetter = largeBodies.length >= 2;
+
+        function nearestLetter(item) {
+            if (!multiLetter) {
+                return host;
+            }
+            const cx = item.bounds.x + item.bounds.width / 2;
+            const cy = item.bounds.y + item.bounds.height / 2;
+            let best = largeBodies[0] || host;
+            let bestScore = Infinity;
+            largeBodies.forEach(function (cand) {
+                if (cand === item) {
+                    return;
+                }
+                if (
+                    containsPoint(cand.bounds, cx, cy, 0) ||
+                    fullyInsideBounds(item.bounds, cand.bounds, 0.6)
+                ) {
+                    best = cand;
+                    bestScore = -1;
+                    return;
+                }
+                const dx = Math.max(
+                    0,
+                    Math.max(
+                        item.bounds.x - (cand.bounds.x + cand.bounds.width),
+                        cand.bounds.x - (item.bounds.x + item.bounds.width)
+                    )
+                );
+                const dy = Math.max(
+                    0,
+                    Math.max(
+                        item.bounds.y - (cand.bounds.y + cand.bounds.height),
+                        cand.bounds.y - (item.bounds.y + item.bounds.height)
+                    )
+                );
+                const score = dx + dy * 0.35;
+                if (score < bestScore) {
+                    best = cand;
+                    bestScore = score;
+                }
+            });
+            return best;
+        }
+
         items.forEach(function (item) {
             const area = contourArea(item.bounds);
             const parent = item.parent >= 0 ? items[item.parent] : null;
@@ -746,24 +833,30 @@
                 item.kind = innerNuqta ? "dot" : "hole";
                 return;
             }
+            const ref = nearestLetter(item);
+            const refArea = contourArea(ref.bounds);
             const small =
                 !item.oppositeWinding &&
-                area < maxArea * 0.28 &&
-                (isCompactMark(item.bounds) || area < maxArea * 0.12);
+                area < refArea * 0.28 &&
+                (isCompactMark(item.bounds) || area < refArea * 0.12);
             if (!small) {
                 item.kind = "body";
                 return;
             }
             const cx = item.bounds.x + item.bounds.width / 2;
             const cy = item.bounds.y + item.bounds.height / 2;
-            const top = host.bounds.y + host.bounds.height * 0.2;
-            const bot = host.bounds.y + host.bounds.height * 0.8;
-            const px = (cx - host.bounds.x) / Math.max(0.0001, host.bounds.width);
+            const top = ref.bounds.y + ref.bounds.height * 0.2;
+            const bot = ref.bounds.y + ref.bounds.height * 0.8;
+            const px = (cx - ref.bounds.x) / Math.max(0.0001, ref.bounds.width);
+            const attachedToLetter =
+                boundsOverlap(item.bounds, ref.bounds, Math.max(0.8, ref.bounds.width * 0.04)) &&
+                item.bounds.y < ref.bounds.y + ref.bounds.height * 0.92 &&
+                item.bounds.y + item.bounds.height > ref.bounds.y + ref.bounds.height * 0.08;
             const besideJoin =
                 cy >= top &&
                 cy <= bot &&
-                (px < 0.14 || px > 0.86 || cx < host.bounds.x || cx > host.bounds.x + host.bounds.width);
-            if (besideJoin) {
+                (px < 0.18 || px > 0.82 || cx < ref.bounds.x || cx > ref.bounds.x + ref.bounds.width);
+            if (attachedToLetter || besideJoin) {
                 item.kind = "body";
                 return;
             }
@@ -984,9 +1077,9 @@
             }
 
             const lines = raw.split("\n");
-            const lineHeight = box.fontSize * 1.35;
-            const padX = 10;
-            const padY = 8;
+            const inset = textBoxContentInset();
+            const padX = inset.x;
+            const padY = inset.y;
             const defaultFill = normalizeHexColor(box.fill || "#000000");
             const charFills = Array.isArray(box.charFills) ? box.charFills : null;
             const originX = originBox ? 0 : Number(box.x) || 0;
@@ -1026,7 +1119,7 @@
                 const visual = visuals[index];
                 const lineW = measuredWidths[index] || 0;
                 const startX = rightEdge - lineW;
-                const baselineY = originY + padY + box.fontSize * 0.85 + index * lineHeight;
+                const baselineY = originY + cssLineBaseline(font, box.fontSize, padY, index);
                 const content = line.length ? line : " ";
                 const parts = options.joiningClusters
                     ? glyphLineToJoiningClusterPaths(
@@ -1156,7 +1249,7 @@
                     lines.push("    ." + className + " {fill:" + hex + "}");
                 });
                 strokes.forEach(function (item) {
-                    const sw = Math.max(0.01, item.width * PX_TO_COREL);
+                    const sw = Math.max(0.01, item.width * 2 * PX_TO_COREL);
                     lines.push(
                         "    ." +
                             item.className +
@@ -1164,7 +1257,7 @@
                             item.hex +
                             ";stroke-width:" +
                             Math.round(sw * 100) / 100 +
-                            "}"
+                            ";paint-order:stroke fill}"
                     );
                 });
                 return lines.join("\n");
@@ -1220,6 +1313,7 @@
         buildCorelSvgDocument: buildCorelSvgDocument,
         pxToCorelUnits: pxToCorelUnits,
         PX_TO_CM: PX_TO_CM,
+        textBoxContentInset: textBoxContentInset,
         normalizeHexColor: normalizeHexColor,
         hasArabicScript: hasArabicScript,
         toVisualRtlRun: toVisualRtlRun,

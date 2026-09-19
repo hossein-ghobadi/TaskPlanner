@@ -963,8 +963,37 @@
     flex: 1;
     min-width: 0;
     }
+    #editTaskModal .subtask-meta-board {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    }
     #editTaskModal .subtask-item-body-board .subtask-assignee-wrap {
-    max-width: 13rem;
+    max-width: 11.5rem;
+    flex: 0 1 11.5rem;
+    }
+    #editTaskModal .subtask-creator-board {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.22rem;
+    max-width: 11rem;
+    min-width: 0;
+    padding: 0.12rem 0.15rem;
+    font-size: 0.72rem;
+    line-height: 1.2;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    }
+    #editTaskModal .subtask-creator-board i {
+    font-size: 0.74rem;
+    color: #94a3b8;
+    flex-shrink: 0;
+    }
+    #editTaskModal .subtask-creator-board span {
+    overflow: hidden;
+    text-overflow: ellipsis;
     }
     #editTaskModal .subtask-item-main-board input[type="checkbox"] {
     width: 1.05rem;
@@ -1081,6 +1110,10 @@
     #editTaskModal .subtask-item-body-board .subtask-assignee-wrap {
     max-width: none;
     width: 100%;
+    flex-basis: 100%;
+    }
+    #editTaskModal .subtask-creator-board {
+    max-width: 100%;
     }
     #editTaskModal .subtask-input-actions-board {
     flex-direction: column;
@@ -4919,6 +4952,13 @@
             return label;
         }
 
+        function formatSubtaskCreatorHtml(st) {
+            const fullName = (st && st.createdByUserName) ? String(st.createdByUserName) : '';
+            const label = shortenAssigneeLabel(fullName);
+            if (!label) return '';
+            return `<span class="subtask-creator-board" title="تعریف‌کننده: ${escapeHtml(fullName)}"><i class="bi bi-pencil-square" aria-hidden="true"></i><span>تعریف: ${escapeHtml(label)}</span></span>`;
+        }
+
         function buildAssigneeOptionsHtml(users, selectedId) {
             let html = '<option value="">بدون مسئول</option>';
             (users || []).forEach(user => {
@@ -6065,17 +6105,21 @@
                 const assigneeOptions = buildAssigneeOptionsHtml(
                     (boardSubtaskUsers && boardSubtaskUsers.length) ? boardSubtaskUsers : boardProjectMembers,
                     st.assignedUserId || '');
+                const creatorHtml = formatSubtaskCreatorHtml(st);
                 return `
                     <li class="subtask-item-board" data-subtask-id="${id}">
                         <div class="subtask-item-main-board">
                             <input type="checkbox" class="board-subtask-check" data-subtask-id="${id}" ${completed ? 'checked' : ''} />
                             <div class="subtask-item-body-board">
                                 <span class="subtask-title-board editable ${completed ? 'completed' : ''}" data-subtask-id="${id}" title="برای ویرایش کلیک کنید">${title}</span>
-                                <div class="subtask-assignee-wrap">
-                                    <i class="bi bi-person"></i>
-                                    <select class="form-select form-select-sm board-subtask-assignee" data-subtask-id="${id}" title="مسئول کارک" aria-label="مسئول کارک">
-                                        ${assigneeOptions}
-                                    </select>
+                                <div class="subtask-meta-board">
+                                    <div class="subtask-assignee-wrap">
+                                        <i class="bi bi-person"></i>
+                                        <select class="form-select form-select-sm board-subtask-assignee" data-subtask-id="${id}" title="مسئول کارک" aria-label="مسئول کارک">
+                                            ${assigneeOptions}
+                                        </select>
+                                    </div>
+                                    ${creatorHtml}
                                 </div>
                             </div>
                         </div>

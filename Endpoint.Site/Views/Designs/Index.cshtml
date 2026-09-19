@@ -6,171 +6,182 @@
 <link rel="stylesheet" href="~/css/designs.css" asp-append-version="true" />
 
 <div class="design-page">
-    <header class="design-header">
-        <div>
-            <h1 class="h4 mb-1">صفحه طراحی</h1>
-            <p class="text-muted mb-0">
-                با «افزودن تکست باکس» هر تعداد متن که می‌خواهید بسازید؛ روی بوم جابه‌جا کنید، انتخاب کنید و استایل بدهید.
-            </p>
+    <header class="design-toolbar">
+        <div class="design-toolbar-brand">
+            <span class="design-toolbar-mark" aria-hidden="true"><i class="bi bi-vector-pen"></i></span>
+            <div>
+                <h1>طراحی</h1>
+                <p>متن، منحنی و خروجی SVG</p>
+            </div>
         </div>
-        <div class="design-actions">
-            <button class="btn btn-success" type="button" id="addTextBoxBtn">
-                <i class="bi bi-plus-lg me-1"></i>
-                افزودن تکست باکس
-            </button>
-            <button class="btn btn-outline-primary" type="button" id="uploadSvgBtn">
-                <i class="bi bi-upload me-1"></i>
-                آپلود SVG
-            </button>
-            <input id="designSvgFile" class="d-none" type="file" accept=".svg,image/svg+xml" />
-            <button class="btn btn-outline-danger" type="button" id="deleteTextBoxBtn" disabled>
-                <i class="bi bi-trash me-1"></i>
-                حذف انتخاب‌شده
-            </button>
-            <button class="btn btn-outline-secondary" type="button" id="clearDesignBtn">
-                <i class="bi bi-x-circle me-1"></i>
-                پاکسازی همه
-            </button>
-            <button class="btn btn-outline-info" type="button" id="measureToolBtn" aria-pressed="false" title="اندازه‌گیری فاصله بین دو نقطه">
-                <i class="bi bi-rulers me-1"></i>
-                اندازه‌گیر
-            </button>
-            <button class="btn btn-outline-dark" type="button" id="panToolBtn" aria-pressed="false" title="جابه‌جایی بوم با کشیدن ماوس">
-                <i class="bi bi-hand-index me-1"></i>
-                جابه‌جایی
-            </button>
-            <button class="btn btn-outline-secondary d-none" type="button" id="clearMeasureBtn" title="پاک کردن اندازه‌گیری">
-                <i class="bi bi-eraser me-1"></i>
-                پاک کردن اندازه
-            </button>
-            <div class="design-unit-select input-group input-group-sm">
-                <span class="input-group-text">واحد</span>
-                <select id="designUnitSelect" class="form-select" title="واحد اندازه‌گیری" aria-label="واحد اندازه‌گیری">
-                    <option value="px" selected>پیکسل (px)</option>
-                    <option value="mm">میلی‌متر (mm)</option>
-                    <option value="cm">سانتی‌متر (cm)</option>
-                    <option value="in">اینچ (in)</option>
-                </select>
-            </div>
-            <div class="design-zoom-group btn-group" role="group" aria-label="زوم بوم">
-                <button type="button" class="btn btn-outline-dark" id="zoomOutBtn" title="کوچک‌نمایی">−</button>
-                <button type="button" class="btn btn-outline-dark" id="zoomResetBtn" title="بازگشت به ۱۰۰٪">
-                    <span id="zoomLevelLabel">۱۰۰٪</span>
+
+        <div class="design-toolbar-groups">
+            <div class="design-tool-group" role="group" aria-label="افزودن">
+                <button class="design-tool-btn is-accent" type="button" id="addTextBoxBtn" title="افزودن تکست باکس">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>متن</span>
                 </button>
-                <button type="button" class="btn btn-outline-dark" id="zoomInBtn" title="بزرگ‌نمایی">+</button>
+                <button class="design-tool-btn" type="button" id="uploadSvgBtn" title="آپلود SVG">
+                    <i class="bi bi-upload"></i>
+                    <span>SVG</span>
+                </button>
+                <input id="designSvgFile" class="d-none" type="file" accept=".svg,image/svg+xml" />
             </div>
-            <button class="btn btn-primary" type="button" id="exportSvgBtn">
-                <i class="bi bi-filetype-svg me-1"></i>
-                خروجی SVG
-            </button>
+
+            <div class="design-tool-group" role="group" aria-label="ابزار بوم">
+                <button class="design-tool-btn" type="button" id="measureToolBtn" aria-pressed="false" title="اندازه‌گیری فاصله بین دو نقطه">
+                    <i class="bi bi-rulers"></i>
+                    <span>اندازه</span>
+                </button>
+                <button class="design-tool-btn d-none" type="button" id="clearMeasureBtn" title="پاک کردن اندازه‌گیری">
+                    <i class="bi bi-eraser"></i>
+                    <span>پاک اندازه</span>
+                </button>
+            </div>
+
+            <div class="design-tool-group" role="group" aria-label="ویرایش">
+                <button class="design-tool-btn is-danger" type="button" id="deleteTextBoxBtn" disabled title="حذف انتخاب‌شده">
+                    <i class="bi bi-trash"></i>
+                    <span>حذف</span>
+                </button>
+                <button class="design-tool-btn" type="button" id="clearDesignBtn" title="پاکسازی همه">
+                    <i class="bi bi-x-circle"></i>
+                    <span>پاکسازی</span>
+                </button>
+            </div>
+
+            <div class="design-tool-group design-tool-group-view" role="group" aria-label="نمایش">
+                <label class="design-unit-field">
+                    <span>واحد</span>
+                    <select id="designUnitSelect" title="واحد اندازه‌گیری" aria-label="واحد اندازه‌گیری">
+                        <option value="px">px</option>
+                        <option value="mm">mm</option>
+                        <option value="cm" selected>cm</option>
+                        <option value="m">m</option>
+                        <option value="in">in</option>
+                    </select>
+                </label>
+                <div class="design-zoom-group" role="group" aria-label="زوم بوم">
+                    <button type="button" id="zoomOutBtn" title="کوچک‌نمایی">−</button>
+                    <button type="button" id="zoomResetBtn" title="بازگشت به ۱۰۰٪">
+                        <span id="zoomLevelLabel">۱۰۰٪</span>
+                    </button>
+                    <button type="button" id="zoomInBtn" title="بزرگ‌نمایی">+</button>
+                </div>
+            </div>
+
+            <div class="design-tool-group" role="group" aria-label="خروجی">
+                <button class="design-tool-btn is-primary" type="button" id="exportSvgBtn" title="خروجی SVG">
+                    <i class="bi bi-download"></i>
+                    <span>خروجی</span>
+                </button>
+            </div>
         </div>
     </header>
 
     <div class="design-workspace">
-        <section class="design-panel card">
-            <div class="card-body">
-                <h2 class="h6 mb-2">آیتم‌های بوم</h2>
-                <div id="designBoxList" class="design-box-list mb-3" aria-label="فهرست آیتم‌های بوم"></div>
+        <aside class="design-panel">
+            <section class="design-panel-section">
+                <h2>لایه‌ها</h2>
+                <div id="designBoxList" class="design-box-list" aria-label="فهرست آیتم‌های بوم"></div>
+            </section>
 
-                <h2 class="h6 mb-3">تنظیمات انتخاب‌شده</h2>
-                <div id="selectionHint" class="small text-muted mb-3">یک تکست باکس انتخاب کنید یا جدید بسازید.</div>
+            <section class="design-panel-section">
+                <h2>ویژگی‌ها</h2>
+                <div id="selectionHint" class="design-hint">یک لایه انتخاب کنید یا متن جدید بسازید.</div>
 
                 <div id="designControls" class="design-controls is-disabled">
                     <div class="design-control-text">
-                    <div class="mb-3">
-                        <label class="form-label small" for="designFontSelect">فونت</label>
-                        <select id="designFontSelect" class="form-select form-select-sm">
-                            <option value="Vazir" selected>وزیر (Vazir)</option>
-                            <option value="Vazirmatn">وزیرمتن (Vazirmatn)</option>
-                            <option value="Samim">صمیم (Samim)</option>
-                            <option value="Sahel">ساحل (Sahel)</option>
-                            <option value="Tanha">تنها (Tanha)</option>
-                            <option value="Tahoma">Tahoma</option>
-                            <option value="Arial">Arial</option>
-                            <option value="Georgia">Georgia</option>
-                            <option value="Times New Roman">Times New Roman</option>
-                            <option value="Courier New">Courier New</option>
-                            <option value="Segoe UI">Segoe UI</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small" for="designFontFile">آپلود فونت سفارشی (.ttf / .otf / .woff)</label>
-                        <input id="designFontFile" class="form-control form-control-sm" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" />
-                        <div class="form-text">فونت آپلودشده به لیست اضافه می‌شود.</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                            <label class="form-label small mb-0" for="designFontSizeInput">اندازه فونت</label>
-                            <span class="small text-muted" id="designFontSizeValue" aria-live="polite">48</span>
+                        <div class="design-field">
+                            <label class="design-label" for="designFontSelect">فونت</label>
+                            <select id="designFontSelect" class="design-select">
+                                <option value="Vazir" selected>وزیر (Vazir)</option>
+                                <option value="Vazirmatn">وزیرمتن (Vazirmatn)</option>
+                                <option value="Samim">صمیم (Samim)</option>
+                                <option value="Sahel">ساحل (Sahel)</option>
+                                <option value="Tanha">تنها (Tanha)</option>
+                                <option value="Tahoma">Tahoma</option>
+                                <option value="Arial">Arial</option>
+                                <option value="Georgia">Georgia</option>
+                                <option value="Times New Roman">Times New Roman</option>
+                                <option value="Courier New">Courier New</option>
+                                <option value="Segoe UI">Segoe UI</option>
+                            </select>
                         </div>
-                        <input id="designFontSizeInput" class="form-range" type="range" min="12" max="240" step="1" value="48" />
-                    </div>
 
-                    <div class="mb-3">
-                        <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                            <label class="form-label small mb-0" for="designLetterSpacingInput">فاصله حروف</label>
-                            <span class="small text-muted" id="designLetterSpacingValue" aria-live="polite">0</span>
+                        <div class="design-field">
+                            <label class="design-label" for="designFontFile">فونت سفارشی</label>
+                            <input id="designFontFile" class="design-file" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" />
+                            <p class="design-help">TTF، OTF یا WOFF را انتخاب کنید.</p>
                         </div>
-                        <input id="designLetterSpacingInput" class="form-range" type="range" min="-20" max="80" step="1" value="0" />
-                    </div>
+
+                        <div class="design-field">
+                            <div class="design-label-row">
+                                <label class="design-label" for="designFontSizeInput">اندازه</label>
+                                <span class="design-value" id="designFontSizeValue" aria-live="polite">48</span>
+                            </div>
+                            <input id="designFontSizeInput" class="design-range" type="range" min="12" max="240" step="1" value="48" />
+                        </div>
                     </div>
 
                     <div class="design-control-paint">
-                    <div class="mb-3">
-                        <label class="form-label small" for="designFillColor">رنگ پر</label>
-                        <input id="designFillColor" class="d-none" type="color" value="#111827" />
-                        <div id="designFillSpectrum" class="design-spectrum" data-spectrum="fill" aria-label="طیف رنگ پر"></div>
-                        <div class="form-text design-control-text">بخشی از متن را انتخاب کنید تا فقط همان بخش رنگ شود.</div>
-                        <div class="form-text design-control-svg-only d-none">رنگ روی شکل انتخاب‌شده اعمال می‌شود.</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small" for="designStrokeColor">رنگ حاشیه</label>
-                        <input id="designStrokeColor" class="d-none" type="color" value="#111827" />
-                        <div id="designStrokeSpectrum" class="design-spectrum" data-spectrum="stroke" aria-label="طیف رنگ حاشیه"></div>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                            <label class="form-label small mb-0" for="designStrokeWidthInput">ضخامت حاشیه</label>
-                            <span class="small text-muted" id="designStrokeWidthValue" aria-live="polite">0</span>
+                        <div class="design-field">
+                            <label class="design-label" for="designFillColor">رنگ پر</label>
+                            <input id="designFillColor" class="d-none" type="color" value="#111827" />
+                            <div id="designFillSpectrum" class="design-spectrum" data-spectrum="fill" aria-label="طیف رنگ پر"></div>
+                            <p class="design-help design-control-text">بخشی از متن را انتخاب کنید تا فقط همان بخش رنگ شود.</p>
+                            <p class="design-help design-control-svg-only d-none">رنگ روی شکل انتخاب‌شده اعمال می‌شود.</p>
                         </div>
-                        <input id="designStrokeWidthInput" class="form-range" type="range" min="0" max="12" step="0.5" value="0" />
-                    </div>
+
+                        <div class="design-field">
+                            <label class="design-label" for="designStrokeColor">رنگ حاشیه</label>
+                            <input id="designStrokeColor" class="d-none" type="color" value="#111827" />
+                            <div id="designStrokeSpectrum" class="design-spectrum" data-spectrum="stroke" aria-label="طیف رنگ حاشیه"></div>
+                        </div>
+
+                        <div class="design-field">
+                            <div class="design-label-row">
+                                <label class="design-label" for="designStrokeWidthInput">ضخامت حاشیه</label>
+                                <span class="design-value" id="designStrokeWidthValue" aria-live="polite">0</span>
+                            </div>
+                            <input id="designStrokeWidthInput" class="design-range" type="range" min="0" max="12" step="0.5" value="0" />
+                            <p class="design-help">حاشیه فقط دور شکل اضافه می‌شود و داخل رنگ پر نمی‌رود.</p>
+                        </div>
                     </div>
 
                     <div class="design-control-text">
-                    <div class="mb-3">
-                        <button class="btn btn-outline-primary w-100" type="button" id="convertToCurvesBtn">
-                            <i class="bi bi-bezier2 me-1"></i>
-                            تبدیل به منحنی
-                        </button>
-                        <div class="form-text">متن به شکل تبدیل می‌شود و دیگر فونت یا ویرایش متن نخواهد داشت.</div>
-                    </div>
+                        <div class="design-field">
+                            <button class="design-action-btn" type="button" id="convertToCurvesBtn">
+                                <i class="bi bi-bezier2"></i>
+                                تبدیل به منحنی
+                            </button>
+                            <p class="design-help">بعد از تبدیل، فونت و ویرایش متن در دسترس نیست.</p>
+                        </div>
                     </div>
 
                     <div class="design-control-svg-only d-none">
-                    <div class="mb-3">
-                        <button class="btn btn-outline-primary w-100" type="button" id="breakApartBtn">
-                            <i class="bi bi-bounding-box me-1"></i>
-                            جدا کردن اجزا
-                        </button>
-                        <div class="form-text">حروف به‌هم‌پیوسته یک شکل می‌مانند و فقط نقطه‌ها جدا می‌شوند. حفرهٔ داخل حرف با بدنه می‌ماند.</div>
-                    </div>
+                        <div class="design-field">
+                            <button class="design-action-btn" type="button" id="breakApartBtn">
+                                <i class="bi bi-bounding-box"></i>
+                                جدا کردن اجزا
+                            </button>
+                            <p class="design-help">حروف به‌هم‌پیوسته یک شکل می‌مانند و فقط نقطه‌ها جدا می‌شوند.</p>
+                        </div>
                     </div>
                 </div>
+            </section>
 
-                <div class="mb-0">
-                    <label class="form-label small" for="designFileName">نام فایل خروجی</label>
-                    <input id="designFileName" class="form-control form-control-sm" type="text" value="design" maxlength="80" />
+            <section class="design-panel-section design-panel-export">
+                <h2>خروجی</h2>
+                <div class="design-field mb-0">
+                    <label class="design-label" for="designFileName">نام فایل</label>
+                    <input id="designFileName" class="design-input" type="text" value="design" maxlength="80" />
                 </div>
-            </div>
-        </section>
+            </section>
+        </aside>
 
-        <section class="design-canvas-wrap card">
-            <div class="card-body p-0 position-relative">
+        <section class="design-canvas-wrap">
+            <div class="design-canvas-body">
                 <div class="design-board" id="designBoard">
                     <div class="design-ruler-corner" aria-hidden="true"></div>
                     <canvas id="designRulerH" class="design-ruler design-ruler-h" width="1200" height="24" aria-label="خط‌کش افقی"></canvas>
@@ -191,13 +202,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="design-zoom-toolbar btn-group shadow-sm" role="group" aria-label="زوم سریع">
-                    <button type="button" class="btn btn-sm btn-light border" id="zoomOutFab" title="کوچک‌نمایی">−</button>
-                    <button type="button" class="btn btn-sm btn-light border" id="zoomResetFab" title="۱۰۰٪">۱۰۰٪</button>
-                    <button type="button" class="btn btn-sm btn-light border" id="zoomInFab" title="بزرگ‌نمایی">+</button>
+                <div class="design-zoom-toolbar" role="group" aria-label="زوم سریع">
+                    <button type="button" id="zoomOutFab" title="کوچک‌نمایی">−</button>
+                    <button type="button" id="zoomResetFab" title="۱۰۰٪">۱۰۰٪</button>
+                    <button type="button" id="zoomInFab" title="بزرگ‌نمایی">+</button>
                 </div>
-                <div id="designMeasureInfo" class="design-measure-info small d-none" aria-live="polite"></div>
-                <div id="designStatus" class="design-status small text-muted" aria-live="polite"></div>
+                <div id="designMeasureInfo" class="design-measure-info d-none" aria-live="polite"></div>
+                <div id="designStatus" class="design-status" aria-live="polite"></div>
             </div>
         </section>
     </div>

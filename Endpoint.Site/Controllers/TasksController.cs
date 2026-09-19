@@ -2191,6 +2191,11 @@ namespace Endpoint.Site.Controllers
                     assignedUserName = t.AssignedUser != null
                         ? (t.AssignedUser.FullName ?? t.AssignedUser.UserName)
                         : null,
+                    createdByUserId = t.CreatedByUserId,
+                    createdByUserName = _context.Users
+                        .Where(u => u.Id == t.CreatedByUserId)
+                        .Select(u => u.FullName ?? u.UserName)
+                        .FirstOrDefault(),
                     imageCount = t.Attachments.Count(a => a.FileType == "Image")
                 })
                 .ToListAsync();
