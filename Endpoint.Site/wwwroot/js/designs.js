@@ -772,7 +772,7 @@
         }
         if (svgMode) {
             els.selectionHint.textContent = box.convertedFromText
-                ? "این آیتم شکل است (از متن تبدیل شده). با «جدا کردن اجزا» هر حرف را جدا کنید و رنگش را عوض کنید."
+                ? "این آیتم شکل است (از متن تبدیل شده). با «جدا کردن اجزا» نقطه‌ها را از بدنهٔ به‌هم‌پیوسته جدا کنید."
                 : "SVG انتخاب‌شده: رنگ پر/حاشیه را از طیف عوض کنید. نقطه آبی = جابه‌جایی، دستگیره‌ها = تغییر اندازه.";
             suppressPanelSync = true;
             els.fill.value = normalizeFillHex(box.fill || box.originalFill || "#111827");
@@ -2637,7 +2637,11 @@
                     strokeWidth > 0
                         ? ` stroke="${escapeXml(item.stroke || "#000000")}" stroke-width="${strokeWidth}"`
                         : ` stroke="none"`;
-                return `<path d="${item.d}" fill="${fill}" fill-rule="nonzero"${strokeAttrs}/>`;
+                return (
+                    `<path d="${item.d}" fill="${fill}" fill-rule="nonzero"${strokeAttrs}` +
+                    (item.role ? ` data-role="${escapeXml(item.role)}"` : "") +
+                    `/>`
+                );
             })
             .join("");
         return {
@@ -2762,7 +2766,7 @@
         }
         setStatus("در حال تبدیل به منحنی…");
 
-        textBoxToPaths(box, { scaleToCorel: false, origin: "box", separateGlyphs: true })
+        textBoxToPaths(box, { scaleToCorel: false, origin: "box", joiningClusters: true })
             .then(function (result) {
                 const paths = usableCurvePaths(result);
                 if (!paths.length) {
@@ -2846,6 +2850,39 @@
         return Array.from(svg.querySelectorAll(svgShapeSelector()));
     }
 
+    function explodeShapeElements(svg) {
+        const expanded = [];
+        const splitter =
+            window.DesignVector && typeof DesignVector.splitGlyphContours === "function"
+                ? DesignVector.splitGlyphContours
+                : null;
+        listSvgShapeElements(svg).forEach(function (el) {
+            const tag = String(el.tagName || "").toLowerCase().replace(/^.*:/, "");
+            if (tag !== "path") {
+                expanded.push(el);
+                return;
+            }
+            const d = el.getAttribute("d") || "";
+            const parts = splitter ? splitter(d) : [{ d: d, role: "body" }];
+            if (!parts || parts.length <= 1) {
+                expanded.push(el);
+                return;
+            }
+            parts.forEach(function (part) {
+                if (!part || !part.d) {
+                    return;
+                }
+                const clone = el.cloneNode(true);
+                clone.setAttribute("d", part.d);
+                if (part.role) {
+                    clone.setAttribute("data-role", part.role);
+                }
+                expanded.push(clone);
+            });
+        });
+        return expanded;
+    }
+
     function countSvgShapes(box) {
         if (!box) {
             return 0;
@@ -2853,7 +2890,7 @@
         if (!box.liveSvg && isSvgItem(box)) {
             refreshSvgPaint(box);
         }
-        return listSvgShapeElements(box.liveSvg).length;
+        return explodeShapeElements(box.liveSvg).length;
     }
 
     function updateBreakApartButton(box) {
@@ -2878,6 +2915,12 @@
     }
 
     function shapeBBoxInSvg(svg, el) {
+        if (el && String(el.tagName || "").toLowerCase().replace(/^.*:/, "") === "path") {
+            const fromD = boundsFromPathData(el.getAttribute("d") || "");
+            if (fromD && fromD.width > 0.05 && fromD.height > 0.05) {
+                return fromD;
+            }
+        }
         const transforms = ancestorTransformList(el, svg);
         if (!transforms.length && typeof el.getBBox === "function") {
             try {
@@ -2937,6 +2980,14 @@
         const parentVb = parentBox.viewBox || { x: 0, y: 0, width: parentBox.width, height: parentBox.height };
         const scaleX = parentBox.width / Math.max(0.0001, parentVb.width);
         const scaleY = parentBox.height / Math.max(0.0001, parentVb.height);
+        let partW = frame.width * scaleX;
+        let partH = frame.height * scaleY;
+        const minSide = 8;
+        if (partW < minSide || partH < minSide) {
+            const grow = minSide / Math.max(0.0001, Math.min(partW, partH));
+            partW *= grow;
+            partH *= grow;
+        }
         const inner = extractShapeMarkup(svg, el);
         const markup =
             `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${frame.x} ${frame.y} ${frame.width} ${frame.height}" overflow="visible">` +
@@ -2950,16 +3001,17 @@
         const stroke = isPaintNone(strokeAttr)
             ? normalizeFillHex(parentBox.stroke || "#111827")
             : cssColorToHex(strokeAttr);
-        const baseName = (parentBox.name || "شکل").replace(/\s+\d+$/, "");
+        const baseName = (parentBox.name || "شکل").replace(/\s+\d+$/, "").replace(/\s+نقطه$/, "");
+        const isDot = el.getAttribute("data-role") === "dot";
         return {
             id: nextId++,
             kind: "svg",
             convertedFromText: !!parentBox.convertedFromText,
-            name: total > 1 ? baseName + " " + (index + 1) : baseName,
+            name: isDot ? baseName + " نقطه" : total > 1 ? baseName + " " + (index + 1) : baseName,
             x: parentBox.x + (frame.x - parentVb.x) * scaleX,
             y: parentBox.y + (frame.y - parentVb.y) * scaleY,
-            width: Math.max(8, frame.width * scaleX),
-            height: Math.max(8, frame.height * scaleY),
+            width: partW,
+            height: partH,
             viewBox: frame,
             svgMarkup: markup,
             svgInner: inner,
@@ -2989,7 +3041,7 @@
             setStatus("شکل قابل جداسازی نیست.");
             return;
         }
-        const shapes = listSvgShapeElements(svg);
+        const shapes = explodeShapeElements(svg);
         if (shapes.length < 2) {
             setStatus("این شکل فقط یک جزء دارد.");
             return;

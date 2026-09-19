@@ -2,10 +2,7 @@
     Layout = "/Views/Shared/_Layout.cshtml";
 }
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/samim-font@v4.0.5/dist/font-face.css" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/sahel-font@v3.4.0/dist/font-face.css" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/tanha-font@v0.10/dist/font-face.css" />
+<link rel="stylesheet" href="~/css/designs-fonts.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/designs.css" asp-append-version="true" />
 
 <div class="design-page">
@@ -160,7 +157,7 @@
                             <i class="bi bi-bounding-box me-1"></i>
                             جدا کردن اجزا
                         </button>
-                        <div class="form-text">هر حرف یا مسیر یک شکل جدا می‌شود تا رنگ و مشخصاتش را جداگانه عوض کنید.</div>
+                        <div class="form-text">حروف به‌هم‌پیوسته یک شکل می‌مانند و فقط نقطه‌ها جدا می‌شوند. حفرهٔ داخل حرف با بدنه می‌ماند.</div>
                     </div>
                     </div>
                 </div>
@@ -207,9 +204,9 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/opentype.js@1.3.4/dist/opentype.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/paper@0.12.17/dist/paper-full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/arabic-reshaper@1.1.0/index.js"></script>
+    <script src="~/lib/opentype.js/opentype.min.js" asp-append-version="true"></script>
+    <script src="~/lib/paper/paper-full.min.js" asp-append-version="true"></script>
+    <script src="~/lib/arabic-reshaper/arabic-reshaper.js" asp-append-version="true"></script>
     <script src="~/js/designs-vector.js" asp-append-version="true"></script>
     <script src="~/js/designs.js" asp-append-version="true"></script>
 }

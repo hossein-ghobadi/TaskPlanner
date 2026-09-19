@@ -12,11 +12,10 @@
 
     const FONT_URLS = {
         Vazir: "/lib/vazir-font/dist/Vazir-Regular.ttf",
-        Vazirmatn:
-            "https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/ttf/Vazirmatn-Regular.ttf",
-        Samim: "https://cdn.jsdelivr.net/gh/rastikerdar/samim-font@v4.0.5/dist/Samim.ttf",
-        Sahel: "https://cdn.jsdelivr.net/gh/rastikerdar/sahel-font@v3.4.0/dist/Sahel.ttf",
-        Tanha: "https://cdn.jsdelivr.net/gh/rastikerdar/tanha-font@v0.10/dist/Tanha.ttf",
+        Vazirmatn: "/lib/vazirmatn/fonts/ttf/Vazirmatn-Regular.ttf",
+        Samim: "/lib/samim-font/Samim.ttf",
+        Sahel: "/lib/sahel-font/Sahel.ttf",
+        Tanha: "/lib/tanha-font/Tanha.ttf",
     };
 
     const fontCache = new Map();
@@ -156,7 +155,187 @@
         return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text || "");
     }
 
-    /** شکل‌دهی حروف عربی/فارسی بدون معکوس‌کردن */
+    function lastLetterJoinType(text) {
+        const chars = Array.from(String(text || ""));
+        for (let i = chars.length - 1; i >= 0; i--) {
+            const t = arabicJoinType(chars[i]);
+            if (t !== "T") {
+                return t;
+            }
+        }
+        return "U";
+    }
+
+    /**
+     * R = فقط از راست وصل می‌شود (ا د ر و ...)
+     * D = از دو طرف وصل می‌شود
+     * T = اعراب شفاف
+     * U = جدا (فاصله، همزه، لاتین)
+     */
+    function arabicJoinType(ch) {
+        if (!ch) {
+            return "U";
+        }
+        if (/\s/.test(ch)) {
+            return "U";
+        }
+        const code = ch.charCodeAt(0);
+        if (
+            (code >= 0x064b && code <= 0x065f) ||
+            code === 0x0670 ||
+            (code >= 0x06d6 && code <= 0x06ed)
+        ) {
+            return "T";
+        }
+        if (ch === "ء") {
+            return "U";
+        }
+        if (/[اأإآدذرزوؤةٱژ]/.test(ch)) {
+            return "R";
+        }
+        if (
+            (code >= 0x0600 && code <= 0x06ff) ||
+            (code >= 0x0750 && code <= 0x077f) ||
+            (code >= 0x08a0 && code <= 0x08ff) ||
+            (code >= 0xfb50 && code <= 0xfdff) ||
+            (code >= 0xfe70 && code <= 0xfeff)
+        ) {
+            return "D";
+        }
+        return "U";
+    }
+
+    function splitLineIntoClustersAndGaps(text) {
+        const s = String(text || "");
+        const pieces = [];
+        let i = 0;
+        while (i < s.length) {
+            if (/\s/.test(s.charAt(i))) {
+                let count = 0;
+                while (i < s.length && /\s/.test(s.charAt(i))) {
+                    count++;
+                    i++;
+                }
+                pieces.push({ type: "space", count: count });
+                continue;
+            }
+            const start = i;
+            let current = s.charAt(i);
+            i++;
+            while (i < s.length) {
+                const next = s.charAt(i);
+                if (/\s/.test(next)) {
+                    break;
+                }
+                const t = arabicJoinType(next);
+                if (t === "U") {
+                    break;
+                }
+                if (t === "T") {
+                    current += next;
+                    i++;
+                    continue;
+                }
+                const prev = lastLetterJoinType(current);
+                if (prev === "D" && (t === "D" || t === "R")) {
+                    current += next;
+                    i++;
+                } else {
+                    break;
+                }
+            }
+            pieces.push({ type: "cluster", text: current, start: start });
+        }
+        return pieces;
+    }
+
+    function spaceAdvancePx(font, fontSize) {
+        try {
+            const glyph = font.charToGlyph(" ");
+            return ((Number(glyph.advanceWidth) || font.unitsPerEm * 0.25) * fontSize) / font.unitsPerEm;
+        } catch (e) {
+            return fontSize * 0.25;
+        }
+    }
+
+    function measureJoiningClusterLineWidth(font, logicalLine, fontSize, letterSpacing) {
+        const spacing = Number(letterSpacing) || 0;
+        const pieces = splitLineIntoClustersAndGaps(logicalLine);
+        const ordered = hasArabicScript(logicalLine) ? pieces.slice().reverse() : pieces;
+        let w = 0;
+        ordered.forEach(function (piece, idx) {
+            if (piece.type === "space") {
+                w += spaceAdvancePx(font, fontSize) * piece.count;
+                return;
+            }
+            const visual = toVisualRtlRun(piece.text);
+            w += measureGlyphRunWidth(font, visual, fontSize, spacing);
+            const next = ordered[idx + 1];
+            if (next && next.type !== "space") {
+                w += spacing;
+            }
+        });
+        return w;
+    }
+
+    function glyphLineToJoiningClusterPaths(
+        font,
+        logicalLine,
+        logicalColors,
+        fontSize,
+        letterSpacing,
+        startX,
+        baselineY,
+        defaultFill
+    ) {
+        const fallback = normalizeHexColor(defaultFill || "#000000");
+        const spacing = Number(letterSpacing) || 0;
+        const pieces = splitLineIntoClustersAndGaps(logicalLine);
+        const ordered = hasArabicScript(logicalLine) ? pieces.slice().reverse() : pieces;
+        let x = startX;
+        const chunks = [];
+        ordered.forEach(function (piece, idx) {
+            if (piece.type === "space") {
+                x += spaceAdvancePx(font, fontSize) * piece.count;
+                return;
+            }
+            const colorSlice = Array.isArray(logicalColors)
+                ? logicalColors.slice(piece.start, piece.start + piece.text.length)
+                : null;
+            const visual = toVisualRtlRunWithColors(piece.text, colorSlice, fallback);
+            const fill = normalizeHexColor((visual.colors && visual.colors[0]) || fallback);
+            const bodyParts = [];
+            const dots = [];
+            forEachGlyph(font, visual.text, fontSize, spacing, x, baselineY, function (glyph, gx, gy) {
+                const gd = otPathToD(glyph.getPath(gx, gy, fontSize));
+                if (!gd || gd.length <= 4) {
+                    return;
+                }
+                splitGlyphContours(gd).forEach(function (part) {
+                    if (!part || !part.d) {
+                        return;
+                    }
+                    if (part.role === "dot") {
+                        dots.push(part.d);
+                    } else {
+                        bodyParts.push(part.d);
+                    }
+                });
+            });
+            if (bodyParts.length) {
+                chunks.push({ d: bodyParts.join(""), fill: fill, role: "body" });
+            }
+            dots.forEach(function (dotD) {
+                chunks.push({ d: dotD, fill: fill, role: "dot" });
+            });
+            x += measureGlyphRunWidth(font, visual.text, fontSize, spacing);
+            const next = ordered[idx + 1];
+            if (next && next.type !== "space") {
+                x += spacing;
+            }
+        });
+        return chunks;
+    }
     function reshapeArabic(text) {
         if (!hasArabicScript(text)) {
             return text;
@@ -307,9 +486,308 @@
         return chunks.join("");
     }
 
+    function boundsFromPathD(d) {
+        const nums = String(d || "").match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi);
+        if (!nums || nums.length < 2) {
+            return null;
+        }
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        let found = false;
+        for (let i = 0; i + 1 < nums.length; i += 2) {
+            const x = Number(nums[i]);
+            const y = Number(nums[i + 1]);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) {
+                continue;
+            }
+            found = true;
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+        }
+        if (!found || !(maxX > minX) || !(maxY > minY)) {
+            return null;
+        }
+        return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    }
+
+    function splitPathSubpaths(d) {
+        const raw = String(d || "").replace(/,/g, " ").trim();
+        if (!raw) {
+            return [];
+        }
+        return raw
+            .split(/(?=[Mm])/)
+            .map(function (part) {
+                return part.trim();
+            })
+            .filter(function (part) {
+                return part.length > 2 && /[MLHVCSQTAmlhvcsqta]/.test(part);
+            });
+    }
+
+    function contourArea(b) {
+        return b.width * b.height;
+    }
+
+    function isCompactMark(b) {
+        const ar = b.width / Math.max(0.0001, b.height);
+        return ar >= 0.38 && ar <= 2.6;
+    }
+
+    function subpathEndPoints(d) {
+        const tokens = String(d || "").replace(/,/g, " ").trim().match(/[MmLlHhVvCcSsQqTtAaZz]|-?\d*\.?\d+(?:e[-+]?\d+)?/g) || [];
+        const pts = [];
+        let i = 0;
+        let x = 0;
+        let y = 0;
+        let cmd = "L";
+        while (i < tokens.length) {
+            const t = tokens[i];
+            if (/^[MmLlHhVvCcSsQqTtAaZz]$/.test(t)) {
+                cmd = t;
+                i++;
+                if (/^[Zz]$/.test(cmd)) {
+                    continue;
+                }
+            }
+            const rel = cmd === cmd.toLowerCase();
+            const uc = cmd.toUpperCase();
+            function take() {
+                return Number(tokens[i++]);
+            }
+            if (!(i < tokens.length) || !Number.isFinite(Number(tokens[i]))) {
+                break;
+            }
+            if (uc === "M" || uc === "L") {
+                let nx = take();
+                let ny = take();
+                if (rel) {
+                    nx += x;
+                    ny += y;
+                }
+                x = nx;
+                y = ny;
+                pts.push({ x: x, y: y });
+                if (uc === "M") {
+                    cmd = rel ? "l" : "L";
+                }
+            } else if (uc === "H") {
+                let nx = take();
+                if (rel) {
+                    nx += x;
+                }
+                x = nx;
+                pts.push({ x: x, y: y });
+            } else if (uc === "V") {
+                let ny = take();
+                if (rel) {
+                    ny += y;
+                }
+                y = ny;
+                pts.push({ x: x, y: y });
+            } else if (uc === "C") {
+                take();
+                take();
+                take();
+                take();
+                let nx = take();
+                let ny = take();
+                if (rel) {
+                    nx += x;
+                    ny += y;
+                }
+                x = nx;
+                y = ny;
+                pts.push({ x: x, y: y });
+            } else if (uc === "S" || uc === "Q") {
+                take();
+                take();
+                let nx = take();
+                let ny = take();
+                if (rel) {
+                    nx += x;
+                    ny += y;
+                }
+                x = nx;
+                y = ny;
+                pts.push({ x: x, y: y });
+            } else if (uc === "T") {
+                let nx = take();
+                let ny = take();
+                if (rel) {
+                    nx += x;
+                    ny += y;
+                }
+                x = nx;
+                y = ny;
+                pts.push({ x: x, y: y });
+            } else if (uc === "A") {
+                take();
+                take();
+                take();
+                take();
+                take();
+                let nx = take();
+                let ny = take();
+                if (rel) {
+                    nx += x;
+                    ny += y;
+                }
+                x = nx;
+                y = ny;
+                pts.push({ x: x, y: y });
+            } else {
+                i++;
+            }
+        }
+        return pts;
+    }
+
+    function subpathSignedArea(d) {
+        const pts = subpathEndPoints(d);
+        if (pts.length < 3) {
+            return 0;
+        }
+        let area = 0;
+        for (let i = 0; i < pts.length; i++) {
+            const p = pts[i];
+            const q = pts[(i + 1) % pts.length];
+            area += p.x * q.y - q.x * p.y;
+        }
+        return area / 2;
+    }
+
+    function containsPoint(b, x, y, inset) {
+        inset = Number(inset) || 0;
+        return (
+            x >= b.x + inset &&
+            x <= b.x + b.width - inset &&
+            y >= b.y + inset &&
+            y <= b.y + b.height - inset
+        );
+    }
+
+    function fullyInsideBounds(inner, outer, pad) {
+        pad = Number(pad) || 0;
+        return (
+            inner.x >= outer.x - pad &&
+            inner.y >= outer.y - pad &&
+            inner.x + inner.width <= outer.x + outer.width + pad &&
+            inner.y + inner.height <= outer.y + outer.height + pad
+        );
+    }
+
     /**
-     * مسیر جدا برای هر گلیف — برای تبدیل به منحنی و جدا کردن اجزا.
+     * روی یک گلیف: حفره با بدنه می‌ماند.
+     * کانتور کوچک بالا/پایین یا داخل حرف نقطه است؛ تکهٔ وصل کناری بدنه است.
      */
+    function splitGlyphContours(d) {
+        const subs = splitPathSubpaths(d);
+        if (!subs.length) {
+            return [];
+        }
+        if (subs.length === 1) {
+            return [{ d: subs[0], role: "body" }];
+        }
+
+        const items = subs
+            .map(function (sd) {
+                return {
+                    d: sd,
+                    bounds: boundsFromPathD(sd),
+                    winding: subpathSignedArea(sd),
+                };
+            })
+            .filter(function (item) {
+                return item.bounds && item.bounds.width > 0 && item.bounds.height > 0;
+            });
+        if (!items.length) {
+            return [{ d: d, role: "body" }];
+        }
+
+        items.sort(function (a, b) {
+            return contourArea(b.bounds) - contourArea(a.bounds);
+        });
+        const host = items[0];
+        const maxArea = contourArea(host.bounds);
+        const bodySign = host.winding >= 0 ? 1 : -1;
+
+        items.forEach(function (item, i) {
+            item.parent = -1;
+            const cx = item.bounds.x + item.bounds.width / 2;
+            const cy = item.bounds.y + item.bounds.height / 2;
+            for (let j = 0; j < i; j++) {
+                const parent = items[j];
+                if (
+                    containsPoint(parent.bounds, cx, cy, 0) ||
+                    fullyInsideBounds(item.bounds, parent.bounds, 0.6)
+                ) {
+                    item.parent = j;
+                    break;
+                }
+            }
+            item.oppositeWinding =
+                item.winding !== 0 && (item.winding >= 0 ? 1 : -1) !== bodySign;
+        });
+
+        items.forEach(function (item) {
+            const area = contourArea(item.bounds);
+            const parent = item.parent >= 0 ? items[item.parent] : null;
+            const parentArea = parent ? contourArea(parent.bounds) : 0;
+            if (parent && area < parentArea * 0.55) {
+                const innerNuqta =
+                    !item.oppositeWinding &&
+                    isCompactMark(item.bounds) &&
+                    area < parentArea * 0.085;
+                item.kind = innerNuqta ? "dot" : "hole";
+                return;
+            }
+            const small =
+                !item.oppositeWinding &&
+                area < maxArea * 0.28 &&
+                (isCompactMark(item.bounds) || area < maxArea * 0.12);
+            if (!small) {
+                item.kind = "body";
+                return;
+            }
+            const cx = item.bounds.x + item.bounds.width / 2;
+            const cy = item.bounds.y + item.bounds.height / 2;
+            const top = host.bounds.y + host.bounds.height * 0.2;
+            const bot = host.bounds.y + host.bounds.height * 0.8;
+            const px = (cx - host.bounds.x) / Math.max(0.0001, host.bounds.width);
+            const besideJoin =
+                cy >= top &&
+                cy <= bot &&
+                (px < 0.14 || px > 0.86 || cx < host.bounds.x || cx > host.bounds.x + host.bounds.width);
+            if (besideJoin) {
+                item.kind = "body";
+                return;
+            }
+            if (cy <= top || cy >= bot) {
+                item.kind = "dot";
+                return;
+            }
+            item.kind = "body";
+        });
+
+        const bodyParts = [];
+        const dots = [];
+        items.forEach(function (item) {
+            if (item.kind === "dot") {
+                dots.push({ d: item.d, role: "dot" });
+            } else {
+                bodyParts.push(item.d);
+            }
+        });
+        if (!bodyParts.length) {
+            return dots.length ? dots : [{ d: d, role: "body" }];
+        }
+        return [{ d: bodyParts.join(""), role: "body" }].concat(dots);
+    }
     function glyphRunToGlyphPaths(font, visualText, colors, fontSize, letterSpacing, startX, baselineY, defaultFill) {
         const chunks = [];
         const fallback = normalizeHexColor(defaultFill || "#000000");
@@ -321,7 +799,9 @@
                 const fill = normalizeHexColor(
                     fills[Math.min(glyphIndex, Math.max(0, fills.length - 1))] || fallback
                 );
-                chunks.push({ d: d, fill: fill });
+                splitGlyphContours(d).forEach(function (part) {
+                    chunks.push({ d: part.d, fill: fill, role: part.role });
+                });
             }
             glyphIndex++;
         });
@@ -524,8 +1004,17 @@
                 const content = line.length ? line : " ";
                 return toVisualRtlRunWithColors(content, lineColorSlices[index], defaultFill);
             });
-            const measuredWidths = visuals.map(function (visual) {
-                return measureGlyphRunWidth(font, visual.text, box.fontSize, box.letterSpacing || 0);
+            const measuredWidths = lines.map(function (line, index) {
+                const content = line.length ? line : " ";
+                if (options.joiningClusters) {
+                    return measureJoiningClusterLineWidth(
+                        font,
+                        content,
+                        box.fontSize,
+                        box.letterSpacing || 0
+                    );
+                }
+                return measureGlyphRunWidth(font, visuals[index].text, box.fontSize, box.letterSpacing || 0);
             });
             const maxLineWidth = Math.max.apply(null, measuredWidths.concat([0]));
             const contentWidth = maxLineWidth + padX * 2;
@@ -533,31 +1022,44 @@
             const rightEdge = originX + boxWidth - padX;
 
             const coloredChunks = [];
-            visuals.forEach(function (visual, index) {
+            lines.forEach(function (line, index) {
+                const visual = visuals[index];
                 const lineW = measuredWidths[index] || 0;
                 const startX = rightEdge - lineW;
                 const baselineY = originY + padY + box.fontSize * 0.85 + index * lineHeight;
-                const parts = options.separateGlyphs
-                    ? glyphRunToGlyphPaths(
+                const content = line.length ? line : " ";
+                const parts = options.joiningClusters
+                    ? glyphLineToJoiningClusterPaths(
                           font,
-                          visual.text,
-                          visual.colors,
+                          content,
+                          lineColorSlices[index],
                           box.fontSize,
                           box.letterSpacing || 0,
                           startX,
                           baselineY,
                           defaultFill
                       )
-                    : glyphRunToColoredPathChunks(
-                          font,
-                          visual.text,
-                          visual.colors,
-                          box.fontSize,
-                          box.letterSpacing || 0,
-                          startX,
-                          baselineY,
-                          defaultFill
-                      );
+                    : options.separateGlyphs
+                      ? glyphRunToGlyphPaths(
+                            font,
+                            visual.text,
+                            visual.colors,
+                            box.fontSize,
+                            box.letterSpacing || 0,
+                            startX,
+                            baselineY,
+                            defaultFill
+                        )
+                      : glyphRunToColoredPathChunks(
+                            font,
+                            visual.text,
+                            visual.colors,
+                            box.fontSize,
+                            box.letterSpacing || 0,
+                            startX,
+                            baselineY,
+                            defaultFill
+                        );
                 parts.forEach(function (part) {
                     coloredChunks.push(part);
                 });
@@ -568,7 +1070,7 @@
             }
 
             const paths = [];
-            if (options.separateGlyphs) {
+            if (options.separateGlyphs || options.joiningClusters) {
                 coloredChunks.forEach(function (part) {
                     if (!part.d) {
                         return;
@@ -580,6 +1082,7 @@
                             fill: part.fill,
                             stroke: box.stroke,
                             strokeWidth: box.strokeWidth || 0,
+                            role: part.role || "body",
                         });
                     }
                 });
@@ -711,6 +1214,7 @@
         FONT_URLS: FONT_URLS,
         registerCustomFont: registerCustomFont,
         loadFont: loadFont,
+        splitGlyphContours: splitGlyphContours,
         textBoxToWeldedPath: textBoxToWeldedPath,
         getCorelStyleRegistry: getCorelStyleRegistry,
         buildCorelSvgDocument: buildCorelSvgDocument,
