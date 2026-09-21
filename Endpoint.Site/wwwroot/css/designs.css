@@ -373,6 +373,22 @@
     text-align: center;
 }
 
+.design-value-input {
+    width: 3.6rem;
+    min-width: 3.6rem;
+    border: 0;
+    outline: none;
+    box-shadow: none;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.design-value-input::-webkit-outer-spin-button,
+.design-value-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
 .design-help {
     margin: 0.35rem 0 0;
     font-size: 0.72rem;

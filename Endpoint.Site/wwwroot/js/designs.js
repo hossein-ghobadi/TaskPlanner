@@ -87,6 +87,7 @@
     const MIN_BOX_HEIGHT = 36;
     const MIN_FONT_SIZE = 12;
     const MAX_FONT_SIZE = 240;
+    const STROKE_SLIDER_MIN_MAX = 200;
     const RULER_SIZE = 28;
     const CANVAS_GROW_PAD = 400;
     const spectrumControllers = { fill: null, stroke: null };
@@ -1012,8 +1013,7 @@
             suppressPanelSync = true;
             els.fill.value = normalizeFillHex(box.fill || box.originalFill || "#111827");
             els.stroke.value = normalizeFillHex(box.stroke || box.originalStroke || "#111827");
-            els.strokeWidth.value = String(box.strokeWidth || 0);
-            els.strokeWidthValue.textContent = String(box.strokeWidth || 0);
+            setStrokeWidthControls(box.strokeWidth || 0);
             if (!isSvgItem(box)) {
                 els.font.value = box.fontFamily;
                 els.fontSize.value = String(box.fontSize);
@@ -1034,8 +1034,7 @@
             suppressPanelSync = true;
             els.fill.value = normalizeFillHex(box.fill || box.originalFill || "#111827");
             els.stroke.value = normalizeFillHex(box.stroke || box.originalStroke || "#111827");
-            els.strokeWidth.value = String(box.strokeWidth || 0);
-            els.strokeWidthValue.textContent = String(box.strokeWidth || 0);
+            setStrokeWidthControls(box.strokeWidth || 0);
             syncSpectrumFromInput("fill", els.fill.value);
             syncSpectrumFromInput("stroke", els.stroke.value);
             suppressPanelSync = false;
@@ -1062,9 +1061,8 @@
         els.fontSize.value = String(box.fontSize);
         els.fill.value = getActiveFillForPanel(box);
         els.stroke.value = box.stroke;
-        els.strokeWidth.value = String(box.strokeWidth);
+        setStrokeWidthControls(box.strokeWidth);
         els.fontSizeValue.textContent = String(box.fontSize);
-        els.strokeWidthValue.textContent = String(box.strokeWidth);
         syncSpectrumFromInput("fill", els.fill.value);
         syncSpectrumFromInput("stroke", els.stroke.value);
         suppressPanelSync = false;
@@ -2837,8 +2835,7 @@
         els.fontSize.value = String(box.fontSize);
         els.fontSizeValue.textContent = String(box.fontSize);
         if (els.strokeWidth) {
-            els.strokeWidth.value = String(box.strokeWidth);
-            els.strokeWidthValue.textContent = String(box.strokeWidth);
+            setStrokeWidthControls(box.strokeWidth);
         }
         suppressPanelSync = false;
     }
@@ -3034,7 +3031,33 @@
         setStatus("همه پاک شد.");
     }
 
-    function applyPanelToSelected() {
+    function setStrokeWidthControls(value) {
+        const n = Math.max(0, Number(value) || 0);
+        const rounded = Math.round(n * 10) / 10;
+        if (els.strokeWidth) {
+            const max = Math.max(STROKE_SLIDER_MIN_MAX, Math.ceil(rounded));
+            els.strokeWidth.max = String(max);
+            els.strokeWidth.value = String(rounded);
+        }
+        if (els.strokeWidthValue) {
+            if (els.strokeWidthValue.tagName === "INPUT") {
+                els.strokeWidthValue.value = String(rounded);
+            } else {
+                els.strokeWidthValue.textContent = String(rounded);
+            }
+        }
+        return rounded;
+    }
+
+    function readStrokeWidthFromPanel(event) {
+        const source = event && event.target;
+        if (source === els.strokeWidthValue) {
+            return Math.max(0, Number(els.strokeWidthValue.value) || 0);
+        }
+        return Math.max(0, Number(els.strokeWidth && els.strokeWidth.value) || 0);
+    }
+
+    function applyPanelToSelected(event) {
         if (suppressPanelSync) {
             return;
         }
@@ -3042,10 +3065,11 @@
         if (!items.length) {
             return;
         }
+        const strokeW = setStrokeWidthControls(readStrokeWidthFromPanel(event));
         items.forEach(function (box) {
             if (isSvgItem(box)) {
                 box.stroke = normalizeFillHex(els.stroke.value);
-                box.strokeWidth = Number(els.strokeWidth.value) || 0;
+                box.strokeWidth = strokeW;
                 box.strokeOverride = true;
                 applySvgStyles(box, { repaint: true });
                 return;
@@ -3054,13 +3078,12 @@
             box.fontSize = clampFontSize(Number(els.fontSize.value) || 48);
             box.letterSpacing = 0;
             box.stroke = els.stroke.value;
-            box.strokeWidth = Number(els.strokeWidth.value) || 0;
+            box.strokeWidth = strokeW;
             applyBoxStyles(box);
             fitBoxToText(box);
         });
         const primary = getSelected();
         if (primary) {
-            els.strokeWidthValue.textContent = String(primary.strokeWidth || 0);
             if (!isSvgItem(primary)) {
                 els.fontSizeValue.textContent = String(primary.fontSize);
             }
@@ -3131,8 +3154,7 @@
         }
         if (primary && Number(primary.strokeWidth) > 0) {
             suppressPanelSync = true;
-            els.strokeWidth.value = String(primary.strokeWidth);
-            els.strokeWidthValue.textContent = String(primary.strokeWidth);
+            setStrokeWidthControls(primary.strokeWidth);
             suppressPanelSync = false;
         }
         syncSpectrumFromInput("stroke", els.stroke.value);
@@ -3256,7 +3278,11 @@
             if (isSvgItem(box)) {
                 box.width = Math.min(MAX_CANVAS_PX, Math.max(24, resizeState.startWidth * scale));
                 box.height = Math.min(MAX_CANVAS_PX, Math.max(24, resizeState.startHeight * scale));
+                if (resizeState.startStrokeWidth > 0) {
+                    box.strokeWidth = Math.max(0, Math.round(resizeState.startStrokeWidth * scale * 10) / 10);
+                }
                 applySvgStyles(box);
+                setStrokeWidthControls(box.strokeWidth);
                 return;
             }
 
@@ -3357,7 +3383,8 @@
             const box = resizeState.box;
             box.el.classList.remove("is-resizing");
             if (isSvgItem(box)) {
-                applySvgStyles(box, { resize: true, repaint: !!box.strokeOverride });
+                applySvgStyles(box, { resize: true, repaint: !!box.strokeOverride || Number(box.strokeWidth) > 0 });
+                setStrokeWidthControls(box.strokeWidth || 0);
                 resizeState = null;
                 setStatus("اندازه SVG به‌روز شد.");
                 return;
@@ -3470,8 +3497,11 @@
     }
 
     function boundsFromPathData(d) {
-        const nums = String(d || "").match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi);
-        if (!nums || nums.length < 2) {
+        const tokens = String(d || "")
+            .replace(/,/g, " ")
+            .trim()
+            .match(/[MmLlHhVvCcSsQqTtAaZz]|-?\d*\.?\d+(?:e[-+]?\d+)?/g);
+        if (!tokens || tokens.length < 3) {
             return null;
         }
         let minX = Infinity;
@@ -3479,17 +3509,117 @@
         let maxX = -Infinity;
         let maxY = -Infinity;
         let found = false;
-        for (let i = 0; i + 1 < nums.length; i += 2) {
-            const x = Number(nums[i]);
-            const y = Number(nums[i + 1]);
-            if (!Number.isFinite(x) || !Number.isFinite(y)) {
-                continue;
+        let i = 0;
+        let x = 0;
+        let y = 0;
+        let cmd = "L";
+        function add(px, py) {
+            if (!Number.isFinite(px) || !Number.isFinite(py)) {
+                return;
             }
             found = true;
-            minX = Math.min(minX, x);
-            minY = Math.min(minY, y);
-            maxX = Math.max(maxX, x);
-            maxY = Math.max(maxY, y);
+            minX = Math.min(minX, px);
+            minY = Math.min(minY, py);
+            maxX = Math.max(maxX, px);
+            maxY = Math.max(maxY, py);
+        }
+        function take() {
+            return Number(tokens[i++]);
+        }
+        while (i < tokens.length) {
+            const t = tokens[i];
+            if (/^[MmLlHhVvCcSsQqTtAaZz]$/.test(t)) {
+                cmd = t;
+                i++;
+                if (/^[Zz]$/.test(cmd)) {
+                    continue;
+                }
+            }
+            const rel = cmd === cmd.toLowerCase();
+            const uc = cmd.toUpperCase();
+            if (!(i < tokens.length) || !Number.isFinite(Number(tokens[i]))) {
+                break;
+            }
+            if (uc === "M" || uc === "L" || uc === "T") {
+                let nx = take();
+                let ny = take();
+                if (rel) {
+                    nx += x;
+                    ny += y;
+                }
+                x = nx;
+                y = ny;
+                add(x, y);
+                if (uc === "M") {
+                    cmd = rel ? "l" : "L";
+                }
+            } else if (uc === "H") {
+                let nx = take();
+                if (rel) {
+                    nx += x;
+                }
+                x = nx;
+                add(x, y);
+            } else if (uc === "V") {
+                let ny = take();
+                if (rel) {
+                    ny += y;
+                }
+                y = ny;
+                add(x, y);
+            } else if (uc === "C") {
+                let x1 = take();
+                let y1 = take();
+                let x2 = take();
+                let y2 = take();
+                let nx = take();
+                let ny = take();
+                if (rel) {
+                    x1 += x;
+                    y1 += y;
+                    x2 += x;
+                    y2 += y;
+                    nx += x;
+                    ny += y;
+                }
+                add(x1, y1);
+                add(x2, y2);
+                x = nx;
+                y = ny;
+                add(x, y);
+            } else if (uc === "S" || uc === "Q") {
+                let x1 = take();
+                let y1 = take();
+                let nx = take();
+                let ny = take();
+                if (rel) {
+                    x1 += x;
+                    y1 += y;
+                    nx += x;
+                    ny += y;
+                }
+                add(x1, y1);
+                x = nx;
+                y = ny;
+                add(x, y);
+            } else if (uc === "A") {
+                take();
+                take();
+                take();
+                take();
+                take();
+                let nx = take();
+                let ny = take();
+                if (rel) {
+                    nx += x;
+                    ny += y;
+                }
+                x = nx;
+                y = ny;
+                add(x, y);
+            } else {
+                i++;
+            }
         }
         if (!found || !(maxX > minX) || !(maxY > minY)) {
             return null;
@@ -3671,6 +3801,124 @@
         });
     }
 
+    function clonePathWithD(el, d, role) {
+        const clone = el.cloneNode(true);
+        clone.setAttribute("d", d);
+        clone.setAttribute("fill-rule", "nonzero");
+        if (role) {
+            clone.setAttribute("data-role", role);
+        }
+        return clone;
+    }
+
+    function weldPathD(d) {
+        if (!d || !window.DesignVector || typeof DesignVector.weldPathData !== "function") {
+            return d;
+        }
+        try {
+            return DesignVector.weldPathData(d) || d;
+        } catch (e) {
+            return d;
+        }
+    }
+
+    function shapeFillKey(el) {
+        return String(
+            (el && el.getAttribute && el.getAttribute("fill")) ||
+                (el && el.style && el.style.fill) ||
+                ""
+        )
+            .trim()
+            .toLowerCase() || "#000000";
+    }
+
+    function boundsOverlapPad(a, b, pad) {
+        pad = Number(pad) || 0.75;
+        return !!(
+            a &&
+            b &&
+            a.x < b.x + b.width + pad &&
+            a.x + a.width > b.x - pad &&
+            a.y < b.y + b.height + pad &&
+            a.y + a.height > b.y - pad
+        );
+    }
+
+    function weldExplodedParts(parts) {
+        const others = [];
+        const bodies = [];
+        (parts || []).forEach(function (el) {
+            const tag = String((el && el.tagName) || "")
+                .toLowerCase()
+                .replace(/^.*:/, "");
+            const role = String((el && el.getAttribute && el.getAttribute("data-role")) || "").toLowerCase();
+            if (tag === "path" && role !== "dot") {
+                const welded = weldPathD(el.getAttribute("d") || "");
+                bodies.push(clonePathWithD(el, welded, role === "body" ? "body" : role || "body"));
+                return;
+            }
+            others.push(el);
+        });
+        if (bodies.length <= 1) {
+            return others.concat(bodies);
+        }
+
+        const used = bodies.map(function () {
+            return false;
+        });
+        const weldedBodies = [];
+        for (let i = 0; i < bodies.length; i++) {
+            if (used[i]) {
+                continue;
+            }
+            const group = [bodies[i]];
+            used[i] = true;
+            const fill = shapeFillKey(bodies[i]);
+            let grown = true;
+            while (grown) {
+                grown = false;
+                let gb = null;
+                group.forEach(function (el) {
+                    const b = boundsFromPathData(el.getAttribute("d") || "");
+                    if (!b) {
+                        return;
+                    }
+                    if (!gb) {
+                        gb = { x: b.x, y: b.y, width: b.width, height: b.height };
+                        return;
+                    }
+                    const x2 = Math.max(gb.x + gb.width, b.x + b.width);
+                    const y2 = Math.max(gb.y + gb.height, b.y + b.height);
+                    gb.x = Math.min(gb.x, b.x);
+                    gb.y = Math.min(gb.y, b.y);
+                    gb.width = x2 - gb.x;
+                    gb.height = y2 - gb.y;
+                });
+                for (let j = 0; j < bodies.length; j++) {
+                    if (used[j] || shapeFillKey(bodies[j]) !== fill) {
+                        continue;
+                    }
+                    if (boundsOverlapPad(gb, boundsFromPathData(bodies[j].getAttribute("d") || ""))) {
+                        group.push(bodies[j]);
+                        used[j] = true;
+                        grown = true;
+                    }
+                }
+            }
+            if (group.length === 1) {
+                weldedBodies.push(group[0]);
+            } else {
+                const combined = group
+                    .map(function (el) {
+                        return el.getAttribute("d") || "";
+                    })
+                    .join("");
+                weldedBodies.push(clonePathWithD(group[0], weldPathD(combined), "body"));
+            }
+        }
+        return others.concat(weldedBodies);
+    }
+
     function explodeShapeElements(svg) {
         const expanded = [];
         const splitter =
@@ -3743,6 +3991,38 @@
         return transforms;
     }
 
+    function measureDetachedShapeBBox(el) {
+        if (!el) {
+            return null;
+        }
+        const host = document.createElement("div");
+        host.style.cssText =
+            "position:absolute;left:-99999px;top:0;width:800px;height:800px;overflow:visible;opacity:0;pointer-events:none;";
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        svg.setAttribute("width", "800");
+        svg.setAttribute("height", "800");
+        svg.style.overflow = "visible";
+        const clone = el.cloneNode(true);
+        svg.appendChild(clone);
+        host.appendChild(svg);
+        document.body.appendChild(host);
+        try {
+            if (typeof clone.getBBox !== "function") {
+                return null;
+            }
+            const b = clone.getBBox();
+            if (!b || !(b.width > 0.05) || !(b.height > 0.05)) {
+                return null;
+            }
+            return { x: b.x, y: b.y, width: b.width, height: b.height };
+        } catch (e) {
+            return null;
+        } finally {
+            host.remove();
+        }
+    }
+
     function shapeBBoxInSvg(svg, el) {
         if (el && String(el.tagName || "").toLowerCase().replace(/^.*:/, "") === "path") {
             const fromD = boundsFromPathData(el.getAttribute("d") || "");
@@ -3750,15 +4030,23 @@
                 return fromD;
             }
         }
-        const transforms = ancestorTransformList(el, svg);
-        if (!transforms.length && typeof el.getBBox === "function") {
-            try {
-                const b = el.getBBox();
-                if (b && b.width > 0.2 && b.height > 0.2) {
-                    return { x: b.x, y: b.y, width: b.width, height: b.height };
+        const inDom = !!(el && el.ownerSVGElement) || !!(svg && el && svg.contains && svg.contains(el));
+        if (inDom) {
+            const transforms = ancestorTransformList(el, svg);
+            if (!transforms.length && typeof el.getBBox === "function") {
+                try {
+                    const b = el.getBBox();
+                    if (b && b.width > 0.2 && b.height > 0.2) {
+                        return { x: b.x, y: b.y, width: b.width, height: b.height };
+                    }
+                } catch (e) {
+                    // fallback
                 }
-            } catch (e) {
-                // fallback صفحه
+            }
+        } else {
+            const detached = measureDetachedShapeBBox(el);
+            if (detached) {
+                return detached;
             }
         }
         const svgRect = svg.getBoundingClientRect();
@@ -3870,7 +4158,7 @@
             setStatus("شکل قابل جداسازی نیست.");
             return;
         }
-        const shapes = explodeShapeElements(svg);
+        const shapes = weldExplodedParts(explodeShapeElements(svg));
         if (shapes.length < 2) {
             setStatus("این شکل فقط یک جزء دارد.");
             return;
@@ -4285,6 +4573,9 @@
         els.fill.addEventListener(evt, applyFillColorToSelected);
         els.stroke.addEventListener(evt, applyStrokeColorToSelected);
         els.strokeWidth.addEventListener(evt, applyPanelToSelected);
+        if (els.strokeWidthValue) {
+            els.strokeWidthValue.addEventListener(evt, applyPanelToSelected);
+        }
     });
 
     if (els.fontFile) {

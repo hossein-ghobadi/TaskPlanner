@@ -345,7 +345,7 @@
                 });
             });
             if (bodyParts.length) {
-                chunks.push({ d: bodyParts.join(""), fill: fill, role: "body" });
+                chunks.push({ d: weldPathData(bodyParts.join("")), fill: fill, role: "body" });
             }
             dots.forEach(function (dotD) {
                 chunks.push({ d: dotD, fill: fill, role: "dot" });
@@ -981,10 +981,20 @@
         if (!item) {
             return "";
         }
-        item.applyMatrix = true;
-        if (typeof item.applyMatrix === "boolean") {
-            // اطمینان از پخت ماتریس در سگمنت‌ها
-            item.matrix = item.matrix;
+        function bakeMatrix(it) {
+            try {
+                it.applyMatrix = true;
+            } catch (e) {
+                // ignore
+            }
+            if (it.children && it.children.length) {
+                it.children.forEach(bakeMatrix);
+            }
+        }
+        bakeMatrix(item);
+        const d = paperItemToAbsoluteD(item);
+        if (d && String(d).replace(/[\sMZ]/gi, "").length) {
+            return d;
         }
         if (item.pathData) {
             return item.pathData;
@@ -1004,6 +1014,81 @@
                 .join("");
         }
         return "";
+    }
+
+    function paperFmt(n) {
+        const v = Number(n);
+        if (!Number.isFinite(v)) {
+            return "0";
+        }
+        return String(Math.round(v * 1000) / 1000);
+    }
+
+    function paperPt(p) {
+        return paperFmt(p.x) + " " + paperFmt(p.y);
+    }
+
+    function paperItemToAbsoluteD(item, parentMatrix) {
+        if (!item) {
+            return "";
+        }
+        let matrix = parentMatrix ? parentMatrix.clone() : new paper.Matrix();
+        if (item.matrix && !item.matrix.isIdentity()) {
+            if (typeof matrix.concatenate === "function") {
+                matrix.concatenate(item.matrix);
+            } else if (typeof matrix.append === "function") {
+                matrix.append(item.matrix);
+            }
+        }
+        if (item.children && item.children.length) {
+            return item.children
+                .map(function (child) {
+                    return paperItemToAbsoluteD(child, matrix);
+                })
+                .filter(Boolean)
+                .join("");
+        }
+        const segs = item.segments;
+        if (!segs || !segs.length) {
+            return "";
+        }
+        function xf(point) {
+            return matrix.transform(point);
+        }
+        let d = "";
+        for (let i = 0; i < segs.length; i++) {
+            const seg = segs[i];
+            const p = xf(seg.point);
+            if (i === 0) {
+                d += "M" + paperPt(p);
+                continue;
+            }
+            const prev = segs[i - 1];
+            const out = prev.handleOut;
+            const inn = seg.handleIn;
+            if ((!out || out.isZero()) && (!inn || inn.isZero())) {
+                d += "L" + paperPt(p);
+            } else {
+                const c1 = xf(prev.point.add(out));
+                const c2 = xf(seg.point.add(inn));
+                d += "C" + paperPt(c1) + " " + paperPt(c2) + " " + paperPt(p);
+            }
+        }
+        if (item.closed && segs.length > 1) {
+            const last = segs[segs.length - 1];
+            const first = segs[0];
+            const out = last.handleOut;
+            const inn = first.handleIn;
+            if ((out && !out.isZero()) || (inn && !inn.isZero())) {
+                const c1 = xf(last.point.add(out || new paper.Point(0, 0)));
+                const c2 = xf(first.point.add(inn || new paper.Point(0, 0)));
+                d += "C" + paperPt(c1) + " " + paperPt(c2) + " " + paperPt(xf(first.point));
+            }
+            d += "Z";
+        } else if (item.closed) {
+            d += "Z";
+        }
+        return d;
     }
 
     function approxPathWidth(d) {
@@ -1027,34 +1112,119 @@
         if (!d) {
             return d;
         }
-        // برای حروف فارسی، boolean unite اغلب حفره‌ها (مثل م) را خراب می‌کند
-        // و قطعات را جابه‌جا می‌نماید. یک path مرکب (چند subpath) برای Corel کافی است.
-        // فقط اگر عرض نتیجه غیرعادی بزرگ نشد، unite را می‌پذیریم.
         try {
             ensurePaper();
             paper.project.clear();
-            const beforeW = approxPathWidth(d);
-            const compound = new paper.CompoundPath(d);
-            compound.fillRule = "nonzero";
-            const children = compound.children && compound.children.length ? compound.children.slice() : [];
-            if (children.length < 2) {
+            const subs = splitPathSubpaths(d);
+            if (subs.length < 2) {
                 return d;
             }
-            let united = children[0].clone();
-            for (let i = 1; i < children.length; i++) {
-                const next = united.unite(children[i]);
-                if (united.remove) {
-                    united.remove();
+
+            const items = [];
+            subs.forEach(function (sd) {
+                const path = new paper.Path(sd);
+                if (!path.segments || path.segments.length < 2) {
+                    path.remove();
+                    return;
                 }
-                united = next;
-            }
-            const weldedD = bakeItemToPathData(united);
-            if (!weldedD) {
+                if (!path.closed) {
+                    path.closePath();
+                }
+                const area = path.area;
+                if (!Number.isFinite(area) || Math.abs(area) < 0.05) {
+                    path.remove();
+                    return;
+                }
+                items.push({
+                    path: path,
+                    area: area,
+                    absArea: Math.abs(area),
+                    bounds: path.bounds.clone(),
+                    isHole: false,
+                });
+            });
+            if (items.length < 2) {
+                paper.project.clear();
                 return d;
             }
+
+            items.sort(function (a, b) {
+                return b.absArea - a.absArea;
+            });
+
+            items.forEach(function (item, i) {
+                if (i === 0) {
+                    return;
+                }
+                const center = item.bounds.center;
+                for (let j = 0; j < i; j++) {
+                    const parent = items[j];
+                    if (parent.isHole) {
+                        continue;
+                    }
+                    let inside = false;
+                    try {
+                        inside = parent.path.contains(center);
+                    } catch (e) {
+                        inside = parent.bounds.contains(center);
+                    }
+                    const nested =
+                        inside ||
+                        (parent.bounds.contains(item.bounds) && item.absArea < parent.absArea * 0.55);
+                    if (!nested) {
+                        continue;
+                    }
+                    if (Math.sign(item.area) !== Math.sign(parent.area) && parent.area !== 0) {
+                        item.isHole = true;
+                    }
+                    break;
+                }
+            });
+
+            const solids = items.filter(function (item) {
+                return !item.isHole;
+            });
+            const holes = items.filter(function (item) {
+                return item.isHole;
+            });
+            if (solids.length < 2) {
+                paper.project.clear();
+                return d;
+            }
+
+            let result = solids[0].path.clone();
+            for (let i = 1; i < solids.length; i++) {
+                const next = result.unite(solids[i].path);
+                if (result.remove) {
+                    result.remove();
+                }
+                result = next;
+                if (!result) {
+                    paper.project.clear();
+                    return d;
+                }
+            }
+            holes.forEach(function (hole) {
+                const next = result.subtract(hole.path);
+                if (result.remove) {
+                    result.remove();
+                }
+                result = next;
+            });
+
+            const weldedD = bakeItemToPathData(result);
+            paper.project.clear();
+            if (!weldedD || String(weldedD).replace(/[\sMZ]/gi, "").length < 8) {
+                return d;
+            }
+            const beforeW = approxPathWidth(d);
             const afterW = approxPathWidth(weldedD);
             if (beforeW > 0 && afterW > beforeW * 1.35 + 40) {
                 console.warn("Weld unite rejected: inflated bounds");
+                return d;
+            }
+            if (holes.length && splitPathSubpaths(weldedD).length < 2) {
+                console.warn("Weld unite rejected: holes lost");
                 return d;
             }
             return weldedD;
@@ -1308,6 +1478,7 @@
         registerCustomFont: registerCustomFont,
         loadFont: loadFont,
         splitGlyphContours: splitGlyphContours,
+        weldPathData: weldPathData,
         textBoxToWeldedPath: textBoxToWeldedPath,
         getCorelStyleRegistry: getCorelStyleRegistry,
         buildCorelSvgDocument: buildCorelSvgDocument,

@@ -142,9 +142,9 @@
                         <div class="design-field">
                             <div class="design-label-row">
                                 <label class="design-label" for="designStrokeWidthInput">ضخامت حاشیه</label>
-                                <span class="design-value" id="designStrokeWidthValue" aria-live="polite">0</span>
+                                <input id="designStrokeWidthValue" class="design-value design-value-input" type="number" min="0" step="0.1" value="0" aria-label="ضخامت حاشیه" />
                             </div>
-                            <input id="designStrokeWidthInput" class="design-range" type="range" min="0" max="12" step="0.5" value="0" />
+                            <input id="designStrokeWidthInput" class="design-range" type="range" min="0" max="200" step="0.1" value="0" />
                             <p class="design-help">حاشیه فقط دور شکل اضافه می‌شود و داخل رنگ پر نمی‌رود.</p>
                         </div>
                     </div>
@@ -165,7 +165,7 @@
                                 <i class="bi bi-bounding-box"></i>
                                 جدا کردن اجزا
                             </button>
-                            <p class="design-help">حروف به‌هم‌پیوسته یک شکل می‌مانند و فقط نقطه‌ها جدا می‌شوند.</p>
+                            <p class="design-help">قبل از جدا شدن، بدنهٔ حروف هم‌پوشان Weld می‌شود؛ فقط نقطه‌ها جدا می‌مانند.</p>
                         </div>
                     </div>
                 </div>
